@@ -179,7 +179,7 @@ export function UserSettings() {
               <div className="account-field-control">
                 <select
                   id="settings-locale-select"
-                  className="account-select"
+                  className="ds-control account-select"
                   value={currentUiLocale}
                   disabled={localeSaving}
                   onChange={(e) => void handleLocaleChange(e.target.value)}
@@ -340,7 +340,7 @@ export function UserSettings() {
                 <input
                   id="new-api-key-name"
                   type="text"
-                  className="account-input"
+                  className="ds-control account-input"
                   placeholder={t('placeholderLabel')}
                   value={newKeyName}
                   onChange={(e) => setNewKeyName(e.target.value)}

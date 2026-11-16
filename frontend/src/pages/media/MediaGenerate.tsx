@@ -268,7 +268,7 @@ export function MediaGenerate() {
             <div className="media-generate-image-actions">
               <input
                 type="text"
-                className="media-generate-image-url"
+                className="ds-control media-generate-image-url"
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
                 placeholder={t('channel.generateImageUrlPlaceholder')}
@@ -351,7 +351,7 @@ export function MediaGenerate() {
               </p>
             ) : (
               <select
-                className="channel-page-move-select"
+                className="ds-control channel-page-move-select"
                 value={modelId}
                 onChange={(e) => setModelId(e.target.value)}
                 disabled={busy}
@@ -368,7 +368,7 @@ export function MediaGenerate() {
           <div className="media-generate-sidebar-section">
             <h3 className="media-generate-sidebar-title">{t('channel.generateResolution')}</h3>
             <select
-              className="channel-page-move-select"
+              className="ds-control channel-page-move-select"
               value={size}
               onChange={(e) => setSize(e.target.value)}
               disabled={busy}
@@ -386,7 +386,7 @@ export function MediaGenerate() {
           <div className="media-generate-sidebar-section">
             <h3 className="media-generate-sidebar-title">{t('channel.generateQuality')}</h3>
             <select
-              className="channel-page-move-select"
+              className="ds-control channel-page-move-select"
               value={quality}
               onChange={(e) => setQuality(e.target.value)}
               disabled={busy}
@@ -401,7 +401,7 @@ export function MediaGenerate() {
               <div className="media-generate-sidebar-section">
                 <h3 className="media-generate-sidebar-title">{t('channel.generateDuration')}</h3>
                 <select
-                  className="channel-page-move-select"
+                  className="ds-control channel-page-move-select"
                   value={duration}
                   onChange={(e) => setDuration(Number(e.target.value))}
                   disabled={busy}
@@ -414,7 +414,7 @@ export function MediaGenerate() {
               <div className="media-generate-sidebar-section">
                 <h3 className="media-generate-sidebar-title">{t('channel.generateFps')}</h3>
                 <select
-                  className="channel-page-move-select"
+                  className="ds-control channel-page-move-select"
                   value={fps}
                   onChange={(e) => setFps(Number(e.target.value))}
                   disabled={busy}

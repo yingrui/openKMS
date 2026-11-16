@@ -243,6 +243,7 @@ export function MediaChannelSettings() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder={t('channels.namePlaceholder')}
                   required
+                  className="ds-control"
                 />
               </div>
               <div className="settings-page-field">
@@ -257,7 +258,7 @@ export function MediaChannelSettings() {
               </div>
               <div className="settings-page-field">
                 <label htmlFor="media-settings-parent">{t('channels.parent')}</label>
-                <select id="media-settings-parent" value={parentId} onChange={(e) => setParentId(e.target.value)}>
+                <select id="media-settings-parent" value={parentId} onChange={(e) => setParentId(e.target.value)} className="ds-control">
                   {moveParentChoices.map((p) => (
                     <option key={p.id || 'root'} value={p.id}>
                       {'—'.repeat(p.depth)} {p.name}
@@ -293,6 +294,7 @@ export function MediaChannelSettings() {
                   value={defaultImageModelId}
                   onChange={(e) => setDefaultImageModelId(e.target.value)}
                   disabled={modelsLoading}
+                  className="ds-control"
                 >
                   <option value="">{t('settings.modelNone')}</option>
                   {imageModels.map((m) => (
@@ -309,6 +311,7 @@ export function MediaChannelSettings() {
                   value={defaultVideoModelId}
                   onChange={(e) => setDefaultVideoModelId(e.target.value)}
                   disabled={modelsLoading}
+                  className="ds-control"
                 >
                   <option value="">{t('settings.modelNone')}</option>
                   {videoModels.map((m) => (

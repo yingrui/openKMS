@@ -224,6 +224,7 @@ export function MediaChannel() {
             aria-label={t('channel.filterKindAria')}
             value={kindFilter}
             onChange={(e) => setKindFilter(e.target.value as 'all' | MediaKind)}
+            className="ds-control"
           >
             <option value="all">{t('channel.filterAll')}</option>
             <option value="image">{t('channel.filterImages')}</option>

@@ -418,7 +418,7 @@ export function ObjectTypeDetail() {
         {!objectType.dataset_id && editInstance ? (
           <label className="object-type-system-id-field">
             <span>{t('ontology.objectTypeDetail.systemIdCol')}</span>
-            <input type="text" value={editInstance.id} readOnly disabled />
+            <input type="text" value={editInstance.id} readOnly disabled className="ds-control"/>
             <span className="object-type-field-hint">{t('ontology.objectTypeDetail.systemIdHint')}</span>
           </label>
         ) : null}
@@ -429,6 +429,7 @@ export function ObjectTypeDetail() {
               <select
                 value={String(formData[p.name] ?? false)}
                 onChange={(e) => updateFormField(p.name, e.target.value === 'true')}
+                className="ds-control"
               >
                 <option value="false">{t('ontology.objectTypeDetail.booleanNo')}</option>
                 <option value="true">{t('ontology.objectTypeDetail.booleanYes')}</option>
@@ -442,18 +443,21 @@ export function ObjectTypeDetail() {
                   updateFormField(p.name, v === '' ? undefined : Number(v));
                 }}
                 placeholder={p.required ? t('ontology.objectTypeDetail.placeholderRequired') : t('ontology.objectTypeDetail.placeholderOptional')}
+                className="ds-control"
               />
             ) : p.type === 'date' ? (
               <input
                 type="date"
                 value={String(formData[p.name] ?? '')}
                 onChange={(e) => updateFormField(p.name, e.target.value)}
+                className="ds-control"
               />
             ) : p.type === 'datetime' ? (
               <input
                 type="datetime-local"
                 value={String(formData[p.name] ?? '').slice(0, 16)}
                 onChange={(e) => updateFormField(p.name, e.target.value)}
+                className="ds-control"
               />
             ) : p.type === 'uuid' ? (
               <input
@@ -466,6 +470,7 @@ export function ObjectTypeDetail() {
                 value={String(formData[p.name] ?? '')}
                 onChange={(e) => updateFormField(p.name, e.target.value)}
                 placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="ds-control"
               />
             ) : (
               <input
@@ -473,6 +478,7 @@ export function ObjectTypeDetail() {
                 value={String(formData[p.name] ?? '')}
                 onChange={(e) => updateFormField(p.name, e.target.value)}
                 placeholder={p.required ? t('ontology.objectTypeDetail.placeholderRequired') : t('ontology.objectTypeDetail.placeholderOptional')}
+                className="ds-control"
               />
             )}
           </label>

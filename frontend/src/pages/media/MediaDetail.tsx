@@ -116,7 +116,7 @@ function MediaDetailFormPanel({
                 <input
                   id="media-detail-title"
                   type="text"
-                  className="document-detail-metadata-input"
+                  className="ds-control ds-control--compact document-detail-metadata-input"
                   value={title}
                   onChange={(e) => onTitleChange(e.target.value)}
                 />
@@ -128,7 +128,7 @@ function MediaDetailFormPanel({
                 <input
                   id="media-detail-captured"
                   type="datetime-local"
-                  className="document-detail-metadata-input"
+                  className="ds-control ds-control--compact document-detail-metadata-input"
                   value={capturedAt}
                   onChange={(e) => onCapturedAtChange(e.target.value)}
                 />
@@ -140,7 +140,7 @@ function MediaDetailFormPanel({
                 <input
                   id="media-detail-location"
                   type="text"
-                  className="document-detail-metadata-input"
+                  className="ds-control ds-control--compact document-detail-metadata-input"
                   value={locationLabel}
                   onChange={(e) => onLocationChange(e.target.value)}
                 />
@@ -153,7 +153,7 @@ function MediaDetailFormPanel({
             </label>
             <textarea
               id="media-detail-desc"
-              className="document-detail-metadata-input media-detail-textarea"
+              className="ds-control ds-control--compact document-detail-metadata-input media-detail-textarea"
               rows={descriptionOnly ? 12 : 6}
               value={description}
               onChange={(e) => onDescriptionChange(e.target.value)}

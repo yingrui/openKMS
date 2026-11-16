@@ -450,7 +450,7 @@ export function ProjectSettings() {
                           <td>
                             <select
                               id={`skill-version-${skill.id}`}
-                              className="project-settings-skills-table-select"
+                              className="ds-control ds-control--compact project-settings-skills-table-select"
                               value={selectedVersions[skill.id] ?? ''}
                               onChange={(e) =>
                                 setSelectedVersions((prev) => ({ ...prev, [skill.id]: e.target.value }))

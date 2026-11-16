@@ -277,6 +277,7 @@ export function ProjectSchedulesTab({ projectId }: Props) {
               type="text"
               value={form.display_name}
               onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))}
+              className="ds-control"
             />
           </div>
           <div className="project-settings-field">
@@ -285,6 +286,7 @@ export function ProjectSchedulesTab({ projectId }: Props) {
               id="schedule-mode"
               value={form.mode}
               onChange={(e) => setForm((f) => ({ ...f, mode: e.target.value as ScheduleMode }))}
+              className="ds-control"
             >
               <option value="stateless">{t('settings.schedules.mode.stateless')}</option>
               <option value="stateful">{t('settings.schedules.mode.stateful')}</option>
@@ -298,6 +300,7 @@ export function ProjectSchedulesTab({ projectId }: Props) {
                 id="schedule-conversation"
                 value={form.conversation_id}
                 onChange={(e) => setForm((f) => ({ ...f, conversation_id: e.target.value }))}
+                className="ds-control"
               >
                 <option value="">{t('settings.schedules.conversationPlaceholder')}</option>
                 {conversations.map((c) => (
@@ -316,6 +319,7 @@ export function ProjectSchedulesTab({ projectId }: Props) {
                 onChange={(e) =>
                   setForm((f) => ({ ...f, on_run_completed: e.target.value as OnRunCompleted }))
                 }
+                className="ds-control"
               >
                 <option value="keep">{t('settings.schedules.onComplete.keep')}</option>
                 <option value="delete">{t('settings.schedules.onComplete.delete')}</option>
@@ -330,6 +334,7 @@ export function ProjectSchedulesTab({ projectId }: Props) {
               value={form.cron}
               onChange={(e) => setForm((f) => ({ ...f, cron: e.target.value }))}
               spellCheck={false}
+              className="ds-control"
             />
           </div>
           <div className="project-settings-field">
@@ -338,6 +343,7 @@ export function ProjectSchedulesTab({ projectId }: Props) {
               id="schedule-timezone"
               value={form.timezone}
               onChange={(e) => setForm((f) => ({ ...f, timezone: e.target.value }))}
+              className="ds-control"
             >
               {timezoneOptions.map((tz) => (
                 <option key={tz} value={tz}>

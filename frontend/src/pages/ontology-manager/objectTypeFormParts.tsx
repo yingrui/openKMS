@@ -53,11 +53,13 @@ export function PropertyRow({
         value={prop.name}
         onChange={(e) => onChange({ ...prop, name: e.target.value })}
         readOnly={fromDataset || nameTypeReadOnly}
+        className="ds-control"
       />
       <select
         value={prop.type}
         onChange={(e) => onChange({ ...prop, type: e.target.value })}
         disabled={nameTypeReadOnly}
+        className="ds-control"
       >
         {PROPERTY_TYPES.map((pt) => (
           <option key={pt} value={pt}>

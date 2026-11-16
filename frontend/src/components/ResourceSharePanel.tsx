@@ -533,6 +533,7 @@ export function ResourceSharePanel({ resourceType, resourceId, title, consoleAud
                         )
                       );
                     }}
+                    className="ds-control"
                   >
                     {pickerOptions(idx).map((g) => (
                       <option key={g.id} value={g.id}>

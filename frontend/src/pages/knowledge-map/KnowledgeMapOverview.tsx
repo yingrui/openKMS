@@ -345,7 +345,7 @@ export function KnowledgeMapOverview({ canRead, canWrite }: Props) {
               </label>
               <select
                 id="km-ov-chat-select"
-                className="km-html-copilot__chats-select"
+                className="ds-control ds-control--compact km-html-copilot__chats-select"
                 value={activeConversationId ?? ''}
                 onChange={(e) => void onSwitchChat(e.target.value)}
               >

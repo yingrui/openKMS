@@ -218,7 +218,7 @@ export function ConnectorFormFields({
             <div key={r.id} className="console-kv-row">
               <input
                 type="text"
-                className="console-kv-key"
+                className="ds-control ds-control--compact console-kv-key"
                 placeholder={t('connectors.kvKeyPlaceholder')}
                 value={r.key}
                 onChange={(e) => updateSettingsRow(r.id, 'key', e.target.value)}
@@ -227,7 +227,7 @@ export function ConnectorFormFields({
               />
               <input
                 type="text"
-                className="console-kv-value"
+                className="ds-control ds-control--compact console-kv-value"
                 placeholder={t('connectors.kvValuePlaceholder')}
                 value={r.value}
                 onChange={(e) => updateSettingsRow(r.id, 'value', e.target.value)}
@@ -276,7 +276,7 @@ export function ConnectorFormFields({
             <div key={r.id} className="console-kv-row">
               <input
                 type="text"
-                className="console-kv-key"
+                className="ds-control ds-control--compact console-kv-key"
                 placeholder={t('connectors.kvSecretKeyPlaceholder')}
                 value={r.key}
                 onChange={(e) => updateSecretRow(r.id, 'key', e.target.value)}
@@ -285,7 +285,7 @@ export function ConnectorFormFields({
               />
               <input
                 type="password"
-                className="console-kv-value"
+                className="ds-control ds-control--compact console-kv-value"
                 placeholder={isExisting ? t('connectors.secretLeaveBlank') : t('connectors.kvSecretValuePlaceholder')}
                 value={r.value}
                 onChange={(e) => updateSecretRow(r.id, 'value', e.target.value)}

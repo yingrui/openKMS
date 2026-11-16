@@ -151,7 +151,7 @@ export function ArticleRelationshipsPanel({
                     <select
                       value={newRelType}
                       onChange={(e) => onNewRelTypeChange(e.target.value)}
-                      className="document-detail-info-input"
+                      className="ds-control ds-control--compact document-detail-info-input"
                       aria-label={t('detail.relationTypeAria')}
                     >
                       {ARTICLE_RELATION_TYPES.map((t) => (
@@ -162,7 +162,7 @@ export function ArticleRelationshipsPanel({
                     </select>
                     <input
                       type="text"
-                      className="document-detail-info-input"
+                      className="ds-control ds-control--compact document-detail-info-input"
                       placeholder={t('detail.targetArticlePlaceholder')}
                       value={newRelTarget}
                       onChange={(e) => onNewRelTargetChange(e.target.value)}
@@ -170,7 +170,7 @@ export function ArticleRelationshipsPanel({
                     />
                     <input
                       type="text"
-                      className="document-detail-info-input"
+                      className="ds-control ds-control--compact document-detail-info-input"
                       placeholder={t('detail.notePlaceholder')}
                       value={newRelNote}
                       onChange={(e) => onNewRelNoteChange(e.target.value)}

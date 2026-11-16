@@ -213,6 +213,7 @@ function IssuePagination({
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
             disabled={loading}
+            className="ds-control"
           >
             {PAGE_SIZE_OPTIONS.map((n) => (
               <option key={n} value={n}>

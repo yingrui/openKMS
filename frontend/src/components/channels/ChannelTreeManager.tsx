@@ -125,6 +125,7 @@ export function ChannelTreeManager({ ns, basePath, backLabel, tree, api, linkCha
                 onChange={(e) => setCreateName(e.target.value)}
                 placeholder={t('channels.namePlaceholder')}
                 required
+                className="ds-control"
               />
             </div>
             <div className="channel-tree-field">
@@ -143,6 +144,7 @@ export function ChannelTreeManager({ ns, basePath, backLabel, tree, api, linkCha
                 id={`${ns}-channel-parent`}
                 value={createParentId}
                 onChange={(e) => setCreateParentId(e.target.value)}
+                className="ds-control"
               >
                 <option value="">{parentNoneLabel}</option>
                 {parentOptions.map((p) => (
@@ -386,7 +388,7 @@ function ChannelTreeItem({
           <select
             value={mergeTargetId}
             onChange={(e) => setMergeTargetId(e.target.value)}
-            className="channel-tree-move-select"
+            className="ds-control channel-tree-move-select"
             aria-label={t('channels.targetChannelAria')}
           >
             <option value="">{t('channels.mergeTargetPlaceholder')}</option>
@@ -422,7 +424,7 @@ function ChannelTreeItem({
           <select
             value={moveParentId}
             onChange={(e) => setMoveParentId(e.target.value)}
-            className="channel-tree-move-select"
+            className="ds-control channel-tree-move-select"
           >
             {moveOptions.map((p) => (
               <option key={p.id || 'root'} value={p.id}>

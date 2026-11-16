@@ -94,7 +94,7 @@ export function ArticleDetail() {
                         <div className="article-detail-inline-edit">
                           <input
                             type="text"
-                            className="document-detail-info-input article-detail-inline-edit-input"
+                            className="ds-control ds-control--compact document-detail-info-input article-detail-inline-edit-input"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
                             aria-label={t('detail.titleAria')}
@@ -157,7 +157,7 @@ export function ArticleDetail() {
                             <div className="article-detail-inline-edit">
                               <input
                                 type="text"
-                                className="document-detail-info-input article-detail-inline-edit-input"
+                                className="ds-control ds-control--compact document-detail-info-input article-detail-inline-edit-input"
                                 value={editSourceRef}
                                 onChange={(e) => setEditSourceRef(e.target.value)}
                                 aria-label={t('detail.sourceAria')}

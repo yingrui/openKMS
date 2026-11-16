@@ -148,7 +148,7 @@ export function DatasetColumnsTab() {
                           <td>
                             <input
                               type="text"
-                              className="dataset-column-desc"
+                              className="ds-control ds-control--compact dataset-column-desc"
                               placeholder={t('datasets.colDescriptionPlaceholder')}
                               value={descriptions[col.column_name] ?? ''}
                               disabled={savingCol === col.column_name}

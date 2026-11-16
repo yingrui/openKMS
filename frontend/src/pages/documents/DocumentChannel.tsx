@@ -167,6 +167,7 @@ export function DocumentChannel() {
             aria-label={t('channel.filterStatusAria')}
             value={v.statusFilter}
             onChange={(e) => v.setStatusFilter(e.target.value as typeof v.statusFilter)}
+            className="ds-control"
           >
             {DOCUMENT_STATUS_FILTER_VALUES.map((value) => (
               <option key={value || 'all'} value={value}>
@@ -178,6 +179,7 @@ export function DocumentChannel() {
             aria-label={t('channel.filterApplicableAria')}
             value={v.applicableFilter}
             onChange={(e) => v.setApplicableFilter(e.target.value as typeof v.applicableFilter)}
+            className="ds-control"
           >
             {APPLICABLE_FILTER_VALUES.map((value) => (
               <option key={value || 'all-applicable'} value={value}>

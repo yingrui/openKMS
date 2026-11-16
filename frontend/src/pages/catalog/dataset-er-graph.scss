@@ -1,11 +1,65 @@
+/* One box per dataset, one line per registered join — a diagram, not a force simulation. */
 .dataset-er-graph {
   width: 100%;
-  height: 460px;
+  overflow: auto;
 }
 
-/* Catalog Map view: height is computed from the viewport (see DatasetErGraph `fill`),
-   so let the wrapper grow with the canvas instead of a fixed height. */
+/* Catalog Map view: the diagram claims the space left in the viewport instead of a fixed height. */
 .dataset-er-graph--fill {
-  height: auto;
+  flex: 1;
   min-height: 320px;
+}
+
+.dataset-er-graph__canvas {
+  position: relative;
+  margin: 0 auto;
+}
+
+.dataset-er-graph__edges {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.dataset-er-graph__edge {
+  stroke: var(--color-border-strong);
+  stroke-width: 1.5;
+}
+
+.dataset-er-graph__edge-end {
+  fill: var(--color-border-strong);
+}
+
+.dataset-er-graph__node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  cursor: pointer;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--color-accent);
+  }
+}
+
+.dataset-er-graph__node-name {
+  overflow: hidden;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dataset-er-graph__node-meta {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
 }

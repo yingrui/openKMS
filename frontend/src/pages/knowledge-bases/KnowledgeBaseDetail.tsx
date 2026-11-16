@@ -591,6 +591,7 @@ export function KnowledgeBaseDetail() {
                           setDocPageSize(Number(e.target.value));
                           setDocPage(0);
                         }}
+                        className="ds-control"
                       >
                         {[25, 50, 100, 200].map((n) => (
                           <option key={n} value={n}>{n}</option>
@@ -969,6 +970,7 @@ export function KnowledgeBaseDetail() {
                           setFaqPageSize(Number(e.target.value));
                           setFaqPage(0);
                         }}
+                        className="ds-control"
                       >
                         {[25, 50, 100, 200].map((n) => (
                           <option key={n} value={n}>{n}</option>
@@ -1099,6 +1101,7 @@ export function KnowledgeBaseDetail() {
                           setChunkPageSize(Number(e.target.value));
                           setChunkPage(0);
                         }}
+                        className="ds-control"
                       >
                         {[25, 50, 100, 200].map((n) => (
                           <option key={n} value={n}>{n}</option>
@@ -1231,6 +1234,7 @@ export function KnowledgeBaseDetail() {
                             const n = Number(e.target.value);
                             setSearchTopK(Number.isFinite(n) ? Math.min(50, Math.max(1, Math.trunc(n))) : 10);
                           }}
+                          className="ds-control"
                         />
                       </label>
                       <label className="kb-search-advanced-checkbox">
@@ -1261,6 +1265,7 @@ export function KnowledgeBaseDetail() {
                                 placeholder={t('detail.placeholderMetaExample')}
                                 value={searchMetadataFilters[key] ?? ''}
                                 onChange={(e) => setSearchMetadataFilters((prev) => ({ ...prev, [key]: e.target.value }))}
+                                className="ds-control"
                               />
                             </div>
                           ))}
@@ -1416,7 +1421,7 @@ export function KnowledgeBaseDetail() {
                 <div className="kb-settings-col">
                   <label>
                     <span>{t('detail.embeddingModel')}</span>
-                    <select value={settingsEmbeddingModelId} onChange={(e) => setSettingsEmbeddingModelId(e.target.value)}>
+                    <select value={settingsEmbeddingModelId} onChange={(e) => setSettingsEmbeddingModelId(e.target.value)} className="ds-control">
                       <option value="">{t('detail.modelNone')}</option>
                       {embeddingModels.map((m) => (
                         <option key={m.id} value={m.id}>{m.name} ({m.model_name})</option>
@@ -1429,7 +1434,7 @@ export function KnowledgeBaseDetail() {
                     <legend>{t('detail.chunkingFieldset')}</legend>
                     <label>
                       <span>{t('detail.strategy')}</span>
-                      <select value={settingsChunkStrategy} onChange={(e) => setSettingsChunkStrategy(e.target.value)}>
+                      <select value={settingsChunkStrategy} onChange={(e) => setSettingsChunkStrategy(e.target.value)} className="ds-control">
                         <option value="fixed_size">{t('detail.strategyFixedSize')}</option>
                         <option value="markdown_header">{t('detail.strategyMarkdownHeader')}</option>
                         <option value="paragraph">{t('detail.strategyParagraph')}</option>
@@ -1443,6 +1448,7 @@ export function KnowledgeBaseDetail() {
                         max={10000}
                         value={settingsChunkSize}
                         onChange={(e) => setSettingsChunkSize(Number(e.target.value))}
+                        className="ds-control"
                       />
                     </label>
                     <label>
@@ -1453,6 +1459,7 @@ export function KnowledgeBaseDetail() {
                         max={1000}
                         value={settingsChunkOverlap}
                         onChange={(e) => setSettingsChunkOverlap(Number(e.target.value))}
+                        className="ds-control"
                       />
                     </label>
                   </fieldset>
@@ -1477,6 +1484,7 @@ export function KnowledgeBaseDetail() {
                       placeholder={t('detail.metadataKeysPlaceholder')}
                       value={settingsMetadataKeys}
                       onChange={(e) => setSettingsMetadataKeys(e.target.value)}
+                      className="ds-control"
                     />
                     <small>{t('detail.metadataKeysHelp')}</small>
                   </label>

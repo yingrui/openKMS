@@ -564,6 +564,7 @@ export function KubernetesSecretsSection({ clusterId, namespace, loadingResource
               }
               disabled={secretSubmitting}
               spellCheck={false}
+              className="ds-control"
             />
             <input
               type="password"
@@ -576,6 +577,7 @@ export function KubernetesSecretsSection({ clusterId, namespace, loadingResource
               }
               disabled={secretSubmitting}
               autoComplete="new-password"
+              className="ds-control"
             />
           </div>
         ))}
@@ -638,6 +640,7 @@ export function KubernetesSecretsSection({ clusterId, namespace, loadingResource
               }
               disabled={cmSubmitting}
               spellCheck={false}
+              className="ds-control"
             />
             <textarea
               className="ds-control--mono"

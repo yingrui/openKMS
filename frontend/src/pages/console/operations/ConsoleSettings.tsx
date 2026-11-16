@@ -119,7 +119,7 @@ export function ConsoleSettings() {
           <input
             id="console-settings-system-name"
             type="text"
-            className="console-settings-input"
+            className="ds-control console-settings-input"
             value={form.systemName}
             onChange={(e) => setForm((f) => (f ? { ...f, systemName: e.target.value } : null))}
             autoComplete="organization"
@@ -129,7 +129,7 @@ export function ConsoleSettings() {
           <label htmlFor="console-settings-timezone">{t('defaultTimezone')}</label>
           <select
             id="console-settings-timezone"
-            className="console-settings-select"
+            className="ds-control console-settings-select"
             value={form.timezone}
             onChange={(e) => setForm((f) => (f ? { ...f, timezone: e.target.value } : null))}
           >
@@ -146,7 +146,7 @@ export function ConsoleSettings() {
           <input
             id="console-settings-api-url"
             type="text"
-            className="console-settings-input"
+            className="ds-control console-settings-input"
             placeholder={t('apiBasePlaceholder')}
             value={form.apiBaseUrl}
             onChange={(e) => setForm((f) => (f ? { ...f, apiBaseUrl: e.target.value } : null))}

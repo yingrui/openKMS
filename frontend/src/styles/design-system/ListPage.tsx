@@ -32,7 +32,7 @@ export function ListPage({
 }) {
   return (
     <div
-      className={className ? `ontology-admin ${className}` : "ontology-admin"}
+      className={className ? `ds-page ${className}` : "ds-page"}
     >
       {title || subtitle || actions ? (
         <header

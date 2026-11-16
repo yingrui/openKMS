@@ -13,7 +13,7 @@
   to { transform: rotate(360deg); }
 }
 
-.ontology-admin .page-header {
+.ds-page .page-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -22,7 +22,7 @@
   margin-bottom: var(--space-6);
 }
 
-.ontology-admin .page-header .btn-primary {
+.ds-page .page-header .btn-primary {
   flex-shrink: 0;
 }
 

@@ -160,6 +160,7 @@ export function GlossarySettings() {
                 value={nameField}
                 onChange={(e) => setNameField(e.target.value)}
                 placeholder={t('glossary.placeholderName')}
+                className="ds-control"
               />
             </div>
             <div className="settings-page-field">

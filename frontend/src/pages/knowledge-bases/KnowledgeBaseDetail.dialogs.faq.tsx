@@ -91,6 +91,7 @@ export function KbFaqDialog({
                 onChange={(e) => onFaqQuestionChange(e.target.value)}
                 disabled={faqPolishing}
                 autoFocus
+                className="ds-control"
               />
             </label>
             <label>
@@ -134,6 +135,7 @@ export function KbFaqDialog({
                       placeholder={faqMetadataIsArray[key] ? t('detail.placeholderValueArray', { key }) : t('detail.placeholderValueSingle', { key })}
                       value={faqDocMetadataValues[key] ?? ''}
                       onChange={(e) => onFaqDocMetadataValuesChange((prev) => ({ ...prev, [key]: e.target.value }))}
+                      className="ds-control"
                     />
                   </div>
                 ))}
@@ -298,7 +300,7 @@ export function KbGenerateFaqDialog({
               <div className="kb-gen-model-select">
                 <label>
                   <span>{t('detail.llmModel')}</span>
-                  <select value={genModelId} onChange={(e) => onGenModelIdChange(e.target.value)}>
+                  <select value={genModelId} onChange={(e) => onGenModelIdChange(e.target.value)} className="ds-control">
                     <option value="">{t('detail.selectModel')}</option>
                     {llmModels.map((m) => (
                       <option key={m.id} value={m.id}>{m.name}</option>

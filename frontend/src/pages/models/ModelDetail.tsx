@@ -275,6 +275,7 @@ export function ModelDetail() {
                 max={4096}
                 value={maxTokens}
                 onChange={(e) => setMaxTokens(Number(e.target.value) || 512)}
+                className="ds-control"
               />
             </label>
             <label>
@@ -286,6 +287,7 @@ export function ModelDetail() {
                 step={0.1}
                 value={temperature}
                 onChange={(e) => setTemperature(Number(e.target.value) || 0.7)}
+                className="ds-control"
               />
             </label>
           </div>

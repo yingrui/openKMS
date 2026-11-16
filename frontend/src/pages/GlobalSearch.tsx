@@ -282,7 +282,7 @@ export function GlobalSearch() {
           <div className="global-search-filters-fields">
             <label>
               {t('documentChannel')}
-              <select value={docChannel} onChange={(e) => setDocChannel(e.target.value)} aria-label={t('documentChannel')}>
+              <select value={docChannel} onChange={(e) => setDocChannel(e.target.value)} aria-label={t('documentChannel')} className="ds-control">
                 <option value="">{t('channelAny')}</option>
                 {docOptions.map((o) => (
                   <option key={o.id} value={o.id}>
@@ -293,7 +293,7 @@ export function GlobalSearch() {
             </label>
             <label>
               {t('articleChannel')}
-              <select value={artChannel} onChange={(e) => setArtChannel(e.target.value)} aria-label={t('articleChannel')}>
+              <select value={artChannel} onChange={(e) => setArtChannel(e.target.value)} aria-label={t('articleChannel')} className="ds-control">
                 <option value="">{t('channelAny')}</option>
                 {artOptions.map((o) => (
                   <option key={o.id} value={o.id}>
@@ -309,6 +309,7 @@ export function GlobalSearch() {
                 value={updatedAfter}
                 onChange={(e) => setUpdatedAfter(e.target.value)}
                 aria-label={t('updatedAfter')}
+                className="ds-control"
               />
             </label>
             <label>
@@ -318,6 +319,7 @@ export function GlobalSearch() {
                 value={updatedBefore}
                 onChange={(e) => setUpdatedBefore(e.target.value)}
                 aria-label={t('updatedBefore')}
+                className="ds-control"
               />
             </label>
             <button type="button" className="btn btn-primary global-search-apply" onClick={applyFiltersToUrl}>

@@ -393,22 +393,6 @@
 
 .channel-page-move-select {
   width: 100%;
-  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
-  font-size: var(--text-base);
-  background: var(--color-bg-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text);
-}
-
-.channel-page-move-select:focus {
-  outline: none;
-  border-color: var(--color-accent);
-}
-
-.channel-page-move-select:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
 }
 
 .channel-page-move-checkbox-label {

@@ -76,7 +76,7 @@ export function GitCredentialsSection() {
             </label>
             <input
               id="git-credential-provider"
-              className="account-input"
+              className="ds-control account-input"
               value={provider}
               onChange={(e) => setProvider(e.target.value)}
               autoComplete="off"
@@ -88,7 +88,7 @@ export function GitCredentialsSection() {
             </label>
             <input
               id="git-credential-label"
-              className="account-input"
+              className="ds-control account-input"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               autoComplete="off"
@@ -100,7 +100,7 @@ export function GitCredentialsSection() {
             </label>
             <input
               id="git-credential-username"
-              className="account-input"
+              className="ds-control account-input"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
@@ -112,7 +112,7 @@ export function GitCredentialsSection() {
             </label>
             <input
               id="git-credential-token"
-              className="account-input"
+              className="ds-control account-input"
               type="password"
               value={token}
               onChange={(e) => setToken(e.target.value)}

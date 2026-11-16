@@ -335,7 +335,7 @@ function KnowledgeMapTreeItem({
           <div className="knowledge-map-edit-fields">
             <label className="knowledge-map-edit-label">
               <span>{t('fieldName')}</span>
-              <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="knowledge-map-edit-input" />
+              <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="ds-control ds-control--compact knowledge-map-edit-input" />
             </label>
             <label className="knowledge-map-edit-label">
               <span>{t('fieldDescription')}</span>
@@ -363,7 +363,7 @@ function KnowledgeMapTreeItem({
           <select
             value={moveParentId}
             onChange={(e) => setMoveParentId(e.target.value)}
-            className="knowledge-map-move-select"
+            className="ds-control ds-control--compact knowledge-map-move-select"
             aria-label={t('parentTermAria')}
           >
             {moveOptions.map((p) => (
@@ -842,7 +842,7 @@ export function KnowledgeMap() {
                       <div className="knowledge-map-link-form">
                         <select
                           aria-label={t('resourceTypeAria')}
-                          className="knowledge-map-select"
+                          className="ds-control ds-control--compact knowledge-map-select"
                           value={linkType}
                           onChange={(e) => {
                             setLinkType(e.target.value);
@@ -857,7 +857,7 @@ export function KnowledgeMap() {
                         {linkType === 'document_channel' && (
                           <select
                             aria-label={t('documentChannelAria')}
-                            className="knowledge-map-select"
+                            className="ds-control ds-control--compact knowledge-map-select"
                             value={linkResourceId}
                             onChange={(e) => setLinkResourceId(e.target.value)}
                           >
@@ -872,7 +872,7 @@ export function KnowledgeMap() {
                         {linkType === 'wiki_space' && (
                           <select
                             aria-label={t('wikiSpaceAria')}
-                            className="knowledge-map-select"
+                            className="ds-control ds-control--compact knowledge-map-select"
                             value={linkResourceId}
                             onChange={(e) => setLinkResourceId(e.target.value)}
                           >
@@ -887,7 +887,7 @@ export function KnowledgeMap() {
                         {linkType === 'article_channel' && (
                           <input
                             type="text"
-                            className="knowledge-map-input"
+                            className="ds-control ds-control--compact knowledge-map-input"
                             placeholder={t('articleChannelPlaceholder')}
                             value={linkResourceId}
                             onChange={(e) => setLinkResourceId(e.target.value)}
@@ -896,7 +896,7 @@ export function KnowledgeMap() {
                         {linkType === 'media_channel' && (
                           <input
                             type="text"
-                            className="knowledge-map-input"
+                            className="ds-control ds-control--compact knowledge-map-input"
                             placeholder={t('resourceTypes.media_channel')}
                             value={linkResourceId}
                             onChange={(e) => setLinkResourceId(e.target.value)}

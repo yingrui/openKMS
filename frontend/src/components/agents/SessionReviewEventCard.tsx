@@ -122,7 +122,7 @@ export function SessionReviewEventCard({
           <div className="sreview-card-edit">
             <label className="sreview-card-field">
               {t('sessionReview.type')}
-              <select value={editType} onChange={(e) => setEditType(e.target.value as LessonEvent['type'])}>
+              <select value={editType} onChange={(e) => setEditType(e.target.value as LessonEvent['type'])} className="ds-control">
                 <option value="error">{t('sessionReview.typeError')}</option>
                 <option value="lesson">{t('sessionReview.typeLesson')}</option>
                 <option value="pattern">{t('sessionReview.typePattern')}</option>
@@ -131,7 +131,7 @@ export function SessionReviewEventCard({
             </label>
             <label className="sreview-card-field">
               {t('sessionReview.severity')}
-              <select value={editSeverity} onChange={(e) => setEditSeverity(e.target.value as LessonEvent['severity'])}>
+              <select value={editSeverity} onChange={(e) => setEditSeverity(e.target.value as LessonEvent['severity'])} className="ds-control">
                 <option value="low">{t('sessionReview.severityLow')}</option>
                 <option value="medium">{t('sessionReview.severityMedium')}</option>
                 <option value="high">{t('sessionReview.severityHigh')}</option>

@@ -72,7 +72,7 @@ export function KbChunkDialog({
           value={editChunk.document_name || editChunk.document_id || editChunk.wiki_page_id || ''}
           readOnly
           disabled
-          className="kb-chunk-dialog-readonly"
+          className="ds-control ds-control--compact kb-chunk-dialog-readonly"
         />
       </label>
       <label>
@@ -100,6 +100,7 @@ export function KbChunkDialog({
                 value={chunkDocMetadataValues[key] ?? ''}
                 onChange={(e) => onChunkDocMetadataValuesChange((prev) => ({ ...prev, [key]: e.target.value }))}
                 disabled={chunkDialogReadOnly}
+                className="ds-control"
               />
             </div>
           ))}

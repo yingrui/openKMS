@@ -245,6 +245,7 @@ export function AgentSkillsPage() {
                 onChange={(e) => setSkillId(e.target.value)}
                 placeholder="my-skill"
                 autoComplete="off"
+                className="ds-control"
               />
             </label>
             <label>
@@ -254,6 +255,7 @@ export function AgentSkillsPage() {
                 onChange={(e) => setVersion(e.target.value)}
                 placeholder="1.0.0"
                 autoComplete="off"
+                className="ds-control"
               />
             </label>
             {uploadActions(true)}

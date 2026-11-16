@@ -775,6 +775,7 @@ export function ObjectExplorer() {
                             value={listPageSize}
                             onChange={(e) => setListPageSize(Number(e.target.value))}
                             aria-label={t('listPerPage')}
+                            className="ds-control"
                           >
                             {LIST_PAGE_SIZE_OPTIONS.map((n) => (
                               <option key={n} value={n}>

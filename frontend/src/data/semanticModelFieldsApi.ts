@@ -28,6 +28,28 @@ export const OSSIE_DATATYPES = [
   'Opaque',
 ] as const;
 
+/**
+ * A dataset column's canonical ontology type collapsed number to `number`; a field's `datatype` has to be one
+ * of `OSSIE_DATATYPES`. The source type is what tells an integer from a decimal.
+ */
+export function fieldDatatypeForColumn(meta: {
+  data_type: string;
+  ontology_type: string;
+}): (typeof OSSIE_DATATYPES)[number] {
+  const ontology = meta.ontology_type.toLowerCase();
+  const source = meta.data_type.toLowerCase();
+  if (ontology === 'date') return 'Date';
+  if (ontology === 'datetime') return /tz|timestamp with/.test(source) ? 'DateTimeTz' : 'DateTime';
+  if (ontology === 'boolean') return 'Boolean';
+  if (ontology === 'uuid') return 'String';
+  if (ontology === 'number') {
+    if (/int|serial|bigint|smallint/.test(source)) return 'Integer';
+    if (/numeric|decimal|money/.test(source)) return 'Decimal';
+    return 'Float';
+  }
+  return 'String';
+}
+
 /** Ossie datatypes that make a field a time dimension unless `is_time` says otherwise. */
 export const TEMPORAL_DATATYPES = new Set([
   'date',

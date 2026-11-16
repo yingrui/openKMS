@@ -133,20 +133,7 @@
   color: var(--color-text-muted);
 }
 
-.account-select,
-.account-input {
-  font: inherit;
-  font-size: var(--text-base);
-  padding: var(--padding-compact-y) var(--space-3);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-muted);
-  color: var(--color-text);
-  transition:
-    border-color var(--duration-fast) var(--ease-standard),
-    box-shadow var(--duration-fast) var(--ease-standard);
-}
-
+/* Skins live in .ds-control; these names keep only the account layout. */
 .account-select {
   min-width: ds.$account-select-min-width;
   max-width: ds.$account-form-max-width;
@@ -156,13 +143,6 @@
 .account-input {
   flex: 1;
   min-width: 0;
-}
-
-.account-select:focus,
-.account-input:focus {
-  outline: none;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 
 .account-create-panel {

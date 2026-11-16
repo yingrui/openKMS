@@ -175,6 +175,7 @@ export function ChamberSettingsPage() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                className="ds-control"
               />
             </div>
             <div className="settings-page-field">
@@ -188,7 +189,7 @@ export function ChamberSettingsPage() {
             </div>
             <div className="settings-page-field">
               <label>{t('apiName')}</label>
-              <input type="text" value={app.api_name} disabled readOnly />
+              <input type="text" value={app.api_name} disabled readOnly className="ds-control"/>
             </div>
             {error ? (
               <p className="settings-page-error" role="alert">

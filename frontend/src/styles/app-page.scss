@@ -26,7 +26,7 @@
 }
 
 /* The buttons beside a page title: one row, one gap, pushed right, never stretched by the text.
-   One definition for every page — this used to exist only under `.ontology-admin`, so an entity page
+   One definition for every page — this used to exist only under `.ds-page`, so an entity page
    (`.entity-view__main`) got a bare div and its buttons sat flush against each other. */
 .page-header-actions {
   display: flex;

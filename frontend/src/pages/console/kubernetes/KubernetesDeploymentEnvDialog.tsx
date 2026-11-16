@@ -230,6 +230,7 @@ export function KubernetesDeploymentEnvDialog({
                 }
                 disabled={saving}
                 spellCheck={false}
+                className="ds-control"
               />
               <select
                 value={row.kind}
@@ -241,6 +242,7 @@ export function KubernetesDeploymentEnvDialog({
                   )
                 }
                 disabled={saving}
+                className="ds-control"
               >
                 <option value="literal">{t('kubernetes.envKindLiteral')}</option>
                 <option value="secret">{t('kubernetes.envKindSecret')}</option>
@@ -256,6 +258,7 @@ export function KubernetesDeploymentEnvDialog({
                     )
                   }
                   disabled={saving}
+                  className="ds-control"
                 />
               ) : (
                 <>
@@ -270,6 +273,7 @@ export function KubernetesDeploymentEnvDialog({
                     }
                     disabled={saving}
                     spellCheck={false}
+                    className="ds-control"
                   />
                   <input
                     type="text"
@@ -282,6 +286,7 @@ export function KubernetesDeploymentEnvDialog({
                     }
                     disabled={saving}
                     spellCheck={false}
+                    className="ds-control"
                   />
                 </>
               )}
@@ -315,6 +320,7 @@ export function KubernetesDeploymentEnvDialog({
                   )
                 }
                 disabled={saving}
+                className="ds-control"
               >
                 <option value="secret">{t('kubernetes.envKindSecret')}</option>
                 <option value="configmap">{t('kubernetes.envKindConfigMap')}</option>
@@ -330,6 +336,7 @@ export function KubernetesDeploymentEnvDialog({
                 }
                 disabled={saving}
                 spellCheck={false}
+                className="ds-control"
               />
               <input
                 type="text"
@@ -342,6 +349,7 @@ export function KubernetesDeploymentEnvDialog({
                 }
                 disabled={saving}
                 spellCheck={false}
+                className="ds-control"
               />
             </div>
           ))}

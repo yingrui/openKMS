@@ -282,6 +282,7 @@ export function ArticleChannelSettings() {
                 value={nameField}
                 onChange={(e) => setNameField(e.target.value)}
                 placeholder={t('channelSettings.namePlaceholder')}
+                className="ds-control"
               />
             </div>
             <div className="settings-page-field">
@@ -300,6 +301,7 @@ export function ArticleChannelSettings() {
                 id="ac-settings-parent"
                 value={parentIdField}
                 onChange={(e) => setParentIdField(e.target.value)}
+                className="ds-control"
               >
                 {moveParentChoices.map((p) => (
                   <option key={p.id || 'root'} value={p.id}>
@@ -344,7 +346,7 @@ export function ArticleChannelSettings() {
               <div className="settings-page-field ac-review-card-field">
                 <select
                   id="ac-settings-review-model"
-                  className="ac-review-model-select"
+                  className="ds-control ac-review-model-select"
                   value={reviewModelId}
                   onChange={(e) => setReviewModelId(e.target.value)}
                   disabled={modelsLoading}
@@ -470,7 +472,7 @@ export function ArticleChannelSettings() {
                           <td>
                             <input
                               type="text"
-                              className="ac-review-criteria-input"
+                              className="ds-control ds-control--compact ac-review-criteria-input"
                               placeholder="scope"
                               value={c.id}
                               onChange={(e) => {
@@ -483,7 +485,7 @@ export function ArticleChannelSettings() {
                           <td>
                             <input
                               type="text"
-                              className="ac-review-criteria-input"
+                              className="ds-control ds-control--compact ac-review-criteria-input"
                               placeholder={t('channelSettings.reviewCriterionLabel')}
                               value={c.label}
                               onChange={(e) => {
@@ -496,7 +498,7 @@ export function ArticleChannelSettings() {
                           <td>
                             <input
                               type="text"
-                              className="ac-review-criteria-input ac-review-criteria-input--wide"
+                              className="ds-control ds-control--compact ac-review-criteria-input ac-review-criteria-input--wide"
                               placeholder={t('channelSettings.reviewCriterionDesc')}
                               value={c.description ?? ''}
                               onChange={(e) => {

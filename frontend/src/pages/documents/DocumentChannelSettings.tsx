@@ -318,6 +318,7 @@ export function DocumentChannelSettings() {
               value={channelNameField}
               onChange={(e) => setChannelNameField(e.target.value)}
               placeholder={t('settings.namePlaceholder')}
+              className="ds-control"
             />
           </div>
           <div className="settings-page-field">
@@ -348,6 +349,7 @@ export function DocumentChannelSettings() {
                 id="pipeline"
                 value={pipelineId}
                 onChange={(e) => setPipelineId(e.target.value)}
+                className="ds-control"
               >
                 <option value="">{t('common.none')}</option>
                 {pipelines.filter((p) => p.is_active || p.id === pipelineId).map((p) => (
@@ -395,6 +397,7 @@ export function DocumentChannelSettings() {
                 id="extraction-model"
                 value={extractionModelId}
                 onChange={(e) => setExtractionModelId(e.target.value)}
+                className="ds-control"
               >
                 <option value="">{t('common.none')}</option>
                 {llmModels.map((m) => (
@@ -451,19 +454,19 @@ export function DocumentChannelSettings() {
                       placeholder={t('settings.placeholderKey')}
                       value={field.key}
                       onChange={(e) => updateSchemaField(i, { key: e.target.value })}
-                      className="dcs-schema-input dcs-schema-key"
+                      className="ds-control ds-control--compact dcs-schema-input dcs-schema-key"
                     />
                     <input
                       type="text"
                       placeholder={t('settings.placeholderLabel')}
                       value={field.label}
                       onChange={(e) => updateSchemaField(i, { label: e.target.value })}
-                      className="dcs-schema-input dcs-schema-label"
+                      className="ds-control ds-control--compact dcs-schema-input dcs-schema-label"
                     />
                     <select
                       value={field.type}
                       onChange={(e) => updateSchemaField(i, { type: e.target.value })}
-                      className="dcs-schema-select"
+                      className="ds-control ds-control--compact dcs-schema-select"
                     >
                       <option value="string">string</option>
                       <option value="date">date</option>
@@ -497,7 +500,7 @@ export function DocumentChannelSettings() {
                     placeholder={t('settings.descriptionPlaceholder')}
                     value={field.description ?? ''}
                     onChange={(e) => updateSchemaField(i, { description: e.target.value })}
-                    className="dcs-schema-input dcs-schema-description"
+                    className="ds-control ds-control--compact dcs-schema-input dcs-schema-description"
                   />
                   {field.type === 'enum' && (
                     <input
@@ -509,14 +512,14 @@ export function DocumentChannelSettings() {
                           enum: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
                         })
                       }
-                      className="dcs-schema-input dcs-schema-enum"
+                      className="ds-control ds-control--compact dcs-schema-input dcs-schema-enum"
                     />
                   )}
                   {(field.type === 'object_type' || field.type === 'list[object_type]') && (
                     <select
                       value={field.object_type_id ?? ''}
                       onChange={(e) => updateSchemaField(i, { object_type_id: e.target.value || undefined })}
-                      className="dcs-schema-select dcs-schema-select--stacked"
+                      className="ds-control ds-control--compact dcs-schema-select dcs-schema-select--stacked"
                     >
                       <option value="">{t('settings.selectObjectType')}</option>
                       {masterDataObjectTypes.map((ot) => (
@@ -558,7 +561,7 @@ export function DocumentChannelSettings() {
                 placeholder={t('settings.maxInstancesPlaceholder')}
                 value={objectTypeExtractionMaxInstances}
                 onChange={(e) => setObjectTypeExtractionMaxInstances(e.target.value === '' ? '' : Number(e.target.value))}
-                className="dcs-schema-input dcs-input-w-120"
+                className="ds-control ds-control--compact dcs-schema-input dcs-input-w-120"
               />
               <p className="settings-page-hint">
                 {t('settings.maxInstancesHint')}
@@ -590,12 +593,12 @@ export function DocumentChannelSettings() {
                       placeholder={t('settings.labelKeyPlaceholder')}
                       value={item.key}
                       onChange={(e) => updateLabelConfig(i, { key: e.target.value })}
-                      className="dcs-schema-input dcs-schema-key"
+                      className="ds-control ds-control--compact dcs-schema-input dcs-schema-key"
                     />
                     <select
                       value={item.object_type_id}
                       onChange={(e) => updateLabelConfig(i, { object_type_id: e.target.value })}
-                      className="dcs-schema-select"
+                      className="ds-control ds-control--compact dcs-schema-select"
                     >
                       <option value="">{t('settings.selectObjectType')}</option>
                       {masterDataObjectTypes.map((ot) => (
@@ -609,12 +612,12 @@ export function DocumentChannelSettings() {
                       placeholder={t('settings.displayLabelPlaceholder')}
                       value={item.display_label ?? ''}
                       onChange={(e) => updateLabelConfig(i, { display_label: e.target.value })}
-                      className="dcs-schema-input dcs-min-w-120"
+                      className="ds-control ds-control--compact dcs-schema-input dcs-min-w-120"
                     />
                     <select
                       value={item.type === 'list[object_type]' ? 'list[object_type]' : 'object_type'}
                       onChange={(e) => updateLabelConfig(i, { type: e.target.value as 'object_type' | 'list[object_type]' })}
-                      className="dcs-schema-select dcs-min-w-140"
+                      className="ds-control ds-control--compact dcs-schema-select dcs-min-w-140"
                     >
                       <option value="object_type">object_type</option>
                       <option value="list[object_type]">list[object_type]</option>

@@ -72,6 +72,7 @@ export function WikiSpaceSettings() {
                     value={v.spaceDraftName}
                     onChange={(e) => v.setSpaceDraftName(e.target.value)}
                     autoComplete="off"
+                    className="ds-control"
                   />
                 </label>
                 <label className="wiki-space-settings-field">
@@ -136,7 +137,7 @@ export function WikiSpaceSettings() {
                     <span className="wiki-space-settings-semantic-label">{t('semanticEmbeddingModelLabel')}</span>
                     <div className="wiki-space-settings-semantic-control">
                       <select
-                        className="wiki-space-settings-select"
+                        className="ds-control ds-control--compact wiki-space-settings-select"
                         value={v.semanticEmbeddingDraft}
                         onChange={(e) => v.setSemanticEmbeddingDraft(e.target.value)}
                         disabled={v.semanticSettingsSaving || v.vaultImporting || !spaceId || v.semanticIndexing}
@@ -162,7 +163,7 @@ export function WikiSpaceSettings() {
                         type="number"
                         min={1}
                         step={1}
-                        className="wiki-space-settings-input-narrow"
+                        className="ds-control ds-control--compact wiki-space-settings-input-narrow"
                         value={v.semanticTopKDraft}
                         onChange={(e) => v.setSemanticTopKDraft(Number(e.target.value))}
                         disabled={v.semanticSettingsSaving || v.vaultImporting || !spaceId || v.semanticIndexing}
@@ -179,7 +180,7 @@ export function WikiSpaceSettings() {
                         min={0}
                         max={1}
                         step={0.01}
-                        className="wiki-space-settings-input-narrow"
+                        className="ds-control ds-control--compact wiki-space-settings-input-narrow"
                         value={v.semanticThresholdDraft}
                         onChange={(e) => v.setSemanticThresholdDraft(Number(e.target.value))}
                         disabled={v.semanticSettingsSaving || v.vaultImporting || !spaceId || v.semanticIndexing}

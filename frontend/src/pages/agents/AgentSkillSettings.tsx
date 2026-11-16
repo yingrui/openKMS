@@ -263,7 +263,7 @@ export function AgentSkillSettings() {
             <p className="settings-page-hint">{t('skills.settings.generalHint')}</p>
             <div className="settings-page-field">
               <label htmlFor="skill-settings-id">{t('skills.skillId')}</label>
-              <input id="skill-settings-id" type="text" value={skill.id} readOnly disabled />
+              <input id="skill-settings-id" type="text" value={skill.id} readOnly disabled className="ds-control"/>
             </div>
             <div className="settings-page-field">
               <label htmlFor="skill-settings-display-name">{t('skills.displayName')}</label>
@@ -273,6 +273,7 @@ export function AgentSkillSettings() {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 autoComplete="off"
+                className="ds-control"
               />
             </div>
             <div className="settings-page-field">
@@ -281,6 +282,7 @@ export function AgentSkillSettings() {
                 id="skill-settings-default-version"
                 value={defaultVersion}
                 onChange={(e) => setDefaultVersion(e.target.value)}
+                className="ds-control"
               >
                 <option value="">{t('skills.latestVersion')}</option>
                 {skill.versions.map((v) => (
@@ -330,6 +332,7 @@ export function AgentSkillSettings() {
                   onChange={(e) => setNewVersion(e.target.value)}
                   placeholder="1.0.0"
                   autoComplete="off"
+                  className="ds-control"
                 />
               </div>
               <div className="settings-page-field">
@@ -340,6 +343,7 @@ export function AgentSkillSettings() {
                   value={newNotes}
                   onChange={(e) => setNewNotes(e.target.value)}
                   autoComplete="off"
+                  className="ds-control"
                 />
               </div>
               <div className="agent-skill-settings-upload-actions">

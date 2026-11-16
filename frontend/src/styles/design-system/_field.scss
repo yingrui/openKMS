@@ -70,6 +70,12 @@ select.ds-control {
   padding-block: 0;
 }
 
+/* A control whose wrapper already owns the padding/type scale (dense metadata grids, inline
+   editors) keeps its local skin; the compact modifier only removes `.ds-control`'s fixed height. */
+.ds-control.ds-control--compact {
+  height: auto;
+}
+
 /* `.ds-control` is a block because a form field stacks label over control. A custom `<label>` that puts text
    beside its control is a row — and a block control there pushes itself onto the next line, which is the bug
    this prevents at the primitive rather than at every call site. `<FormField>` renders `label.ds-field`, so

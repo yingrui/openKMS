@@ -535,6 +535,7 @@ export function ConsoleAccessGroups() {
                             setOidcSubjectInput('');
                           }
                         }}
+                        className="ds-control"
                       />
                       <button
                         type="button"
@@ -692,6 +693,7 @@ export function ConsoleAccessGroups() {
                   required
                   maxLength={256}
                   autoFocus
+                  className="ds-control"
                 />
               </label>
               <label>
@@ -699,6 +701,7 @@ export function ConsoleAccessGroups() {
                 <input
                   value={createDesc}
                   onChange={(e) => setCreateDesc(e.target.value)}
+                  className="ds-control"
                 />
               </label>
               <div className="console-access-groups-modal-actions">
@@ -740,11 +743,12 @@ export function ConsoleAccessGroups() {
                   onChange={(e) => setEditName(e.target.value)}
                   required
                   maxLength={256}
+                  className="ds-control"
                 />
               </label>
               <label>
                 {t('accessGroups.description')}
-                <input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
+                <input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="ds-control"/>
               </label>
               <div className="console-access-groups-modal-actions">
                 <button

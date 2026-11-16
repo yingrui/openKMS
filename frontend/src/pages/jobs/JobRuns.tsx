@@ -204,7 +204,7 @@ export function JobRuns() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <select aria-label={t('jobs.filterStatusAria')} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <select aria-label={t('jobs.filterStatusAria')} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="ds-control">
             <option value="">{t('jobs.statusAll')}</option>
             <option value="pending">{t('jobs.statusPending')}</option>
             <option value="running">{t('jobs.statusRunning')}</option>

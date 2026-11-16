@@ -20,7 +20,7 @@ describe('ListPage', () => {
       </ListPage>,
     );
 
-    const shell = container.querySelector('.ontology-admin');
+    const shell = container.querySelector('.ds-page');
     expect(shell).not.toBeNull();
     const order = Array.from(shell!.children).map(
       (child) => child.className.split(' ')[0] || child.tagName.toLowerCase(),

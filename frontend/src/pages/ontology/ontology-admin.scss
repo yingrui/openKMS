@@ -1,7 +1,7 @@
 @use '../../styles/design-system/mixins' as *;
 @use '../../styles/design-system/tokens' as ds;
 
-.ontology-admin {
+.ds-page {
   width: 100%;
 }
 
@@ -340,14 +340,14 @@
   padding-bottom: 8px;
 }
 
-.ontology-admin .console-modal-index-lead {
+.ds-page .console-modal-index-lead {
   margin: 0 0 var(--space-3);
   font-size: var(--text-base);
   line-height: 1.5;
   color: var(--color-text);
 }
 
-.ontology-admin .console-modal-index-callout {
+.ds-page .console-modal-index-callout {
   margin: 0 0 18px;
   padding: var(--space-3) calc(var(--space-3) + var(--space-1) / 2);
   border-radius: var(--radius-md);
@@ -358,12 +358,12 @@
   border-left-width: 4px;
 }
 
-.ontology-admin .console-modal-index-callout--dataset {
+.ds-page .console-modal-index-callout--dataset {
   background: var(--color-accent-subtle);
   border-left-color: var(--color-accent);
 }
 
-.ontology-admin .console-modal-index-callout--instances {
+.ds-page .console-modal-index-callout--instances {
   background: var(--color-bg-muted);
   border-left-color: var(--color-text-secondary);
 }

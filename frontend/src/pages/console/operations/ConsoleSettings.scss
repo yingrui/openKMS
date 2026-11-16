@@ -67,18 +67,6 @@
 .console-settings-select {
   width: 100%;
   max-width: 400px;
-  padding: 10px 14px;
-  font-size: 0.9375rem;
-  background: var(--color-bg-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text);
-}
-
-.console-settings-input:focus,
-.console-settings-select:focus {
-  outline: none;
-  border-color: var(--color-accent);
 }
 
 .console-settings-hint {

@@ -229,7 +229,7 @@ export function DocumentDetailInfoPanel({
                   <div className="document-detail-info-edit-row">
                     <input
                       type="text"
-                      className="document-detail-info-input"
+                      className="ds-control ds-control--compact document-detail-info-input"
                       value={editName}
                       onChange={(e) => onEditNameChange(e.target.value)}
                       aria-label={t('detail.ariaDocumentName')}
@@ -497,7 +497,7 @@ export function DocumentDetailInfoPanel({
                               {fieldType === 'date' ? (
                                 <input
                                   type="date"
-                                  className="document-detail-metadata-input"
+                                  className="ds-control ds-control--compact document-detail-metadata-input"
                                   value={typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val) ? (val as string).slice(0, 10) : ''}
                                   onChange={(e) => onSetEditMetaField(key, e.target.value || null)}
                                   aria-label={label}
@@ -505,7 +505,7 @@ export function DocumentDetailInfoPanel({
                               ) : fieldType === 'array' ? (
                                 <input
                                   type="text"
-                                  className="document-detail-metadata-input"
+                                  className="ds-control ds-control--compact document-detail-metadata-input"
                                   value={Array.isArray(val) ? (val as unknown[]).join(', ') : (val ? String(val) : '')}
                                   onChange={(e) => {
                                     const s = e.target.value.trim();
@@ -516,7 +516,7 @@ export function DocumentDetailInfoPanel({
                                 />
                               ) : fieldType === 'enum' && field?.enum && field.enum.length > 0 ? (
                                 <select
-                                  className="document-detail-metadata-input"
+                                  className="ds-control ds-control--compact document-detail-metadata-input"
                                   value={val != null ? String(val) : ''}
                                   onChange={(e) => onSetEditMetaField(key, e.target.value || null)}
                                   aria-label={label}
@@ -532,7 +532,7 @@ export function DocumentDetailInfoPanel({
                                 <input
                                   type="number"
                                   step={1}
-                                  className="document-detail-metadata-input"
+                                  className="ds-control ds-control--compact document-detail-metadata-input"
                                   value={val == null || val === '' ? '' : (typeof val === 'number' ? val : parseInt(String(val), 10) || '')}
                                   onChange={(e) => {
                                     const s = e.target.value;
@@ -546,7 +546,7 @@ export function DocumentDetailInfoPanel({
                                 <input
                                   type="number"
                                   step="any"
-                                  className="document-detail-metadata-input"
+                                  className="ds-control ds-control--compact document-detail-metadata-input"
                                   value={val == null || val === '' ? '' : (typeof val === 'number' ? val : parseFloat(String(val)) ?? '')}
                                   onChange={(e) => {
                                     const s = e.target.value;
@@ -558,7 +558,7 @@ export function DocumentDetailInfoPanel({
                                 />
                               ) : fieldType === 'boolean' ? (
                                 <select
-                                  className="document-detail-metadata-input"
+                                  className="ds-control ds-control--compact document-detail-metadata-input"
                                   value={val === true ? 'true' : val === false ? 'false' : ''}
                                   onChange={(e) => {
                                     const v = e.target.value;
@@ -579,7 +579,7 @@ export function DocumentDetailInfoPanel({
                                   return isMulti ? (
                                     <div className="document-detail-labels-multi">
                                       <select
-                                        className="document-detail-metadata-input"
+                                        className="ds-control ds-control--compact document-detail-metadata-input"
                                         value=""
                                         onChange={(e) => {
                                           const pk = e.target.value;
@@ -623,7 +623,7 @@ export function DocumentDetailInfoPanel({
                                     </div>
                                   ) : (
                                     <select
-                                      className="document-detail-metadata-input"
+                                      className="ds-control ds-control--compact document-detail-metadata-input"
                                       value={typeof currentVal === 'string' ? currentVal : Array.isArray(currentVal) ? currentVal[0] ?? '' : ''}
                                       onChange={(e) => onSetEditMetaField(key, e.target.value || null)}
                                       aria-label={label}
@@ -640,7 +640,7 @@ export function DocumentDetailInfoPanel({
                               ) : (
                                 <input
                                   type="text"
-                                  className="document-detail-metadata-input"
+                                  className="ds-control ds-control--compact document-detail-metadata-input"
                                   value={strVal}
                                   onChange={(e) => onSetEditMetaField(key, e.target.value || null)}
                                   aria-label={label}
@@ -835,7 +835,7 @@ export function DocumentDetailInfoPanel({
                             <div className="document-detail-lineage-field-value">
                               {lifecycleEdit ? (
                                 <select
-                                  className="document-detail-info-input document-detail-lineage-input"
+                                  className="ds-control ds-control--compact document-detail-info-input document-detail-lineage-input"
                                   value={editLifecycleStatus}
                                   onChange={(e) => onSetEditLifecycleStatus(e.target.value)}
                                   aria-label={t('detail.lifecycleStatusLabel')}
@@ -858,7 +858,7 @@ export function DocumentDetailInfoPanel({
                               {lifecycleEdit ? (
                                 <input
                                   type="text"
-                                  className="document-detail-info-input document-detail-lineage-input"
+                                  className="ds-control ds-control--compact document-detail-info-input document-detail-lineage-input"
                                   value={editSeriesId}
                                   onChange={(e) => onSetEditSeriesId(e.target.value)}
                                   aria-label={t('detail.seriesIdLabel')}
@@ -876,7 +876,7 @@ export function DocumentDetailInfoPanel({
                               {lifecycleEdit ? (
                                 <input
                                   type="datetime-local"
-                                  className="document-detail-info-input document-detail-lineage-input"
+                                  className="ds-control ds-control--compact document-detail-info-input document-detail-lineage-input"
                                   value={editEffectiveFrom}
                                   onChange={(e) => onSetEditEffectiveFrom(e.target.value)}
                                   aria-label={t('detail.effectiveFromLabel')}
@@ -892,7 +892,7 @@ export function DocumentDetailInfoPanel({
                               {lifecycleEdit ? (
                                 <input
                                   type="datetime-local"
-                                  className="document-detail-info-input document-detail-lineage-input"
+                                  className="ds-control ds-control--compact document-detail-info-input document-detail-lineage-input"
                                   value={editEffectiveTo}
                                   onChange={(e) => onSetEditEffectiveTo(e.target.value)}
                                   aria-label={t('detail.effectiveToLabel')}
@@ -980,7 +980,7 @@ export function DocumentDetailInfoPanel({
                                 <select
                                   value={newRelType}
                                   onChange={(e) => onSetNewRelType(e.target.value)}
-                                  className="document-detail-info-input"
+                                  className="ds-control ds-control--compact document-detail-info-input"
                                   aria-label={t('detail.relTypeAria')}
                                 >
                                   {DOCUMENT_RELATION_TYPES.map((relType) => (
@@ -991,7 +991,7 @@ export function DocumentDetailInfoPanel({
                                 </select>
                                 <input
                                   type="text"
-                                  className="document-detail-info-input"
+                                  className="ds-control ds-control--compact document-detail-info-input"
                                   placeholder={t('detail.placeholderTargetDocId')}
                                   value={newRelTarget}
                                   onChange={(e) => onSetNewRelTarget(e.target.value)}
@@ -999,7 +999,7 @@ export function DocumentDetailInfoPanel({
                                 />
                                 <input
                                   type="text"
-                                  className="document-detail-info-input"
+                                  className="ds-control ds-control--compact document-detail-info-input"
                                   placeholder={t('detail.placeholderRelNote')}
                                   value={newRelNote}
                                   onChange={(e) => onSetNewRelNote(e.target.value)}
