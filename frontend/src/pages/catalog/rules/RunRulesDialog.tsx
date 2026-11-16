@@ -10,11 +10,14 @@
  * wrong, and none of them belong in the inbox.
  */
 
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Dialog, FormField, StatusChip } from '../../../styles/design-system';
-import type { RuleArgument, RulesEvaluateResponse } from '../../../data/rulesApi';
-import { valueRows, type LabelLookups } from './rulesLabels';
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Dialog, FormField, StatusChip } from "../../../styles/design-system";
+import type {
+  RuleArgument,
+  RulesEvaluateResponse,
+} from "../../../data/rulesApi";
+import { valueRows, type LabelLookups } from "./rulesLabels";
 
 export type RunParams = {
   /** Values for the rule's declared arguments, by key — including the period, if the rule declares one. */
@@ -42,10 +45,11 @@ export function RunRulesDialog({
   /** The rule's declared arguments, as the server resolved them — the dialog asks for exactly these. */
   runArguments?: RuleArgument[];
 }) {
-  const { t } = useTranslation('ontology');
+  const { t } = useTranslation("ontology");
   const [values, setValues] = useState<Record<string, string>>({});
-  const periodSpec = runArguments.find((argument) => argument.role === 'period') ?? null;
-  const inputs = runArguments.filter((argument) => argument.role !== 'period');
+  const periodSpec =
+    runArguments.find((argument) => argument.role === "period") ?? null;
+  const inputs = runArguments.filter((argument) => argument.role !== "period");
 
   const params: RunParams = { values };
 
@@ -53,13 +57,18 @@ export function RunRulesDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title={t('rules.runDialogTitle')}
-      closeAriaLabel={t('shared.close')}
-      size={trial ? 'md' : 'sm'}
+      title={t("rules.runDialogTitle")}
+      closeAriaLabel={t("shared.close")}
+      size={trial ? "md" : "sm"}
       footer={
         <>
-          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>
-            {t('shared.cancel')}
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onClose}
+            disabled={busy}
+          >
+            {t("shared.cancel")}
           </button>
           {onTrial ? (
             <button
@@ -67,38 +76,46 @@ export function RunRulesDialog({
               className="btn btn-secondary"
               onClick={() => onTrial(params)}
               disabled={busy}
-              title={t('rules.trialHint')}
+              title={t("rules.trialHint")}
             >
-              {t('rules.trial')}
+              {t("rules.trial")}
             </button>
           ) : null}
-          <button type="button" className="btn btn-primary" onClick={() => onRun(params)} disabled={busy}>
-            {busy ? t('rules.running') : t('rules.run')}
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => onRun(params)}
+            disabled={busy}
+          >
+            {busy ? t("rules.running") : t("rules.run")}
           </button>
         </>
       }
     >
-      <p className="rules-run-args__title">{t('rules.runValues')}</p>
+      <p className="rules-run-args__title">{t("rules.runValues")}</p>
       {periodSpec ? (
         <>
           <p className="settings-page-hint">
             {periodSpec.has_interval
-              ? t('rules.runParamsRequired', {
-                  formats: periodSpec.format ?? t('rules.runParamsCustomFormat'),
+              ? t("rules.runParamsRequired", {
+                  formats:
+                    periodSpec.format ?? t("rules.runParamsCustomFormat"),
                 })
-              : t('rules.periodNoInterval')}
-            {` — ${t('rules.runParamsFiltersOn', { dimensions: periodSpec.field })}`}
+              : t("rules.periodNoInterval")}
+            {` — ${t("rules.runParamsFiltersOn", { dimensions: periodSpec.field })}`}
           </p>
           <FormField
             label={periodSpec.label ?? periodSpec.field}
-            hint={t('rules.runPeriodHint', { field: periodSpec.field })}
+            hint={t("rules.runPeriodHint", { field: periodSpec.field })}
           >
             <input
               type="text"
-              value={values[periodSpec.key] ?? ''}
-              onChange={(e) => setValues({ ...values, [periodSpec.key]: e.target.value })}
+              value={values[periodSpec.key] ?? ""}
+              onChange={(e) =>
+                setValues({ ...values, [periodSpec.key]: e.target.value })
+              }
               // The format comes from the field's calendar; no example period is invented for it.
-              placeholder={periodSpec.format ?? periodSpec.calendar ?? ''}
+              placeholder={periodSpec.format ?? periodSpec.calendar ?? ""}
             />
           </FormField>
         </>
@@ -109,18 +126,22 @@ export function RunRulesDialog({
           key={argument.key}
           label={argument.label ?? argument.field ?? argument.key}
           hint={
-            argument.kind === 'key'
-              ? t('rules.runArgKeyHint')
+            argument.kind === "key"
+              ? t("rules.runArgKeyHint")
               : argument.required
-                ? t('rules.runArgRequiredHint')
-                : t('rules.runArgFilterHint')
+                ? t("rules.runArgRequiredHint")
+                : t("rules.runArgFilterHint")
           }
         >
           <input
             type="text"
-            value={values[argument.key] ?? ''}
-            onChange={(e) => setValues({ ...values, [argument.key]: e.target.value })}
-            placeholder={argument.kind === 'key' ? t('rules.runArgKeyPlaceholder') : ''}
+            value={values[argument.key] ?? ""}
+            onChange={(e) =>
+              setValues({ ...values, [argument.key]: e.target.value })
+            }
+            placeholder={
+              argument.kind === "key" ? t("rules.runArgKeyPlaceholder") : ""
+            }
           />
         </FormField>
       ))}
@@ -128,7 +149,7 @@ export function RunRulesDialog({
       {trial ? (
         <div className="rules-trial" aria-live="polite">
           <p className="rules-trial__summary">
-            {t('rules.trialSummary', {
+            {t("rules.trialSummary", {
               count: trial.results.length,
               failed: trial.failed,
               unknown: trial.unknown,
@@ -138,23 +159,31 @@ export function RunRulesDialog({
             <table className="console-table">
               <thead>
                 <tr>
-                  <th>{t('rules.trialGroup')}</th>
-                  <th>{t('rules.trialStatus')}</th>
-                  <th>{t('rules.trialValues')}</th>
+                  <th>{t("rules.trialGroup")}</th>
+                  <th>{t("rules.trialStatus")}</th>
+                  <th>{t("rules.trialValues")}</th>
                 </tr>
               </thead>
               <tbody>
                 {trial.results.map((result, index) => {
                   const rows = lookups ? valueRows(result.values, lookups) : [];
                   return (
-                    <tr key={`${result.group?.value ?? 'all'}-${index}`}>
-                      <td>{result.group ? String(result.group.value) : t('rules.trialNoGroup')}</td>
+                    <tr key={`${result.group?.value ?? "all"}-${index}`}>
                       <td>
-                        <StatusChip tone={result.status === 'fail' ? 'warn' : 'neutral'}>
+                        {result.group
+                          ? String(result.group.value)
+                          : t("rules.trialNoGroup")}
+                      </td>
+                      <td>
+                        <StatusChip
+                          tone={result.status === "fail" ? "warn" : "neutral"}
+                        >
                           {t(`rules.status.${result.status}`)}
                         </StatusChip>
                         {result.would_publish ? (
-                          <p className="rules-trial__publish">{t('rules.trialWouldPublish')}</p>
+                          <p className="rules-trial__publish">
+                            {t("rules.trialWouldPublish")}
+                          </p>
                         ) : null}
                       </td>
                       <td>
@@ -168,7 +197,9 @@ export function RunRulesDialog({
                             ))}
                           </ul>
                         ) : (
-                          <span className="rules-trial__empty">{result.reason ?? t('datasets.dash')}</span>
+                          <span className="rules-trial__empty">
+                            {result.reason ?? t("datasets.dash")}
+                          </span>
                         )}
                       </td>
                     </tr>

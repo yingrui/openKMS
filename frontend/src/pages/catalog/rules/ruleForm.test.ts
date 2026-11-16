@@ -7,6 +7,7 @@ function rule(overrides: Partial<RuleOut> = {}): RuleOut {
     id: 'r1',
     rule_id: 'allocation-snapshot',
     name: '分货方案与明细勾稽',
+    description: '额度、行数、超上限与低于下限都要与方案表一致',
     metric_id: 'm1',
     condition: null,
     identities: [

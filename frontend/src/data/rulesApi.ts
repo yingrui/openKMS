@@ -68,6 +68,8 @@ export type RuleOut = {
   id: string;
   rule_id: string | null;
   name: string | null;
+  /** The sentence under the name: what holds, and why. */
+  description: string | null;
   metric_id: string | null;
   condition: RuleCondition | null;
   identities: RuleRelation[] | null;
@@ -101,6 +103,7 @@ export type RuleRelation = {
 
 export type RuleWritePayload = {
   name: string;
+  description?: string;
   rule_id?: string | null;
   metric_id: string;
   condition?: RuleCondition | null;

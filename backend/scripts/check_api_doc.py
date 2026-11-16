@@ -25,7 +25,7 @@ import sys
 from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parent.parent
-REFERENCE = BACKEND.parent / "docs" / "features" / "api-reference.md"
+REFERENCE = BACKEND.parent / "docs" / "developer" / "api-reference.md"
 
 #: FastAPI's own endpoints. They are infrastructure, not API surface.
 INFRA = {"/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"}

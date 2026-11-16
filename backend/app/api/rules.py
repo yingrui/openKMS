@@ -88,6 +88,7 @@ class RuleRunParams(BaseModel):
 
 class RuleWrite(BaseModel):
     name: str
+    description: str = ""
     rule_id: str | None = Field(default=None, pattern=SLUG)
     #: The metric this rule watches.
     metric_id: str
@@ -104,6 +105,7 @@ class RuleWrite(BaseModel):
 
 class RulePatch(BaseModel):
     name: str | None = None
+    description: str | None = None
     rule_id: str | None = Field(default=None, pattern=SLUG)
     metric_id: str | None = None
     condition: dict[str, Any] | None = None
@@ -121,6 +123,7 @@ class RuleOut(BaseModel):
     id: str
     rule_id: str | None = None
     name: str | None = None
+    description: str | None = None
     metric_id: str | None = None
     condition: dict | None = None
     identities: list[dict] | None = None
@@ -232,6 +235,7 @@ def _rule_out(rule: MetricRule) -> RuleOut:
         id=rule.id,
         rule_id=rule.slug,
         name=rule.name,
+        description=rule.description,
         metric_id=rule.metric_id,
         condition=rule.condition,
         identities=rule.identities,
@@ -438,6 +442,7 @@ async def create_rule(request: Request, body: RuleWrite, db: AsyncSession = Depe
         id=uuid.uuid4().hex,
         slug=slug,
         name=body.name.strip(),
+        description=body.description.strip(),
         metric_id=metric.id,
         condition=condition,
         identities=identities,
@@ -469,17 +474,22 @@ async def get_rule(rule_id: str, db: AsyncSession = Depends(get_db)):
 async def update_rule(rule_id: str, body: RulePatch, db: AsyncSession = Depends(get_db)):
     rule = await _load_rule(db, rule_id)
     data = body.model_dump(exclude_unset=True)
+    # `version` is the record's revision: every accepted change is a new one, and the alert records which
+    # revision fired. A no-op save stays put — the page saves one card at a time and must not inflate it.
+    changed = False
 
     if body.metric_id is not None:
-        rule.metric_id = (await _metric_or_400(db, body.metric_id)).id
+        metric_id = (await _metric_or_400(db, body.metric_id)).id
+        changed = changed or metric_id != rule.metric_id
+        rule.metric_id = metric_id
     if body.condition is not None or body.identities is not None:
         condition, identities = _validate_definition(
             {"condition": body.condition, "identities": body.identities}
         )
         await _validate_metric_refs(db, condition, identities)
+        changed = changed or condition != rule.condition or identities != rule.identities
         rule.condition = condition
         rule.identities = identities
-        rule.version += 1
     if body.run_params is not None:
         effective_group = (
             body.group_by.field
@@ -487,19 +497,34 @@ async def update_rule(rule_id: str, body: RulePatch, db: AsyncSession = Depends(
             else (rule.group_by or {}).get("field")
         )
         await _validate_run_params(db, rule.metric_id, body.run_params, effective_group)
-        rule.run_params = body.run_params.model_dump()
+        stored = body.run_params.model_dump()
+        changed = changed or stored != (rule.run_params or {})
     if body.group_by is not None or "group_by" in body.model_fields_set:
         metric = await _metric_or_400(db, rule.metric_id)
         await _validate_group_by(db, metric, body.group_by)
-        rule.group_by = body.group_by.model_dump() if body.group_by else None
+        stored_group = body.group_by.model_dump() if body.group_by else None
+        changed = changed or stored_group != rule.group_by
+        rule.group_by = stored_group
 
     if body.rule_id is not None and body.rule_id != rule.slug:
         if await _slug_taken(db, body.rule_id, exclude=rule.id):
             raise HTTPException(status_code=409, detail=f"rule_id '{body.rule_id}' is taken")
+        changed = True
         rule.slug = body.rule_id
-    for field_name in ("name", "severity", "conclusion", "suggestion", "owner", "status"):
+    for field_name in (
+        "name",
+        "description",
+        "severity",
+        "conclusion",
+        "suggestion",
+        "owner",
+        "status",
+    ):
         if field_name in data and data[field_name] is not None:
+            changed = changed or getattr(rule, field_name) != data[field_name]
             setattr(rule, field_name, data[field_name])
+    if changed:
+        rule.version += 1
     await db.flush()
     await sync_rule_refs(db, rule)
     await db.commit()

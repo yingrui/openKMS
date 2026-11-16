@@ -21,7 +21,7 @@ import {
   StatusLine,
   StatusLineNote,
 } from "../../../styles/design-system";
-import { conditionLabel } from "./rulesLabels";
+import { conditionLabel, relationLabel } from "./rulesLabels";
 import {
   evaluateRule,
   evaluateRules,
@@ -40,6 +40,7 @@ import { fetchMetrics, type MetricResponse } from "../../../data/metricsApi";
 import { fetchDatasets, type DatasetResponse } from "../../../data/datasetsApi";
 import { datasetLabel } from "../datasetLabel";
 import { DatasetAppTabs } from "../../../components/ontology/DatasetAppTabs";
+import { PanelToolbar } from "../../../styles/design-system";
 import "../../../styles/settings-page.scss";
 import "../../ontology/ontology-admin.scss";
 import "../../../styles/rules.scss";
@@ -66,7 +67,15 @@ export function RulesPage() {
 
   const [rules, setRules] = useState<RuleOut[]>([]);
   const [events, setEvents] = useState<EventOut[]>([]);
-  const [eventTotal, setEventTotal] = useState(0);
+  /** Open incidents per rule (by slug) — the rules tab's "is this one still on fire?" column. */
+  const [openByRule, setOpenByRule] = useState<Record<string, number>>({});
+  /** The badge on the 告警事件 tab is the *open* count, independent of the inbox filters below it. */
+  const [openEventTotal, setOpenEventTotal] = useState(0);
+  const [ruleState, setRuleState] = useState<"all" | "active" | "paused">(
+    "all",
+  );
+  const [onlyWithIncidents, setOnlyWithIncidents] = useState(false);
+  const [onlyNeverRun, setOnlyNeverRun] = useState(false);
   const [metrics, setMetrics] = useState<MetricResponse[]>([]);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,28 +118,39 @@ export function RulesPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [ruleList, metricPage, datasetPage, eventPage] = await Promise.all([
-        fetchRules(metricFilter ? { metric_id: metricFilter } : undefined),
-        fetchMetrics().catch(() => ({
-          items: [] as MetricResponse[],
-          total: 0,
-        })),
-        fetchDatasets({ limit: 200 }).catch(() => ({
-          items: [] as DatasetResponse[],
-          total: 0,
-        })),
-        fetchEvents({
-          metric_id: metricFilter,
-          status: statusFilter || undefined,
-          severity: severityFilter || undefined,
-          limit: 100,
-        }).catch(() => ({ items: [] as EventOut[], total: 0 })),
-      ]);
+      const [ruleList, metricPage, datasetPage, eventPage, openEvents] =
+        await Promise.all([
+          fetchRules(metricFilter ? { metric_id: metricFilter } : undefined),
+          fetchMetrics().catch(() => ({
+            items: [] as MetricResponse[],
+            total: 0,
+          })),
+          fetchDatasets({ limit: 200 }).catch(() => ({
+            items: [] as DatasetResponse[],
+            total: 0,
+          })),
+          fetchEvents({
+            metric_id: metricFilter,
+            status: statusFilter || undefined,
+            severity: severityFilter || undefined,
+            limit: 100,
+          }).catch(() => ({ items: [] as EventOut[], total: 0 })),
+          fetchEvents({ status: "open", limit: 200 }).catch(() => ({
+            items: [] as EventOut[],
+            total: 0,
+          })),
+        ]);
       setRules(ruleList);
       setMetrics(metricPage.items);
       setDatasets(datasetPage.items);
       setEvents(eventPage.items);
-      setEventTotal(eventPage.total);
+      const counts: Record<string, number> = {};
+      for (const event of openEvents.items) {
+        if (event.rule_id)
+          counts[event.rule_id] = (counts[event.rule_id] ?? 0) + 1;
+      }
+      setOpenByRule(counts);
+      setOpenEventTotal(openEvents.total);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t("rules.toastLoadFailed"));
     } finally {
@@ -141,6 +161,47 @@ export function RulesPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const joiners = {
+    and: t("rules.joinAnd"),
+    or: t("rules.joinOr"),
+    scopePrefix: t("rules.scopePrefix"),
+  };
+
+  const shownRules = rules.filter((rule) => {
+    if (
+      ruleState !== "all" &&
+      (rule.status === "paused") !== (ruleState === "paused")
+    ) {
+      return false;
+    }
+    if (onlyWithIncidents && !(openByRule[rule.rule_id ?? ""] ?? 0))
+      return false;
+    if (onlyNeverRun && rule.last_status) return false;
+    return true;
+  });
+
+  /** One line of what this rule asserts: a threshold, or its first equality (+ how many more). */
+  const checkSummary = (rule: RuleOut): string => {
+    const identities = rule.identities ?? [];
+    if (identities.length > 0) {
+      const first =
+        relationLabel(identities[0], metricName) ?? t("rules.condEmpty");
+      return identities.length > 1
+        ? t("rules.identitySummaryMore", {
+            first,
+            count: identities.length - 1,
+          })
+        : first;
+    }
+    return (
+      conditionLabel(
+        rule.condition,
+        { metricName, datasetName, ...joiners },
+        rule.group_by,
+      ) ?? t("rules.condEmpty")
+    );
+  };
 
   const runAll = async (params: RunParams) => {
     setRunning(true);
@@ -238,29 +299,34 @@ export function RulesPage() {
 
       <DatasetAppTabs />
 
-      <div className="rules-panel">
-        <div className="settings-page-tabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "rules"}
-            className={`settings-page-tab ${tab === "rules" ? "active" : ""}`}
-            onClick={() => setTab("rules")}
-          >
-            {t("rules.tabRules")}
-            <span className="rules-tab-count">{rules.length}</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "events"}
-            className={`settings-page-tab ${tab === "events" ? "active" : ""}`}
-            onClick={() => setTab("events")}
-          >
-            {t("rules.tabEvents")}
-            <span className="rules-tab-count">{eventTotal}</span>
-          </button>
-        </div>
+      <div className="ontology-admin-content">
+        <PanelToolbar
+          as="div"
+          tabs={
+            <div className="rules-view-switch" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "rules"}
+                className={`rules-view-switch__btn ${tab === "rules" ? "is-active" : ""}`}
+                onClick={() => setTab("rules")}
+              >
+                {t("rules.tabRules")}
+                <span className="rules-tab-count">{rules.length}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "events"}
+                className={`rules-view-switch__btn ${tab === "events" ? "is-active" : ""}`}
+                onClick={() => setTab("events")}
+              >
+                {t("rules.tabEvents")}
+                <span className="rules-tab-count">{openEventTotal}</span>
+              </button>
+            </div>
+          }
+        />
 
         <div className="settings-page-form">
           {loading ? (
@@ -285,105 +351,160 @@ export function RulesPage() {
                   }
                 />
               ) : (
-                <div className="ds-table-wrap ds-table-wrap--flush">
-                  <table className="console-table">
-                    <thead>
-                      <tr>
-                        <th>{t("rules.colName")}</th>
-                        <th>{t("rules.colSubject")}</th>
-                        <th>{t("rules.colCondition")}</th>
-                        <th>{t("rules.colSeverity")}</th>
-                        <th>{t("rules.colLastRun")}</th>
-                        <TableRowActionCell as="th">
-                          {t("shared.actions")}
-                        </TableRowActionCell>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rules.map((rule) => (
-                        <tr key={rule.id}>
-                          <td>
-                            <Link
-                              to={`/data-rules/${rule.id}`}
-                              className="rules-name-btn"
-                            >
-                              {rule.name ?? "—"}
-                            </Link>
-                            {rule.status === "paused" ? (
-                              <span className="rules-paused">
-                                {t("rules.paused")}
-                              </span>
-                            ) : null}
-                          </td>
-                          <td>{metricName(rule.metric_id ?? "")}</td>
-                          <td className="rules-condition">
-                            {conditionLabel(
-                              rule.condition,
-                              {
-                                metricName,
-                                datasetName,
-                                and: t("rules.joinAnd"),
-                                or: t("rules.joinOr"),
-                                scopePrefix: t("rules.scopePrefix"),
-                                scopeAtRunTime: t("rules.groupedBy"),
-                              },
-                              rule.group_by,
-                            )}
-                          </td>
-                          <td>
-                            <StatusChip tone={severityTone(rule.severity)}>
-                              {rule.severity ?? "—"}
-                            </StatusChip>
-                          </td>
-                          <td>
-                            {rule.last_status ? (
-                              <StatusLine title={rule.last_reason ?? undefined}>
-                                <StatusChip tone={statusTone(rule.last_status)}>
-                                  {t(`rules.status.${rule.last_status}`)}
-                                </StatusChip>
-                                {/* The period matters as much as the verdict: "passed" for which one? */}
-                                <StatusLineNote>
-                                  {rule.last_period_start || "—"}
-                                  {rule.last_run_at
-                                    ? ` · ${new Date(rule.last_run_at).toLocaleString()}`
-                                    : ""}
-                                </StatusLineNote>
-                              </StatusLine>
-                            ) : (
-                              t("rules.neverRun")
-                            )}
-                          </td>
-                          <TableRowActionCell>
-                            <TableRowActions>
-                              <TableRowActionButton
-                                title={t("rules.run")}
-                                aria-label={t("rules.run")}
-                                icon={<Play size={16} aria-hidden />}
-                                loading={runningId === rule.id}
-                                disabled={rule.status === "paused"}
-                                onClick={() => void runOne(rule)}
-                              />
-                              <TableRowActionButton
-                                title={
-                                  rule.status === "paused"
-                                    ? t("rules.resume")
-                                    : t("rules.pause")
-                                }
-                                aria-label={
-                                  rule.status === "paused"
-                                    ? t("rules.resume")
-                                    : t("rules.pause")
-                                }
-                                icon={<BellRing size={16} aria-hidden />}
-                                onClick={() => void togglePause(rule)}
-                              />
-                            </TableRowActions>
+                <>
+                  {/* The three questions an operator asks of a list of checks: enabled? on fire?
+                    ever actually run? Each is a filter, not a column to squint at. */}
+                  <div className="console-datasets-toolbar">
+                    <label className="console-datasets-filter">
+                      {t("rules.colState")}
+                      <select
+                        className="ds-control"
+                        value={ruleState}
+                        onChange={(e) =>
+                          setRuleState(
+                            e.target.value as "all" | "active" | "paused",
+                          )
+                        }
+                      >
+                        <option value="all">
+                          {t("rules.statusFilterAll")}
+                        </option>
+                        <option value="active">{t("rules.active")}</option>
+                        <option value="paused">{t("rules.paused")}</option>
+                      </select>
+                    </label>
+                    <label className="rules-check-filter">
+                      <input
+                        type="checkbox"
+                        checked={onlyWithIncidents}
+                        onChange={(e) => setOnlyWithIncidents(e.target.checked)}
+                      />
+                      {t("rules.filterOpenIncidents")}
+                    </label>
+                    <label className="rules-check-filter">
+                      <input
+                        type="checkbox"
+                        checked={onlyNeverRun}
+                        onChange={(e) => setOnlyNeverRun(e.target.checked)}
+                      />
+                      {t("rules.filterNeverRun")}
+                    </label>
+                  </div>
+                  <div className="ds-table-wrap ds-table-wrap--flush">
+                    <table className="console-table">
+                      <thead>
+                        <tr>
+                          <th>{t("rules.colName")}</th>
+                          <th>{t("rules.colSubject")}</th>
+                          <th>{t("rules.colCondition")}</th>
+                          <th>{t("rules.colSeverity")}</th>
+                          <th>{t("rules.colLastRun")}</th>
+                          <th>{t("rules.colOpenEvents")}</th>
+                          <TableRowActionCell as="th">
+                            {t("shared.actions")}
                           </TableRowActionCell>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {shownRules.map((rule) => (
+                          <tr key={rule.id}>
+                            <td>
+                              <Link
+                                to={`/data-rules/${rule.id}`}
+                                className="rules-name-btn"
+                              >
+                                {rule.name ?? "—"}
+                              </Link>
+                              {rule.status === "paused" ? (
+                                <span className="rules-paused">
+                                  {t("rules.paused")}
+                                </span>
+                              ) : null}
+                            </td>
+                            <td>{metricName(rule.metric_id ?? "")}</td>
+                            <td className="rules-condition">
+                              <span className="rules-kind">
+                                {(rule.identities?.length ?? 0) > 0
+                                  ? t("rules.modeRelation")
+                                  : t("rules.modeCondition")}
+                              </span>
+                              {checkSummary(rule)}
+                            </td>
+                            <td>
+                              <StatusChip tone={severityTone(rule.severity)}>
+                                {rule.severity ?? "—"}
+                              </StatusChip>
+                            </td>
+                            <td>
+                              {rule.last_status ? (
+                                <StatusLine
+                                  title={rule.last_reason ?? undefined}
+                                >
+                                  <StatusChip
+                                    tone={statusTone(rule.last_status)}
+                                  >
+                                    {t(`rules.status.${rule.last_status}`)}
+                                  </StatusChip>
+                                  {/* The period matters as much as the verdict: "passed" for which one? */}
+                                  <StatusLineNote>
+                                    {rule.last_period_start || "—"}
+                                    {rule.last_run_at
+                                      ? ` · ${new Date(rule.last_run_at).toLocaleString()}`
+                                      : ""}
+                                  </StatusLineNote>
+                                </StatusLine>
+                              ) : (
+                                t("rules.neverRun")
+                              )}
+                            </td>
+                            <td>
+                              {(openByRule[rule.rule_id ?? ""] ?? 0) > 0 ? (
+                                <button
+                                  type="button"
+                                  className="rules-open-events"
+                                  onClick={() => setTab("events")}
+                                  title={t("rules.openEventsHint")}
+                                >
+                                  {openByRule[rule.rule_id ?? ""]}
+                                </button>
+                              ) : (
+                                <span className="rules-open-events rules-open-events--none">
+                                  {t("datasets.dash")}
+                                </span>
+                              )}
+                            </td>
+                            <TableRowActionCell>
+                              <TableRowActions>
+                                <TableRowActionButton
+                                  title={t("rules.run")}
+                                  aria-label={t("rules.run")}
+                                  icon={<Play size={16} aria-hidden />}
+                                  loading={runningId === rule.id}
+                                  disabled={rule.status === "paused"}
+                                  onClick={() => void runOne(rule)}
+                                />
+                                <TableRowActionButton
+                                  title={
+                                    rule.status === "paused"
+                                      ? t("rules.resume")
+                                      : t("rules.pause")
+                                  }
+                                  aria-label={
+                                    rule.status === "paused"
+                                      ? t("rules.resume")
+                                      : t("rules.pause")
+                                  }
+                                  icon={<BellRing size={16} aria-hidden />}
+                                  onClick={() => void togglePause(rule)}
+                                />
+                              </TableRowActions>
+                            </TableRowActionCell>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </>
           ) : (

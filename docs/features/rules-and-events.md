@@ -16,6 +16,49 @@ checks are **quality rules** on the dataset page (a table's shape is not a recon
 
 ---
 
+## The information architecture
+
+A rule has two strings, not one: **name** is the label a rail, a table cell or a breadcrumb can hold
+("分货方案与明细勾稽"), and **description** says what holds and why ("每个方案的额度、行数、超上限渠道数、
+低于下限渠道数，都要与方案表记录的快照一致"). A single string long enough to explain the check never fits the
+places a name has to fit.
+
+The app answers three questions, and each has one page. They are ordered by what an operator does first:
+*what is being checked and how is it?* → *which number is wrong?* → *what does this rule claim?*
+
+| Question | Where | What it shows |
+|---|---|---|
+| What is checked, and how is it? | **指标勾稽 → 指标规则** (`/data-rules`) | One row per rule: name, the subject metric, the check summarised in one line with its kind (等式 / 阈值), severity, the last verdict **and the period it belongs to**, the number of open incidents, and run / pause. Three filters are the questions an operator actually asks: enabled? on fire? ever run? |
+| Which number is wrong? | **→ 告警事件** (`?tab=events`) | Incidents, one per rule × scope, grouped by rule, with the evidence inline (each identity's residual, the tolerance, the rule version), filtered by state and severity, actionable (resolve / dismiss) |
+| What does this rule claim, and why? | **A rule** (`/data-rules/:ruleId`) | An entity page: the rail carries identity (**name**, `rule_id`, owner, version, severity, enabled) and the four sections below; the **description is the page's subtitle**, and the page's actions (编辑 / 立即运行) sit in the page header — the rail is for who this is and where to go |
+
+A rule is defined in steps, and the page is split the same way — one card per intent, so a reader can find the
+field they came to change instead of scrolling one giant form:
+
+| Section | Answers | Read / edit |
+|---|---|---|
+| **概览** | what does it watch, per what, and is it enabled | subject metric and last run as facts, then the **basic information form** (name, description, rule id, severity, status) |
+| **检查内容** | what must hold (every identity, or the threshold) | sentence / editor |
+| **运行参数** | which field carries the period, which slice a run may narrow | facts / form |
+| **告警内容** | what a reader sees when it fires (conclusion, advice) | facts / form |
+| **告警事件** | what actually happened (incidents, evidence, triage) | table, read-only |
+
+"Last run" is not a section: it is part of the verdict's state, shown in the list row and on the event, not a
+place to go.
+
+The list page's 规则 / 事件 switch is a **panel-head toggle**, not the settings page's tab bar
+(`.settings-page-tabs` is for a routed entity page) — which is what made this app's typography drift from its
+siblings (数据集 · 语义模型 · 指标 · 数据质量 all share `page-header` + `.ontology-admin-content`).
+
+Entry points follow the object, never a duplicate list: a metric row carries its check status and a run
+button; a dataset's page links to the rules of its metrics. The period a verdict belongs to is part of the
+verdict — "pass" without "for which period" is not an answer.
+
+What is still missing from the IA is **run history**: the list shows one last run per rule, and the events
+are occurrences, not runs. A rule that passed every week has no rows anywhere, so "why did last week say
+one thing" cannot be answered yet — it needs a `rule_runs` table (one row per rule × scope × period, with
+status, residual, data watermark and trigger) and the 运行与事件 section to read it.
+
 ## Why tables, not objects
 
 Rules and alerts were ontology objects (`Rule` / `Event`, JSONB in `object_instances`, projected to Neo4j).

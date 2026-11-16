@@ -497,6 +497,8 @@ function App() {
               <Route path="sharing" element={<ModelSharingTab />} />
               <Route path="settings" element={<ModelSettingsTab />} />
             </Route>
+            <Route path="data-rules/new" element={<RuleDetailPage />} />
+            <Route path="data-rules/:ruleId" element={<RuleDetailPage />} />
             <Route path="datasets/:id" element={<DatasetManagerDetailPage />}>
               <Route index element={<DatasetOverviewTab />} />
               <Route path="data" element={<DatasetDataRoute />} />
@@ -526,8 +528,6 @@ function App() {
           <Route path="data-insights" element={<DataInsightsPage />} />
           <Route path="evaluations" element={<FeatureGate feature="evaluations"><EvaluationDatasetList /></FeatureGate>} />
           <Route path="data-rules" element={<RulesPage />} />
-          <Route path="data-rules/new" element={<RuleDetailPage />} />
-          <Route path="data-rules/:ruleId" element={<RuleDetailPage />} />
           <Route path="datasets/sources" element={<DatasetSourcesPage />} />
           <Route path="datasets/quality-issues" element={<QualityIssuesPage />} />
           <Route path="datasets" element={<DatasetsListPage />} />

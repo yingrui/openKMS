@@ -157,7 +157,8 @@ body:has(.app-page-pane > .entity-view) .app-main {
 
 .entity-view__nav-item {
   display: block;
-  font-size: var(--text-sm);
+  /* The rail is navigation, not a footnote: same size as the content it leads to. */
+  font-size: var(--text-base);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   color: var(--color-text-secondary);
@@ -227,7 +228,13 @@ body:has(.app-page-pane > .entity-view) .app-main {
 
 .entity-view__main .page-header .page-subtitle {
   margin: var(--space-1) 0 0;
-  max-width: 52ch;
+  /* A description is a sentence, not a lead paragraph: 52ch wrapped it after ~26 Chinese characters. */
+  max-width: 96ch;
+}
+
+.entity-view__main .page-header > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .entity-view__actions {

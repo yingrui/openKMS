@@ -17,13 +17,14 @@ import {
   identitiesPayload,
   type RelationDraft,
 } from "./relationDraft";
-import type { RunArgumentDraft } from "./RuleBasicsForm";
+import type { RunArgumentDraft } from "./RuleScopeForm";
 
 export type FormState = {
   /** A threshold check, or an identity between metrics — exactly one is sent. */
   mode: "condition" | "relation";
   relations: RelationDraft[];
   name: string;
+  description: string;
   ruleId: string;
   metricId: string;
   datasetId: string;
@@ -43,6 +44,7 @@ export const EMPTY_FORM: FormState = {
   mode: "condition",
   relations: [emptyRelationDraft()],
   name: "",
+  description: "",
   ruleId: "",
   metricId: "",
   datasetId: "",
@@ -87,6 +89,7 @@ export function formFromRule(
           }))
         : [emptyRelationDraft()],
     name: rule.name ?? "",
+    description: rule.description ?? "",
     ruleId: rule.rule_id ?? "",
     metricId: left && "metric" in left ? left.metric : (metrics[0]?.id ?? ""),
     datasetId:
@@ -123,6 +126,7 @@ export function buildRulePayload(
     form.mode === "relation" ? identitiesPayload(form.relations) : null;
   return {
     name: form.name.trim(),
+    description: form.description.trim(),
     rule_id: form.ruleId.trim() || null,
     metric_id: form.metricId,
     ...(identities ? { identities } : { condition }),

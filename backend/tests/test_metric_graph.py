@@ -1,6 +1,4 @@
 """The metric graph is a view: derived edges come from expressions, assertion edges from rules."""
-import pytest
-
 from app.models.metric_definition import MetricDefinition
 from app.services.data.metric_graph import assertions_by_metric, build_graph
 

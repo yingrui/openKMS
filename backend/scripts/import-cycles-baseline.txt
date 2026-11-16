@@ -1,0 +1,3 @@
+app/api <-> app/services/ontology
+app/services/data <-> app/services/ontology
+app/services/runtime <-> app/services/workspace

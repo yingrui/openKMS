@@ -44,6 +44,8 @@ class MetricRule(Base):
     #: A stable slug for humans and exports; unique, immutable in practice.
     slug: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String(256), nullable=False)
+    #: What the rule checks, in a sentence — the name is the short label a rail or a row can hold.
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     #: The metric the rule watches (and whose permissions apply).
     metric_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("metric_definitions.id", ondelete="RESTRICT"), nullable=False, index=True
@@ -80,6 +82,7 @@ class MetricRule(Base):
         return {
             "rule_id": self.slug,
             "name": self.name,
+            "description": self.description,
             "subject": _dumps({"kind": "metric", "ref": self.metric_id}),
             "condition": _dumps(self.condition),
             "identities": _dumps(self.identities),
