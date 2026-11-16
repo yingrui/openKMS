@@ -1944,16 +1944,10 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   color: var(--color-text-muted);
 }
 
-.kb-settings-form input,
-.kb-settings-form select,
-.kb-settings-form textarea {
-  padding: var(--padding-compact-y) var(--padding-compact-x);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+/* The control skin (height, padding, focus) belongs to .ds-control; this page only chooses the
+   elevated surface. The old local padding made a 36px select clip its own text. */
+.kb-settings-form .ds-control {
   background: var(--color-bg-elevated);
-  color: var(--color-text);
-  font-size: var(--text-base);
-  font-family: inherit;
 }
 
 .kb-settings-form textarea {
@@ -1963,13 +1957,6 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 
 .kb-settings-col-text textarea {
   min-height: 140px;
-}
-
-.kb-settings-form input:focus,
-.kb-settings-form select:focus,
-.kb-settings-form textarea:focus {
-  outline: none;
-  border-color: var(--color-accent);
 }
 
 .kb-settings-fieldset {

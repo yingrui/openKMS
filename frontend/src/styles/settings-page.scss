@@ -133,6 +133,12 @@
   box-sizing: border-box;
 }
 
+/* .ds-control owns the 36px box; a second vertical padding would clip the select's text. */
+.settings-page-field select.ds-control,
+.settings-page-field input.ds-control {
+  padding-block: 0;
+}
+
 .settings-page-field input[type="text"],
 .settings-page-field textarea {
   width: 100%;

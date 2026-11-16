@@ -34,6 +34,10 @@
   color: var(--color-text);
 }
 
+.jobs-toolbar select.ds-control {
+  padding-block: 0;
+}
+
 .jobs-table-row-clickable {
   cursor: pointer;
 }

@@ -1469,6 +1469,7 @@ export function KnowledgeBaseDetail() {
                   <label>
                     <span>{t('detail.faqGenPrompt')}</span>
                     <textarea
+                      className="ds-control"
                       placeholder={t('detail.faqGenPromptPlaceholder')}
                       value={settingsFaqPrompt}
                       onChange={(e) => setSettingsFaqPrompt(e.target.value)}

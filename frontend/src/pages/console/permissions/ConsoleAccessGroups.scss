@@ -366,6 +366,10 @@
   font-size: var(--text-base);
 }
 
+.console-access-groups-modal .ds-control {
+  padding-block: 0;
+}
+
 .console-access-groups-modal-actions {
   display: flex;
   justify-content: flex-end;

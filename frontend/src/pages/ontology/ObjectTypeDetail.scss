@@ -176,6 +176,11 @@
   font-size: var(--text-base);
 }
 
+.object-type-dialog-body input.ds-control,
+.object-type-dialog-body select.ds-control {
+  padding-block: 0;
+}
+
 .object-type-dialog-body input:focus,
 .object-type-dialog-body select:focus {
   outline: none;

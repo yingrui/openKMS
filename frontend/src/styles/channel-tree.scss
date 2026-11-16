@@ -93,6 +93,11 @@
   box-sizing: border-box;
 }
 
+.channel-tree-field select.ds-control,
+.channel-tree-field input.ds-control {
+  padding-block: 0;
+}
+
 .channel-tree-field textarea {
   min-height: 56px;
   resize: vertical;

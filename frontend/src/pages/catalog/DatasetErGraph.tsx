@@ -308,9 +308,9 @@ export function DatasetErGraph({
           <span className="dataset-er-graph__legend-item">
             <svg width="26" height="12" aria-hidden>
               <circle cx="4" cy="6" r="2.5" className="dataset-er-graph__edge-end" fill="none" />
-              <line x1="10" y1="6" x2="22" y2="2" className="dataset-er-graph__edge-end" />
-              <line x1="10" y1="6" x2="24" y2="6" className="dataset-er-graph__edge-end" />
-              <line x1="10" y1="6" x2="22" y2="10" className="dataset-er-graph__edge-end" />
+              <line x1="22" y1="6" x2="10" y2="1" className="dataset-er-graph__edge-end" />
+              <line x1="22" y1="6" x2="10" y2="6" className="dataset-er-graph__edge-end" />
+              <line x1="22" y1="6" x2="10" y2="11" className="dataset-er-graph__edge-end" />
             </svg>
             {t('dataModel.erMany')}
           </span>
@@ -333,14 +333,9 @@ export function DatasetErGraph({
       <div ref={canvasRef} className="dataset-er-graph__canvas" style={{ width, height }}>
         <svg className="dataset-er-graph__edges" width={width} height={height} aria-hidden>
           {edges.map((edge) => {
-            const angle = edge.direction > 0 ? 0 : Math.PI;
-            const foot = Array.from({ length: 3 }, (_, i) => {
-              const spread = (i - 1) * 0.42;
-              return {
-                x: edge.x1 + Math.cos(angle + spread) * 11,
-                y: edge.y1 + Math.sin(angle + spread) * 11,
-              };
-            });
+            /* The crow's foot: three toes touching the entity, meeting on the line side. */
+            const vertex = { x: edge.x1 + edge.direction * 12, y: edge.y1 };
+            const foot = [edge.y1 - 5, edge.y1, edge.y1 + 5].map((y) => ({ x: edge.x1, y }));
             const bend = Math.max(36, Math.abs(edge.x2 - edge.x1) / 2);
             const path = `M ${edge.x1} ${edge.y1} C ${edge.x1 + edge.direction * bend} ${edge.y1}, ${
               edge.x2 - edge.direction * bend
@@ -366,8 +361,8 @@ export function DatasetErGraph({
                   <line
                     key={i}
                     className="dataset-er-graph__edge-end"
-                    x1={edge.x1}
-                    y1={edge.y1}
+                    x1={vertex.x}
+                    y1={vertex.y}
                     x2={point.x}
                     y2={point.y}
                   />

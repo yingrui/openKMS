@@ -366,6 +366,11 @@
     background: var(--color-bg-muted);
     color: var(--color-text);
   }
+
+  input.ds-control,
+  select.ds-control {
+    padding-block: 0;
+  }
 }
 
 .project-settings-checkbox {
