@@ -480,7 +480,12 @@
     "erJoins": "{{count}} 条关联",
     "erOpen": "打开",
     "erCollapse": "收起字段",
-    "erExpand": "展开字段"
+    "erExpand": "展开字段",
+    "erIsolated": "没有登记关联",
+    "erCollapseAll": "全部收起字段",
+    "erExpandAll": "全部展开字段",
+    "erResetLayout": "重置布局",
+    "erToolbar": "图操作"
   },
   "datasets": {
     "title": "数据集",

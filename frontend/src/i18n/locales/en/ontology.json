@@ -485,7 +485,12 @@
     "erJoins": "{{count}} joins",
     "erOpen": "Open",
     "erCollapse": "Hide columns",
-    "erExpand": "Show columns"
+    "erExpand": "Show columns",
+    "erIsolated": "No registered joins",
+    "erCollapseAll": "Collapse all",
+    "erExpandAll": "Expand all",
+    "erResetLayout": "Reset layout",
+    "erToolbar": "Diagram controls"
   },
   "datasets": {
     "title": "Datasets",

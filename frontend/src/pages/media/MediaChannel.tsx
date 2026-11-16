@@ -217,11 +217,11 @@ export function MediaChannel() {
             label={t('channel.searchAria')}
             placeholder={t('channel.searchPlaceholder')}
           />
+          {/* ds-control-exempt: .channel-page-toolbar select styles this filter */}
           <select
             aria-label={t('channel.filterKindAria')}
             value={kindFilter}
             onChange={(e) => setKindFilter(e.target.value as 'all' | MediaKind)}
-            className="ds-control"
           >
             <option value="all">{t('channel.filterAll')}</option>
             <option value="image">{t('channel.filterImages')}</option>

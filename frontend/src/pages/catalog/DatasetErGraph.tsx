@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  ArrowUpRight,
+  ChevronDown,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  RotateCcw,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { layoutEr } from './erLayout';
 import './dataset-er-graph.scss';
@@ -55,6 +62,8 @@ const columnAnchorY = (
   column: string | undefined,
   rowOffsets: Record<string, Record<string, number>>,
 ) => {
+  /* A collapsed box shows no rows, so there is no row to point at — its middle is the honest answer. */
+  if (height <= COLLAPSED_HEIGHT) return top + height / 2;
   const measured = column ? rowOffsets[node.id]?.[column] : undefined;
   if (measured !== undefined) return top + measured;
   const index = column ? (node.columns ?? []).indexOf(column) : -1;
@@ -100,6 +109,7 @@ export function DatasetErGraph({
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [rowOffsets, setRowOffsets] = useState<Record<string, Record<string, number>>>({});
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [hovered, setHovered] = useState<string | null>(null);
   const nodeRefs = useRef(new Map<string, HTMLElement>());
 
   useEffect(() => {
@@ -193,6 +203,17 @@ export function DatasetErGraph({
     };
   }, []);
 
+  /* Hovering a box is the question the diagram is asked most: "what does this one touch?" */
+  const connected = useMemo(() => {
+    if (!hovered) return null;
+    const ids = new Set<string>([hovered]);
+    for (const link of links) {
+      if (link.source === hovered) ids.add(link.target);
+      if (link.target === hovered) ids.add(link.source);
+    }
+    return ids;
+  }, [hovered, links]);
+
   if (nodes.length === 0) {
     return <p className="entity-view__readonly">{emptyLabel}</p>;
   }
@@ -220,6 +241,8 @@ export function DatasetErGraph({
   const width = Math.max(contentWidth, size.width);
   const height = Math.max(contentHeight, size.height);
 
+  const collapsible = nodes.filter((node) => (node.columns?.length ?? 0) > 0).map((node) => node.id);
+
   const edges = links.flatMap((link) => {
     const from = positions[link.source];
     const to = positions[link.target];
@@ -243,12 +266,45 @@ export function DatasetErGraph({
            field → field rather than box → box. */
         direction: toLeft ? -1 : 1,
         required: link.required !== false,
+        dimmed: connected !== null && !(link.source === hovered || link.target === hovered),
       },
     ];
   });
 
   return (
     <div ref={wrapRef} className={`dataset-er-graph${fill ? ' dataset-er-graph--fill' : ''}`}>
+      <div className="dataset-er-graph__toolbar" role="group" aria-label={t('dataModel.erToolbar')}>
+        <button
+          type="button"
+          className="dataset-er-graph__tool"
+          onClick={() =>
+            setCollapsed((current) =>
+              current.size === collapsible.length
+                ? new Set<string>()
+                : new Set<string>(collapsible),
+            )
+          }
+        >
+          {collapsed.size === collapsible.length ? (
+            <ChevronsDownUp size={14} aria-hidden />
+          ) : (
+            <ChevronsUpDown size={14} aria-hidden />
+          )}
+          <span>
+            {collapsed.size === collapsible.length
+              ? t('dataModel.erExpandAll')
+              : t('dataModel.erCollapseAll')}
+          </span>
+        </button>
+        <button
+          type="button"
+          className="dataset-er-graph__tool"
+          onClick={() => setPositions(grid)}
+        >
+          <RotateCcw size={14} aria-hidden />
+          <span>{t('dataModel.erResetLayout')}</span>
+        </button>
+      </div>
       <div ref={canvasRef} className="dataset-er-graph__canvas" style={{ width, height }}>
         <svg className="dataset-er-graph__edges" width={width} height={height} aria-hidden>
           {edges.map((edge) => {
@@ -267,7 +323,9 @@ export function DatasetErGraph({
             return (
               <g key={edge.key}>
                 <path
-                  className={`dataset-er-graph__edge${edge.required ? '' : ' dataset-er-graph__edge--optional'}`}
+                  className={`dataset-er-graph__edge${edge.required ? '' : ' dataset-er-graph__edge--optional'}${
+                    edge.dimmed ? ' dataset-er-graph__edge--dim' : ''
+                  }`}
                   d={path}
                   fill="none"
                 />
@@ -307,6 +365,10 @@ export function DatasetErGraph({
               }}
               className={`dataset-er-graph__node${
                 collapsed.has(node.id) ? ' dataset-er-graph__node--collapsed' : ''
+              }${node.joins === 0 ? ' dataset-er-graph__node--isolated' : ''}${
+                connected !== null && !connected.has(node.id)
+                  ? ' dataset-er-graph__node--dim'
+                  : ''
               }`}
               style={{
                 left: position.x,
@@ -315,6 +377,8 @@ export function DatasetErGraph({
                 height: boxHeightFor(node, collapsed.has(node.id)),
               }}
               onPointerDown={(event) => startDrag(event, node.id)}
+              onPointerEnter={() => setHovered(node.id)}
+              onPointerLeave={() => setHovered(null)}
             >
               <span className="dataset-er-graph__node-head">
                 {columns.length > 0 ? (

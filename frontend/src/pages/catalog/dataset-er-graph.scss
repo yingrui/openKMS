@@ -4,7 +4,35 @@
   overflow: auto;
   /* The canvas is at least the container's size, so a box can be dragged into the empty space beside the grid. */
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
+}
+
+/* Two switches for reading the diagram: all names, or all keys; and back to the layout the joins imply. */
+.dataset-er-graph__toolbar {
+  display: flex;
+  flex: none;
+  gap: var(--space-2);
+  padding: 0 0 var(--space-2);
+}
+
+.dataset-er-graph__tool {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
 }
 
 /* Catalog Map view: the diagram claims the space left in the viewport instead of a fixed height. */
@@ -37,6 +65,20 @@
 /* Optional joins dash; required ones are solid. The endpoint already says which field, so the line carries no text. */
 .dataset-er-graph__edge--optional {
   stroke-dasharray: 5 4;
+}
+
+/* Hovering a dataset answers "what does this one touch?"; everything else steps back. */
+.dataset-er-graph__edge--dim {
+  opacity: 0.25;
+}
+
+.dataset-er-graph__node--dim {
+  opacity: 0.35;
+}
+
+/* A dataset with no registered join is a signal, not a style: it usually means a join was never registered. */
+.dataset-er-graph__node--isolated {
+  border-style: dashed;
 }
 
 .dataset-er-graph__node {
