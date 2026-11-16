@@ -345,10 +345,13 @@ export function DatasetErGraph({
               edge.x2 - edge.direction * bend
             } ${edge.y2}, ${edge.x2} ${edge.y2}`;
             return (
-              <g key={edge.key}>
+              <g
+                key={edge.key}
+                className={edge.dimmed ? 'dataset-er-graph__edge-group--dim' : undefined}
+              >
                 <path
-                  className={`dataset-er-graph__edge${edge.required ? '' : ' dataset-er-graph__edge--optional'}${
-                    edge.dimmed ? ' dataset-er-graph__edge--dim' : ''
+                  className={`dataset-er-graph__edge${
+                    edge.required ? '' : ' dataset-er-graph__edge--optional'
                   }`}
                   d={path}
                   fill="none"

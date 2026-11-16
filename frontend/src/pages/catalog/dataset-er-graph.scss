@@ -67,8 +67,9 @@
   stroke-dasharray: 5 4;
 }
 
-/* Hovering a dataset answers "what does this one touch?"; everything else steps back. */
-.dataset-er-graph__edge--dim {
+/* Hovering a dataset answers "what does this one touch?"; everything else steps back — the line *and* its
+   cardinality marks, which belong to that line. */
+.dataset-er-graph__edge-group--dim {
   opacity: 0.25;
 }
 
