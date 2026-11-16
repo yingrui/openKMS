@@ -1,10 +1,20 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
-import { Loader2, Plus, Sparkles } from 'lucide-react';
-import { toast } from 'sonner';
-import { createStory, fetchStories, type StorySummary } from '../../data/storiesApi';
-import { Dialog, EmptyState, FormField, StatusChip } from '../../styles/design-system/index';
+import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link, useNavigate } from "react-router-dom";
+import { Loader2, Plus, Sparkles } from "lucide-react";
+import { toast } from "sonner";
+import {
+  createStory,
+  fetchStories,
+  type StorySummary,
+} from "../../data/storiesApi";
+import {
+  Dialog,
+  EmptyState,
+  FormField,
+  StatusChip,
+} from "../../styles/design-system/index";
+import { ListPage, SearchField } from "../../styles/design-system";
 
 /**
  * All stories — the app's shared card list (`ds-resource-list.scss`, the same chrome as Knowledge
@@ -15,23 +25,26 @@ import { Dialog, EmptyState, FormField, StatusChip } from '../../styles/design-s
  * the meta line carries the state, the finding count and the sources the findings read.
  */
 export function DataInsightsPage() {
-  const { t } = useTranslation('ontology');
+  const { t } = useTranslation("ontology");
   const navigate = useNavigate();
   const [stories, setStories] = useState<StorySummary[]>([]);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [name, setName] = useState('');
-  const [question, setQuestion] = useState('');
+  const [name, setName] = useState("");
+  const [question, setQuestion] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setStories((await fetchStories({ search: debouncedSearch.trim() || undefined })).items);
+      setStories(
+        (await fetchStories({ search: debouncedSearch.trim() || undefined }))
+          .items,
+      );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
+      toast.error(e instanceof Error ? e.message : t("datasets.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -47,14 +60,14 @@ export function DataInsightsPage() {
   }, [search]);
 
   const openCreate = () => {
-    setName('');
-    setQuestion('');
+    setName("");
+    setQuestion("");
     setShowForm(true);
   };
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      toast.error(t('dataInsights.nameRequired'));
+      toast.error(t("dataInsights.nameRequired"));
       return;
     }
     setSubmitting(true);
@@ -63,112 +76,124 @@ export function DataInsightsPage() {
         name: name.trim(),
         question: question.trim() || null,
       });
-      toast.success(t('dataInsights.created'));
+      toast.success(t("dataInsights.created"));
       setShowForm(false);
       navigate(`/data-insights/${created.id}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataInsights.createFailed'));
+      toast.error(
+        e instanceof Error ? e.message : t("dataInsights.createFailed"),
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="ds-resource-list">
-      <div className="page-header ds-resource-list-header">
-        <div>
-          <h1>{t('dataInsights.title')}</h1>
-          <p className="page-subtitle">{t('dataInsights.subtitle')}</p>
-        </div>
-        <div className="ds-resource-list-header-actions">
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
+    <>
+      <ListPage
+        title={t("dataInsights.title")}
+        subtitle={t("dataInsights.subtitle")}
+        actions={
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={openCreate}
+          >
             <Plus size={18} aria-hidden />
-            <span>{t('dataInsights.newStory')}</span>
+            <span>{t("dataInsights.newStory")}</span>
           </button>
-        </div>
-      </div>
+        }
+        toolbar={
+          // Also while a search finds nothing: otherwise the box that would let you clear it disappears.
+          !loading && (stories.length > 0 || debouncedSearch.trim() !== "") ? (
+            <SearchField
+              value={search}
+              onChange={setSearch}
+              label={t("dataInsights.searchAria")}
+              placeholder={t("dataInsights.searchPlaceholder")}
+            />
+          ) : null
+        }
+      >
+        {loading && (
+          <p className="ds-resource-list-loading">
+            <Loader2 size={18} className="spin" aria-hidden />{" "}
+            {t("shared.loading")}
+          </p>
+        )}
 
-      {/* Search is a view control, not an action: it sits with the list it filters, on its own row —
-          inside the header's action cluster it wrapped under the "new" button. */}
-      {/* Also while a search finds nothing: otherwise the box that would let you clear it disappears. */}
-      {!loading && (stories.length > 0 || debouncedSearch.trim() !== '') && (
-        <div className="ds-resource-list-toolbar">
-          <input
-            type="search"
-            className="ds-control ds-resource-list-search"
-            aria-label={t('dataInsights.searchAria')}
-            placeholder={t('dataInsights.searchPlaceholder')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-      )}
+        {!loading && stories.length === 0 && debouncedSearch.trim() && (
+          <p className="page-subtitle">{t("dataInsights.noMatches")}</p>
+        )}
 
-      {loading && (
-        <p className="ds-resource-list-loading">
-          <Loader2 size={18} className="spin" aria-hidden /> {t('shared.loading')}
-        </p>
-      )}
-
-      {!loading && stories.length === 0 && debouncedSearch.trim() && (
-        <p className="page-subtitle">{t('dataInsights.noMatches')}</p>
-      )}
-
-      {!loading && stories.length === 0 && !debouncedSearch.trim() && (
-        <EmptyState
-          icon={<Sparkles size={48} strokeWidth={1} />}
-          title={t('dataInsights.empty')}
-          description={t('dataInsights.subtitle')}
-          action={
-            <button type="button" className="btn btn-primary" onClick={openCreate}>
-              <Plus size={18} aria-hidden />
-              <span>{t('dataInsights.newStory')}</span>
-            </button>
-          }
-        />
-      )}
-
-      {!loading && stories.length > 0 && (
-        <div className="ds-resource-list-grid">
-          {stories.map((story) => {
-            const sources = story.sources.map((s) => s.label);
-            return (
-              <Link
-                key={story.id}
-                to={`/data-insights/${story.id}`}
-                className="ds-resource-list-card"
+        {!loading && stories.length === 0 && !debouncedSearch.trim() && (
+          <EmptyState
+            icon={<Sparkles size={48} strokeWidth={1} />}
+            title={t("dataInsights.empty")}
+            description={t("dataInsights.subtitle")}
+            action={
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={openCreate}
               >
-                <div className="ds-resource-list-card-top">
-                  <div className="ds-resource-list-icon">
-                    <Sparkles size={28} strokeWidth={1.5} />
-                  </div>
-                </div>
-                <h3>{story.name}</h3>
-                <p
-                  className="ds-resource-list-desc"
-                  title={story.question?.trim() || undefined}
+                <Plus size={18} aria-hidden />
+                <span>{t("dataInsights.newStory")}</span>
+              </button>
+            }
+          />
+        )}
+
+        {!loading && stories.length > 0 && (
+          <div className="ds-resource-list-grid">
+            {stories.map((story) => {
+              const sources = story.sources.map((s) => s.label);
+              return (
+                <Link
+                  key={story.id}
+                  to={`/data-insights/${story.id}`}
+                  className="ds-resource-list-card"
                 >
-                  {story.question || t('dataInsights.noQuestion')}
-                </p>
-                <div className="ds-resource-list-meta">
-                  <StatusChip tone={story.status === 'ready' ? 'ok' : 'neutral'}>
-                    {t(`dataInsights.status_${story.status}`, { defaultValue: story.status })}
-                  </StatusChip>
-                  <span>{t('dataInsights.findingCount', { count: story.finding_count })}</span>
-                  {sources.length > 0 && <span>{sources.join(' + ')}</span>}
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      )}
+                  <div className="ds-resource-list-card-top">
+                    <div className="ds-resource-list-icon">
+                      <Sparkles size={28} strokeWidth={1.5} />
+                    </div>
+                  </div>
+                  <h3>{story.name}</h3>
+                  <p
+                    className="ds-resource-list-desc"
+                    title={story.question?.trim() || undefined}
+                  >
+                    {story.question || t("dataInsights.noQuestion")}
+                  </p>
+                  <div className="ds-resource-list-meta">
+                    <StatusChip
+                      tone={story.status === "ready" ? "ok" : "neutral"}
+                    >
+                      {t(`dataInsights.status_${story.status}`, {
+                        defaultValue: story.status,
+                      })}
+                    </StatusChip>
+                    <span>
+                      {t("dataInsights.findingCount", {
+                        count: story.finding_count,
+                      })}
+                    </span>
+                    {sources.length > 0 && <span>{sources.join(" + ")}</span>}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </ListPage>
 
       <Dialog
         open={showForm}
         onClose={() => !submitting && setShowForm(false)}
         closeDisabled={submitting}
-        title={t('dataInsights.newStory')}
-        closeAriaLabel={t('shared.cancel')}
+        title={t("dataInsights.newStory")}
+        closeAriaLabel={t("shared.cancel")}
         size="sm"
         footer={
           <>
@@ -178,7 +203,7 @@ export function DataInsightsPage() {
               onClick={() => !submitting && setShowForm(false)}
               disabled={submitting}
             >
-              {t('shared.cancel')}
+              {t("shared.cancel")}
             </button>
             <button
               type="button"
@@ -186,22 +211,22 @@ export function DataInsightsPage() {
               onClick={() => void handleCreate()}
               disabled={!name.trim() || submitting}
             >
-              {submitting ? t('shared.saving') : t('shared.create')}
+              {submitting ? t("shared.saving") : t("shared.create")}
             </button>
           </>
         }
       >
-        <FormField label={t('dataInsights.storyName')}>
+        <FormField label={t("dataInsights.storyName")}>
           <input value={name} onChange={(e) => setName(e.target.value)} />
         </FormField>
-        <FormField label={t('dataInsights.question')}>
+        <FormField label={t("dataInsights.question")}>
           <input
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder={t('dataInsights.questionPlaceholder')}
+            placeholder={t("dataInsights.questionPlaceholder")}
           />
         </FormField>
       </Dialog>
-    </div>
+    </>
   );
 }
