@@ -516,7 +516,7 @@ export function DocumentChannelSettings() {
                     <select
                       value={field.object_type_id ?? ''}
                       onChange={(e) => updateSchemaField(i, { object_type_id: e.target.value || undefined })}
-                      className="dcs-schema-select dcs-schema-object-type dcs-schema-select--stacked"
+                      className="dcs-schema-select dcs-schema-select--stacked"
                     >
                       <option value="">{t('settings.selectObjectType')}</option>
                       {masterDataObjectTypes.map((ot) => (

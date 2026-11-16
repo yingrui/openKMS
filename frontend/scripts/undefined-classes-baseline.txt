@@ -5,10 +5,7 @@ src/pages/connectors/ConnectorFormFields.tsx uses .connector-input-boolean
 src/pages/connectors/ConnectorOutputDatasetsFields.tsx uses .connector-output-datasets-fields
 src/pages/console/data/ConsoleDataSecurityIssues.tsx uses .console-group-access
 src/pages/console/permissions/ConsolePermissionManagement.tsx uses .console-perm-onboarding-missing
-src/pages/documents/DocumentChannelSettings.tsx uses .dcs-schema-object-type
 src/pages/documents/DocumentDetail.loading.tsx uses .document-detail-loading-split
 src/pages/evaluation/EvaluationDatasetDetail.tsx uses .eval-detail-section
 src/pages/function-editor/FunctionEditorWorkspacePage.tsx uses .function-editor-workspace__schema-field
-src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-col-models
-src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-section
 src/pages/wiki/WikiSpaceSettings.modals.tsx uses .wiki-space-settings-vault-options

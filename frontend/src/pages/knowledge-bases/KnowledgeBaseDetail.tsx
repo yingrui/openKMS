@@ -1363,7 +1363,7 @@ export function KnowledgeBaseDetail() {
 
         {/* ===== SETTINGS TAB ===== */}
         {activeTab === 'settings' && (
-          <section className="kb-section kb-settings-section">
+          <section className="kb-section">
             <h2 id="kb-settings-heading" className="kb-settings-page-title">
               {t('detail.settingsTitle')}
             </h2>
@@ -1413,7 +1413,7 @@ export function KnowledgeBaseDetail() {
 
             <div className="kb-settings-form">
               <div className="kb-settings-layout">
-                <div className="kb-settings-col kb-settings-col-models">
+                <div className="kb-settings-col">
                   <label>
                     <span>{t('detail.embeddingModel')}</span>
                     <select value={settingsEmbeddingModelId} onChange={(e) => setSettingsEmbeddingModelId(e.target.value)}>
