@@ -77,7 +77,7 @@ export function Home() {
   };
 
   return (
-    <div className="home home--operations app-page-shell">
+    <div className="home--operations app-page-shell">
       {hubLoading && (
         <p className="home-muted home-ops-loading">
           <Loader2 className="home-ops-spinner" size={18} aria-hidden />
@@ -177,7 +177,7 @@ export function Home() {
       ) : null}
 
       {hasApps && (
-        <section className="home-apps app-page-section" aria-label={t('appsHeading')}>
+        <section className="app-page-section" aria-label={t('appsHeading')}>
           <header className="home-apps-header">
             {showWelcome || agentsEnabled ? (
               <h2 className="home-section-heading">{t('appsHeading')}</h2>

@@ -52,7 +52,7 @@ export function AppCatalogGrid({ variant, modules, onSelect }: AppCatalogGridPro
   }
 
   return (
-    <div className="app-catalog--home">
+    <div>
       <div className="app-catalog-grid--home">
         {modules.map(renderItem)}
       </div>

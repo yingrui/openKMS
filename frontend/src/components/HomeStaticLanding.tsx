@@ -84,7 +84,7 @@ export function HomeStaticLanding({ onSignIn }: { onSignIn: () => void }) {
   );
 
   return (
-    <div className="home home--public">
+    <div>
       <div className="home-landing">
         <section className="home-hero">
           <h1 className="home-hero-title">{t('heroTitle')}</h1>

@@ -1,8 +1,5 @@
 # Classes used in JSX that no stylesheet defines — accepted debt, not permission.
 # Each one styles nothing: either dead markup, or a real gap. This file only shrinks.
-src/components/HomeStaticLanding.tsx uses .home
-src/components/HomeStaticLanding.tsx uses .home--public
-src/components/Layout/AppCatalogGrid.tsx uses .app-catalog--home
 src/components/Layout/UserMenu.tsx uses .user-menu-login-label
 src/components/agents/AgentsPageSkeleton.tsx uses .page
 src/components/agents/SessionReviewEventCard.tsx uses .sreview-btn--edit
@@ -11,8 +8,6 @@ src/components/channels/ChannelTreeManager.tsx uses .channel-tree-item-li
 src/components/comments/CommentThreadItem.tsx uses .comment-thread-item__rank
 src/components/wiki/WikiPagesTree.tsx uses .wiki-pages-tree-icon-file
 src/pages/GlobalSearch.tsx uses .global-search-tab-text
-src/pages/Home.tsx uses .home
-src/pages/Home.tsx uses .home-apps
 src/pages/agents/AgentSkillSettings.tsx uses .agent-skill-settings
 src/pages/agents/ProjectSettings.tsx uses .project-settings-skills-tab
 src/pages/agents/SessionReviewPage.tsx uses .sreview-btn--edit
