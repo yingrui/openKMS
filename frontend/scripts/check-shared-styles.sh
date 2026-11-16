@@ -15,6 +15,10 @@ report() {
   status=1
 }
 
+# --- 0. Undefined custom properties -------------------------------------------
+# `var(--x)` with no definition does not fall back to a theme colour: fill goes black, stroke disappears.
+python3 scripts/check-undefined-tokens.py || status=1
+
 # --- 1. Cross-page stylesheet imports -----------------------------------------
 # Anything used by two areas belongs in src/styles/ under a neutral name.
 # Keep this allowlist empty; do not re-introduce page→page SCSS imports.

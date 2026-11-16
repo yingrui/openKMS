@@ -17,6 +17,22 @@
   --color-muted: var(--color-text-muted);
   --color-fg: var(--color-text);
   --color-surface: var(--color-bg-elevated);
+  /* Aliases for names page sheets used before they existed here. They are not new colours: an undefined
+     `var(--x)` does not fall back to a theme colour, it falls back to the property's initial value — a
+     `fill` becomes black, a `stroke` disappears. `check-undefined-tokens` keeps the set closed. */
+  --color-bg-surface: var(--color-bg-elevated);
+  --color-bg-hover: var(--color-bg-muted);
+  --color-surface-alt: var(--color-bg-muted);
+  --color-surface-muted: var(--color-bg-muted);
+  --color-surface-sunken: var(--color-bg-muted);
+  --color-text-tertiary: var(--color-text-muted);
+  --color-border-subtle: var(--color-border);
+  --color-primary: var(--color-accent);
+  --color-accent-contrast: #ffffff;
+  --color-warning-subtle: var(--color-warning-bg);
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  --font-size-sm: var(--text-sm);
+  --font-size-xs: var(--text-xs);
   --color-bg-subtle: var(--color-bg-muted);
 
   --color-accent: #0d9488;
