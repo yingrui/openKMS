@@ -1,32 +1,44 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Pencil, Trash2, Loader2, Database, Users, Box } from 'lucide-react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
-import { Dialog, FormField, EmptyState } from '../../styles/design-system';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Loader2,
+  Database,
+  Users,
+  Box,
+} from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { Dialog, FormField, EmptyState } from "../../styles/design-system";
 import {
   fetchObjectTypes,
   deleteObjectType,
   indexObjectTypesToNeo4j,
   indexObjectTypeToNeo4j,
   type ObjectTypeResponse,
-} from '../../data/ontologyApi';
-import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
-import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
+} from "../../data/ontologyApi";
+import { fetchDatasets, type DatasetResponse } from "../../data/datasetsApi";
+import {
+  fetchAllDataSources,
+  type DataSourceResponse,
+} from "../../data/dataSourcesApi";
 import {
   fetchOntologyGroups,
   type OntologyGroupResponse,
-} from '../../data/ontologyFunctionsApi';
-import { useConfirm } from '../../contexts/ConfirmContext';
-import { ObjectTypeCreateWizard } from '../ontology-manager/ObjectTypeCreateWizard';
-import './ontology-admin.scss';
+} from "../../data/ontologyFunctionsApi";
+import { useConfirm } from "../../contexts/ConfirmContext";
+import { ObjectTypeCreateWizard } from "../ontology-manager/ObjectTypeCreateWizard";
+import "./ontology-admin.scss";
+import { ListPage } from "../../styles/design-system";
 
 export function ObjectTypesPage() {
-  const { t } = useTranslation('ontology');
+  const { t } = useTranslation("ontology");
   const navigate = useNavigate();
   const confirm = useConfirm();
   const [searchParams, setSearchParams] = useSearchParams();
-  const filterGroupId = searchParams.get('group') ?? '';
+  const filterGroupId = searchParams.get("group") ?? "";
   const [types, setTypes] = useState<ObjectTypeResponse[]>([]);
   const [groups, setGroups] = useState<OntologyGroupResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,19 +47,21 @@ export function ObjectTypesPage() {
   const [dataSources, setDataSources] = useState<DataSourceResponse[]>([]);
   const [showIndexDialog, setShowIndexDialog] = useState(false);
   const [showIndexOneDialog, setShowIndexOneDialog] = useState(false);
-  const [indexOneType, setIndexOneType] = useState<ObjectTypeResponse | null>(null);
-  const [indexNeo4jId, setIndexNeo4jId] = useState('');
+  const [indexOneType, setIndexOneType] = useState<ObjectTypeResponse | null>(
+    null,
+  );
+  const [indexNeo4jId, setIndexNeo4jId] = useState("");
   const [indexing, setIndexing] = useState(false);
   const [indexingTypeId, setIndexingTypeId] = useState<string | null>(null);
 
-  const neo4jDataSources = dataSources.filter((ds) => ds.kind === 'neo4j');
+  const neo4jDataSources = dataSources.filter((ds) => ds.kind === "neo4j");
 
   const setFilterGroupId = (id: string) => {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        if (id) next.set('group', id);
-        else next.delete('group');
+        if (id) next.set("group", id);
+        else next.delete("group");
         return next;
       },
       { replace: true },
@@ -76,7 +90,7 @@ export function ObjectTypesPage() {
       setDataSources(dsSourcesRes);
       setGroups(groupsRes);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('objectTypes.loadFailed'));
+      toast.error(e instanceof Error ? e.message : t("objectTypes.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -93,10 +107,12 @@ export function ObjectTypesPage() {
     setIndexing(true);
     try {
       const res = await indexObjectTypesToNeo4j(indexNeo4jId);
-      toast.success(`Indexed ${res.object_types_indexed} object types, ${res.nodes_created} nodes created`);
+      toast.success(
+        `Indexed ${res.object_types_indexed} object types, ${res.nodes_created} nodes created`,
+      );
       setShowIndexDialog(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Index failed');
+      toast.error(e instanceof Error ? e.message : "Index failed");
     } finally {
       setIndexing(false);
     }
@@ -107,11 +123,13 @@ export function ObjectTypesPage() {
     setIndexingTypeId(indexOneType.id);
     try {
       const res = await indexObjectTypeToNeo4j(indexOneType.id, indexNeo4jId);
-      toast.success(`Indexed ${res.object_types_indexed} object type, ${res.nodes_created} nodes created`);
+      toast.success(
+        `Indexed ${res.object_types_indexed} object type, ${res.nodes_created} nodes created`,
+      );
       setShowIndexOneDialog(false);
       setIndexOneType(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Index failed');
+      toast.error(e instanceof Error ? e.message : "Index failed");
     } finally {
       setIndexingTypeId(null);
     }
@@ -120,96 +138,113 @@ export function ObjectTypesPage() {
   const handleDelete = async (id: string) => {
     if (
       !(await confirm({
-        title: t('objectTypes.deleteTitle'),
-        message: t('objectTypes.deleteConfirm'),
-        confirmLabel: t('shared.delete'),
+        title: t("objectTypes.deleteTitle"),
+        message: t("objectTypes.deleteConfirm"),
+        confirmLabel: t("shared.delete"),
         danger: true,
       }))
     )
       return;
     try {
       await deleteObjectType(id);
-      toast.success(t('objectTypes.deleted'));
+      toast.success(t("objectTypes.deleted"));
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('objectTypes.saveFailed'));
+      toast.error(e instanceof Error ? e.message : t("objectTypes.saveFailed"));
     }
   };
 
   return (
-    <div className="ontology-admin">
-      <div className="page-header">
-        <div>
-          <h1>{t('objectTypes.title')}</h1>
-          <p className="page-subtitle">{t('objectTypes.subtitle')}</p>
-        </div>
-        <div className="page-header-actions">
-          {neo4jDataSources.length > 0 && (
+    <>
+      <ListPage
+        title={t("objectTypes.title")}
+        subtitle={t("objectTypes.subtitle")}
+        actions={
+          <>
+            {neo4jDataSources.length > 0 && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                title={t("objectTypes.indexHeading")}
+                disabled={
+                  indexing ||
+                  indexingTypeId !== null ||
+                  showIndexOneDialog ||
+                  showIndexDialog
+                }
+                onClick={() => {
+                  setIndexNeo4jId(neo4jDataSources[0]?.id || "");
+                  setShowIndexDialog(true);
+                }}
+              >
+                <Database size={18} />
+                <span>{t("objectTypes.index")}</span>
+              </button>
+            )}
             <button
               type="button"
-              className="btn btn-secondary"
-              title={t('objectTypes.indexHeading')}
-              disabled={indexing || indexingTypeId !== null || showIndexOneDialog || showIndexDialog}
-              onClick={() => {
-                setIndexNeo4jId(neo4jDataSources[0]?.id || '');
-                setShowIndexDialog(true);
-              }}
+              className="btn btn-primary"
+              onClick={openCreate}
             >
-              <Database size={18} />
-              <span>{t('objectTypes.index')}</span>
+              <Plus size={18} />
+              <span>{t("objectTypes.create")}</span>
             </button>
-          )}
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            <Plus size={18} />
-            <span>{t('objectTypes.create')}</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="ontology-admin-content">
-        {!loading && types.length > 0 && groups.length > 0 && (
-          <div className="ds-list-toolbar">
-            <label className="ds-filter">
-              {t('objectTypes.filterByGroup')}
-              <select className="ds-control"
-                value={filterGroupId}
-                onChange={(e) => setFilterGroupId(e.target.value)}
-                aria-label={t('objectTypes.filterByGroup')}
-              >
-                <option value="">{t('objectTypes.filterAllGroups')}</option>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.display_name} ({g.object_type_ids.length})
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        )}
-
+          </>
+        }
+        toolbar={
+          !loading && types.length > 0 && groups.length > 0 ? (
+            <div className="ds-list-toolbar">
+              <label className="ds-filter">
+                {t("objectTypes.filterByGroup")}
+                <select
+                  className="ds-control"
+                  value={filterGroupId}
+                  onChange={(e) => setFilterGroupId(e.target.value)}
+                  aria-label={t("objectTypes.filterByGroup")}
+                >
+                  <option value="">{t("objectTypes.filterAllGroups")}</option>
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.display_name} ({g.object_type_ids.length})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null
+        }
+      >
         {loading ? (
           <div className="ds-loading">
             <Loader2 size={32} className="ds-loading__spinner" />
-            <p>{t('shared.loading')}</p>
+            <p>{t("shared.loading")}</p>
           </div>
         ) : types.length === 0 ? (
           <EmptyState
             icon={<Box size={32} aria-hidden />}
-            title={t('objectTypes.emptyList')}
+            title={t("objectTypes.emptyList")}
             action={
-              <button type="button" className="btn btn-primary" onClick={openCreate}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={openCreate}
+              >
                 <Plus size={16} aria-hidden />
-                {t('objectTypes.create')}
+                {t("objectTypes.create")}
               </button>
             }
           />
         ) : filteredTypes.length === 0 ? (
           <EmptyState
             icon={<Box size={32} aria-hidden />}
-            title={t('objectTypes.emptyNoGroupMatch')}
+            title={t("objectTypes.emptyNoGroupMatch")}
             action={
-              <button type="button" className="btn btn-secondary" onClick={() => setFilterGroupId('')}>
-                {t('objectTypes.filterAllGroups')}
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setFilterGroupId("")}
+              >
+                {t("objectTypes.filterAllGroups")}
               </button>
             }
           />
@@ -218,14 +253,14 @@ export function ObjectTypesPage() {
             <table className="ds-table">
               <thead>
                 <tr>
-                  <th>{t('objectTypes.name')}</th>
-                  <th>{t('objectTypes.description')}</th>
-                  <th>{t('objectTypes.dataset')}</th>
-                  <th>{t('objectTypes.masterData')}</th>
-                  <th>{t('objectTypes.displayProperty')}</th>
-                  <th>{t('objectTypes.properties')}</th>
-                  <th>{t('objectTypes.instances')}</th>
-                  <th className="ds-table-actions">{t('shared.actions')}</th>
+                  <th>{t("objectTypes.name")}</th>
+                  <th>{t("objectTypes.description")}</th>
+                  <th>{t("objectTypes.dataset")}</th>
+                  <th>{t("objectTypes.masterData")}</th>
+                  <th>{t("objectTypes.displayProperty")}</th>
+                  <th>{t("objectTypes.properties")}</th>
+                  <th>{t("objectTypes.instances")}</th>
+                  <th className="ds-table-actions">{t("shared.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -239,27 +274,36 @@ export function ObjectTypesPage() {
                         <strong>{row.name}</strong>
                       </Link>
                     </td>
-                    <td>{row.description || '—'}</td>
-                    <td>{row.dataset_name || '—'}</td>
-                    <td>{row.is_master_data ? 'Yes' : '—'}</td>
-                    <td>{row.display_property || '—'}</td>
+                    <td>{row.description || "—"}</td>
+                    <td>{row.dataset_name || "—"}</td>
+                    <td>{row.is_master_data ? "Yes" : "—"}</td>
+                    <td>{row.display_property || "—"}</td>
                     <td>{(row.properties || []).length}</td>
                     <td>{row.instance_count}</td>
                     <td className="ds-table-actions">
                       <div className="ds-table-btns">
-                        {(row.dataset_id || row.instance_count > 0) && neo4jDataSources.length > 0 ? (
+                        {(row.dataset_id || row.instance_count > 0) &&
+                        neo4jDataSources.length > 0 ? (
                           <button
                             type="button"
-                            title={t('objectTypes.indexHeading')}
-                            disabled={indexing || indexingTypeId !== null || showIndexOneDialog || showIndexDialog}
+                            title={t("objectTypes.indexHeading")}
+                            disabled={
+                              indexing ||
+                              indexingTypeId !== null ||
+                              showIndexOneDialog ||
+                              showIndexDialog
+                            }
                             onClick={() => {
                               setIndexOneType(row);
-                              setIndexNeo4jId(neo4jDataSources[0]?.id || '');
+                              setIndexNeo4jId(neo4jDataSources[0]?.id || "");
                               setShowIndexOneDialog(true);
                             }}
                           >
                             {indexingTypeId === row.id ? (
-                              <Loader2 size={16} className="ds-loading__spinner" />
+                              <Loader2
+                                size={16}
+                                className="ds-loading__spinner"
+                              />
                             ) : (
                               <Database size={16} />
                             )}
@@ -267,21 +311,25 @@ export function ObjectTypesPage() {
                         ) : null}
                         <Link
                           to={`/ontology-manager/object-types/${row.id}/sharing`}
-                          title={t('objectTypes.sharing')}
+                          title={t("objectTypes.sharing")}
                           className="ds-table-icon-link"
                         >
                           <Users size={16} />
                         </Link>
                         <button
                           type="button"
-                          title={t('objectTypes.properties')}
-                          onClick={() => navigate(`/ontology-manager/object-types/${row.id}/properties`)}
+                          title={t("objectTypes.properties")}
+                          onClick={() =>
+                            navigate(
+                              `/ontology-manager/object-types/${row.id}/properties`,
+                            )
+                          }
                         >
                           <Pencil size={16} />
                         </button>
                         <button
                           type="button"
-                          title={t('shared.delete')}
+                          title={t("shared.delete")}
                           onClick={() => handleDelete(row.id)}
                         >
                           <Trash2 size={16} />
@@ -294,7 +342,7 @@ export function ObjectTypesPage() {
             </table>
           </div>
         )}
-      </div>
+      </ListPage>
 
       <ObjectTypeCreateWizard
         open={showCreateWizard}
@@ -307,74 +355,81 @@ export function ObjectTypesPage() {
 
       <Dialog
         open={showIndexDialog}
-        onClose={() => !indexing && !indexingTypeId && setShowIndexDialog(false)}
+        onClose={() =>
+          !indexing && !indexingTypeId && setShowIndexDialog(false)
+        }
         closeDisabled={indexing || indexingTypeId !== null}
-        title={t('objectTypes.indexObjectsTitle')}
+        title={t("objectTypes.indexObjectsTitle")}
         closeAriaLabel="Close"
         size="md"
         footer={
           <>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => !indexing && !indexingTypeId && setShowIndexDialog(false)}
-                disabled={indexing || indexingTypeId !== null}
-              >
-                {t('objectTypes.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleIndexConfirm}
-                disabled={!indexNeo4jId || indexing || indexingTypeId !== null}
-              >
-                {indexing ? (
-                  <>
-                    <Loader2 size={18} className="ds-loading__spinner" />
-                    <span>{t('objectTypes.indexing')}</span>
-                  </>
-                ) : (
-                  'Confirm & Index'
-                )}
-              </button>
-            
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() =>
+                !indexing && !indexingTypeId && setShowIndexDialog(false)
+              }
+              disabled={indexing || indexingTypeId !== null}
+            >
+              {t("objectTypes.cancel")}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleIndexConfirm}
+              disabled={!indexNeo4jId || indexing || indexingTypeId !== null}
+            >
+              {indexing ? (
+                <>
+                  <Loader2 size={18} className="ds-loading__spinner" />
+                  <span>{t("objectTypes.indexing")}</span>
+                </>
+              ) : (
+                "Confirm & Index"
+              )}
+            </button>
           </>
         }
       >
-              <p className="page-subtitle">
-                Index all object types that have a linked dataset or stored instances to the selected Neo4j database as
-                nodes.
-              </p>
-              <FormField label="Neo4j Data Source">
-                <select className="ds-control"
-                  value={indexNeo4jId}
-                  onChange={(e) => setIndexNeo4jId(e.target.value)}
-                  disabled={indexing || indexingTypeId !== null}
-                >
-                  <option value="">{t('objectTypes.selectPlaceholder')}</option>
-                  {neo4jDataSources.map((ds) => (
-                    <option key={ds.id} value={ds.id}>
-                      {ds.name} ({ds.host}:{ds.port ?? 7687})
-                    </option>
-                  ))}
-                </select>
-</FormField>
-            
+        <p className="page-subtitle">
+          Index all object types that have a linked dataset or stored instances
+          to the selected Neo4j database as nodes.
+        </p>
+        <FormField label="Neo4j Data Source">
+          <select
+            className="ds-control"
+            value={indexNeo4jId}
+            onChange={(e) => setIndexNeo4jId(e.target.value)}
+            disabled={indexing || indexingTypeId !== null}
+          >
+            <option value="">{t("objectTypes.selectPlaceholder")}</option>
+            {neo4jDataSources.map((ds) => (
+              <option key={ds.id} value={ds.id}>
+                {ds.name} ({ds.host}:{ds.port ?? 7687})
+              </option>
+            ))}
+          </select>
+        </FormField>
       </Dialog>
-            {showIndexOneDialog && indexOneType ? (
-<Dialog
-        open={showIndexOneDialog && Boolean(indexOneType)}
-        onClose={() => {
-          if (indexingTypeId) return;
-          setShowIndexOneDialog(false);
-          setIndexOneType(null);
-        }}
-        closeDisabled={Boolean(indexingTypeId)}
-        title={indexOneType.dataset_id ? 'Index from linked dataset' : 'Index from saved instances'}
-        closeAriaLabel="Close"
-        size="md"
-        footer={
-          <>
+      {showIndexOneDialog && indexOneType ? (
+        <Dialog
+          open={showIndexOneDialog && Boolean(indexOneType)}
+          onClose={() => {
+            if (indexingTypeId) return;
+            setShowIndexOneDialog(false);
+            setIndexOneType(null);
+          }}
+          closeDisabled={Boolean(indexingTypeId)}
+          title={
+            indexOneType.dataset_id
+              ? "Index from linked dataset"
+              : "Index from saved instances"
+          }
+          closeAriaLabel="Close"
+          size="md"
+          footer={
+            <>
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -385,7 +440,7 @@ export function ObjectTypesPage() {
                 }}
                 disabled={!!indexingTypeId}
               >
-                {t('objectTypes.cancel')}
+                {t("objectTypes.cancel")}
               </button>
               <button
                 type="button"
@@ -396,58 +451,66 @@ export function ObjectTypesPage() {
                 {indexingTypeId ? (
                   <>
                     <Loader2 size={18} className="ds-loading__spinner" />
-                    <span>{t('objectTypes.indexing')}</span>
+                    <span>{t("objectTypes.indexing")}</span>
                   </>
                 ) : indexOneType.dataset_id ? (
-                  'Index from dataset'
+                  "Index from dataset"
                 ) : (
-                  'Index instances'
+                  "Index instances"
                 )}
               </button>
-            
-          </>
-        }
-      >
-              {indexOneType.dataset_id ? (
-                <>
-                  <p className="console-modal-index-lead">
-                    <strong>{indexOneType.name}</strong> is tied to a data table. Choose where to write graph nodes,
-                    then confirm.
-                  </p>
-                  <div className="console-modal-index-callout console-modal-index-callout--dataset" role="note">
-                    Rows are read from the linked table and merged into the knowledge graph using the same property
-                    names as columns.
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="console-modal-index-lead">
-                    <strong>{indexOneType.name}</strong> is not tied to a data table. Indexing uses{' '}
-                    <strong>{indexOneType.instance_count}</strong>{' '}
-                    {indexOneType.instance_count === 1 ? 'instance' : 'instances'} you saved in the app.
-                  </p>
-                  <div className="console-modal-index-callout console-modal-index-callout--instances" role="note">
-                    Each saved instance becomes one node in the graph. Property keys match what you stored on each
-                    instance.
-                  </div>
-                </>
-              )}
-              <FormField label="Neo4j Data Source">
-                <select className="ds-control"
-                  value={indexNeo4jId}
-                  onChange={(e) => setIndexNeo4jId(e.target.value)}
-                  disabled={!!indexingTypeId}
-                >
-                  <option value="">{t('objectTypes.selectPlaceholder')}</option>
-                  {neo4jDataSources.map((ds) => (
-                    <option key={ds.id} value={ds.id}>
-                      {ds.name} ({ds.host}:{ds.port ?? 7687})
-                    </option>
-                  ))}
-                </select>
-</FormField>
-            
-      </Dialog>      ) : null}
-    </div>
+            </>
+          }
+        >
+          {indexOneType.dataset_id ? (
+            <>
+              <p className="console-modal-index-lead">
+                <strong>{indexOneType.name}</strong> is tied to a data table.
+                Choose where to write graph nodes, then confirm.
+              </p>
+              <div
+                className="console-modal-index-callout console-modal-index-callout--dataset"
+                role="note"
+              >
+                Rows are read from the linked table and merged into the
+                knowledge graph using the same property names as columns.
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="console-modal-index-lead">
+                <strong>{indexOneType.name}</strong> is not tied to a data
+                table. Indexing uses{" "}
+                <strong>{indexOneType.instance_count}</strong>{" "}
+                {indexOneType.instance_count === 1 ? "instance" : "instances"}{" "}
+                you saved in the app.
+              </p>
+              <div
+                className="console-modal-index-callout console-modal-index-callout--instances"
+                role="note"
+              >
+                Each saved instance becomes one node in the graph. Property keys
+                match what you stored on each instance.
+              </div>
+            </>
+          )}
+          <FormField label="Neo4j Data Source">
+            <select
+              className="ds-control"
+              value={indexNeo4jId}
+              onChange={(e) => setIndexNeo4jId(e.target.value)}
+              disabled={!!indexingTypeId}
+            >
+              <option value="">{t("objectTypes.selectPlaceholder")}</option>
+              {neo4jDataSources.map((ds) => (
+                <option key={ds.id} value={ds.id}>
+                  {ds.name} ({ds.host}:{ds.port ?? 7687})
+                </option>
+              ))}
+            </select>
+          </FormField>
+        </Dialog>
+      ) : null}
+    </>
   );
 }

@@ -7,4 +7,3 @@ src/pages/console/kubernetes/ConsoleKubernetes.tsx
 src/pages/console/kubernetes/ConsoleKubernetesDetail.tsx
 src/pages/function-editor/FunctionEditorListPage.tsx
 src/pages/ontology/LinkTypesPage.tsx
-src/pages/ontology/ObjectTypesPage.tsx
