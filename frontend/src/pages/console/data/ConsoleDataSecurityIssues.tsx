@@ -1,11 +1,12 @@
-import { Fragment, useCallback, useEffect, useState } from 'react';
-import { useAsyncData } from '../../../hooks/useAsyncData';
-import { Link, Navigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
-import { useAuth } from '../../../contexts/AuthContext';
-import { PERM_CONSOLE_GROUPS } from '../../../config/permissions';
-import { ResourceSharePanel } from '../../../components/ResourceSharePanel';
+import { Fragment, useCallback, useEffect, useState } from "react";
+import { useAsyncData } from "../../../hooks/useAsyncData";
+import { Link, Navigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { useAuth } from "../../../contexts/AuthContext";
+import { PERM_CONSOLE_GROUPS } from "../../../config/permissions";
+import { ResourceSharePanel } from "../../../components/ResourceSharePanel";
+import { ListPage } from "../../../styles/design-system";
 import {
   fetchResourceAclIssuesPage,
   fetchResourceAclIssuesSummary,
@@ -14,8 +15,8 @@ import {
   type ResourceAclIssueCode,
   type ResourceAclIssueItem,
   type ResourceAclIssuesSummaryOut,
-} from '../../../data/securityAdminApi';
-import './ConsoleDataSecurityIssues.scss';
+} from "../../../data/securityAdminApi";
+import "./ConsoleDataSecurityIssues.scss";
 
 const PAGE_SIZE_OPTIONS = [5, 25, 50, 100] as const;
 
@@ -24,42 +25,47 @@ function resourceKey(item: ResourceAclIssueItem): string {
 }
 
 function groupLabels(item: ResourceAclIssueItem, ids: string[]): string {
-  if (!ids.length) return '—';
+  if (!ids.length) return "—";
   return ids
-    .map((id) => item.grants.find((g) => g.grantee_id === id)?.grantee_label ?? id)
-    .join(', ');
+    .map(
+      (id) => item.grants.find((g) => g.grantee_id === id)?.grantee_label ?? id,
+    )
+    .join(", ");
 }
 
 function issueDetail(
   item: ResourceAclIssueItem,
   kind: ResourceAclIssueCode,
-  notAssigned: string
+  notAssigned: string,
 ): string {
   switch (kind) {
-    case 'others_manage':
-    case 'others_write':
-    case 'others_read':
-      return item.others_permissions ?? '—';
-    case 'implicit_others':
-      return item.inherited_others_permissions ?? '—';
-    case 'unknown_group':
+    case "others_manage":
+    case "others_write":
+    case "others_read":
+      return item.others_permissions ?? "—";
+    case "implicit_others":
+      return item.inherited_others_permissions ?? "—";
+    case "unknown_group":
       return groupLabels(item, item.broken_group_ids);
-    case 'empty_group':
+    case "empty_group":
       return groupLabels(item, item.empty_group_ids);
-    case 'missing_owner':
+    case "missing_owner":
       return notAssigned;
-    case 'unknown_owner':
-    case 'owner_no_manage': {
-      const owner = item.grants.find((g) => g.grantee_type === 'user');
-      return owner?.grantee_label ?? owner?.grantee_id ?? item.owner_label ?? '—';
+    case "unknown_owner":
+    case "owner_no_manage": {
+      const owner = item.grants.find((g) => g.grantee_type === "user");
+      return (
+        owner?.grantee_label ?? owner?.grantee_id ?? item.owner_label ?? "—"
+      );
     }
-    case 'owner_no_permissions': {
-      const owner = item.grants.find((g) => g.grantee_type === 'user');
-      const name = owner?.grantee_label ?? owner?.grantee_id ?? item.owner_label ?? '—';
-      return `${name} (${item.owner_permissions ?? '—'})`;
+    case "owner_no_permissions": {
+      const owner = item.grants.find((g) => g.grantee_type === "user");
+      const name =
+        owner?.grantee_label ?? owner?.grantee_id ?? item.owner_label ?? "—";
+      return `${name} (${item.owner_permissions ?? "—"})`;
     }
     default:
-      return '—';
+      return "—";
   }
 }
 
@@ -80,10 +86,14 @@ function IssueTable({
   issueKind,
   loading,
 }: IssueTableProps) {
-  const { t } = useTranslation('console');
+  const { t } = useTranslation("console");
 
   if (loading && items.length === 0) {
-    return <p className="console-group-access-muted">{t('dataSecurityIssues.loading')}</p>;
+    return (
+      <p className="console-group-access-muted">
+        {t("dataSecurityIssues.loading")}
+      </p>
+    );
   }
 
   if (!items.length) {
@@ -92,59 +102,71 @@ function IssueTable({
 
   return (
     <div className="ds-table-wrap">
-    <table className="console-dso-table">
-      <thead>
-        <tr>
-          <th>{t('dataSecurityIssues.colType')}</th>
-          <th>{t('dataSecurityIssues.colName')}</th>
-          <th>{t('dataSecurityIssues.colDetail')}</th>
-          <th />
-        </tr>
-      </thead>
-      <tbody>
-        {items.map((item) => {
-          const key = resourceKey(item);
-          const isExpanded = expandedKey === key;
-          return (
-            <Fragment key={`${issueKind}-${key}`}>
-              <tr>
-                <td>{item.resource_type_label}</td>
-                <td>{item.resource_label}</td>
-                <td>{issueDetail(item, issueKind, t('dataSecurityIssues.notAssigned'))}</td>
-                <td className="console-dso-actions">
-                  <button type="button" className="btn-link" onClick={() => onToggleReview(key)}>
-                    {isExpanded
-                      ? t('dataSecurityIssues.hideSharing')
-                      : t('dataSecurityIssues.fixSharing')}
-                  </button>
-                  {item.share_path && (
-                    <>
-                      {' · '}
-                      <Link to={item.share_path} className="btn-link">
-                        {t('dataSecurityIssues.openInApp')}
-                      </Link>
-                    </>
-                  )}
-                </td>
-              </tr>
-              {isExpanded && (
-                <tr className="console-dso-detail-row">
-                  <td colSpan={4}>
-                    <ResourceSharePanel
-                      resourceType={item.resource_type}
-                      resourceId={item.resource_id}
-                      title={t('dataSecurityIssues.sharingPanelTitle', { name: item.resource_label })}
-                      consoleAudit
-                      onSaved={onSaved}
-                    />
+      <table className="console-dso-table">
+        <thead>
+          <tr>
+            <th>{t("dataSecurityIssues.colType")}</th>
+            <th>{t("dataSecurityIssues.colName")}</th>
+            <th>{t("dataSecurityIssues.colDetail")}</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => {
+            const key = resourceKey(item);
+            const isExpanded = expandedKey === key;
+            return (
+              <Fragment key={`${issueKind}-${key}`}>
+                <tr>
+                  <td>{item.resource_type_label}</td>
+                  <td>{item.resource_label}</td>
+                  <td>
+                    {issueDetail(
+                      item,
+                      issueKind,
+                      t("dataSecurityIssues.notAssigned"),
+                    )}
+                  </td>
+                  <td className="console-dso-actions">
+                    <button
+                      type="button"
+                      className="btn-link"
+                      onClick={() => onToggleReview(key)}
+                    >
+                      {isExpanded
+                        ? t("dataSecurityIssues.hideSharing")
+                        : t("dataSecurityIssues.fixSharing")}
+                    </button>
+                    {item.share_path && (
+                      <>
+                        {" · "}
+                        <Link to={item.share_path} className="btn-link">
+                          {t("dataSecurityIssues.openInApp")}
+                        </Link>
+                      </>
+                    )}
                   </td>
                 </tr>
-              )}
-            </Fragment>
-          );
-        })}
-      </tbody>
-    </table>
+                {isExpanded && (
+                  <tr className="console-dso-detail-row">
+                    <td colSpan={4}>
+                      <ResourceSharePanel
+                        resourceType={item.resource_type}
+                        resourceId={item.resource_id}
+                        title={t("dataSecurityIssues.sharingPanelTitle", {
+                          name: item.resource_label,
+                        })}
+                        consoleAudit
+                        onSaved={onSaved}
+                      />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -166,7 +188,7 @@ function IssuePagination({
   onPageChange,
   onPageSizeChange,
 }: IssuePaginationProps) {
-  const { t } = useTranslation('console');
+  const { t } = useTranslation("console");
   const totalPages = total > 0 ? Math.ceil(total / pageSize) : 0;
   const startRow = total > 0 ? page * pageSize + 1 : 0;
   const endRow = total > 0 ? Math.min((page + 1) * pageSize, total) : 0;
@@ -178,9 +200,15 @@ function IssuePagination({
   return (
     <div className="console-dso-pagination">
       <div className="console-dso-pagination-info">
-        <span>{t('datasetDetail.paginationRange', { start: startRow, end: endRow, total })}</span>
+        <span>
+          {t("datasetDetail.paginationRange", {
+            start: startRow,
+            end: endRow,
+            total,
+          })}
+        </span>
         <label>
-          <span>{t('datasetDetail.pageSize')}</span>
+          <span>{t("datasetDetail.pageSize")}</span>
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
@@ -201,7 +229,7 @@ function IssuePagination({
             className="btn btn-secondary btn-sm"
             onClick={() => onPageChange(0)}
             disabled={page === 0 || loading}
-            title={t('datasetDetail.firstPageTitle')}
+            title={t("datasetDetail.firstPageTitle")}
           >
             «
           </button>
@@ -211,10 +239,13 @@ function IssuePagination({
             onClick={() => onPageChange(Math.max(0, page - 1))}
             disabled={page === 0 || loading}
           >
-            {t('datasetDetail.previous')}
+            {t("datasetDetail.previous")}
           </button>
           <span className="console-dso-page-nums">
-            {t('datasetDetail.pageOf', { current: page + 1, total: totalPages })}
+            {t("datasetDetail.pageOf", {
+              current: page + 1,
+              total: totalPages,
+            })}
           </span>
           <button
             type="button"
@@ -222,14 +253,14 @@ function IssuePagination({
             onClick={() => onPageChange(Math.min(totalPages - 1, page + 1))}
             disabled={page >= totalPages - 1 || loading}
           >
-            {t('datasetDetail.next')}
+            {t("datasetDetail.next")}
           </button>
           <button
             type="button"
             className="btn btn-secondary btn-sm"
             onClick={() => onPageChange(totalPages - 1)}
             disabled={page >= totalPages - 1 || loading}
-            title={t('datasetDetail.lastPageTitle')}
+            title={t("datasetDetail.lastPageTitle")}
           >
             »
           </button>
@@ -256,7 +287,7 @@ function IssueTypeSection({
   onSummaryUpdate,
   onSaved,
 }: IssueTypeSectionProps) {
-  const { t } = useTranslation('console');
+  const { t } = useTranslation("console");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[0]);
   const [items, setItems] = useState<ResourceAclIssueItem[]>([]);
@@ -266,7 +297,11 @@ function IssueTypeSection({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchResourceAclIssuesPage(kind, pageSize, page * pageSize);
+      const res = await fetchResourceAclIssuesPage(
+        kind,
+        pageSize,
+        page * pageSize,
+      );
       setItems(res.items);
       setTotal(res.total);
       onSummaryUpdate({
@@ -274,7 +309,11 @@ function IssueTypeSection({
         by_issue: res.by_issue,
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataSecurityIssues.toastLoadFailed'));
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : t("dataSecurityIssues.toastLoadFailed"),
+      );
     } finally {
       setLoading(false);
     }
@@ -299,7 +338,9 @@ function IssueTypeSection({
   return (
     <section className="console-group-access-section">
       <h2>{t(`dataSecurityIssues.issueTypes.${kind}.heading`)}</h2>
-      <p className="console-group-access-hint">{t(`dataSecurityIssues.issueTypes.${kind}.hint`)}</p>
+      <p className="console-group-access-hint">
+        {t(`dataSecurityIssues.issueTypes.${kind}.hint`)}
+      </p>
       <IssueTable
         items={items}
         expandedKey={expandedKey}
@@ -321,34 +362,45 @@ function IssueTypeSection({
 }
 
 export function ConsoleDataSecurityIssues() {
-  const { t } = useTranslation('console');
+  const { t } = useTranslation("console");
   const { hasPermission } = useAuth();
-  const [summary, setSummary] = useState<ResourceAclIssuesSummaryOut | null>(null);
+  const [summary, setSummary] = useState<ResourceAclIssuesSummaryOut | null>(
+    null,
+  );
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
 
-  const { data: fetchedSummary, loading, error } = useAsyncData(
-    () => fetchResourceAclIssuesSummary(),
-    [refreshToken],
-  );
+  const {
+    data: fetchedSummary,
+    loading,
+    error,
+  } = useAsyncData(() => fetchResourceAclIssuesSummary(), [refreshToken]);
 
   useEffect(() => {
     if (error) {
-      toast.error(error instanceof Error ? error.message : t('dataSecurityIssues.toastLoadFailed'));
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("dataSecurityIssues.toastLoadFailed"),
+      );
     }
   }, [error, t]);
 
   // Reviews update individual counters locally, so the freshly fetched summary is adopted
   // into local state rather than used directly.
-  const [lastFetched, setLastFetched] = useState<ResourceAclIssuesSummaryOut | null>(null);
+  const [lastFetched, setLastFetched] =
+    useState<ResourceAclIssuesSummaryOut | null>(null);
   if (fetchedSummary !== lastFetched) {
     setLastFetched(fetchedSummary);
     setSummary(fetchedSummary);
   }
 
-  const handleSummaryUpdate = useCallback((next: ResourceAclIssuesSummaryOut) => {
-    setSummary(next);
-  }, []);
+  const handleSummaryUpdate = useCallback(
+    (next: ResourceAclIssuesSummaryOut) => {
+      setSummary(next);
+    },
+    [],
+  );
 
   const handleSaved = useCallback(() => {
     setRefreshToken((n) => n + 1);
@@ -363,33 +415,37 @@ export function ConsoleDataSecurityIssues() {
   }
 
   const activeCriticalKinds = RESOURCE_ACL_ISSUE_CRITICAL_ORDER.filter(
-    (code) => (summary?.by_issue[code] ?? 0) > 0
+    (code) => (summary?.by_issue[code] ?? 0) > 0,
   );
   const activeReviewKinds = RESOURCE_ACL_ISSUE_REVIEW.filter(
-    (code) => (summary?.by_issue[code] ?? 0) > 0
+    (code) => (summary?.by_issue[code] ?? 0) > 0,
   );
   const hasAclIssues = (summary?.issue_count ?? 0) > 0;
 
   return (
-    <div className="console-group-access">
-      <div className="page-header">
-        <h1>{t('dataSecurityIssues.pageTitle')}</h1>
-        <p className="page-subtitle">{t('dataSecurityIssues.subtitle')}</p>
-      </div>
-
+    <ListPage
+      title={t("dataSecurityIssues.pageTitle")}
+      subtitle={t("dataSecurityIssues.subtitle")}
+    >
       {loading && !summary ? (
-        <p className="console-group-access-muted">{t('dataSecurityIssues.loading')}</p>
+        <p className="console-group-access-muted">
+          {t("dataSecurityIssues.loading")}
+        </p>
       ) : (
         <>
           {summary && (
             <>
               {!hasAclIssues ? (
-                <p className="console-group-access-muted">{t('dataSecurityIssues.allClear')}</p>
+                <p className="console-group-access-muted">
+                  {t("dataSecurityIssues.allClear")}
+                </p>
               ) : (
                 <>
                   {hasAclIssues && (
                     <p className="console-group-access-hint">
-                      {t('dataSecurityIssues.issueSummary', { count: summary.issue_count })}
+                      {t("dataSecurityIssues.issueSummary", {
+                        count: summary.issue_count,
+                      })}
                     </p>
                   )}
 
@@ -408,10 +464,10 @@ export function ConsoleDataSecurityIssues() {
                   {activeReviewKinds.length > 0 && (
                     <div className="console-dso-review-block">
                       <h2 className="console-dso-review-title">
-                        {t('dataSecurityIssues.reviewRecommendedHeading')}
+                        {t("dataSecurityIssues.reviewRecommendedHeading")}
                       </h2>
                       <p className="console-group-access-hint">
-                        {t('dataSecurityIssues.reviewRecommendedHint')}
+                        {t("dataSecurityIssues.reviewRecommendedHint")}
                       </p>
                       {activeReviewKinds.map((kind) => (
                         <IssueTypeSection
@@ -432,10 +488,12 @@ export function ConsoleDataSecurityIssues() {
           )}
 
           <p className="console-group-access-hint">
-            <Link to="/console/data-security/groups">{t('dataSecurityIssues.manageGroups')}</Link>
+            <Link to="/console/data-security/groups">
+              {t("dataSecurityIssues.manageGroups")}
+            </Link>
           </p>
         </>
       )}
-    </div>
+    </ListPage>
   );
 }
