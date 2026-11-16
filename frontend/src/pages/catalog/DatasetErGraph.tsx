@@ -304,6 +304,31 @@ export function DatasetErGraph({
           <RotateCcw size={14} aria-hidden />
           <span>{t('dataModel.erResetLayout')}</span>
         </button>
+        <span className="dataset-er-graph__legend" title={t('dataModel.erLegendHint')}>
+          <span className="dataset-er-graph__legend-item">
+            <svg width="26" height="12" aria-hidden>
+              <circle cx="4" cy="6" r="2.5" className="dataset-er-graph__edge-end" fill="none" />
+              <line x1="10" y1="6" x2="22" y2="2" className="dataset-er-graph__edge-end" />
+              <line x1="10" y1="6" x2="24" y2="6" className="dataset-er-graph__edge-end" />
+              <line x1="10" y1="6" x2="22" y2="10" className="dataset-er-graph__edge-end" />
+            </svg>
+            {t('dataModel.erMany')}
+          </span>
+          <span className="dataset-er-graph__legend-item">
+            <svg width="16" height="12" aria-hidden>
+              <line x1="6" y1="1" x2="6" y2="11" className="dataset-er-graph__edge-end" />
+              <line x1="11" y1="1" x2="11" y2="11" className="dataset-er-graph__edge-end" />
+            </svg>
+            {t('dataModel.erOneOnly')}
+          </span>
+          <span className="dataset-er-graph__legend-item">
+            <svg width="16" height="12" aria-hidden>
+              <circle cx="4" cy="6" r="2.5" className="dataset-er-graph__edge-end" fill="none" />
+              <line x1="11" y1="1" x2="11" y2="11" className="dataset-er-graph__edge-end" />
+            </svg>
+            {t('dataModel.erZeroOrOne')}
+          </span>
+        </span>
       </div>
       <div ref={canvasRef} className="dataset-er-graph__canvas" style={{ width, height }}>
         <svg className="dataset-er-graph__edges" width={width} height={height} aria-hidden>
@@ -329,7 +354,14 @@ export function DatasetErGraph({
                   d={path}
                   fill="none"
                 />
-                {/* many side: crow's foot */}
+                {/* from side: crow's foot behind a circle — a dataset may have no relationships at all. */}
+                <circle
+                  className="dataset-er-graph__edge-end"
+                  cx={edge.x1 + edge.direction * 20}
+                  cy={edge.y1}
+                  r={3}
+                  fill="none"
+                />
                 {foot.map((point, i) => (
                   <line
                     key={i}
@@ -340,7 +372,7 @@ export function DatasetErGraph({
                     y2={point.y}
                   />
                 ))}
-                {/* one side: a bar, dashed when the join is optional */}
+                {/* to side: one and only one is two bars; zero or one is a circle and a bar. */}
                 <line
                   className="dataset-er-graph__edge-end"
                   x1={edge.x2 - edge.direction * 9}
@@ -348,7 +380,23 @@ export function DatasetErGraph({
                   x2={edge.x2 - edge.direction * 9}
                   y2={edge.y2 + 5}
                 />
-
+                {edge.required ? (
+                  <line
+                    className="dataset-er-graph__edge-end"
+                    x1={edge.x2 - edge.direction * 15}
+                    y1={edge.y2 - 5}
+                    x2={edge.x2 - edge.direction * 15}
+                    y2={edge.y2 + 5}
+                  />
+                ) : (
+                  <circle
+                    className="dataset-er-graph__edge-end"
+                    cx={edge.x2 - edge.direction * 15}
+                    cy={edge.y2}
+                    r={3}
+                    fill="none"
+                  />
+                )}
               </g>
             );
           })}

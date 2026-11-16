@@ -485,7 +485,12 @@
     "erCollapseAll": "全部收起字段",
     "erExpandAll": "全部展开字段",
     "erResetLayout": "重置布局",
-    "erToolbar": "图操作"
+    "erToolbar": "图操作",
+    "erLegend": "记号",
+    "erMany": "零或多",
+    "erOneOnly": "有且仅有一条",
+    "erZeroOrOne": "零或一条",
+    "erLegendHint": "外键侧的\"多\"由数据集结构决定；目标侧的 1 与 0..1 在关系表单的「要求匹配到行」里配置。"
   },
   "datasets": {
     "title": "数据集",

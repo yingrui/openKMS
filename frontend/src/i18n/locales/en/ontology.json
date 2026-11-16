@@ -490,7 +490,12 @@
     "erCollapseAll": "Collapse all",
     "erExpandAll": "Expand all",
     "erResetLayout": "Reset layout",
-    "erToolbar": "Diagram controls"
+    "erToolbar": "Diagram controls",
+    "erLegend": "Notation",
+    "erMany": "zero or many",
+    "erOneOnly": "one and only one",
+    "erZeroOrOne": "zero or one",
+    "erLegendHint": "The many side is structural (a foreign key); the target side’s 1 vs 0..1 is the form’s \"require a match\" option."
   },
   "datasets": {
     "title": "Datasets",

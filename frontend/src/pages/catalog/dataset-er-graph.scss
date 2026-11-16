@@ -76,6 +76,23 @@
   opacity: 0.35;
 }
 
+/* The notation is not self-evident to everyone who reads a catalog; the legend is three symbols and one hint. */
+.dataset-er-graph__legend {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.dataset-er-graph__legend-item {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
 /* A dataset with no registered join is a signal, not a style: it usually means a join was never registered. */
 .dataset-er-graph__node--isolated {
   border-style: dashed;
