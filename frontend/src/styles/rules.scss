@@ -308,6 +308,68 @@
   max-width: 640px;
 }
 
+/* One identity of a rule: a bordered card, because a rule may assert several. */
+.rules-relation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md, 8px);
+}
+
+.rules-relation__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.rules-relation__remove {
+  margin-left: auto;
+}
+
+/* Read view: every identity on its own line, so "which one failed" can be matched to the event. */
+.rules-identities {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+/* Run parameters: the period is one row, any further argument is another of the same shape. */
+.rules-run-args {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.rules-run-args__title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.rules-run-args__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
+  gap: var(--space-2);
+  align-items: end;
+}
+
+.rules-run-args__required {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  padding-bottom: 0.55rem;
+}
+
 /* Condition JSON gets the room a dialog could never give it. */
 
 /* Condition tree: a group is a heading + indented, guide-lined children; a comparison is one line. */

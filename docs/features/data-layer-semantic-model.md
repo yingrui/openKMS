@@ -107,12 +107,9 @@ specification", and `expression_language.md` calls grain calculations a future p
 expressed as a field with a `DATE_TRUNC(...)` expression plus `is_time`.
 
 So "this run covers 2026-W46" is not a metric fact at all: it is a **filter on the time dimension** at query
-time. Our metrics therefore carry `time_mode` (`period` / `snapshot` / `none`) and `time_dimension` — the
-*field* a run filters on, which must resolve to a time dimension (a status column is refused) — and they travel
-in `custom_extensions` on export, because the spec has no place for them. `snapshot` is the honest mode for a
-metric whose numbers are **written by each run** — the scenario table's `kpis`, a period-end balance: a stored
-snapshot (Kimball's *periodic snapshot fact*) cannot be recomputed for a past period, so a historical run is
-refused rather than serving today's value under last week's label.
+time. A metric therefore carries only `time_dimension` — the *field* it is measured along, and the default a
+rule's period argument points at — which travels in `custom_extensions` on export, because the spec has no
+place for it. Whether a run filters by it, and which period it filters, is the rule's decision.
 
 **A time dimension declares a calendar.** `dimension.is_time` says *that* a field is a time dimension; it does
 not say what one period is. The field now also carries `period_kind` — `day` / `week` / `month` / `quarter` /

@@ -28,6 +28,8 @@ export type LabelLookups = {
   scopePrefix?: string;
   /** How a condition says "one object per run, picked when you run it" — a whole phrase, not a field name. */
   scopeAtRunTime?: string;
+  /** The words for an identity's derived numbers (`target` / `residual` / `tolerance`). */
+  derivedWord?: (word: 'target' | 'residual' | 'tolerance') => string;
 };
 
 const MAX_ID_CHARS = 14;
@@ -263,6 +265,16 @@ export function isSimpleCondition(condition: RuleCondition | null): boolean {
   return 'metric' in left || 'dataset_agg' in left;
 }
 
+/** `residual:<metric id>` — one identity's derived number, named after the metric it explains. */
+function derivedLabel(key: string, lookups: LabelLookups): string | null {
+  const at = key.indexOf(':');
+  if (at <= 0) return null;
+  const prefix = key.slice(0, at);
+  const metricId = key.slice(at + 1);
+  if (prefix !== 'target' && prefix !== 'residual' && prefix !== 'tolerance') return null;
+  return `${lookups.derivedWord?.(prefix) ?? prefix} · ${lookups.metricName(metricId)}`;
+}
+
 export function valueRows(
   lastValues: Record<string, number | null> | null,
   lookups: LabelLookups,
@@ -271,11 +283,14 @@ export function valueRows(
   const rows: Array<{ label: string; value: string }> = [];
   for (const [key, value] of Object.entries(lastValues)) {
     let label = key;
-    try {
-      label = operandLabel(JSON.parse(key) as RuleOperand, lookups);
-    } catch {
-      /* not an operand key (older row) — show it as-is rather than dropping the value */
-    }
+    const derived = derivedLabel(key, lookups);
+    if (derived) label = derived;
+    else
+      try {
+        label = operandLabel(JSON.parse(key) as RuleOperand, lookups);
+      } catch {
+        /* not an operand key (older row) — show it as-is rather than dropping the value */
+      }
     rows.push({
       label,
       value: value == null ? '—' : Number(value).toLocaleString(undefined, { maximumFractionDigits: 4 }),

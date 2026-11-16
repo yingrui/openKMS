@@ -28,13 +28,49 @@ export type RuleCondition =
 
 export type RuleGroupBy = { field: string; label?: string | null };
 
+
+/**
+ * One declared run parameter.
+ *
+ * `period` carries the calendar binding; `filter` narrows every operand by a field of the subject; `key`
+ * narrows the scopes to the groups the run names. Output adds the resolved fields (`formats`, `dimensions`,
+ * `warnings`); input only sends the declared ones.
+ */
+export type RuleArgument = {
+  key: string;
+  kind: 'filter' | 'key';
+  field?: string | null;
+  /** The field's own label ("周期"), so a dialog does not have to ask for a column name. */
+  label?: string | null;
+  /** Marks the parameter whose value names the period; its interval goes on the event. */
+  role?: 'period' | null;
+  required?: boolean;
+  /** Period arguments only: the field's calendar, and whether it can name an interval. */
+  calendar?: string | null;
+  format?: string | null;
+  has_interval?: boolean;
+  dataset_id?: string | null;
+  formats?: string[];
+  dimensions?: Array<{
+    metric_id: string;
+    metric_name: string;
+    field: string;
+    kind: string;
+    format: string;
+  }>;
+  snapshots?: string[];
+  warnings?: string[];
+};
+
+export type RuleRunParams = { arguments: RuleArgument[] };
+
 export type RuleOut = {
   id: string;
   rule_id: string | null;
   name: string | null;
   metric_id: string | null;
   condition: RuleCondition | null;
-  relation: RuleRelation | null;
+  identities: RuleRelation[] | null;
   severity: string | null;
   conclusion: string | null;
   suggestion: string | null;
@@ -48,6 +84,8 @@ export type RuleOut = {
   last_reason: string | null;
   /** Metric ids this rule references — a list can answer "covered" without N calls. */
   metric_ids: string[];
+  /** What a run of this rule takes, as the server resolved it (the rule's declared arguments). */
+  run_params?: RuleRunParams | null;
   group_by: RuleGroupBy | null;
 };
 
@@ -57,6 +95,8 @@ export type RuleRelation = {
   members: Array<{ metric: string; weight?: number; group_field?: string | null }>;
   tolerance?: { abs?: number; rel?: number } | null;
   note?: string | null;
+  /** What to do when this identity is the one that failed; the rule's own advice still applies. */
+  suggestion?: string | null;
 };
 
 export type RuleWritePayload = {
@@ -64,11 +104,14 @@ export type RuleWritePayload = {
   rule_id?: string | null;
   metric_id: string;
   condition?: RuleCondition | null;
+  /** One or more equalities; exactly one of this and `condition` is sent. */
+  identities?: RuleRelation[] | null;
   severity: string;
   conclusion: string;
   suggestion: string;
   owner?: string | null;
   group_by?: RuleGroupBy | null;
+  run_params?: RuleRunParams | null;
   status?: string;
 };
 
@@ -131,7 +174,12 @@ export async function updateRule(
 
 export async function evaluateRule(
   ruleId: string,
-  params: { period_start?: string; period_end?: string; dry_run?: boolean } = {},
+  params: {
+    period_start?: string;
+    period_end?: string;
+    dry_run?: boolean;
+    values?: Record<string, unknown>;
+  } = {},
 ): Promise<RulesEvaluateResponse> {
   return request<RulesEvaluateResponse>(`/api/metric-rules/${ruleId}/evaluate`, {
     method: 'POST',
@@ -145,6 +193,7 @@ export async function evaluateRules(params: {
   period_start?: string;
   period_end?: string;
   scope?: string;
+  values?: Record<string, unknown>;
 }): Promise<RulesEvaluateResponse> {
   return request<RulesEvaluateResponse>('/api/metric-rules/evaluate', {
     method: 'POST',
@@ -168,3 +217,17 @@ export type MetricRuleRef = {
 export async function fetchMetricRules(metricId: string): Promise<MetricRuleRef[]> {
   return request<MetricRuleRef[]>(`/api/metrics/${metricId}/rules`);
 }
+
+/** The resolved period argument: what a run of this rule asks for, and what its value means. */
+export type RuleRunPeriod = {
+  key: string;
+  kind: 'filter';
+  field: string;
+  label?: string | null;
+  role: 'period';
+  required: true;
+  calendar: string;
+  format: string | null;
+  has_interval: boolean;
+  dataset_id: string | null;
+};

@@ -9,132 +9,68 @@
  * `/rules/new` is the same page in edit mode, so creating and editing cannot drift apart.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Loader2, Pencil, Play } from 'lucide-react';
-import { toast } from 'sonner';
-import { FormField, StatusChip, StatusLine, StatusLineNote } from '../../../styles/design-system';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { ArrowLeft, Loader2, Pencil, Play } from "lucide-react";
+import { toast } from "sonner";
+import {
+  FormField,
+  StatusChip,
+  StatusLine,
+  StatusLineNote,
+} from "../../../styles/design-system";
 import {
   createRule,
-  deleteRule,
-  evaluateRule,
   fetchRule,
   fetchRuleEvents,
   updateRule,
   type RuleOut,
+  type RuleRunPeriod,
   type RulesEvaluateResponse,
-} from '../../../data/rulesApi';
-import { transitionEvent, type EventOut } from '../../../data/eventsApi';
-import { fetchMetrics, type MetricResponse } from '../../../data/metricsApi';
-import { fetchDatasets, type DatasetResponse } from '../../../data/datasetsApi';
-import { fetchModelFields, type SemanticModelFieldResponse } from '../../../data/semanticModelFieldsApi';
-import { useConfirm } from '../../../contexts/ConfirmContext';
-import { EntityViewPanel } from '../../shared/EntityViewShell';
-import { RuleReadPanels } from './RuleReadPanels';
-import { RunRulesDialog, type RunParams } from './RunRulesDialog';
-import { conditionLabel, conditionScopeNote } from './rulesLabels';
-import { ConditionRows } from './ConditionRows';
-import { conditionFromRows, newRow, rowsFromCondition, type ConditionRow } from './conditionRowsModel';
-import { RuleBasicsForm } from './RuleBasicsForm';
-import { RelationEditor } from './RelationEditor';
-import { relationPayload } from './relationDraft';
-import '../../../styles/settings-page.scss';
-import '../../ontology/ontology-admin.scss';
-import '../../../styles/rules.scss';
+} from "../../../data/rulesApi";
+import type { EventOut } from "../../../data/eventsApi";
+import { fetchMetrics, type MetricResponse } from "../../../data/metricsApi";
+import { fetchDatasets, type DatasetResponse } from "../../../data/datasetsApi";
+import {
+  fetchModelFields,
+  type SemanticModelFieldResponse,
+} from "../../../data/semanticModelFieldsApi";
+import { EntityViewPanel } from "../../shared/EntityViewShell";
+import { RuleReadPanels } from "./RuleReadPanels";
+import { RunRulesDialog } from "./RunRulesDialog";
+import { conditionLabel, conditionScopeNote } from "./rulesLabels";
+import { ConditionRows } from "./ConditionRows";
+import {
+  conditionFromRows,
+  newRow,
+  rowsFromCondition,
+  type ConditionRow,
+} from "./conditionRowsModel";
+import { useRuleActions } from "./useRuleActions";
+import { RuleBasicsForm } from "./RuleBasicsForm";
+import { RelationEditor } from "./RelationEditor";
+import {
+  buildRulePayload,
+  EMPTY_FORM,
+  formFromRule,
+  type FormState,
+} from "./ruleForm";
+import "../../../styles/settings-page.scss";
+import "../../ontology/ontology-admin.scss";
+import "../../../styles/rules.scss";
 
-import type { RelationMemberDraft as RelationMember } from './relationDraft';
-
-type FormState = {
-  /** A threshold check, or an identity between metrics — exactly one is sent. */
-  mode: 'condition' | 'relation';
-  relationTarget: string;
-  relationMembers: RelationMember[];
-  toleranceKind: 'abs' | 'rel';
-  toleranceValue: string;
-  name: string;
-  ruleId: string;
-  metricId: string;
-  datasetId: string;
-  aggFn: 'count' | 'sum' | 'avg' | 'min' | 'max';
-  aggColumn: string;
-  op: string;
-  threshold: string;
-  severity: 'P0' | 'P1' | 'P2';
-  conclusion: string;
-  suggestion: string;
-  status: 'active' | 'paused';
-  groupField: string;
-};
-
-const EMPTY_FORM: FormState = {
-  mode: 'condition',
-  relationTarget: '',
-  relationMembers: [{ metricId: '', weight: '1' }],
-  toleranceKind: 'abs',
-  toleranceValue: '0',
-  name: '',
-  ruleId: '',
-  metricId: '',
-  datasetId: '',
-  aggFn: 'count',
-  aggColumn: '',
-  op: '>',
-  threshold: '0',
-  severity: 'P1',
-  conclusion: '',
-  suggestion: '',
-  status: 'active',
-  groupField: '',
-};
-
-function formFromRule(rule: RuleOut, metrics: MetricResponse[], datasets: DatasetResponse[]): FormState {
-  const condition = rule.condition;
-  const single = condition && 'left' in condition ? condition : null;
-  const left = single?.left;
-  const relation = rule.relation;
-  return {
-    mode: relation ? 'relation' : 'condition',
-    relationTarget: relation?.target?.metric ?? '',
-    relationMembers:
-      relation && relation.members.length > 0
-        ? relation.members.map((member) => ({
-            metricId: member.metric,
-            weight: String(member.weight ?? 1),
-          }))
-        : [{ metricId: '', weight: '1' }],
-    toleranceKind: relation?.tolerance?.rel ? 'rel' : 'abs',
-    toleranceValue: String(
-      relation?.tolerance?.rel ?? relation?.tolerance?.abs ?? 0,
-    ),
-    name: rule.name ?? '',
-    ruleId: rule.rule_id ?? '',
-    metricId: left && 'metric' in left ? left.metric : (metrics[0]?.id ?? ''),
-    datasetId: left && 'dataset_agg' in left ? left.dataset_agg.dataset_id : (datasets[0]?.id ?? ''),
-    aggFn: left && 'dataset_agg' in left ? left.dataset_agg.fn : 'count',
-    aggColumn: left && 'dataset_agg' in left ? (left.dataset_agg.column ?? '') : '',
-    op: single?.op ?? '>',
-    threshold: String(single?.right.value ?? 0),
-    severity: (rule.severity as FormState['severity']) ?? 'P1',
-    conclusion: rule.conclusion ?? '',
-    suggestion: rule.suggestion ?? '',
-    status: rule.status === 'paused' ? 'paused' : 'active',
-    groupField: rule.group_by?.field ?? '',
-  };
-}
-
-function severityTone(severity: string | null): 'warn' | 'accent' | 'neutral' {
-  if (severity === 'P0') return 'warn';
-  if (severity === 'P1') return 'accent';
-  return 'neutral';
+function severityTone(severity: string | null): "warn" | "accent" | "neutral" {
+  if (severity === "P0") return "warn";
+  if (severity === "P1") return "accent";
+  return "neutral";
 }
 
 export function RuleDetailPage() {
-  const { t } = useTranslation('ontology');
+  const { t } = useTranslation("ontology");
   const { ruleId } = useParams<{ ruleId: string }>();
   const navigate = useNavigate();
-  const confirm = useConfirm();
-  const isNew = ruleId === 'new';
+  const isNew = ruleId === "new";
 
   const [rule, setRule] = useState<RuleOut | null>(null);
   const [events, setEvents] = useState<EventOut[]>([]);
@@ -144,9 +80,14 @@ export function RuleDetailPage() {
   const [editing, setEditing] = useState(isNew);
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const rulePeriodArgument =
+    (rule?.run_params?.arguments.find(
+      (argument): argument is RuleRunPeriod => argument.role === "period",
+    ) as RuleRunPeriod | undefined) ?? null;
   const [conditionRows, setConditionRows] = useState<ConditionRow[]>([]);
   /** The stored condition has a shape this editor cannot draw — editing would silently rewrite it. */
-  const [conditionUnrepresentable, setConditionUnrepresentable] = useState(false);
+  const [conditionUnrepresentable, setConditionUnrepresentable] =
+    useState(false);
   const [conditionError, setConditionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
@@ -162,7 +103,10 @@ export function RuleDetailPage() {
   }, [metrics]);
   const datasetName = useMemo(() => {
     const byId = new Map(
-      datasets.map((dataset) => [dataset.id, dataset.display_name || dataset.table_name || dataset.id.slice(0, 8)]),
+      datasets.map((dataset) => [
+        dataset.id,
+        dataset.display_name || dataset.table_name || dataset.id.slice(0, 8),
+      ]),
     );
     return (id: string) => byId.get(id) ?? id.slice(0, 8);
   }, [datasets]);
@@ -181,7 +125,9 @@ export function RuleDetailPage() {
       try {
         const fields = await fetchModelFields(metric.semantic_model_id);
         if (!cancelled) {
-          setParamCandidates(fields.items.map((field: SemanticModelFieldResponse) => field.name));
+          setParamCandidates(
+            fields.items.map((field: SemanticModelFieldResponse) => field.name),
+          );
         }
       } catch {
         if (!cancelled) setParamCandidates([]);
@@ -195,7 +141,10 @@ export function RuleDetailPage() {
   const loadPickers = useCallback(async () => {
     const [metricPage, datasetPage] = await Promise.all([
       fetchMetrics().catch(() => ({ items: [] as MetricResponse[], total: 0 })),
-      fetchDatasets({ limit: 200 }).catch(() => ({ items: [] as DatasetResponse[], total: 0 })),
+      fetchDatasets({ limit: 200 }).catch(() => ({
+        items: [] as DatasetResponse[],
+        total: 0,
+      })),
     ]);
     setMetrics(metricPage.items);
     setDatasets(datasetPage.items);
@@ -207,8 +156,11 @@ export function RuleDetailPage() {
     setLoading(true);
     try {
       const [current, eventPage, pickers] = await Promise.all([
-        fetchRule(ruleId ?? ''),
-        fetchRuleEvents(ruleId ?? '', { limit: 50 }).catch(() => ({ items: [] as EventOut[], total: 0 })),
+        fetchRule(ruleId ?? ""),
+        fetchRuleEvents(ruleId ?? "", { limit: 50 }).catch(() => ({
+          items: [] as EventOut[],
+          total: 0,
+        })),
         loadPickers(),
       ]);
       setRule(current);
@@ -223,7 +175,7 @@ export function RuleDetailPage() {
       setConditionRows(rows ?? []);
       setConditionUnrepresentable(rows === null);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('rules.toastLoadFailed'));
+      toast.error(e instanceof Error ? e.message : t("rules.toastLoadFailed"));
     } finally {
       setLoading(false);
     }
@@ -238,12 +190,15 @@ export function RuleDetailPage() {
     void loadPickers().then((pickers) => {
       const next: FormState = {
         ...EMPTY_FORM,
-        metricId: pickers.metrics[0]?.id ?? '',
-        datasetId: pickers.datasets[0]?.id ?? '',
+        metricId: pickers.metrics[0]?.id ?? "",
+        datasetId: pickers.datasets[0]?.id ?? "",
       };
       setForm(next);
       setConditionRows([
-        newRow({ metricId: pickers.metrics[0]?.id ?? '', datasetId: pickers.datasets[0]?.id ?? '' }),
+        newRow({
+          metricId: pickers.metrics[0]?.id ?? "",
+          datasetId: pickers.datasets[0]?.id ?? "",
+        }),
       ]);
     });
   }, [isNew, loadPickers]);
@@ -251,49 +206,30 @@ export function RuleDetailPage() {
   const save = async () => {
     if (!form.name.trim()) return;
     if (conditionUnrepresentable) {
-      setConditionError(t('rules.conditionUnrepresentable'));
+      setConditionError(t("rules.conditionUnrepresentable"));
       return;
     }
     const condition = conditionFromRows(conditionRows);
     if (!condition) {
-      setConditionError(t('rules.conditionIncomplete'));
+      setConditionError(t("rules.conditionIncomplete"));
       return;
     }
     setSaving(true);
     try {
-      const relation =
-        form.mode === 'relation'
-          ? relationPayload({
-              target: form.relationTarget,
-              members: form.relationMembers,
-              toleranceKind: form.toleranceKind,
-              toleranceValue: form.toleranceValue,
-            })
-          : null;
-      const payload = {
-        name: form.name.trim(),
-        rule_id: form.ruleId.trim() || null,
-        metric_id: form.metricId,
-        ...(relation ? { relation } : { condition }),
-        severity: form.severity,
-        conclusion: form.conclusion.trim(),
-        suggestion: form.suggestion.trim(),
-        status: form.status,
-        group_by: form.groupField.trim() ? { field: form.groupField.trim() } : null,
-      };
+      const payload = buildRulePayload(form, condition);
       if (isNew) {
         const created = await createRule(payload);
-        toast.success(t('rules.toastCreated'));
+        toast.success(t("rules.toastCreated"));
         navigate(`/data-rules/${created.id}`, { replace: true });
       } else if (rule) {
         const updated = await updateRule(rule.id, payload);
         setRule(updated);
         setForm(formFromRule(updated, metrics, datasets));
         setEditing(false);
-        toast.success(t('rules.toastUpdated'));
+        toast.success(t("rules.toastUpdated"));
       }
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('rules.toastSaveFailed'));
+      toast.error(e instanceof Error ? e.message : t("rules.toastSaveFailed"));
     } finally {
       setSaving(false);
     }
@@ -301,7 +237,7 @@ export function RuleDetailPage() {
 
   const cancelEdit = () => {
     if (isNew) {
-      navigate('/data-rules');
+      navigate("/data-rules");
       return;
     }
     if (rule) {
@@ -314,92 +250,47 @@ export function RuleDetailPage() {
     setEditing(false);
   };
 
-  const run = async (params: RunParams) => {
-    if (!rule) return;
-    setRunning(true);
-    try {
-      const result = await evaluateRule(rule.id, params);
-      const first = result.results[0];
-      toast.success(
-        result.results.length > 1
-          ? t('rules.toastRanAll', { count: result.results.length, failed: result.failed })
-          : t(`rules.status.${first?.status ?? 'pass'}`),
-      );
-      await load();
-      setRunOpen(false);
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('rules.toastRunFailed'));
-    } finally {
-      setRunning(false);
-    }
-  };
-
-  const trialRun = async (params: RunParams) => {
-    if (!rule) return;
-    setRunning(true);
-    try {
-      setTrial(await evaluateRule(rule.id, { ...params, dry_run: true }));
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('rules.toastRunFailed'));
-    } finally {
-      setRunning(false);
-    }
-  };
-
-  const remove = async () => {
-    if (!rule) return;
-    if (
-      !(await confirm({
-        title: t('rules.deleteTitle'),
-        message: t('rules.deleteConfirm'),
-        confirmLabel: t('shared.delete'),
-        danger: true,
-      }))
-    ) {
-      return;
-    }
-    try {
-      await deleteRule(rule.id);
-      toast.success(t('rules.toastDeleted'));
-      navigate('/data-rules');
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('rules.toastSaveFailed'));
-    }
-  };
-
-  const moveEvent = async (event: EventOut, status: 'resolved' | 'dismissed') => {
-    setBusyEventId(event.id);
-    try {
-      await transitionEvent(event.id, { status });
-      await load();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('rules.toastEventFailed'));
-    } finally {
-      setBusyEventId(null);
-    }
-  };
+  const actions = useRuleActions({
+    rule,
+    load,
+    runOpen,
+    setRunOpen,
+    setTrial,
+    running,
+    setRunning,
+    eventCount: events.length,
+    setBusyEventId,
+  });
 
   // The author's own word for what a run picks ("方案") makes the sentence concrete; without one the
   // sentence stays domain-neutral ("one object at a time"). Neither ever says "scenario".
   const groupLabel = rule?.group_by?.label ?? null;
   const joiners = {
-    and: t('rules.joinAnd'),
-    or: t('rules.joinOr'),
-    scopePrefix: t('rules.scopePrefix'),
+    and: t("rules.joinAnd"),
+    or: t("rules.joinOr"),
+    scopePrefix: t("rules.scopePrefix"),
     scopeAtRunTime: groupLabel
-      ? t('rules.groupedByNamed', { name: groupLabel })
-      : t('rules.groupedBy'),
+      ? t("rules.groupedByNamed", { name: groupLabel })
+      : t("rules.groupedBy"),
   };
   const conditionText =
-    conditionLabel(rule?.condition ?? null, { metricName, datasetName, ...joiners }, rule?.group_by) ??
-    '';
-  const scopeNote = conditionScopeNote(rule?.condition ?? null, { metricName, datasetName, ...joiners }, rule?.group_by);
+    conditionLabel(
+      rule?.condition ?? null,
+      { metricName, datasetName, ...joiners },
+      rule?.group_by,
+    ) ?? "";
+  const scopeNote = conditionScopeNote(
+    rule?.condition ?? null,
+    { metricName, datasetName, ...joiners },
+    rule?.group_by,
+  );
 
   if (loading) {
     return (
       <div className="ontology-admin">
         <p className="page-subtitle">
-          <Loader2 size={16} className="animate-spin" aria-hidden /> {t('shared.loading')}
+          <Loader2 size={16} className="animate-spin" aria-hidden />{" "}
+          {t("shared.loading")}
         </p>
       </div>
     );
@@ -408,7 +299,7 @@ export function RuleDetailPage() {
   if (!isNew && !rule) {
     return (
       <div className="ontology-admin">
-        <p className="page-subtitle">{t('rules.notFound')}</p>
+        <p className="page-subtitle">{t("rules.notFound")}</p>
       </div>
     );
   }
@@ -419,19 +310,23 @@ export function RuleDetailPage() {
         <div>
           <Link to="/data-rules" className="rules-back">
             <ArrowLeft size={16} aria-hidden />
-            {t('rules.backToList')}
+            {t("rules.backToList")}
           </Link>
-          <h1>{isNew ? t('rules.dialogCreate') : (rule?.name ?? '—')}</h1>
+          <h1>{isNew ? t("rules.dialogCreate") : (rule?.name ?? "—")}</h1>
           {rule ? (
             <p className="page-subtitle">
               <StatusLine>
-                <StatusChip tone={severityTone(rule.severity)}>{rule.severity ?? '—'}</StatusChip>
-                <StatusChip tone={rule.status === 'paused' ? 'neutral' : 'ok'}>
-                  {rule.status === 'paused' ? t('rules.paused') : t('rules.active')}
+                <StatusChip tone={severityTone(rule.severity)}>
+                  {rule.severity ?? "—"}
+                </StatusChip>
+                <StatusChip tone={rule.status === "paused" ? "neutral" : "ok"}>
+                  {rule.status === "paused"
+                    ? t("rules.paused")
+                    : t("rules.active")}
                 </StatusChip>
                 <StatusLineNote>
-                  {rule.rule_id ?? ''}
-                  {rule.owner ? ` · ${rule.owner}` : ''} · v{rule.version ?? 1}
+                  {rule.rule_id ?? ""}
+                  {rule.owner ? ` · ${rule.owner}` : ""} · v{rule.version ?? 1}
                 </StatusLineNote>
               </StatusLine>
             </p>
@@ -440,8 +335,13 @@ export function RuleDetailPage() {
         <div className="page-header-actions">
           {editing ? (
             <>
-              <button type="button" className="btn btn-secondary" onClick={cancelEdit} disabled={saving}>
-                {t('shared.cancel')}
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={cancelEdit}
+                disabled={saving}
+              >
+                {t("shared.cancel")}
               </button>
               <button
                 type="button"
@@ -449,14 +349,22 @@ export function RuleDetailPage() {
                 onClick={() => void save()}
                 disabled={saving || !form.name.trim()}
               >
-                {saving ? t('rules.saving') : isNew ? t('shared.create') : t('shared.save')}
+                {saving
+                  ? t("rules.saving")
+                  : isNew
+                    ? t("shared.create")
+                    : t("shared.save")}
               </button>
             </>
           ) : rule ? (
             <>
-              <button type="button" className="btn btn-secondary" onClick={() => setEditing(true)}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setEditing(true)}
+              >
                 <Pencil size={16} aria-hidden />
-                {t('shared.edit')}
+                {t("shared.edit")}
               </button>
               <button
                 type="button"
@@ -464,8 +372,12 @@ export function RuleDetailPage() {
                 onClick={() => setRunOpen(true)}
                 disabled={running}
               >
-                {running ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Play size={16} aria-hidden />}
-                {t('rules.run')}
+                {running ? (
+                  <Loader2 size={16} className="animate-spin" aria-hidden />
+                ) : (
+                  <Play size={16} aria-hidden />
+                )}
+                {t("rules.run")}
               </button>
             </>
           ) : null}
@@ -475,7 +387,7 @@ export function RuleDetailPage() {
       <div className="account-stack">
         {editing ? (
           <>
-            <EntityViewPanel title={t('rules.panelBasics')}>
+            <EntityViewPanel title={t("rules.panelBasics")}>
               <RuleBasicsForm
                 value={{
                   name: form.name,
@@ -483,63 +395,63 @@ export function RuleDetailPage() {
                   severity: form.severity,
                   status: form.status,
                   groupField: form.groupField,
+                  runArgs: form.runArgs,
                 }}
                 onChange={(next) => setForm({ ...form, ...next })}
                 fields={paramCandidates}
+                periodSpec={rulePeriodArgument}
+                groupField={form.groupField}
               />
             </EntityViewPanel>
 
             <EntityViewPanel
-              title={form.mode === 'relation' ? t('rules.panelRelation') : t('rules.panelCondition')}
+              title={
+                form.mode === "relation"
+                  ? t("rules.panelRelation")
+                  : t("rules.panelCondition")
+              }
               description={
-                form.mode === 'relation' ? t('rules.panelRelationHint') : t('rules.panelConditionHint')
+                form.mode === "relation"
+                  ? t("rules.panelRelationHint")
+                  : t("rules.panelConditionHint")
               }
             >
               {/* Two kinds of check, one place: a threshold, or an identity between metrics. */}
-              <div className="ds-view-toggle rules-mode" role="tablist" aria-label={t('rules.modeAria')}>
+              <div
+                className="ds-view-toggle rules-mode"
+                role="tablist"
+                aria-label={t("rules.modeAria")}
+              >
                 <button
                   type="button"
                   role="tab"
-                  aria-selected={form.mode === 'condition'}
-                  className={`ds-view-toggle__btn ${form.mode === 'condition' ? 'active' : ''}`}
-                  onClick={() => setForm({ ...form, mode: 'condition' })}
+                  aria-selected={form.mode === "condition"}
+                  className={`ds-view-toggle__btn ${form.mode === "condition" ? "active" : ""}`}
+                  onClick={() => setForm({ ...form, mode: "condition" })}
                 >
-                  {t('rules.modeCondition')}
+                  {t("rules.modeCondition")}
                 </button>
                 <button
                   type="button"
                   role="tab"
-                  aria-selected={form.mode === 'relation'}
-                  className={`ds-view-toggle__btn ${form.mode === 'relation' ? 'active' : ''}`}
-                  onClick={() => setForm({ ...form, mode: 'relation' })}
+                  aria-selected={form.mode === "relation"}
+                  className={`ds-view-toggle__btn ${form.mode === "relation" ? "active" : ""}`}
+                  onClick={() => setForm({ ...form, mode: "relation" })}
                 >
-                  {t('rules.modeRelation')}
+                  {t("rules.modeRelation")}
                 </button>
               </div>
 
-              {form.mode === 'relation' ? (
+              {form.mode === "relation" ? (
                 <RelationEditor
-                  value={{
-                    target: form.relationTarget,
-                    members: form.relationMembers,
-                    toleranceKind: form.toleranceKind,
-                    toleranceValue: form.toleranceValue,
-                  }}
-                  onChange={(next) =>
-                    setForm({
-                      ...form,
-                      relationTarget: next.target,
-                      relationMembers: next.members,
-                      toleranceKind: next.toleranceKind,
-                      toleranceValue: next.toleranceValue,
-                    })
-                  }
+                  value={form.relations}
+                  onChange={(relations) => setForm({ ...form, relations })}
                   metrics={metrics}
                   metricName={metricName}
                 />
               ) : null}
 
-              {form.mode === 'condition' ? (
+              {form.mode === "condition" ? (
                 <>
                   {/* The logic, in words, as the rows are edited — the editor shows fields, this shows the
                       sentence a reader would have to reconstruct from them. */}
@@ -547,19 +459,23 @@ export function RuleDetailPage() {
                     {conditionLabel(
                       conditionFromRows(conditionRows),
                       { metricName, datasetName, ...joiners },
-                      form.groupField.trim() ? { field: form.groupField.trim() } : null,
-                    ) ?? t('rules.conditionIncomplete')}
+                      form.groupField.trim()
+                        ? { field: form.groupField.trim() }
+                        : null,
+                    ) ?? t("rules.conditionIncomplete")}
                   </p>
                   {conditionUnrepresentable ? (
-                    <p className="rules-condition-warning">{t('rules.conditionUnrepresentable')}</p>
+                    <p className="rules-condition-warning">
+                      {t("rules.conditionUnrepresentable")}
+                    </p>
                   ) : null}
                   <ConditionRows
-                  rows={conditionRows}
-                  onChange={(next) => {
-                    setConditionRows(next);
-                    setConditionError(null);
-                  }}
-                  metrics={metrics}
+                    rows={conditionRows}
+                    onChange={(next) => {
+                      setConditionRows(next);
+                      setConditionError(null);
+                    }}
+                    metrics={metrics}
                     datasets={datasets}
                     error={conditionError}
                   />
@@ -567,20 +483,33 @@ export function RuleDetailPage() {
               ) : null}
             </EntityViewPanel>
 
-            <EntityViewPanel title={t('rules.panelMeaning')} description={t('rules.panelMeaningHint')}>
+            <EntityViewPanel
+              title={t("rules.panelMeaning")}
+              description={t("rules.panelMeaningHint")}
+            >
               <div className="rules-form">
-                <FormField label={t('rules.fieldConclusion')} hint={t('rules.fieldConclusionHint')}>
+                <FormField
+                  label={t("rules.fieldConclusion")}
+                  hint={t("rules.fieldConclusionHint")}
+                >
                   <input
                     type="text"
                     value={form.conclusion}
-                    onChange={(e) => setForm({ ...form, conclusion: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, conclusion: e.target.value })
+                    }
                   />
                 </FormField>
-                <FormField label={t('rules.fieldSuggestion')} hint={t('rules.fieldSuggestionHint')}>
+                <FormField
+                  label={t("rules.fieldSuggestion")}
+                  hint={t("rules.fieldSuggestionHint")}
+                >
                   <textarea
                     rows={3}
                     value={form.suggestion}
-                    onChange={(e) => setForm({ ...form, suggestion: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, suggestion: e.target.value })
+                    }
                   />
                 </FormField>
               </div>
@@ -593,9 +522,19 @@ export function RuleDetailPage() {
             scopeNote={scopeNote}
             events={events}
             busyEventId={busyEventId}
-            onTransition={(event, status) => void moveEvent(event, status)}
-            onDelete={() => void remove()}
-            lookups={{ metricName, datasetName, ...joiners }}
+            onTransition={(event, status) =>
+              void actions.moveEvent(event, status)
+            }
+            onDelete={() => void actions.remove()}
+            lookups={{
+              metricName,
+              datasetName,
+              ...joiners,
+              derivedWord: (word) =>
+                t(
+                  `rules.evidence${{ target: "Target", residual: "Residual", tolerance: "Tolerance" }[word]}`,
+                ),
+            }}
           />
         )}
       </div>
@@ -607,10 +546,19 @@ export function RuleDetailPage() {
           setRunOpen(false);
           setTrial(null);
         }}
-        onRun={(params) => void run(params)}
-        onTrial={(params) => void trialRun(params)}
+        onRun={(params) => void actions.run(params)}
+        onTrial={(params) => void actions.trialRun(params)}
         trial={trial}
-        lookups={{ metricName, datasetName, ...joiners }}
+        runArguments={rule?.run_params?.arguments ?? []}
+        lookups={{
+          metricName,
+          datasetName,
+          ...joiners,
+          derivedWord: (word) =>
+            t(
+              `rules.evidence${{ target: "Target", residual: "Residual", tolerance: "Tolerance" }[word]}`,
+            ),
+        }}
       />
     </div>
   );

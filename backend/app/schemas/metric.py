@@ -18,7 +18,6 @@ class MetricCreate(BaseModel):
     business_definition: str | None = None
     additivity: str = "additive"
     #: period | snapshot | none — how the metric relates to time (see `services/ontology/rules/evaluator`).
-    time_mode: str = "none"
     time_dimension: str | None = None
     expression: dict[str, Any]
     datatype: str | None = None
@@ -33,7 +32,6 @@ class MetricUpdate(BaseModel):
     base_dataset_id: str | None = None
     business_definition: str | None = None
     additivity: str | None = None
-    time_mode: str | None = None
     time_dimension: str | None = None
     expression: dict[str, Any] | None = None
     datatype: str | None = None
@@ -83,7 +81,6 @@ class MetricResponse(BaseModel):
     name: str
     business_definition: str | None = None
     additivity: str
-    time_mode: str
     time_dimension: str | None = None
     depends_on: list["MetricRef"] = []
     assertions: list[MetricAssertion] = []

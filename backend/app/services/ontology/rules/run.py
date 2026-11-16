@@ -40,10 +40,8 @@ async def evaluate_rule_in_snapshot(
     request: Request,
     *,
     rule_id: str,
-    period_start: str = "",
-    period_end: str = "",
-    period_label: str | None = None,
     dry_run: bool = False,
+    values: dict | None = None,
 ) -> list[EvalResult]:
     """Evaluate one rule; the caller keeps its own session for loading and serialising."""
     for attempt in range(1, MAX_ATTEMPTS + 1):
@@ -57,10 +55,8 @@ async def evaluate_rule_in_snapshot(
                 session,
                 request,
                 rule=rule,
-                period_start=period_start,
-                period_end=period_end,
-                period_label=period_label,
                 dry_run=dry_run,
+                values=values,
             )
             await session.commit()
             return results
@@ -80,10 +76,8 @@ async def evaluate_subject_in_snapshot(
     request: Request,
     *,
     metric_id: str | None = None,
-    period_start: str = "",
-    period_end: str = "",
-    period_label: str | None = None,
     limit: int = 100,
+    values: dict | None = None,
 ) -> list[EvalResult]:
     """Every active rule of a subject, all against the same snapshot."""
     for attempt in range(1, MAX_ATTEMPTS + 1):
@@ -94,10 +88,8 @@ async def evaluate_subject_in_snapshot(
                 session,
                 request,
                 subject_id=metric_id,
-                period_start=period_start,
-                period_end=period_end,
-                period_label=period_label,
                 limit=limit,
+                values=values,
             )
             await session.commit()
             return results

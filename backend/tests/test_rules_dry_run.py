@@ -41,16 +41,17 @@ def test_trial_publishes_nothing_and_leaves_the_rule_alone(monkeypatch, dry_run)
     published: list[str] = []
     closed: list[dict] = []
 
-    async def fake_resolve(_db, _request, operand, group_field=None, _scope_filters=None):
+    async def fake_resolve(
+        _db, _request, operand, group_field=None, _period=None, _filters=None
+    ):
         # Two scenarios, both over the threshold: a real run would open one alert per group.
         return {"s1": 1.4, "s2": 1.2}, ""
 
-    async def fake_upsert(_db, *, rule, rule_data, scope, group, period_start, period_end,
-                          period_label, values):
+    async def fake_upsert(_db, *, rule, rule_data, scope, group, period, values, advice=None):
         published.append(scope)
         return f"event-{scope}"
 
-    async def fake_close(_db, *, rule, scopes, period_start, period_end):
+    async def fake_close(_db, *, rule, scopes, period_start, period_end, within=None):
         closed.append({"rule": rule, "scopes": list(scopes)})
         return 0
 
@@ -62,8 +63,7 @@ def test_trial_publishes_nothing_and_leaves_the_rule_alone(monkeypatch, dry_run)
     before = (rule.last_status, rule.last_run_at)
     db = _FakeDB()
     results = asyncio.run(
-        ev.evaluate_rule(db, request=None, rule=rule, period_start="2026-W46",
-                         period_end="2026-W46", period_label="2026-W46", dry_run=dry_run)
+        ev.evaluate_rule(db, request=None, rule=rule, dry_run=dry_run)
     )
 
     assert [r.status for r in results] == ["fail", "fail"]
@@ -82,7 +82,8 @@ def test_trial_publishes_nothing_and_leaves_the_rule_alone(monkeypatch, dry_run)
         assert published == ["s1", "s2"]
         assert closed and closed[0]["scopes"] == ["s1", "s2"]
         assert rule.last_status == "fail"
-        assert rule.last_period_start == "2026-W46"
+        # No period argument is declared, so the run has no interval — not an empty date pair pretending one.
+        assert rule.last_period_start == ""
 
 
 @pytest.mark.parametrize("value,expected", [(1.0, [[]]), (None, [])])
@@ -90,10 +91,12 @@ def test_an_ungrouped_run_closes_its_alert_only_when_it_decided(monkeypatch, val
     """A passing run must retire the alert; a run where nothing was computable must not."""
     closed: list[list[str]] = []
 
-    async def fake_resolve(_db, _request, operand, group_field=None, _scope_filters=None):
+    async def fake_resolve(
+        _db, _request, operand, group_field=None, _period=None, _filters=None
+    ):
         return value, "" if value is None else ""
 
-    async def fake_close(_db, *, rule, scopes, period_start, period_end):
+    async def fake_close(_db, *, rule, scopes, period_start, period_end, within=None):
         closed.append(list(scopes))
         return 1
 

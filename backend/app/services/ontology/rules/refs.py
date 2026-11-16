@@ -1,6 +1,6 @@
 """Which metrics a rule references — a real table with real foreign keys.
 
-The rule's own definition lives in `condition` / `relation` (JSONB): arbitrary operands belong next to the
+The rule's own definition lives in `condition` / `identities` (JSONB): arbitrary operands belong next to the
 rule. But three questions need the reference as a fact:
 
 * which rules touch this metric? (metric page's run-the-checks and its badge)
@@ -50,16 +50,36 @@ def referenced_metrics(rule: MetricRule) -> list[tuple[str, str]]:
     refs: list[tuple[str, str]] = [(rule.metric_id, "subject")]
     for metric_id in _condition_metrics(rule.condition):
         refs.append((metric_id, "condition"))
-    if isinstance(rule.relation, dict):
-        target = (rule.relation.get("target") or {}).get("metric")
+    for identity in rule.identities or []:
+        if not isinstance(identity, dict):
+            continue
+        target = (identity.get("target") or {}).get("metric")
         if target:
             refs.append((str(target), "target"))
-        for member in rule.relation.get("members") or []:
+        for member in identity.get("members") or []:
             ref = (member or {}).get("metric")
             if ref:
                 refs.append((str(ref), "member"))
     seen: set[str] = set()
     return [ref for ref in refs if not (ref[0] in seen or seen.add(ref[0]))]
+
+
+def referenced_metric_ids(payload: dict) -> list[str]:
+    """Every distinct metric id a `{condition, identities}` definition names (the subject is a column)."""
+    ids = _condition_metrics(payload.get("condition"))
+    for identity in payload.get("identities") or []:
+        if not isinstance(identity, dict):
+            continue
+        target = (identity.get("target") or {}).get("metric")
+        if target:
+            ids.append(str(target))
+        ids.extend(
+            str((m or {}).get("metric"))
+            for m in identity.get("members") or []
+            if (m or {}).get("metric")
+        )
+    seen: set[str] = set()
+    return [m for m in ids if not (m in seen or seen.add(m))]
 
 
 async def sync_rule_refs(db: AsyncSession, rule: MetricRule) -> None:

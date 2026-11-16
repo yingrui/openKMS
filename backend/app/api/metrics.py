@@ -65,27 +65,6 @@ async def _name_map(db: AsyncSession, ids: set[str]) -> dict[str, str]:
     return {d.id: dataset_label(d) for d in rows}
 
 
-TIME_MODES = ("period", "snapshot", "none")
-
-
-def _validate_time_mode(mode: str | None, dimension: str | None) -> None:
-    """`period` names a **time dimension**; `snapshot`/`none` must not claim one.
-
-    Ossie has no metric period. What it has is a *field* whose `dimension.is_time` resolves true, and grain
-    is a consumption-time choice. So `time_dimension` is the field a run's period filters on — it must exist
-    in the model *and* be a time dimension, otherwise "this period" would silently filter on a status code.
-    """
-    resolved = str(mode or "none")
-    if resolved not in TIME_MODES:
-        raise HTTPException(status_code=400, detail=f"time_mode must be one of: {', '.join(TIME_MODES)}.")
-    if resolved != "period":
-        return
-    name = (dimension or "").strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="time_mode 'period' needs a time_dimension.")
-    # Checked against the model's fields below (it needs the metric), see `_validate_time_dimension`.
-
-
 async def _validate_time_dimension(
     db: AsyncSession, semantic_model_id: str, dimension: str | None
 ) -> None:
@@ -143,7 +122,6 @@ def _metric_response(
         name=m.name,
         business_definition=m.business_definition,
         additivity=m.additivity,
-        time_mode=m.time_mode,
         time_dimension=m.time_dimension,
         depends_on=_depends_on(m, model_metrics or []),
         assertions=(assertions or {}).get(m.id, []),
@@ -335,7 +313,6 @@ async def create_metric(
             name=body.name, additivity=body.additivity, expression=body.expression
         )
         validate_datatype(body.datatype)
-        _validate_time_mode(body.time_mode, body.time_dimension)
         await _validate_time_dimension(db, body.semantic_model_id, body.time_dimension)
         body.ai_context = validate_ai_context(body.ai_context)
         cleaned_filters = validate_metric_filters(
@@ -355,7 +332,6 @@ async def create_metric(
         name=body.name.strip(),
         business_definition=body.business_definition,
         additivity=body.additivity,
-        time_mode=body.time_mode,
         time_dimension=(body.time_dimension or "").strip() or None,
         expression=normalize_expression(body.expression),
         datatype=body.datatype,
@@ -421,9 +397,6 @@ async def update_metric(
             expression=data.get("expression", m.expression),
         )
         validate_datatype(data.get("datatype", m.datatype))
-        _validate_time_mode(
-            data.get("time_mode", m.time_mode), data.get("time_dimension", m.time_dimension)
-        )
         await _validate_time_dimension(
             db, new_model_id, data.get("time_dimension", m.time_dimension)
         )
@@ -448,7 +421,6 @@ async def update_metric(
         "base_dataset_id",
         "business_definition",
         "additivity",
-        "time_mode",
         "time_dimension",
         "expression",
         "datatype",

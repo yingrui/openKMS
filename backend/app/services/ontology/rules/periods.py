@@ -114,6 +114,45 @@ def parse_period(label: str, kind: str = "week") -> tuple[str, str]:
     return date(year, 1, 1).isoformat(), date(year, 12, 31).isoformat()
 
 
+def shift_period(kind: str, label: str, start: str, end: str, offset: int) -> tuple[str, str, str]:
+    """The same calendar position `offset` periods earlier (`-1` = previous period).
+
+    Only a date-backed calendar can be shifted: `2026-W46` minus one week is arithmetic, but a custom
+    cycle's previous key is not derivable — it needs a calendar table, so callers must refuse it.
+    """
+    if not offset:
+        return label, start, end
+    if kind == "custom" or not start:
+        raise PeriodError("a custom cycle has no previous period — offset needs a dated time dimension")
+    first = date.fromisoformat(start)
+    if kind == "day":
+        shifted_start = first + timedelta(days=offset)
+        return shifted_start.isoformat(), shifted_start.isoformat(), shifted_start.isoformat()
+    if kind == "week":
+        shifted_start = first + timedelta(weeks=offset)
+        return (
+            f"{shifted_start.isocalendar().year}-W{shifted_start.isocalendar().week:02d}",
+            shifted_start.isoformat(),
+            (shifted_start + timedelta(days=6)).isoformat(),
+        )
+    months = {"month": 1, "quarter": 3, "year": 12}.get(kind)
+    if months is None:
+        raise PeriodError(f"offset is not supported for a {kind} calendar")
+    total = first.year * 12 + (first.month - 1) + months * offset
+    end_total = total + months
+    year, month_index = divmod(total, 12)
+    end_year, end_month_index = divmod(end_total, 12)
+    shifted_start = date(year, month_index + 1, 1)
+    shifted_end = date(end_year, end_month_index + 1, 1) - timedelta(days=1)
+    if kind == "month":
+        shifted_label = f"{shifted_start.year}-{shifted_start.month:02d}"
+    elif kind == "quarter":
+        shifted_label = f"{shifted_start.year}-Q{shifted_start.month // 3 + 1}"
+    else:
+        shifted_label = str(shifted_start.year)
+    return shifted_label, shifted_start.isoformat(), shifted_end.isoformat()
+
+
 def filter_for_period(
     field: str,
     *,

@@ -1,6 +1,6 @@
 """Metric reconciliation rules and their alerts — plain tables, plain CRUD.
 
-A rule watches one metric and states what must hold: an identity between metrics (`relation`) or a threshold
+A rule watches one metric and states what must hold: one or more identities between metrics (`identities`) or a threshold
 (`condition`). Running it yields pass / fail / unknown for a period and scope; a failure that carries advice
 opens an alert. Both live in `metric_rules` / `metric_events` (see `models/metric_rule.py`); this module is
 the HTTP surface over them.
@@ -34,8 +34,9 @@ from app.services.ontology.rules.events import (
     list_events,
     transition,
 )
-from app.services.ontology.rules.periods import PeriodError, parse_period
-from app.services.ontology.rules.refs import sync_rule_refs
+from app.services.ontology.rules.periods import kind_of_dimension
+from app.services.ontology.rules.refs import referenced_metric_ids, sync_rule_refs
+from app.services.ontology.rules.run_params import describe_run_params
 from app.services.ontology.rules.relations import RelationError, validate_relation
 from app.services.ontology.rules.run import evaluate_rule_in_snapshot, evaluate_subject_in_snapshot
 
@@ -58,18 +59,46 @@ class RuleGroup(BaseModel):
     field: str = Field(min_length=1)
 
 
+class RuleRunPeriod(BaseModel):
+    """How this check uses the period: whose dimension to filter, or none, and how many periods back."""
+
+    source: str = Field(default="inherit", pattern="^(inherit|field|none)$")
+    field: str | None = None
+    offset: int = Field(default=0, ge=-24, le=0)
+
+
+class RuleArgument(BaseModel):
+    """One declared run parameter.
+
+    A `filter` narrows every operand by a field of the subject; a `key` narrows the scopes to the groups the
+    run names. `role: period` marks a filter whose value *names the period* — same field, same value; what it
+    adds is that the run's verdict belongs to that period, and its interval is recorded on the event.
+    """
+
+    key: str = Field(min_length=1, max_length=64, pattern=r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+    kind: str = Field(pattern="^(filter|key)$")
+    field: str | None = None
+    role: str | None = Field(default=None, pattern="^period$")
+    required: bool = False
+
+
+class RuleRunParams(BaseModel):
+    arguments: list[RuleArgument] = []
+
+
 class RuleWrite(BaseModel):
     name: str
     rule_id: str | None = Field(default=None, pattern=SLUG)
     #: The metric this rule watches.
     metric_id: str
     condition: dict[str, Any] | None = None
-    relation: dict[str, Any] | None = None
+    identities: list[dict[str, Any]] | None = None
     severity: str = Field(default="P1", pattern="^P[0-2]$")
     conclusion: str = ""
     suggestion: str = ""
     owner: str | None = None
     group_by: RuleGroup | None = None
+    run_params: RuleRunParams | None = None
     status: str = Field(default="active", pattern="^(active|paused)$")
 
 
@@ -78,12 +107,13 @@ class RulePatch(BaseModel):
     rule_id: str | None = Field(default=None, pattern=SLUG)
     metric_id: str | None = None
     condition: dict[str, Any] | None = None
-    relation: dict[str, Any] | None = None
+    identities: list[dict[str, Any]] | None = None
     severity: str | None = Field(default=None, pattern="^P[0-2]$")
     conclusion: str | None = None
     suggestion: str | None = None
     owner: str | None = None
     group_by: RuleGroup | None = None
+    run_params: RuleRunParams | None = None
     status: str | None = Field(default=None, pattern="^(active|paused)$")
 
 
@@ -93,7 +123,7 @@ class RuleOut(BaseModel):
     name: str | None = None
     metric_id: str | None = None
     condition: dict | None = None
-    relation: dict | None = None
+    identities: list[dict] | None = None
     severity: str | None = None
     conclusion: str | None = None
     suggestion: str | None = None
@@ -108,6 +138,8 @@ class RuleOut(BaseModel):
     last_reason: str | None = None
     #: Metric ids this rule references — lets a metric list answer "covered" without N calls.
     metric_ids: list[str] = []
+    #: What pressing 运行 will ask for, derived from the metrics this rule reads.
+    run_params: dict | None = None
 
 
 class EvalOut(BaseModel):
@@ -127,17 +159,15 @@ class EvaluateResponse(BaseModel):
 
 
 class EvaluateRequest(BaseModel):
-    #: One period label (`2026-W46` / `2026-11` / `2026-11-15`); start/end are derived.
-    period_start: str = ""
-    period_end: str = ""
     dry_run: bool = False
+    #: Values for the rule's declared arguments, by key — including the period, if the rule declares one
+    #: (`{"cycle": "2026-W46", "channel": "线上", "scenario": ["S1"]}`).
+    values: dict[str, Any] = {}
 
 
 class RulesEvaluateRequest(BaseModel):
     metric_id: str | None = None
-    period_start: str = ""
-    period_end: str = ""
-    scope: str | None = None
+    values: dict[str, Any] = {}
 
 
 class EventOut(BaseModel):
@@ -197,20 +227,6 @@ def _slugify(name: str) -> str:
     return slug if len(slug) >= 2 else "rule"
 
 
-def _canonical_period(period_start: str, period_end: str) -> tuple[str, str]:
-    """One period label in, one canonical date pair out."""
-    if (period_start or "").strip() and (period_end or "").strip() and period_start != period_end:
-        raise HTTPException(
-            status_code=422,
-            detail="Give one period label (`period_start`); its end is derived, not supplied.",
-        )
-    label = (period_start or period_end or "").strip()
-    try:
-        return parse_period(label)
-    except PeriodError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-
 def _rule_out(rule: MetricRule) -> RuleOut:
     return RuleOut(
         id=rule.id,
@@ -218,7 +234,7 @@ def _rule_out(rule: MetricRule) -> RuleOut:
         name=rule.name,
         metric_id=rule.metric_id,
         condition=rule.condition,
-        relation=rule.relation,
+        identities=rule.identities,
         severity=rule.severity,
         conclusion=rule.conclusion,
         suggestion=rule.suggestion,
@@ -226,6 +242,7 @@ def _rule_out(rule: MetricRule) -> RuleOut:
         status=rule.status,
         version=rule.version,
         group_by=rule.group_by,
+        run_params=rule.run_params,
         last_run_at=rule.last_run_at,
         last_status=rule.last_status,
         last_period_start=rule.last_period_start,
@@ -253,6 +270,77 @@ async def _slug_taken(db: AsyncSession, slug: str, *, exclude: str | None = None
     return any(row != exclude for row in rows)
 
 
+async def _validate_metric_refs(
+    db: AsyncSession, condition: dict | None, identities: list[dict] | None
+) -> None:
+    """Every operand names a metric by id; an unknown one is a 400, not a foreign-key error at insert time."""
+    refs = referenced_metric_ids({"condition": condition, "identities": identities})
+    for metric_id in refs:
+        if await db.get(MetricDefinition, metric_id) is None:
+            raise HTTPException(status_code=400, detail=f"unknown metric '{metric_id}'")
+
+
+async def _validate_run_params(
+    db: AsyncSession, metric_id: str, params: RuleRunParams, group_field: str | None
+) -> None:
+    """Every declared argument must be satisfiable, or it is a 400 now instead of an `unknown` later."""
+    keys = [argument.key for argument in params.arguments]
+    if len(keys) != len(set(keys)):
+        raise HTTPException(status_code=400, detail="run parameter keys must be unique")
+    periods = [a for a in params.arguments if a.role == "period"]
+    if len(periods) > 1:
+        raise HTTPException(status_code=400, detail="only one run parameter can be the period")
+    for argument in periods:
+        if argument.kind != "filter":
+            # A key narrows the scopes; it cannot also label the run.
+            raise HTTPException(status_code=400, detail="the period must be a `filter` argument")
+
+    metric = await _metric_or_400(db, metric_id)
+
+    async def model_field(name: str):
+        return (
+            await db.execute(
+                select(SemanticModelField).where(
+                    SemanticModelField.semantic_model_id == metric.semantic_model_id,
+                    SemanticModelField.name == name,
+                )
+            )
+        ).scalars().first()
+
+    for argument in params.arguments:
+        name = (argument.field or "").strip()
+        if not name:
+            raise HTTPException(
+                status_code=400, detail=f"'{argument.key}' needs the field it narrows."
+            )
+        field = await model_field(name)
+        if field is None:
+            raise HTTPException(status_code=400, detail=f"'{name}' is not a field of this model.")
+        if argument.kind == "key":
+            if not group_field:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"'{argument.key}' narrows the scopes — the rule needs a group field first.",
+                )
+            if name != group_field:
+                # One meaning: a key argument selects groups, so it must name the group field itself.
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"'{argument.key}' must name the group field ('{group_field}').",
+                )
+        if argument.role == "period":
+            calendar = kind_of_dimension(field.dimension, field.datatype)
+            if calendar == "custom":
+                # The value names no interval, and an event without a period is not a period event.
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"'{name}' has a custom calendar: its value does not name an interval, so it "
+                        "cannot label a run — declare it as a plain filter instead."
+                    ),
+                )
+
+
 async def _validate_group_by(db: AsyncSession, metric: MetricDefinition, group: RuleGroup | None) -> None:
     """`group_by.field` must be a field of the metric's model — a typo is a 400, not a silent "undecidable"."""
     if group is None:
@@ -274,26 +362,42 @@ async def _validate_group_by(db: AsyncSession, metric: MetricDefinition, group: 
 
 
 def _validate_definition(payload: RuleWrite | dict) -> tuple[dict | None, dict | None]:
-    """Exactly one of condition / relation, structurally valid; returns the pair to store."""
+    """Exactly one of condition / identities, structurally valid; returns the pair to store."""
     data = payload if isinstance(payload, dict) else payload.model_dump()
     condition = data.get("condition")
-    relation = data.get("relation")
-    if bool(condition) == bool(relation):
+    identities = data.get("identities")
+    if bool(condition) == bool(identities):
         raise HTTPException(
             status_code=400,
-            detail="A rule needs exactly one of `condition` (a threshold) and `relation` (an identity).",
+            detail=(
+                "A rule needs exactly one of `condition` (a threshold) and `identities` "
+                "(one or more equalities)."
+            ),
         )
     if condition:
         try:
             validate_condition(condition)
         except ConditionError as exc:
             raise HTTPException(status_code=400, detail=f"Invalid condition: {exc}") from exc
-    if relation:
-        try:
-            validate_relation(relation)
-        except RelationError as exc:
-            raise HTTPException(status_code=400, detail=f"Invalid relation: {exc}") from exc
-    return condition, relation
+    if identities is not None:
+        if not isinstance(identities, list) or not identities:
+            raise HTTPException(status_code=400, detail="`identities` needs at least one equality.")
+        targets: set[str] = set()
+        for identity in identities:
+            try:
+                validate_relation(identity)
+            except RelationError as exc:
+                raise HTTPException(status_code=400, detail=f"Invalid identity: {exc}") from exc
+            target = str((identity.get("target") or {}).get("metric") or "")
+            if target in targets:
+                # The evidence names each identity's residual after its target; two identities on the
+                # same target would overwrite each other's number in the alert.
+                raise HTTPException(
+                    status_code=400,
+                    detail="Two identities cannot explain the same target metric — merge them.",
+                )
+            targets.add(target)
+    return condition, identities
 
 
 @router.get("", response_model=list[RuleOut], dependencies=READ_DEPS)
@@ -317,8 +421,13 @@ async def list_rules(
 @router.post("", response_model=RuleOut, status_code=201, dependencies=WRITE_DEPS)
 async def create_rule(request: Request, body: RuleWrite, db: AsyncSession = Depends(get_db)):
     metric = await _metric_or_400(db, body.metric_id)
-    condition, relation = _validate_definition(body)
+    condition, identities = _validate_definition(body)
+    await _validate_metric_refs(db, condition, identities)
     await _validate_group_by(db, metric, body.group_by)
+    if body.run_params is not None:
+        await _validate_run_params(
+            db, metric.id, body.run_params, body.group_by.field if body.group_by else None
+        )
 
     slug = (body.rule_id or "").strip() or _slugify(body.name)
     if await _slug_taken(db, slug):
@@ -331,7 +440,7 @@ async def create_rule(request: Request, body: RuleWrite, db: AsyncSession = Depe
         name=body.name.strip(),
         metric_id=metric.id,
         condition=condition,
-        relation=relation,
+        identities=identities,
         severity=body.severity,
         conclusion=body.conclusion,
         suggestion=body.suggestion,
@@ -339,6 +448,7 @@ async def create_rule(request: Request, body: RuleWrite, db: AsyncSession = Depe
         status=body.status,
         version=1,
         group_by=body.group_by.model_dump() if body.group_by else None,
+        run_params=body.run_params.model_dump() if body.run_params else None,
         created_by_name=str(uname) if uname else None,
     )
     db.add(rule)
@@ -351,7 +461,8 @@ async def create_rule(request: Request, body: RuleWrite, db: AsyncSession = Depe
 
 @router.get("/{rule_id}", response_model=RuleOut, dependencies=READ_DEPS)
 async def get_rule(rule_id: str, db: AsyncSession = Depends(get_db)):
-    return _rule_out(await _load_rule(db, rule_id))
+    rule = await _load_rule(db, rule_id)
+    return _rule_out(rule).model_copy(update={"run_params": await describe_run_params(db, rule)})
 
 
 @router.patch("/{rule_id}", response_model=RuleOut, dependencies=WRITE_DEPS)
@@ -361,13 +472,22 @@ async def update_rule(rule_id: str, body: RulePatch, db: AsyncSession = Depends(
 
     if body.metric_id is not None:
         rule.metric_id = (await _metric_or_400(db, body.metric_id)).id
-    if body.condition is not None or body.relation is not None:
-        condition, relation = _validate_definition(
-            {"condition": body.condition, "relation": body.relation}
+    if body.condition is not None or body.identities is not None:
+        condition, identities = _validate_definition(
+            {"condition": body.condition, "identities": body.identities}
         )
+        await _validate_metric_refs(db, condition, identities)
         rule.condition = condition
-        rule.relation = relation
+        rule.identities = identities
         rule.version += 1
+    if body.run_params is not None:
+        effective_group = (
+            body.group_by.field
+            if body.group_by is not None
+            else (rule.group_by or {}).get("field")
+        )
+        await _validate_run_params(db, rule.metric_id, body.run_params, effective_group)
+        rule.run_params = body.run_params.model_dump()
     if body.group_by is not None or "group_by" in body.model_fields_set:
         metric = await _metric_or_400(db, rule.metric_id)
         await _validate_group_by(db, metric, body.group_by)
@@ -384,7 +504,7 @@ async def update_rule(rule_id: str, body: RulePatch, db: AsyncSession = Depends(
     await sync_rule_refs(db, rule)
     await db.commit()
     await db.refresh(rule)
-    return _rule_out(rule)
+    return _rule_out(rule).model_copy(update={"run_params": await describe_run_params(db, rule)})
 
 
 @router.delete("/{rule_id}", status_code=204, dependencies=WRITE_DEPS)
@@ -403,15 +523,12 @@ async def evaluate_one(
     db: AsyncSession = Depends(get_db),
 ):
     rule = await _load_rule(db, rule_id)
-    period_start, period_end = _canonical_period(body.period_start, body.period_end)
     try:
         results = await evaluate_rule_in_snapshot(
             request,
             rule_id=rule.id,
-            period_start=period_start,
-            period_end=period_end,
-            period_label=(body.period_start or body.period_end or "").strip() or None,
             dry_run=body.dry_run,
+            values=body.values,
         )
     except ConditionError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid condition: {exc}") from exc
@@ -430,13 +547,10 @@ async def evaluate_many(
     db: AsyncSession = Depends(get_db),
 ):
     """Every active rule, or just the ones watching one metric."""
-    period_start, period_end = _canonical_period(body.period_start, body.period_end)
     results = await evaluate_subject_in_snapshot(
         request,
         metric_id=body.metric_id,
-        period_start=period_start,
-        period_end=period_end,
-        period_label=(body.period_start or body.period_end or "").strip() or None,
+        values=body.values,
     )
     return EvaluateResponse(
         results=[_eval_out(result) for result in results],

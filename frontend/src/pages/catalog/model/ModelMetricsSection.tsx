@@ -129,8 +129,7 @@ export function ModelMetricsSection() {
     try {
       const result = await evaluateRules({
         metric_id: runMetric.id,
-        period_start: params.period_start,
-        period_end: params.period_end,
+        values: params.values,
       });
       toast.success(
         t('dataModel.checksRun', {

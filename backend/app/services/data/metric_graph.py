@@ -33,30 +33,30 @@ def _indexes(metrics: list[MetricDefinition]) -> tuple[dict[str, MetricDefinitio
 def _relation_edges(rules: list[dict[str, Any]], by_ref: dict[str, MetricDefinition]) -> list[dict[str, Any]]:
     edges: list[dict[str, Any]] = []
     for rule in rules:
-        relation = rule.get("relation")
-        if not isinstance(relation, dict):
-            continue
-        target = (relation.get("target") or {}).get("metric")
-        if not target:
-            continue
-        tolerance = relation.get("tolerance") or {}
-        for member in relation.get("members") or []:
-            ref = (member or {}).get("metric")
-            if not ref:
+        for relation in rule.get("identities") or []:
+            if not isinstance(relation, dict):
                 continue
-            edges.append(
-                {
-                    "from": str(target),
-                    "to": str(ref),
-                    "kind": "assertion",
-                    "weight": float((member or {}).get("weight") or 1),
-                    "tolerance": tolerance or None,
-                    "source": "rule",
-                    "rule_id": rule.get("rule_id"),
-                    "rule_object_id": rule.get("object_id"),
-                    "health": rule.get("last_status"),
-                }
-            )
+            target = (relation.get("target") or {}).get("metric")
+            if not target:
+                continue
+            tolerance = relation.get("tolerance") or {}
+            for member in relation.get("members") or []:
+                ref = (member or {}).get("metric")
+                if not ref:
+                    continue
+                edges.append(
+                    {
+                        "from": str(target),
+                        "to": str(ref),
+                        "kind": "assertion",
+                        "weight": float((member or {}).get("weight") or 1),
+                        "tolerance": tolerance or None,
+                        "source": "rule",
+                        "rule_id": rule.get("rule_id"),
+                        "rule_object_id": rule.get("object_id"),
+                        "health": rule.get("last_status"),
+                    }
+                )
     return edges
 
 

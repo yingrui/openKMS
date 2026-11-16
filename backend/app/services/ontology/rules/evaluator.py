@@ -30,7 +30,8 @@ from app.models.semantic_model import SemanticModel
 from app.models.semantic_model_field import SemanticModelField
 from app.services.data.dataset_rows import query_dataset_summary
 from app.services.ontology.rules.scoping import restricted_models_for_dataset, run_entity_scope
-from app.services.data.query import run_query
+from app.services.data.query import QueryError, run_query
+from app.services.data.semantic_model_fields import is_temporal_datatype
 from app.services.identity.acl.resource_acl_constants import PERM_READ
 from app.services.workspace.evaluations.dataset_scope import load_dataset_scoped
 from app.services.ontology.rules.relations import (
@@ -41,7 +42,13 @@ from app.services.ontology.rules.relations import (
     weight_of,
     within_tolerance,
 )
-from app.services.ontology.rules.periods import filter_for_period, kind_of_dimension
+from app.services.ontology.rules.periods import PeriodError, kind_of_dimension, parse_period
+from app.services.ontology.rules.run_params import (
+    period_argument,
+    period_value,
+    run_filters as run_filter_arguments,
+    scope_filter,
+)
 from app.services.ontology.rules.conditions import (
     ConditionError,
     collect_datasets,
@@ -110,60 +117,85 @@ def _rule_group_by(rule_data: dict) -> dict | None:
     return group
 
 
-def period_filters(period_field: str | None, period_start: str, period_end: str) -> list[dict]:
-    """A date range filter — kept for callers that already know the column is date-typed."""
-    if not period_field or not (period_start or period_end):
-        return []
-    out: list[dict] = []
-    if period_start:
-        out.append({"field": period_field, "op": ">=", "value": period_start})
-    if period_end:
-        out.append({"field": period_field, "op": "<=", "value": period_end})
-    return out
+@dataclass(frozen=True)
+class RulePeriod:
+    """The run's period, resolved once: the label, its interval, and the field it applies to."""
+
+    field: str
+    label: str
+    start: str
+    end: str
+    kind: str
+    datatype: str | None
+    dimension: dict | None
+
+    def filters(self, field: str | None = None) -> list[dict]:
+        """The predicates for one operand's period column.
+
+        A date column ranges over the interval; a key column (`cycle` text, `202611` integer) matches the
+        label. The choice follows the column's datatype — the calendar already decided the interval.
+        """
+        target = (field or "").strip() or self.field
+        if not target:
+            return []
+        if self.datatype and is_temporal_datatype(self.datatype):
+            return [
+                {"field": target, "op": ">=", "value": self.start},
+                {"field": target, "op": "<=", "value": self.end},
+            ]
+        return [{"field": target, "op": "=", "value": self.label}]
 
 
-def period_binding(
-    metric: MetricDefinition | None,
-    operand_field: str | None,
-    period_label: str,
-    period_start: str,
-    period_end: str,
-    *,
-    field_datatype: str | None = None,
-    field_dimension: dict | None = None,
-) -> tuple[list[dict], str]:
-    """`(filters, reason)` — how one operand relates to the run's period.
+async def _resolve_period(
+    db: AsyncSession, rule: MetricRule, rule_data: dict, values: dict | None
+) -> tuple[RulePeriod | None, str]:
+    """`(period, reason)` — read the period argument, and turn its value into an interval.
 
-    Three cases:
-
-    * **period** — a time dimension carries the period (the operand's own `period_field`, else the metric's
-      `time_dimension`). The filter is compiled in *that field's* vocabulary: a date column ranges over the
-      period's two dates, a key column (`cycle` text, `202611` integer) matches the label.
-    * **snapshot** — the number is written by each run (a stored snapshot, e.g. a scenario table's KPIs), so a
-      run aimed at a past period is refused (`reason`): it cannot be recomputed, and serving today's value
-      under yesterday's label would be worse than saying so.
-    * **none** — no time concept: the period is a label on the run, and the alert says so.
+    The interval is the only thing the period argument has beyond a filter: the field's calendar says what
+    `2026-W46` covers. A calendar we cannot derive (`custom`) cannot label a run — the event would have no
+    start or end — so it is refused here, once, with a reason.
     """
-    field = (operand_field or "").strip() or (metric.time_dimension if metric else None)
-    mode = metric.time_mode if metric and metric.time_mode else ("period" if field else "none")
-    if mode == "snapshot":
-        if period_end and period_end < _today():
-            return [], (
-                "this metric is a stored snapshot (written by each run), so it cannot be recomputed for "
-                f"{period_start or period_end} — read the record of the run that produced it"
+    argument = period_argument(rule_data)
+    if argument is None:
+        return None, ""
+    label, reason = period_value(rule_data, values)
+    if reason:
+        return None, reason
+    field_name = str(argument.get("field") or "").strip()
+    if not field_name:
+        return None, "the period argument needs the field it filters"
+    metric = await db.get(MetricDefinition, rule.metric_id)
+    if metric is None:
+        return None, "metric not found"
+    field = (
+        await db.execute(
+            select(SemanticModelField).where(
+                SemanticModelField.semantic_model_id == metric.semantic_model_id,
+                SemanticModelField.name == field_name,
             )
-        return [], ""
-    if mode == "none" or not field:
-        return [], ""
-    kind = kind_of_dimension(field_dimension, field_datatype)
+        )
+    ).scalars().first()
+    if field is None:
+        return None, f"'{field_name}' is not a field of this model"
+    kind = kind_of_dimension(field.dimension, field.datatype)
+    if kind == "custom":
+        return None, (
+            f"'{field_name}' has a custom calendar: its value does not name an interval, so it cannot be a "
+            "period"
+        )
+    try:
+        start, end = parse_period(label, kind)
+    except PeriodError as exc:
+        return None, str(exc)
     return (
-        filter_for_period(
-            field,
-            datatype=field_datatype,
+        RulePeriod(
+            field=field_name,
+            label=label,
+            start=start,
+            end=end,
             kind=kind,
-            label=period_label,
-            start=period_start,
-            end=period_end,
+            datatype=field.datatype,
+            dimension=field.dimension,
         ),
         "",
     )
@@ -181,7 +213,7 @@ async def _metric_value(
     group_field: str | None = None,
     *,
     period_field: str | None = None,
-    period: tuple[str, str, str] = ("", "", ""),
+    period: RulePeriod | None = None,
 ) -> tuple[float | None | dict[str, float | None], str]:
     metric = await db.get(MetricDefinition, metric_id)
     if metric is None:
@@ -193,37 +225,21 @@ async def _metric_value(
     entity_scope, reason = await run_entity_scope(db, request, model)
     if reason:
         return None, reason
-    label, start, end = period
-    bound = (period_field or "").strip() or (metric.time_dimension or "")
-    field_meta = (
-        await db.execute(
-            select(SemanticModelField).where(
-                SemanticModelField.semantic_model_id == metric.semantic_model_id,
-                SemanticModelField.name == bound,
-            )
-        )
-    ).scalars().first() if bound else None
-    period_scope, period_reason = period_binding(
-        metric,
-        period_field,
-        label,
-        start,
-        end,
-        field_datatype=field_meta.datatype if field_meta else None,
-        field_dimension=field_meta.dimension if field_meta else None,
-    )
-    if period_reason:
-        return None, period_reason
+    period_scope = period.filters(period_field) if period else []
     filters = [*(filters or []), *period_scope] if period_scope else filters
-    _sql, _columns, rows, capped, _ms = await run_query(
-        db,
-        model_id=metric.semantic_model_id,
-        metric=metric_id,
-        filters=filters or None,
-        group_by=[{"field": group_field}] if group_field else None,
-        limit=GROUP_LIMIT if group_field else 1,
-        entity_scope=entity_scope,
-    )
+    try:
+        _sql, _columns, rows, capped, _ms = await run_query(
+            db,
+            model_id=metric.semantic_model_id,
+            metric=metric_id,
+            filters=filters or None,
+            group_by=[{"field": group_field}] if group_field else None,
+            limit=GROUP_LIMIT if group_field else 1,
+            entity_scope=entity_scope,
+        )
+    except QueryError as exc:
+        # A metric that cannot be computed is `unknown` with a reason, never a failed run.
+        return None, str(exc)
     if capped:
         return None, f"more than {GROUP_LIMIT} groups — the run cannot decide on a partial set"
     if not rows:
@@ -240,7 +256,8 @@ async def _dataset_agg_value(
     group_field: str | None = None,
     *,
     period_field: str | None = None,
-    period: tuple[str, str, str] = ("", "", ""),
+    period: "RulePeriod | None" = None,
+    run_filters: list[dict] | None = None,
 ) -> tuple[float | None | dict[str, float | None], str]:
     dataset_id = str(spec.get("dataset_id"))
     # Same resource gate as the data grid: a rule may only read what the runner may read.
@@ -252,26 +269,28 @@ async def _dataset_agg_value(
         return None, (
             "dataset aggregate over a restricted model does not apply row policies — use a metric instead"
         )
-    # A dataset aggregate declares no calendar; when the operand names a column we match the label.
-    label, start, end = period
-    period_scope = (
-        [{"field": period_field, "op": "=", "value": label or start}]
-        if period_field and (label or start)
-        else []
-    )
-    if period_scope:
-        spec = {**spec, "filters": [*(spec.get("filters") or []), *period_scope]}
+    # The period is compiled the same way as for a metric: the calendar decided the interval, the column's
+    # datatype decides equality vs range.
+    period_scope = period.filters(period_field) if period else []
+    spec = {
+        **spec,
+        "filters": [*(spec.get("filters") or []), *period_scope, *(run_filters or [])],
+    }
     fn = str(spec.get("fn"))
     column = spec.get("column")
     name = fn if not column else f"{fn}_{column}"
-    summary = await query_dataset_summary(
-        db,
-        dataset_id,
-        aggregates=[{"fn": fn, "column": column, "name": name}],
-        filters=spec.get("filters") or [],
-        group_by=[group_field] if group_field else None,
-        limit=GROUP_LIMIT if group_field else 1,
-    )
+    try:
+        summary = await query_dataset_summary(
+            db,
+            dataset_id,
+            aggregates=[{"fn": fn, "column": column, "name": name}],
+            filters=spec.get("filters") or [],
+            group_by=[group_field] if group_field else None,
+            limit=GROUP_LIMIT if group_field else 1,
+        )
+    except QueryError as exc:
+        # The run asked for a slice this dataset cannot serve (an unknown column, say) — say so.
+        return None, str(exc)
     if summary.capped:
         return None, f"more than {GROUP_LIMIT} groups — the run cannot decide on a partial set"
     if not summary.rows:
@@ -286,7 +305,8 @@ async def _resolve_operand(
     request: Request,
     operand: dict,
     group_field: str | None = None,
-    period: tuple[str, str, str] = ("", "", ""),
+    period: "RulePeriod | None" = None,
+    run_filters: list[dict] | None = None,
 ) -> tuple[float | None | dict[str, float | None], str]:
     kind = next(key for key in operand if key not in ("filters", "period_field"))
     operand_period = operand.get("period_field")
@@ -295,7 +315,7 @@ async def _resolve_operand(
             db,
             request,
             str(operand["metric"]),
-            operand.get("filters") or None,
+            [*(operand.get("filters") or []), *(run_filters or [])] or None,
             group_field,
             period_field=operand_period,
             period=period,
@@ -308,12 +328,17 @@ async def _resolve_operand(
             group_field,
             period_field=operand_period,
             period=period,
+            run_filters=run_filters,
         )
     pair = (operand[kind][0], operand[kind][1])
-    left, left_reason = await _resolve_operand(db, request, pair[0], group_field, period)
+    left, left_reason = await _resolve_operand(
+        db, request, pair[0], group_field, period, run_filters
+    )
     if left is None:
         return None, left_reason
-    right, right_reason = await _resolve_operand(db, request, pair[1], group_field, period)
+    right, right_reason = await _resolve_operand(
+        db, request, pair[1], group_field, period, run_filters
+    )
     if right is None:
         return None, right_reason
     if group_field:
@@ -365,9 +390,19 @@ def _close(event: MetricEvent) -> None:
 
 
 async def _close_open_events(
-    db: AsyncSession, *, rule: str, scopes: list[str], period_start: str, period_end: str
+    db: AsyncSession,
+    *,
+    rule: str,
+    scopes: list[str],
+    period_start: str,
+    period_end: str,
+    within: list[str] | None = None,
 ) -> int:
-    """Close the alerts of `rule` whose scope is not among `scopes` (or every one when empty)."""
+    """Close the alerts of `rule` whose scope is not among `scopes` (or every one when empty).
+
+    `within` is the run's narrowed scope: a run that only looked at two scenarios must not retire the alerts
+    of the others — it never examined them.
+    """
     rows = (
         await db.execute(
             select(MetricEvent).where(
@@ -380,6 +415,8 @@ async def _close_open_events(
     ).scalars().all()
     closed = 0
     for event in rows:
+        if within is not None and event.scope not in within:
+            continue
         if scopes and event.scope in scopes:
             continue
         _close(event)
@@ -387,6 +424,20 @@ async def _close_open_events(
     if closed:
         await db.flush()
     return closed
+
+
+def _event_advice(rule_data: dict, advice: list[str]) -> str:
+    """What to do about this event: the rule's own advice, plus the advice of each violated identity.
+
+    One severity for the whole rule (it is one incident), but the fix differs per identity — "re-run the
+    scenario" and "check the over-max threshold" are not the same instruction.
+    """
+    parts = [str(rule_data.get("suggestion") or "").strip(), *[a.strip() for a in advice]]
+    seen: list[str] = []
+    for part in parts:
+        if part and part not in seen:
+            seen.append(part)
+    return "；".join(seen)
 
 
 def _event_title(rule_data: dict, group: dict | None) -> str:
@@ -406,11 +457,13 @@ async def _upsert_event(
     rule_data: dict,
     scope: str,
     group: dict | None,
-    period_start: str,
-    period_end: str,
-    period_label: str | None,
+    period: "RulePeriod | None",
     values: dict[str, float | None],
+    advice: list[str] | None = None,
 ) -> str:
+    period_start = period.start if period else ""
+    period_end = period.end if period else ""
+    period_label = period.label if period else None
     # Two runs of the same rule for the same scope and period must not both "find nothing" and insert:
     # a transaction-scoped lock on the dedupe key serialises them (the run owns its transaction).
     key = "|".join([rule.slug, scope, period_start, period_end])
@@ -427,7 +480,7 @@ async def _upsert_event(
         "at": _now(),
     }
     title = _event_title(rule_data, group)
-    description = str(rule_data.get("suggestion") or "")
+    description = _event_advice(rule_data, advice or [])
     if existing is not None:
         # The rule's wording may have changed since the alert opened; refresh what the reader sees.
         existing.evidence = evidence
@@ -468,9 +521,7 @@ async def evaluate_rule(
     request: Request,
     *,
     rule: MetricRule,
-    period_start: str = "",
-    period_end: str = "",
-    period_label: str | None = None,
+    values: dict[str, Any] | None = None,
     dry_run: bool = False,
 ) -> list[EvalResult]:
     """Evaluate one rule — once per group when it declares `group_by`, otherwise once.
@@ -481,25 +532,31 @@ async def evaluate_rule(
     ``dry_run`` is the 试算: same numbers, same guardrails, but it publishes nothing, closes nothing and
     leaves the rule untouched. Writing a condition is iterative; the first three tries are wrong, and none
     of them should reach the inbox.
+
+    ``values`` carries the run's arguments — including the period, which is just a filter that also names
+    the interval this verdict belongs to. A required argument the caller omitted stops the run before any
+    query: the rule's numbers are not wrong, they were never asked for.
     """
     rule_data = _rule_payload(rule)
+    extra_filters, filter_reason = run_filter_arguments(rule_data, values)
+    wanted_scopes, scope_reason = scope_filter(rule_data, values)
+    period, period_reason = await _resolve_period(db, rule, rule_data, values)
+    reason = filter_reason or scope_reason or period_reason
+    if reason:
+        return [EvalResult(rule_id=rule.id, status="unknown", values={}, group=None, reason=reason)]
 
-    relation = rule_data.get("relation")
-    if isinstance(relation, str):
-        try:
-            relation = json.loads(relation)
-        except json.JSONDecodeError as exc:
-            raise ConditionError(f"relation is not valid JSON: {exc}") from exc
-    if relation:
-        return await _evaluate_relation(
+    identities = _json_field(rule_data.get("identities"))
+    if identities:
+        return await _evaluate_identities(
             db,
             request,
             rule=rule,
-            rule_data={**rule_data, "relation": relation},
-            period_start=period_start,
-            period_end=period_end,
-            period_label=period_label,
+            rule_data=rule_data,
+            identities=identities,
+            period=period,
             dry_run=dry_run,
+            run_filters=extra_filters,
+            wanted_scopes=wanted_scopes,
         )
 
     condition = rule_data.get("condition")
@@ -512,16 +569,17 @@ async def evaluate_rule(
 
     group = _rule_group_by(rule_data)
     group_field = str(group["field"]) if group else None
-    period = (period_label or "", period_start, period_end)
     operands = flatten_operands(condition)
 
     resolved_by_operand: dict[str, float | None | dict[str, float | None]] = {}
     reasons: list[str] = []
     for operand in operands:
-        value, reason = await _resolve_operand(db, request, operand, group_field, period)
+        value, operand_reason = await _resolve_operand(
+            db, request, operand, group_field, period, extra_filters
+        )
         resolved_by_operand[operand_key(operand)] = value
-        if value is None and reason:
-            reasons.append(reason)
+        if value is None and operand_reason:
+            reasons.append(operand_reason)
 
     grouped = evaluate_groups(condition, resolved_by_operand, group_field)
     return await _finish(
@@ -533,10 +591,9 @@ async def evaluate_rule(
         reasons=reasons,
         group=group,
         group_field=group_field,
-        period_start=period_start,
-        period_end=period_end,
-        period_label=period_label,
+        period=period,
         dry_run=dry_run,
+        wanted_scopes=wanted_scopes,
     )
 
 
@@ -550,19 +607,40 @@ async def _finish(
     reasons: list[str],
     group: dict | None,
     group_field: str | None,
-    period_start: str,
-    period_end: str,
-    period_label: str | None,
+    period: "RulePeriod | None",
     dry_run: bool,
+    wanted_scopes: list[str] | None = None,
+    advice: dict[str, list[str]] | None = None,
 ) -> list[EvalResult]:
     """Turn per-group verdicts into results, events and `last_*` — the part every check shares.
 
     `grouped` is `(group value, hit, values)`: the condition history and a metric relation both end here,
     which is what keeps the publish gate, the dedupe and the closing rule in one place.
     """
+    # A `key` argument narrows the run to the scopes the caller named. Everything outside them was never
+    # examined, so it must not be reported and must not close an alert.
+    absent: list[str] = []
+    if wanted_scopes is not None and group_field:
+        wanted = set(wanted_scopes)
+        present = {_group_key(value) for value, _hit, _resolved in grouped}
+        absent = [scope for scope in wanted_scopes if scope not in present]
+        grouped = [entry for entry in grouped if _group_key(entry[0]) in wanted]
+
     results: list[EvalResult] = []
     failing_scopes: list[str] = []
     statuses: list[str] = []
+    if not grouped and not absent:
+        # Nothing was computed — an empty slice is "cannot decide", never a pass.
+        statuses.append("unknown")
+        results.append(
+            EvalResult(
+                rule_id=rule.id,
+                status="unknown",
+                values={},
+                group=None,
+                reason="; ".join(reasons) or "no rows for this run's slice",
+            )
+        )
     for group_value, hit, resolved in grouped:
         statuses.append("unknown" if hit is None else ("fail" if hit else "pass"))
         results.append(
@@ -592,13 +670,25 @@ async def _finish(
                     scope=scope_value,
                     group=({"field": group_field, "label": (group or {}).get("label"), "value": group_value}
                            if group_field else None),
-                    period_start=period_start,
-                    period_end=period_end,
-                    period_label=period_label,
+                    period=period,
                     values=resolved,
+                    advice=(advice or {}).get(scope_value, []),
                 )
             else:
                 results[-1].status = "pass"  # a hit without advice is not an event
+
+    for scope in absent:
+        # The caller asked for this scope and the period has no rows for it: undecidable, and said so.
+        statuses.append("unknown")
+        results.append(
+            EvalResult(
+                rule_id=rule.id,
+                status="unknown",
+                values={},
+                group={"field": group_field, "value": scope},
+                reason=f"scope '{scope}' has no rows in this period",
+            )
+        )
 
     # A run that decided at least one group says which events no longer hold — grouped or not. A run
     # where every operand was uncomputable decides nothing and must not close anything.
@@ -607,8 +697,9 @@ async def _finish(
             db,
             rule=rule.id,
             scopes=failing_scopes,
-            period_start=period_start,
-            period_end=period_end,
+            period_start=period.start if period else "",
+            period_end=period.end if period else "",
+            within=wanted_scopes,
         )
 
     overall = "fail" if "fail" in statuses else ("unknown" if "unknown" in statuses else "pass")
@@ -618,8 +709,8 @@ async def _finish(
     data: dict[str, Any] = {
         "last_run_at": _now(),
         "last_status": overall,
-        "last_period_start": period_start,
-        "last_period_end": period_end,
+        "last_period_start": period.start if period else "",
+        "last_period_end": period.end if period else "",
         # Why a run could not decide (`unknown`), or a one-line note for a failure. Empty on pass:
         # the numbers themselves stay in the alert's evidence, not on the rule.
         "last_reason": "; ".join(reasons) if reasons else None,
@@ -629,39 +720,41 @@ async def _finish(
     return results
 
 
-async def _evaluate_relation(
+async def _identity_verdicts(
     db: AsyncSession,
     request: Request,
     *,
-    rule: MetricRule,
-    rule_data: dict,
-    period_start: str,
-    period_end: str,
-    period_label: str | None,
-    dry_run: bool,
-) -> list[EvalResult]:
-    """Check an identity: `target` vs the weighted sum of its `members`, within a tolerance."""
-    relation = rule_data["relation"]
+    relation: dict,
+    group_field: str | None,
+    period: "RulePeriod | None",
+    run_filters: list[dict] | None,
+) -> tuple[dict[str, tuple[bool | None, dict[str, Any]]], list[Any], list[str]]:
+    """`(per-scope violated, scope order, reasons)` for one identity.
+
+    The flag is `True` when the identity is **violated** (the same sense `_finish` expects), `False` when it
+    holds, `None` when an operand could not be computed.
+    """
     try:
         validate_relation(relation)
     except RelationError as exc:
         raise ConditionError(str(exc)) from exc
 
-    group = _rule_group_by(rule_data)
-    group_field = str(group["field"]) if group else None
-    period = (period_label or "", period_start, period_end)
     tolerance = tolerance_of(relation)
-
+    target_id = str((relation.get("target") or {}).get("metric") or "")
     target = dict(relation["target"])
     target_group = target.pop("group_field", None) or group_field
-    target_value, reason = await _resolve_operand(db, request, target, target_group, period)
+    target_value, reason = await _resolve_operand(
+        db, request, target, target_group, period, run_filters
+    )
     reasons = [reason] if (target_value is None and reason) else []
 
     resolved_members: list[tuple[dict, Any]] = []
     for raw in relation["members"]:
         member = dict(raw)
         member_group = member.pop("group_field", None) or group_field
-        value, member_reason = await _resolve_operand(db, request, member, member_group, period)
+        value, member_reason = await _resolve_operand(
+            db, request, member, member_group, period, run_filters
+        )
         if value is None and member_reason:
             reasons.append(member_reason)
         resolved_members.append((raw, value))
@@ -674,7 +767,8 @@ async def _evaluate_relation(
                 seen.update(key for key in value if key is not None)
         keys = sorted(seen)
 
-    grouped: list[tuple[Any, bool | None, dict[str, Any]]] = []
+    out: dict[str, tuple[bool | None, dict[str, Any]]] = {}
+    order: list[Any] = []
     for key in keys:
         target_at = target_value.get(key) if isinstance(target_value, dict) else target_value
         member_at: list[tuple[float, float]] = []
@@ -685,20 +779,93 @@ async def _evaluate_relation(
                 missing = True
                 break
             member_at.append((weight_of(raw), float(member_value)))
-        values: dict[str, Any] = {"target": None if target_at is None else float(target_at)}
+        # The target's own number is keyed by its id: with several identities in one rule, a bare
+        # `target` / `residual` key would be overwritten by the next identity.
+        values: dict[str, Any] = {
+            f"target:{target_id}": None if target_at is None else float(target_at)
+        }
         for raw, value in resolved_members:
-            values[str(raw["metric"])] = (
-                value.get(key) if isinstance(value, dict) else value
-            )
+            values[str(raw["metric"])] = value.get(key) if isinstance(value, dict) else value
+        scope = _group_key(key)
+        order.append(key)
         if missing or target_at is None:
-            values["residual"] = None
-            grouped.append((key, None, values))
+            values[f"residual:{target_id}"] = None
+            out[scope] = (None, values)
             continue
         residual_value = residual(float(target_at), member_at)
         limit = max(tolerance.get("abs", 0.0), abs(float(target_at)) * tolerance.get("rel", 0.0))
-        values["residual"] = residual_value
-        values["tolerance"] = limit
-        grouped.append((key, not within_tolerance(residual_value, float(target_at), tolerance), values))
+        values[f"residual:{target_id}"] = residual_value
+        values[f"tolerance:{target_id}"] = limit
+        out[scope] = (
+            not within_tolerance(residual_value, float(target_at), tolerance),
+            values,
+        )
+    return out, order, reasons
+
+
+async def _evaluate_identities(
+    db: AsyncSession,
+    request: Request,
+    *,
+    rule: MetricRule,
+    rule_data: dict,
+    identities: list[dict],
+    period: "RulePeriod | None",
+    dry_run: bool,
+    run_filters: list[dict] | None = None,
+    wanted_scopes: list[str] | None = None,
+) -> list[EvalResult]:
+    """Check every identity of the rule, per scope, and report one verdict per scope.
+
+    A rule may assert several equalities at once (a snapshot's amount, line count, and two counts). They
+    share the subject, the grouping and the run, so they are judged together: a scope fails if any
+    identity is violated, is undecidable if nothing failed but some identity could not be computed, and
+    holds only when all of them hold.
+    """
+    group = _rule_group_by(rule_data)
+    group_field = str(group["field"]) if group else None
+
+    merged: dict[str, list[Any]] = {}
+    order: list[Any] = []
+    merged_values: dict[str, dict[str, Any]] = {}
+    reasons: list[str] = []
+    advice: dict[str, list[str]] = {}
+    for relation in identities:
+        verdicts, scope_order, identity_reasons = await _identity_verdicts(
+            db,
+            request,
+            relation=relation,
+            group_field=group_field,
+            period=period,
+            run_filters=run_filters,
+        )
+        reasons.extend(reason for reason in identity_reasons if reason not in reasons)
+        for key in scope_order:
+            scope = _group_key(key)
+            if scope not in merged:
+                merged[scope] = []
+                merged_values[scope] = {}
+                order.append(key)
+            violated, values = verdicts[scope]
+            merged[scope].append(violated)
+            own_advice = str(relation.get("suggestion") or "").strip()
+            if violated is True and own_advice:
+                advice.setdefault(scope, []).append(own_advice)
+            # Operand values are keyed by the operand itself, so two identities that share an operand
+            # write the same number twice — no loss.
+            merged_values[scope].update(values)
+
+    grouped: list[tuple[Any, bool | None, dict[str, Any]]] = []
+    for key in order:
+        violated = merged[_group_key(key)]
+        if any(flag is True for flag in violated):
+            verdict: bool | None = True
+        elif any(flag is None for flag in violated) or len(violated) != len(identities):
+            # One identity had nothing to compare in this scope: "holds" would overstate the evidence.
+            verdict = None
+        else:
+            verdict = False
+        grouped.append((key, verdict, merged_values[_group_key(key)]))
 
     return await _finish(
         db,
@@ -709,10 +876,10 @@ async def _evaluate_relation(
         reasons=reasons,
         group=group,
         group_field=group_field,
-        period_start=period_start,
-        period_end=period_end,
-        period_label=period_label,
+        period=period,
         dry_run=dry_run,
+        wanted_scopes=wanted_scopes,
+        advice=advice,
     )
 
 
@@ -724,8 +891,8 @@ async def evaluate_rules_for_subject(
     subject_id: str | None = None,
     period_start: str = "",
     period_end: str = "",
-    period_label: str | None = None,
     limit: int = 100,
+    values: dict[str, Any] | None = None,
 ) -> list[EvalResult]:
     """Every active rule, optionally narrowed to one metric."""
     query = select(MetricRule).where(MetricRule.status == "active").order_by(MetricRule.created_at.desc())
@@ -743,9 +910,7 @@ async def evaluate_rules_for_subject(
                     db,
                     request,
                     rule=rule,
-                    period_start=period_start,
-                    period_end=period_end,
-                    period_label=period_label,
+                    values=values,
                 )
             )
         except ConditionError as exc:

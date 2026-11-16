@@ -37,11 +37,11 @@ def test_a_relation_turns_the_edge_into_a_checked_assertion():
         "object_id": "rule-1",
         "rule_id": "allocation-overcheck",
         "last_status": "pass",
-        "relation": {
+        "identities": [{
             "target": {"metric": RATE.id},
             "members": [{"metric": ALLOC.id, "weight": 1}, {"metric": DEMAND.id, "weight": -1}],
             "tolerance": {"rel": 0.001},
-        },
+        }],
     }
     graph = build_graph([ALLOC, DEMAND, RATE], [rule])
     derived = [edge for edge in graph["edges"] if edge["kind"] == "derived"]
@@ -57,7 +57,7 @@ def test_relations_pointing_outside_the_model_are_ignored():
     rule = {
         "object_id": "r",
         "rule_id": "other",
-        "relation": {"target": {"metric": ALLOC.id}, "members": [{"metric": outsider.id}]},
+        "identities": [{"target": {"metric": ALLOC.id}, "members": [{"metric": outsider.id}]}],
     }
     graph = build_graph([ALLOC, DEMAND], [rule])
     assert [edge for edge in graph["edges"] if edge["kind"] == "assertion"] == []
@@ -68,11 +68,11 @@ def test_assertions_are_shaped_for_a_consumer_that_cannot_paint():
         "object_id": "rule-1",
         "rule_id": "allocation-total-reconcile",
         "last_status": "fail",
-        "relation": {
+        "identities": [{
             "target": {"metric": ALLOC.id},
             "members": [{"metric": DEMAND.id, "weight": -1}],
             "tolerance": {"abs": 1},
-        },
+        }],
     }
     shaped = assertions_by_metric(build_graph([ALLOC, DEMAND], [rule]))
 

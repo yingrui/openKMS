@@ -13,10 +13,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, FormField, StatusChip } from '../../../styles/design-system';
-import type { RulesEvaluateResponse } from '../../../data/rulesApi';
+import type { RuleArgument, RulesEvaluateResponse } from '../../../data/rulesApi';
 import { valueRows, type LabelLookups } from './rulesLabels';
 
-export type RunParams = { period_start: string; period_end: string };
+export type RunParams = {
+  /** Values for the rule's declared arguments, by key — including the period, if the rule declares one. */
+  values: Record<string, unknown>;
+};
 
 export function RunRulesDialog({
   open,
@@ -26,6 +29,7 @@ export function RunRulesDialog({
   onTrial,
   trial = null,
   lookups,
+  runArguments = [],
 }: {
   open: boolean;
   busy: boolean;
@@ -35,11 +39,15 @@ export function RunRulesDialog({
   onTrial?: (params: RunParams) => void;
   trial?: RulesEvaluateResponse | null;
   lookups?: LabelLookups;
+  /** The rule's declared arguments, as the server resolved them — the dialog asks for exactly these. */
+  runArguments?: RuleArgument[];
 }) {
   const { t } = useTranslation('ontology');
-  const [period, setPeriod] = useState('');
+  const [values, setValues] = useState<Record<string, string>>({});
+  const periodSpec = runArguments.find((argument) => argument.role === 'period') ?? null;
+  const inputs = runArguments.filter((argument) => argument.role !== 'period');
 
-  const params: RunParams = { period_start: period, period_end: period };
+  const params: RunParams = { values };
 
   return (
     <Dialog
@@ -70,14 +78,52 @@ export function RunRulesDialog({
         </>
       }
     >
-      <FormField label={t('rules.runPeriod')} hint={t('rules.runPeriodHint')}>
-        <input
-          type="text"
-          value={period}
-          onChange={(e) => setPeriod(e.target.value)}
-          placeholder={t('rules.periodPlaceholder')}
-        />
-      </FormField>
+      <p className="rules-run-args__title">{t('rules.runValues')}</p>
+      {periodSpec ? (
+        <>
+          <p className="settings-page-hint">
+            {periodSpec.has_interval
+              ? t('rules.runParamsRequired', {
+                  formats: periodSpec.format ?? t('rules.runParamsCustomFormat'),
+                })
+              : t('rules.periodNoInterval')}
+            {` — ${t('rules.runParamsFiltersOn', { dimensions: periodSpec.field })}`}
+          </p>
+          <FormField
+            label={periodSpec.label ?? periodSpec.field}
+            hint={t('rules.runPeriodHint', { field: periodSpec.field })}
+          >
+            <input
+              type="text"
+              value={values[periodSpec.key] ?? ''}
+              onChange={(e) => setValues({ ...values, [periodSpec.key]: e.target.value })}
+              // The format comes from the field's calendar; no example period is invented for it.
+              placeholder={periodSpec.format ?? periodSpec.calendar ?? ''}
+            />
+          </FormField>
+        </>
+      ) : null}
+
+      {inputs.map((argument) => (
+        <FormField
+          key={argument.key}
+          label={argument.label ?? argument.field ?? argument.key}
+          hint={
+            argument.kind === 'key'
+              ? t('rules.runArgKeyHint')
+              : argument.required
+                ? t('rules.runArgRequiredHint')
+                : t('rules.runArgFilterHint')
+          }
+        >
+          <input
+            type="text"
+            value={values[argument.key] ?? ''}
+            onChange={(e) => setValues({ ...values, [argument.key]: e.target.value })}
+            placeholder={argument.kind === 'key' ? t('rules.runArgKeyPlaceholder') : ''}
+          />
+        </FormField>
+      ))}
 
       {trial ? (
         <div className="rules-trial" aria-live="polite">

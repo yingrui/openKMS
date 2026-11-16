@@ -18,7 +18,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
+from app.models.dataset_join import DatasetJoin
 from app.models.metric_definition import MetricDefinition
+from app.models.semantic_model_dataset import SemanticModelDataset
 from app.models.semantic_model_field import SemanticModelField
 from app.services.data.expressions import ANSI, dialect_sql
 from app.services.data.metric_refs import MetricRefError, expand, metric_references
@@ -247,6 +249,106 @@ async def _expand_metric_refs(
     return validate_sql_fragment(expanded, what="expression")
 
 
+async def _join_ids_for_requested_fields(
+    db: AsyncSession,
+    *,
+    model_id: str,
+    base: Dataset,
+    join_ids: list[str] | None,
+    field_names: list[str],
+    member_dataset_ids: set[str] | None,
+) -> list[str]:
+    """Add the relationships a request needs, but only where they cannot multiply rows.
+
+    A relationship is a foreign key **from the many side to the one side**, so joining that direction never
+    changes how many rows the base contributes: filtering 明细 by `cycle` (a 方案 column) is safe. The reverse
+    — reaching a many-side field from a one-side base — would repeat each base row once per match and
+    silently inflate every `SUM`, so it is refused by name instead.
+
+    This belongs to the semantic model, not to the rules: a field's reachability is a property of the model's
+    relationships, and a rule should only have to say which field it uses.
+    """
+    names = sorted({name for name in field_names if name})
+    if not names:
+        return list(join_ids or [])
+    scope_datasets = set(member_dataset_ids or []) | {base.id}
+    if member_dataset_ids is None:
+        # Ad-hoc runs (the rule engine) do not carry the model's dataset list; read it, so a relationship
+        # between two datasets *of this model* is eligible even when neither is the base.
+        scope_datasets |= set(
+            (
+                await db.execute(
+                    select(SemanticModelDataset.dataset_id).where(
+                        SemanticModelDataset.semantic_model_id == model_id
+                    )
+                )
+            ).scalars().all()
+        )
+    relationships = (
+        await db.execute(
+            select(DatasetJoin).where(
+                DatasetJoin.from_dataset_id.in_(scope_datasets),
+                DatasetJoin.to_dataset_id.in_(scope_datasets),
+            )
+        )
+    ).scalars().all()
+    if not relationships:
+        return list(join_ids or [])
+    fields = (
+        await db.execute(
+            select(SemanticModelField).where(
+                SemanticModelField.semantic_model_id == model_id,
+                SemanticModelField.name.in_(names),
+            )
+        )
+    ).scalars().all()
+    wanted_dataset = {f.name: f.dataset_id for f in fields}
+
+    out = list(join_ids or [])
+    joined = {base.id}
+    for join in relationships:
+        if join.id in out:
+            joined.update({join.from_dataset_id, join.to_dataset_id})
+
+    # Walk only the many→one direction, so a chain (A→B→C) is reachable but never a fan-out.
+    for _ in range(4):
+        changed = False
+        for name in names:
+            target = wanted_dataset.get(name)
+            if not target or target in joined:
+                continue
+            forward = [
+                join
+                for join in relationships
+                if join.from_dataset_id in joined and join.to_dataset_id == target
+            ]
+            if not forward:
+                continue
+            if forward[0].id not in out:
+                out.append(forward[0].id)
+            joined.add(target)
+            changed = True
+        if not changed:
+            break
+
+    for name in names:
+        target = wanted_dataset.get(name)
+        if not target or target in joined:
+            continue
+        backward = [
+            join
+            for join in relationships
+            if join.to_dataset_id in joined and join.from_dataset_id == target
+        ]
+        if backward:
+            raise QueryError(
+                f"Field '{name}' lives on the many side of a relationship from this metric's dataset; "
+                "joining it would repeat each row and inflate sums. Aggregate it on its own dataset instead.",
+                QueryFailure("QUERY_FANOUT_FIELD", REQUEST, target, params={"field": name}),
+            )
+    return out
+
+
 def _definition_filters(
     filters: list[dict[str, Any]] | None,
 ) -> list[tuple[str, str, Any]]:
@@ -372,6 +474,22 @@ async def run_query(
             "Queries only run on PostgreSQL datasets.",
             QueryFailure("QUERY_UNSUPPORTED_SOURCE", DATA),
         )
+
+    join_ids = await _join_ids_for_requested_fields(
+        db,
+        model_id=model_id,
+        base=base,
+        join_ids=join_ids,
+        field_names=[
+            *(str(f.get("field")) for f in (filters or []) if isinstance(f, dict) and f.get("field")),
+            *(
+                str(entry.get("field"))
+                for entry in (group_by or [])
+                if isinstance(entry, dict) and entry.get("field")
+            ),
+        ],
+        member_dataset_ids=member_dataset_ids,
+    )
 
     try:
         joins_by_id, datasets_by_id = await resolve_joins(

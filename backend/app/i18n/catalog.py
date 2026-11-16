@@ -131,6 +131,16 @@ MESSAGES: dict[str, dict[str, str]] = {
         "en": "There is no field '{field}' in this metric's scope (its dataset, plus the datasets it joins).",
         "zh_CN": "指标作用域内没有字段「{field}」（作用域 = 指标自己的数据集 + 它 join 的数据集）。",
     },
+    "QUERY_FANOUT_FIELD": {
+        "en": (
+            "Field '{field}' sits on the many side of a relationship from this metric's dataset: joining it "
+            "would repeat rows and inflate sums. Aggregate it on its own dataset instead."
+        ),
+        "zh_CN": (
+            "字段「{field}」位于本指标数据集的“多”侧：连进来会让行数翻倍、汇总值变大。"
+            "请改为在它自己的数据集上单独聚合。"
+        ),
+    },
     "QUERY_AMBIGUOUS_FIELD": {
         "en": "The field name '{field}' exists in several joined datasets ({datasets}) — address it by id.",
         "zh_CN": "字段名「{field}」在多个 join 的数据集中都存在（{datasets}）——请用字段 id 指定。",

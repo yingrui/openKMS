@@ -40,10 +40,8 @@ class MetricDefinition(Base):
     datatype: Mapped[str | None] = mapped_column(String(32), nullable=True)
     filters: Mapped[list | None] = mapped_column(JSONB, nullable=True)  # [{column, op, value}]
     joins: Mapped[list | None] = mapped_column(JSONB, nullable=True)  # [dataset_join id]
-    #: How this metric relates to time. `period` = a column carries the period (filterable);
-    #: `snapshot` = only the current value can be computed (never replayable); `none` = no time concept.
-    time_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="none")
-    #: The column that carries the period, when `time_mode = period` (`trade_date`, `cycle`, …).
+    #: The field this metric is measured along (`trade_date`, `cycle`, …) — the default a rule's period
+    #: argument points at. Whether a run filters by it is the rule's decision, not the metric's.
     time_dimension: Mapped[str | None] = mapped_column(String(128), nullable=True)
     # Agent grounding: {instructions, synonyms[], examples[], not_for[]}.
     ai_context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

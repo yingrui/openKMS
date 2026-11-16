@@ -59,7 +59,7 @@ def validate_relation(relation: Any) -> None:
     """Structural checks only — computability is the engine's job (and becomes `unknown`)."""
     if not isinstance(relation, dict):
         raise RelationError("relation must be an object.")
-    unknown = set(relation) - {"target", "members", "tolerance", "note", "kind"}
+    unknown = set(relation) - {"target", "members", "tolerance", "note", "kind", "suggestion"}
     if unknown:
         raise RelationError(f"relation has unknown keys: {', '.join(sorted(unknown))}.")
     _as_operand(relation.get("target"), "relation.target")
@@ -158,7 +158,7 @@ async def list_relation_rules(
         await db.execute(
             select(MetricRule)
             .join(MetricRuleRef, MetricRuleRef.rule_id == MetricRule.id)
-            .where(MetricRuleRef.metric_id.in_(metric_ids), MetricRule.relation.isnot(None))
+            .where(MetricRuleRef.metric_id.in_(metric_ids), MetricRule.identities.isnot(None))
         )
     ).scalars().all()
     seen: set[str] = set()
@@ -171,7 +171,7 @@ async def list_relation_rules(
             {
                 "object_id": rule.id,
                 "rule_id": rule.slug,
-                "relation": rule.relation,
+                "identities": rule.identities,
                 "last_status": rule.last_status,
             }
         )

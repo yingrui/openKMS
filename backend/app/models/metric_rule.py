@@ -36,7 +36,7 @@ def _loads(value: Any) -> Any:
 
 
 class MetricRule(Base):
-    """One equality (or threshold) a metric must satisfy."""
+    """The equalities (or the threshold) a metric must satisfy, checked together."""
 
     __tablename__ = "metric_rules"
 
@@ -49,7 +49,9 @@ class MetricRule(Base):
         String(64), ForeignKey("metric_definitions.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     condition: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    relation: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    #: One or more identities, all asserted together: `[{target, members, tolerance}, …]`. A rule about a
+    #: snapshot's four numbers is one rule with four identities, not four rules that drift apart.
+    identities: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     severity: Mapped[str] = mapped_column(String(2), nullable=False, default="P1")
     conclusion: Mapped[str] = mapped_column(Text, nullable=False, default="")
     suggestion: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -57,6 +59,9 @@ class MetricRule(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     group_by: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    #: How this check uses the run's period: which time dimension to filter, or none, and how many
+    #: periods back. The *value* of the period is a run argument; the alignment is the rule's decision.
+    run_params: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     ai_context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     last_run_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     last_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
@@ -77,7 +82,7 @@ class MetricRule(Base):
             "name": self.name,
             "subject": _dumps({"kind": "metric", "ref": self.metric_id}),
             "condition": _dumps(self.condition),
-            "relation": _dumps(self.relation),
+            "identities": _dumps(self.identities),
             "severity": self.severity,
             "conclusion": self.conclusion,
             "suggestion": self.suggestion,
@@ -85,6 +90,7 @@ class MetricRule(Base):
             "status": self.status,
             "version": self.version,
             "group_by": _dumps(self.group_by),
+            "run_params": _dumps(self.run_params),
             "last_run_at": self.last_run_at,
             "last_status": self.last_status,
             "last_period_start": self.last_period_start,

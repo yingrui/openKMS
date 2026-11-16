@@ -6,7 +6,9 @@ plus a one-line conclusion; running it yields **pass / fail / undecidable** for 
 carries advice opens an **alert** (事件).
 
 **Where it lives:** **Catalog** → **指标勾稽** (`/data-rules`), beside Datasets · Semantic Model · Metrics ·
-数据质量. Two tabs: **勾稽规则** (the rules) and **告警事件** (what they raised). Writes need `data:write`
+数据质量. Two tabs: **指标规则** (the rules) and **告警事件** (what they raised). A rule's kind is either
+**阈值条件** (a threshold) or **等式** (an identity between metrics) — the app is named for the capability,
+so neither of its two kinds carries the same name. Writes need `data:write`
 (analysts) or `ontology:write` (admins).
 
 Entry points follow the metric: a metric row carries its check status and a run button; a dataset's own
@@ -70,9 +72,9 @@ acknowledging is per occurrence (`方案 73ec880b` may be the one being fixed to
 
 | Surface | What it answers |
 |---------|-----------------|
-| **Ontology Manager → Rules** (`/ontology-manager/rules`) | Two tabs: **规则** (author, run, pause) and **事件** (the inbox: acknowledge / resolve / dismiss, filtered by state and severity) |
-| **Run parameters** | The period belongs to the *run*, not to the rule (`2026-W46`, `2026-11` or `2026-11-15`; anything else is a 422). Both entry points — "run all" and a metric's own play button — use the same dialog, so the two cannot drift |
-| **One rule** (`/ontology-manager/rules/:id`, `/rules/new`) | A page with two modes: **read** (definition, last run with its computed values, events raised) and **edit** (rule / condition / meaning panels, Save and Cancel in the header). The condition needs a page — a summary of what is stored, a form view for one comparison, and a 16-row JSON view for everything else. Creating a rule is the same page in edit mode, so the two cannot drift |
+| **Catalog → 指标规则** (`/data-rules`) | Two tabs: **规则** (author, run, pause) and **告警事件** (the inbox: resolve / dismiss, filtered by state and severity) |
+| **Run parameters** | Two layers: the rule declares its arguments (a period binding — source, dimension, offset — plus optional `filter` / `key` parameters), and the run supplies their values (`2026-W46`, `2026-11` or `2026-11-15`; anything else is a 422). Both entry points — "run all" and a metric's own play button — use the same dialog, which asks for exactly what the rule declares |
+| **One rule** (`/data-rules/:ruleId`, `/data-rules/new`) | A page with two modes: **read** (definition, last run with its computed values, events raised) and **edit** (rule facts / run parameters / check / meaning panels, Save and Cancel in the header). The check needs a page: the stored content is a tree or a list of identities, and the editor is one comparison per line. Creating a rule is the same page in edit mode, so the two cannot drift |
 | **A metric** (model → Metrics) | A badge with its open-event count, linking to that metric's events |
 | **A dataset** (Catalog → dataset → Overview) | (removed — a rule watches a metric; a table's own checks are quality rules): how many rules watch it, and the three most recent events |
 
@@ -119,15 +121,16 @@ draft) would have made the platform ask a question the rule could answer itself.
 
 ## A rule can be an identity, not a threshold
 
-A condition answers "is this number in range?". A relation answers a different question: **do these two
+A condition answers "is this number in range?". An identity answers a different question: **do these two
 numbers agree?** — `分货额度 (明细) = 方案累计额度 (方案表)`, each side computed from its own source, within a
 tolerance. That is a reconciliation; an alert would not catch it, because neither number is wrong on its own.
 
-A rule therefore carries **exactly one** of `condition` and `relation`:
+A rule therefore carries **exactly one** of `condition` and `identities` — a threshold, or a list of
+equalities (a rule about a snapshot has four of them):
 
-| | condition | relation |
+| | condition | identities |
 |---|---|---|
-| shape | a comparison tree over operands | `target = Σ weight × member` |
+| shape | a comparison tree over operands | one or more `target = Σ weight × member` |
 | verdict | a hit is a failure | deviating beyond the tolerance is a failure |
 | group_by | one verdict per group | one verdict per group |
 | tolerance | expressed by the threshold | `{abs: 1}` (rows/units) or `{rel: 0.001}` (share of the target) |
@@ -155,7 +158,27 @@ The two sides name the same object differently and are still aligned, because a 
 closed it on the next run. That is the point — the check is cheap once the identity is declared, and the
 identity is written once, next to the rule that runs it.
 
-Why the relation lives on a `Rule` rather than in a type of its own: a relation nobody runs is a comment.
+Why an identity lives on a `Rule` rather than in a type of its own: an identity nobody runs is a comment.
+### Several identities in one rule
+
+A snapshot's four numbers (amount, line count, over-max, below-min) belong to one check of one subject. As
+four rules they drift apart — four severities, four suggestions, four alerts for one incident, four runs —
+so `identities` is a **list**: every identity is judged in the same run, and a scope's verdict is decided
+across all of them.
+
+| per scope | verdict |
+|---|---|
+| any identity violated | `fail` — the event's evidence names which residual is off |
+| nothing violated, but some identity could not be computed | `unknown` — "holds" would overstate the evidence |
+| all hold | `pass` |
+
+One severity for the whole rule (it is one incident), but each identity may carry its own `suggestion`: the
+event's advice is the rule's own sentence plus the advice of the identities that were **violated** — "re-run
+the scenario" and "check the over-max threshold" are not the same instruction.
+
+Two identities may not explain the same target metric (`400`): the evidence keys each identity's residual
+after its target (`residual:<metric>`), so a second one would overwrite the first number.
+
 The rule already owns severity, advice, the publish gate, the period argument, grouping and the event
 lifecycle. Promote relations to their own asset when they gain a second consumer (inference, drill-down).
 
@@ -204,31 +227,75 @@ answer either trustworthy or not.
 
 ## What a period is — and what it is not
 
-A run is given **one period label** (`2026-W46`, `2026-11`, `2026-11-15`), parsed into two dates (ISO weeks,
-Monday). Those dates are what the alert records and what the dedupe key uses, so the same week cannot be
-spelled two ways.
+A period is **one of the run's arguments**, and nothing more: a filter whose `role` is `period`. Its value
+(`2026-W46`) filters the run, names the period the verdict belongs to, and gives the event its **interval** —
+`2026-11-09 … 2026-11-15` — which is what the alert records and what the dedupe key uses, so the same week
+cannot be spelled two ways.
 
-Whether a period *filters the data* is a property of the **metric**, not of the rule — three modes:
+The interval is the only thing a period has beyond a filter, and it comes from the **field's calendar**:
 
-| `time_mode` | meaning | a run for a past period |
-|---|---|---|
-| `period` (+ `time_dimension`) | a **time dimension** carries the period (`trade_date`, a `cycle` field) | filters `time_dimension >= start AND <= end` |
-| `snapshot` | a **stored snapshot**: the number is written by each run (Kimball's *periodic snapshot fact* — a scenario table's KPIs, a period-end balance) | **refused** with a reason — a snapshot cannot be recomputed for a past period, and today's value under yesterday's label would be worse than saying so |
-| `none` | no time concept | the period is a label on the run; the alert says so |
+| field | value | predicate | interval |
+|---|---|---|---|
+| `trade_date` (`Date`, `period_kind: week`) | `2026-W46` | `>= 2026-11-09 AND <= 2026-11-15` | derived by the calendar |
+| `cycle` (`String`, `period_kind: week`) | `2026-W46` | `cycle = '2026-W46'` (a key, not a date) | derived by the calendar |
+| a field with `period_kind: custom` | anything | equality only | **none** — so it cannot be the period (a 400 at save time) |
+
+There is no metric-level time mode any more. `time_mode` used to say `period` / `snapshot` / `none`, but each
+of those was already said by something else: `period` restated the field, `none` meant "no field", and
+`snapshot` refused a past period only because the period column could not be filtered. A metric keeps
+`time_dimension` — the field it is measured along, and the default a rule's period argument points at.
 
 Ossie has no metric period: the spec's metric is name + expression + description + datatype + ai_context +
 custom_extensions, and time exists as a **field role** (`dimension.is_time`), with grain decided at query time.
-So the run's period is a *filter on that field*, and `time_mode` / `time_dimension` are our metadata (exported
-in `custom_extensions`). `time_dimension` must resolve to a time dimension — using `scenario_id` as the period
-column is a 400, not a silently wrong filter.
+So the period is a *filter on that field*, and `time_dimension` is our metadata (exported in
+`custom_extensions`).
 
 An operand may override the column (`{metric: …, period_field: …}`), because two metrics in one identity can
-carry time differently. A `dataset_agg` operand filters only when it names a column itself: a dataset has no
-declared time semantics.
+carry time differently.
 
-There is no period table and no close calendar: periods are labels with derived dates. That is enough for
-"this run covers W46", not for 期初/期末 (period offsets) — a later step, together with the `stock_flow`
-identity.
+### The rule declares its run arguments (`run_params.arguments`)
+
+A run needs a **slice** of data, and a period is only one dimension of it. A dimensional filter ("only
+线上") and a narrowed scope set ("only these scenarios") are inputs too. Deriving everything from the metrics
+made all of them inexpressible, so a rule declares a list:
+
+```json
+{"arguments": [
+  {"key": "cycle",    "kind": "filter", "field": "cycle", "role": "period"},
+  {"key": "channel",  "kind": "filter", "field": "channel"},
+  {"key": "scenario", "kind": "key",    "field": "scenario_id"}
+]}
+```
+
+| kind | what the run supplies | what it does |
+|---|---|---|
+| `filter` | a value (`线上`) | appends `field = value` to **every** operand. A check over one channel should not need a second copy of the rule |
+| `filter` + `role: period` | a period value (`2026-W46`) | the same, plus: it names the run's period and records the interval its field's calendar derives. At most one argument may carry the role; a field with a `custom` calendar cannot (400) |
+| `key` | one or more group values (`S1,S2`) | evaluates only those scopes. This is also how a run gets past the 500-group cap instead of reporting `unknown` for everything |
+
+Validation is at save time, so a declared argument cannot be a lie: a `period` binding must name a real time
+dimension (and an `offset` needs a dated one — a custom cycle has no derivable previous period), a `filter`
+or `key` must name a field of the subject's model, and a `key` must name the rule's own `group_by.field`.
+Arguments are optional unless declared `required`; a required one the run omits stops the run with `unknown`
+*before any query* — the numbers are not wrong, they were never asked for.
+
+Values that match nothing are `unknown` with a reason, never silence: a requested scope with no rows, or a
+slice where no operand returned a row, is reported as undecidable. A narrowed run also closes alerts **only
+within the scopes it examined** — it must not retire an alert it never looked at.
+
+The **period value** stays a run argument: the definition says how the period is used, the run says which
+period. The rule page and the run dialog both show the **effective** parameters (`describe_run_params`:
+source, offset, which dimensions each operand binds to, the label formats, and warnings such as "the operands
+use different calendars, so one label must fit all of them").
+
+Not built, named so it is not rediscovered: `as_of` (evaluate as of an earlier data watermark — needs
+versioned storage), metric-definition versions, `sample_size` for record-level checks, and an argument that
+differs **per operand** (choosing which scenario is the reconciliation baseline is asymmetric: a uniform
+`filter` cannot express it, so it needs operand-level binding).
+
+There is no period table and no close calendar yet: periods are labels with derived dates. That covers offsets
+within a calendar, but not 期初/期末 (`stock_flow`, opening vs closing balance) — that needs the calendar table,
+together with the `stock_flow` identity.
 
 ## Grouping by a field that exists
 

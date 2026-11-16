@@ -236,7 +236,6 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
                 "additivity": m.additivity if m.additivity != "additive" else None,
                 # Ossie has no metric period and no grain on a metric: time is a *field* role. What travels
                 # here is which field a run's period filters on, and whether the number can be replayed.
-                "time_mode": m.time_mode if m.time_mode != "none" else None,
                 "time_dimension": m.time_dimension,
                 "depends_on": metric_refs_by_name(m, metrics),
                 "filters": m.filters,
@@ -489,7 +488,6 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
             if isinstance(r, str) and r in rel_ids_by_name
         ]
         row.ai_context = m.get("ai_context")
-        row.time_mode = str(mext.get("time_mode") or "none")
         row.time_dimension = mext.get("time_dimension")
         metric_count += 1
 

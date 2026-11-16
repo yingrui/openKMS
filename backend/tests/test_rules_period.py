@@ -1,24 +1,13 @@
-"""A period is an instance of a calendar; the filter is compiled in the field's own vocabulary."""
-from app.models.metric_definition import MetricDefinition
-from app.services.ontology.rules.evaluator import period_binding
-from app.services.ontology.rules.periods import (
-    PeriodError,
-    filter_for_period,
-    kind_of_dimension,
-    parse_period,
-)
+"""A period is a filter with an interval: the calendar decides the dates, the column decides the predicate."""
+import asyncio
+from types import SimpleNamespace
 
+import pytest
+from fastapi import HTTPException
 
-def _metric(mode: str, dimension: str | None = None) -> MetricDefinition:
-    return MetricDefinition(
-        id="m",
-        semantic_model_id="model",
-        base_dataset_id="ds",
-        name="m",
-        additivity="additive",
-        time_mode=mode,
-        time_dimension=dimension,
-    )
+from app.api.rules import RuleArgument, RuleRunParams, _validate_run_params
+from app.services.ontology.rules.evaluator import RulePeriod
+from app.services.ontology.rules.periods import PeriodError, kind_of_dimension, parse_period
 
 
 # --- calendars ---------------------------------------------------------------------------------
@@ -32,76 +21,81 @@ def test_labels_are_parsed_per_calendar():
     assert parse_period("2026", "year") == ("2026-01-01", "2026-12-31")
 
 
-def test_a_custom_calendar_keeps_its_own_key():
-    # "2026-W46" is the period *key* of a cycle column; deriving dates for it would filter the wrong rows.
-    assert parse_period("2026-W46", "custom") == ("2026-W46", "2026-W46")
-
-
 def test_a_label_of_the_wrong_calendar_is_rejected_with_the_expected_format():
-    with pytest_raises(PeriodError):
+    with pytest.raises(PeriodError):
         parse_period("2026-W46", "day")
-
-
-def pytest_raises(exc):
-    import pytest
-
-    return pytest.raises(exc)
-
-
-def test_a_date_column_ranges_and_a_key_column_matches():
-    ranged = filter_for_period("trade_date", datatype="Date", kind="week", label="2026-W46",
-                               start="2026-11-09", end="2026-11-15")
-    assert ranged == [
-        {"field": "trade_date", "op": ">=", "value": "2026-11-09"},
-        {"field": "trade_date", "op": "<=", "value": "2026-11-15"},
-    ]
-    keyed = filter_for_period("cycle", datatype="String", kind="custom", label="2026-W46",
-                              start="2026-W46", end="2026-W46")
-    assert keyed == [{"field": "cycle", "op": "=", "value": "2026-W46"}]
-
-
-def test_a_single_day_on_a_date_column_is_equality():
-    assert filter_for_period("d", datatype="Date", kind="day", label="2026-11-09",
-                             start="2026-11-09", end="2026-11-09") == [
-        {"field": "d", "op": "=", "value": "2026-11-09"}
-    ]
 
 
 def test_the_calendar_is_declared_then_inferred_then_a_key():
     assert kind_of_dimension({"period_kind": "week"}, "Date") == "week"
     assert kind_of_dimension(None, "Date") == "day"
+    # A key column (`cycle` text) declares its calendar explicitly; without one it is a custom cycle.
+    assert kind_of_dimension({"period_kind": "week", "is_time": True}, "String") == "week"
     assert kind_of_dimension(None, "String") == "custom"
 
 
-# --- how a metric binds to a period ------------------------------------------------------------
+# --- how the period reaches an operand ----------------------------------------------------------
 
 
-def test_a_period_metric_filters_on_its_time_dimension():
-    filters, reason = period_binding(
-        _metric("period", "trade_date"), None, "2026-W46", "2026-11-09", "2026-11-15",
-        field_datatype="Date", field_dimension={"period_kind": "week"},
+def _period(datatype: str) -> RulePeriod:
+    return RulePeriod(
+        field="cycle", label="2026-W46", start="2026-11-09", end="2026-11-15",
+        kind="week", datatype=datatype, dimension={"period_kind": "week"},
     )
-    assert reason == ""
-    assert filters == [
+
+
+def test_a_key_column_matches_the_label():
+    assert _period("String").filters() == [{"field": "cycle", "op": "=", "value": "2026-W46"}]
+
+
+def test_a_date_column_ranges_over_the_interval():
+    assert _period("Date").filters("trade_date") == [
         {"field": "trade_date", "op": ">=", "value": "2026-11-09"},
         {"field": "trade_date", "op": "<=", "value": "2026-11-15"},
     ]
 
 
-def test_an_operand_may_override_the_dimension():
-    filters, _ = period_binding(
-        _metric("period", "trade_date"), "cycle", "2026-W46", "2026-11-09", "2026-11-15",
-        field_datatype="String", field_dimension={"period_kind": "custom"},
+def test_an_operand_may_point_at_its_own_period_column():
+    assert _period("String").filters("cycle_key") == [
+        {"field": "cycle_key", "op": "=", "value": "2026-W46"}
+    ]
+
+
+# --- the period argument must be able to name an interval ----------------------------------------
+
+
+class _Session:
+    def __init__(self, field):
+        self.field = field
+
+    async def get(self, model, _key):
+        if model.__name__ == "MetricDefinition":
+            return SimpleNamespace(id="m", semantic_model_id="model", name="m")
+        return None
+
+    async def execute(self, _query):
+        rows = [self.field] if self.field else []
+        return _Rows(rows)
+
+
+class _Rows:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def scalars(self):
+        return self
+
+    def first(self):
+        return self._rows[0] if self._rows else None
+
+
+def test_a_custom_calendar_cannot_label_a_run():
+    """Its value does not name an interval, so an "event period" built from it would be a lie."""
+    field = SimpleNamespace(dimension=None, datatype="String")
+    params = RuleRunParams(
+        arguments=[RuleArgument(key="cycle", kind="filter", field="cycle", role="period")]
     )
-    assert filters == [{"field": "cycle", "op": "=", "value": "2026-W46"}]
-
-
-def test_a_stored_snapshot_refuses_a_past_period_instead_of_serving_today():
-    filters, reason = period_binding(_metric("snapshot"), None, "2020-01-06", "2020-01-06", "2020-01-12")
-    assert filters == []
-    assert "stored snapshot" in reason and "2020-01-06" in reason
-
-
-def test_a_metric_without_time_concept_is_a_label_only():
-    filters, reason = period_binding(_metric("none"), None, "2026-W46", "2026-11-09", "2026-11-15")
-    assert (filters, reason) == ([], "")
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(_validate_run_params(_Session(field), "m", params, None))
+    assert exc.value.status_code == 400
+    assert "custom calendar" in exc.value.detail

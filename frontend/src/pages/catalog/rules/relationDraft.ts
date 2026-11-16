@@ -6,6 +6,8 @@ export type RelationDraft = {
   members: RelationMemberDraft[];
   toleranceKind: 'abs' | 'rel';
   toleranceValue: string;
+  /** What to do when *this* identity is the one that failed (the rule's own advice still applies). */
+  suggestion: string;
 };
 
 function toTolerance(draft: Pick<RelationDraft, 'toleranceKind' | 'toleranceValue'>) {
@@ -14,11 +16,29 @@ function toTolerance(draft: Pick<RelationDraft, 'toleranceKind' | 'toleranceValu
 }
 
 export function relationPayload(draft: RelationDraft) {
+  const suggestion = draft.suggestion.trim();
   return {
     target: { metric: draft.target },
     members: draft.members
       .filter((member) => member.metricId)
       .map((member) => ({ metric: member.metricId, weight: Number(member.weight) || 1 })),
     tolerance: toTolerance(draft),
+    ...(suggestion ? { suggestion } : {}),
   };
+}
+
+/** A blank identity: no members yet, exact tolerance (0). */
+export function emptyRelationDraft(): RelationDraft {
+  return {
+    target: '',
+    members: [{ metricId: '', weight: '1' }],
+    toleranceKind: 'abs',
+    toleranceValue: '0',
+    suggestion: '',
+  };
+}
+
+/** The wire shape of a whole rule: every identity, in the order the author wrote them. */
+export function identitiesPayload(drafts: RelationDraft[]) {
+  return drafts.map(relationPayload);
 }
