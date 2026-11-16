@@ -1701,3 +1701,18 @@
 
 /* Rules page — the app sits in the ontology suite, so it only adds what the table cannot express. */
 /* Definition and last-run panels: label/value rows, like the rest of the manager. */
+
+/* The Kubernetes YAML panel: a redaction hint over a monospace block. The wrapper had no rule, so the hint
+   sat flush against the code and the block ran to the panel's edges. */
+.console-k8s-yaml {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.console-k8s-yaml__pre {
+  margin: 0;
+  max-height: 24rem;
+  overflow: auto;
+}
