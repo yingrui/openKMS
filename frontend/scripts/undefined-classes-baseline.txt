@@ -4,9 +4,6 @@ src/components/HomeStaticLanding.tsx uses .home
 src/components/HomeStaticLanding.tsx uses .home--public
 src/components/Layout/AppCatalogGrid.tsx uses .app-catalog--home
 src/components/Layout/UserMenu.tsx uses .user-menu-login-label
-src/components/agents/AgentMessageBody.tsx uses .agents-md__code
-src/components/agents/AgentMessageBody.tsx uses .agents-md__em
-src/components/agents/AgentMessageBody.tsx uses .agents-md__strong
 src/components/agents/AgentsPageSkeleton.tsx uses .page
 src/components/agents/SessionReviewEventCard.tsx uses .sreview-btn--edit
 src/components/channels/ChannelIndexPage.tsx uses .list-index-stat-content
