@@ -116,13 +116,15 @@
 /* The list page's toolbar: search, filters and a view switch, on one line above the table. */
 .ds-search {
   max-width: 360px;
-  /* Match the DS control height, so a search box beside a filter select is one line, not two heights. */
+  /* The same fixed height as `.ds-control`: vertical padding used to make the search pill 43px while
+     the filter select beside it was 36px. The input is centred, not stretched. */
+  height: 2.25rem;
   min-height: 2.25rem;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: calc(var(--space-2) + var(--space-1) / 2);
-  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
+  padding: 0 calc(var(--space-3) + var(--space-1) / 2);
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
