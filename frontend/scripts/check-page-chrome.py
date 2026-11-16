@@ -17,6 +17,12 @@ type scale, visibly different page. `src/pages/catalog/**` therefore may not use
 list shell is `page-header` + `DatasetAppTabs` + `.ontology-admin-content` + `.console-datasets-toolbar` +
 `.ds-table-wrap > .console-table`.
 
+**D. A page that still spells out the list shell.**
+`ontology-admin-content` is the list body wrapper the design system now supplies through `ListPage`. Before
+`ListPage` existed every list page wrote `<div className="ontology-admin">` + `page-header` + the tab strip +
+`ontology-admin-content` itself, which is how five lists drifted apart. Pages that already do it are recorded
+in `scripts/list-shell-baseline.txt`; a **new** page doing it fails, and the file only shrinks.
+
 **B. A local margin on a `.page-subtitle` that quietly loses.**
 `.page-subtitle` is global (`app-page.scss`) and declares ``margin: 0``. A colocated rule such as
 ``.foo { margin-bottom: var(--space-4) }`` has *equal* specificity, so whether it applies depends on
@@ -87,6 +93,19 @@ def scss_margin_declarations() -> dict[str, str]:
     return found
 
 
+SHELL_BASELINE = Path(__file__).resolve().parent / "list-shell-baseline.txt"
+
+
+def shell_users() -> set[str]:
+    users = set()
+    for path in SRC.rglob("*.tsx"):
+        if ".test." in path.name:
+            continue
+        if "ontology-admin-content" in path.read_text(errors="ignore"):
+            users.add(str(path.relative_to(ROOT)))
+    return users
+
+
 def offenders() -> list[str]:
     margins = scss_margin_declarations()
     out: list[str] = []
@@ -136,6 +155,18 @@ def offenders() -> list[str]:
                     "ties with the global `margin: 0` — scope the rule under a parent so load order "
                     "cannot decide it"
                 )
+    known = set()
+    if SHELL_BASELINE.is_file():
+        known = {
+            line.strip()
+            for line in SHELL_BASELINE.read_text().splitlines()
+            if line.strip() and not line.startswith("#")
+        }
+    for page in sorted(shell_users() - known):
+        out.append(
+            f"{page}: spells out the list shell (`ontology-admin-content`) — use `ListPage` "
+            "(title/actions, tabs, toolbar, body)"
+        )
     return out
 
 
