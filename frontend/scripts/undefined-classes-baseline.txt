@@ -17,13 +17,6 @@ src/pages/console/kubernetes/KubernetesResourceYamlPanel.tsx uses .console-k8s-y
 src/pages/console/kubernetes/KubernetesSecretsSection.tsx uses .console-k8s-detail-kv__row
 src/pages/documents/DocumentChannelSettings.tsx uses .dcs-schema-object-type
 src/pages/documents/DocumentDetail.loading.tsx uses .document-detail-loading-split
-src/pages/documents/DocumentDetail.modals.tsx uses .document-detail-version-preview-body
-src/pages/documents/DocumentDetail.modals.tsx uses .document-detail-version-preview-json
-src/pages/documents/DocumentDetail.modals.tsx uses .document-detail-version-preview-md
-src/pages/documents/DocumentDetail.modals.tsx uses .document-detail-version-preview-sub
-src/pages/documents/DocumentDetail.modals.tsx uses .document-detail-versions-check
-src/pages/documents/DocumentDetail.modals.tsx uses .document-detail-versions-form
-src/pages/documents/DocumentDetail.modals.tsx uses .document-detail-versions-label
 src/pages/evaluation/EvaluationDatasetDetail.tsx uses .eval-detail-section
 src/pages/function-editor/FunctionEditorListPage.tsx uses .function-editor-list
 src/pages/function-editor/FunctionEditorWorkspacePage.tsx uses .function-editor-workspace__schema-field
