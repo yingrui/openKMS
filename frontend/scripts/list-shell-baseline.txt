@@ -3,7 +3,6 @@
 src/pages/catalog/DatasetSourcesPage.tsx
 src/pages/connectors/ConnectorDetailPage.tsx
 src/pages/connectors/ConnectorsPage.tsx
-src/pages/console/data/ConsoleDataSources.tsx
 src/pages/console/kubernetes/ConsoleKubernetes.tsx
 src/pages/console/kubernetes/ConsoleKubernetesDetail.tsx
 src/pages/function-editor/FunctionEditorListPage.tsx
