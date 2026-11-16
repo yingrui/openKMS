@@ -1,39 +1,42 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { Loader2, Plus, Trash2, Zap } from 'lucide-react';
-import { toast } from 'sonner';
-import { EmptyState } from '../../styles/design-system';
-import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { Loader2, Plus, Trash2, Zap } from "lucide-react";
+import { toast } from "sonner";
+import { EmptyState, ListPage } from "../../styles/design-system";
+import {
+  fetchObjectTypes,
+  type ObjectTypeResponse,
+} from "../../data/ontologyApi";
 import {
   deleteOntologyActionType,
   fetchOntologyActionTypes,
   fetchOntologyFunctions,
   type OntologyActionTypeResponse,
   type OntologyFunctionResponse,
-} from '../../data/ontologyFunctionsApi';
-import { useConfirm } from '../../contexts/ConfirmContext';
-import { ActionTypeCreateWizard } from './ActionTypeCreateWizard';
-import { isBuiltinObjectRule } from '../shared/actionRuleTypes';
-import '../ontology/ontology-admin.scss';
+} from "../../data/ontologyFunctionsApi";
+import { useConfirm } from "../../contexts/ConfirmContext";
+import { ActionTypeCreateWizard } from "./ActionTypeCreateWizard";
+import { isBuiltinObjectRule } from "../shared/actionRuleTypes";
+import "../ontology/ontology-admin.scss";
 
 function statusBadgeClass(status: string): string {
   const normalized = status.toLowerCase();
-  if (normalized === 'active' || normalized === 'published') {
-    return 'ontology-status-badge ontology-status-badge--active';
+  if (normalized === "active" || normalized === "published") {
+    return "ontology-status-badge ontology-status-badge--active";
   }
-  return 'ontology-status-badge';
+  return "ontology-status-badge";
 }
 
 export function ActionsListPage() {
-  const { t } = useTranslation('ontology');
+  const { t } = useTranslation("ontology");
   const confirm = useConfirm();
   const [items, setItems] = useState<OntologyActionTypeResponse[]>([]);
   const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
   const [functions, setFunctions] = useState<OntologyFunctionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [filterObjectTypeId, setFilterObjectTypeId] = useState('');
+  const [filterObjectTypeId, setFilterObjectTypeId] = useState("");
 
   const publishedFunctions = useMemo(
     () => functions.filter((fn) => fn.published_version != null),
@@ -57,7 +60,9 @@ export function ActionsListPage() {
     try {
       const [actions, typesRes, fnRes] = await Promise.all([
         fetchOntologyActionTypes(
-          filterObjectTypeId ? { object_type_id: filterObjectTypeId } : undefined,
+          filterObjectTypeId
+            ? { object_type_id: filterObjectTypeId }
+            : undefined,
         ),
         fetchObjectTypes(),
         fetchOntologyFunctions(),
@@ -66,7 +71,7 @@ export function ActionsListPage() {
       setObjectTypes(typesRes.items);
       setFunctions(fnRes.items);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('actions.loadFailed'));
+      toast.error(e instanceof Error ? e.message : t("actions.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -79,46 +84,49 @@ export function ActionsListPage() {
   const onDelete = async (action: OntologyActionTypeResponse) => {
     if (
       !(await confirm({
-        title: t('shared.delete'),
-        message: t('actions.deleteConfirm', { name: action.display_name }),
-        confirmLabel: t('shared.delete'),
+        title: t("shared.delete"),
+        message: t("actions.deleteConfirm", { name: action.display_name }),
+        confirmLabel: t("shared.delete"),
         danger: true,
       }))
     )
       return;
     try {
       await deleteOntologyActionType(action.id);
-      toast.success(t('actions.deleted'));
+      toast.success(t("actions.deleted"));
       void load();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('actions.createFailed'));
+      toast.error(e instanceof Error ? e.message : t("actions.createFailed"));
     }
   };
 
   return (
-    <div className="ontology-admin">
-      <header className="page-header">
-        <div>
-          <h1>{t('actions.title')}</h1>
-          <p className="page-subtitle">{t('actions.subtitle')}</p>
-        </div>
-        <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
-          <Plus size={16} aria-hidden />
-          {t('actions.create')}
-        </button>
-      </header>
-
-      <div className="ontology-admin-content">
+    <>
+      <ListPage
+        title={t("actions.title")}
+        subtitle={t("actions.subtitle")}
+        actions={
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setShowCreate(true)}
+          >
+            <Plus size={16} aria-hidden />
+            {t("actions.create")}
+          </button>
+        }
+      >
         {objectTypes.length > 0 ? (
           <div className="ds-list-toolbar">
             <label className="ds-filter">
-              {t('actions.filterByObjectType')}
-              <select className="ds-control"
+              {t("actions.filterByObjectType")}
+              <select
+                className="ds-control"
                 value={filterObjectTypeId}
                 onChange={(e) => setFilterObjectTypeId(e.target.value)}
-                aria-label={t('actions.filterByObjectType')}
+                aria-label={t("actions.filterByObjectType")}
               >
-                <option value="">{t('actions.filterAllObjectTypes')}</option>
+                <option value="">{t("actions.filterAllObjectTypes")}</option>
                 {objectTypes.map((ot) => (
                   <option key={ot.id} value={ot.id}>
                     {ot.name}
@@ -131,17 +139,21 @@ export function ActionsListPage() {
         {loading ? (
           <div className="ds-loading">
             <Loader2 size={32} className="ds-loading__spinner" aria-hidden />
-            <p>{t('shared.loading')}</p>
+            <p>{t("shared.loading")}</p>
           </div>
         ) : items.length === 0 ? (
           <EmptyState
             icon={<Zap size={32} aria-hidden />}
-            title={t('actions.emptyList')}
-            description={t('actions.createHint')}
+            title={t("actions.emptyList")}
+            description={t("actions.createHint")}
             action={
-              <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setShowCreate(true)}
+              >
                 <Plus size={16} aria-hidden />
-                {t('actions.create')}
+                {t("actions.create")}
               </button>
             }
           />
@@ -150,14 +162,14 @@ export function ActionsListPage() {
             <table className="ds-table">
               <thead>
                 <tr>
-                  <th>{t('actions.apiName')}</th>
-                  <th>{t('actions.displayName')}</th>
-                  <th>{t('actions.objectType')}</th>
-                  <th>{t('actions.ruleType')}</th>
-                  <th>{t('actions.webhookTarget')}</th>
-                  <th>{t('actions.webhookLastDelivery')}</th>
-                  <th>{t('actions.status')}</th>
-                  <th className="ds-table-actions">{t('shared.actions')}</th>
+                  <th>{t("actions.apiName")}</th>
+                  <th>{t("actions.displayName")}</th>
+                  <th>{t("actions.objectType")}</th>
+                  <th>{t("actions.ruleType")}</th>
+                  <th>{t("actions.webhookTarget")}</th>
+                  <th>{t("actions.webhookLastDelivery")}</th>
+                  <th>{t("actions.status")}</th>
+                  <th className="ds-table-actions">{t("shared.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -173,14 +185,18 @@ export function ActionsListPage() {
                     </td>
                     <td>{action.display_name}</td>
                     <td className="ds-table-muted">
-                      {objectTypeNameById.get(action.object_type_id) ?? action.object_type_id}
+                      {objectTypeNameById.get(action.object_type_id) ??
+                        action.object_type_id}
                     </td>
                     <td className="ds-table-muted">
                       {isBuiltinObjectRule(action.rule_type)
-                        ? t(`actions.ruleTypeLabel.${action.rule_type}`, { defaultValue: action.rule_type })
+                        ? t(`actions.ruleTypeLabel.${action.rule_type}`, {
+                            defaultValue: action.rule_type,
+                          })
                         : action.function_id
-                          ? functionNameById.get(action.function_id) ?? action.function_id
-                          : t('actions.noFunction')}
+                          ? (functionNameById.get(action.function_id) ??
+                            action.function_id)
+                          : t("actions.noFunction")}
                     </td>
                     <td>
                       {action.webhook_service_id && action.webhook_path ? (
@@ -189,13 +205,16 @@ export function ActionsListPage() {
                           className="ontology-manager-list__api-link"
                         >
                           <code>
-                            {action.webhook_method || 'POST'} {action.webhook_path}
+                            {action.webhook_method || "POST"}{" "}
+                            {action.webhook_path}
                           </code>
                         </Link>
-                      ) : (action.function_external_services?.length ?? 0) > 0 ? (
+                      ) : (action.function_external_services?.length ?? 0) >
+                        0 ? (
                         <span className="ds-table-muted">
-                          {t('actions.webhookViaFunctionShort', {
-                            services: action.function_external_services?.join(', '),
+                          {t("actions.webhookViaFunctionShort", {
+                            services:
+                              action.function_external_services?.join(", "),
                           })}
                         </span>
                       ) : (
@@ -207,27 +226,30 @@ export function ActionsListPage() {
                         <span
                           className={
                             action.last_webhook.ok
-                              ? 'ds-status ds-status--ok'
-                              : 'ds-status ds-status--warn'
+                              ? "ds-status ds-status--ok"
+                              : "ds-status ds-status--warn"
                           }
                           title={action.last_webhook.error ?? undefined}
                         >
-                          {action.last_webhook.status ?? (action.last_webhook.ok ? 'ok' : 'failed')}
+                          {action.last_webhook.status ??
+                            (action.last_webhook.ok ? "ok" : "failed")}
                         </span>
                       ) : (
                         <span className="ds-table-muted">—</span>
                       )}
                     </td>
                     <td>
-                      <span className={statusBadgeClass(action.status)}>{action.status}</span>
+                      <span className={statusBadgeClass(action.status)}>
+                        {action.status}
+                      </span>
                     </td>
                     <td className="ds-table-actions">
                       <div className="ds-table-btns">
                         <button
                           type="button"
                           onClick={() => void onDelete(action)}
-                          aria-label={t('shared.delete')}
-                          title={t('shared.delete')}
+                          aria-label={t("shared.delete")}
+                          title={t("shared.delete")}
                         >
                           <Trash2 size={16} aria-hidden />
                         </button>
@@ -239,7 +261,7 @@ export function ActionsListPage() {
             </table>
           </div>
         )}
-      </div>
+      </ListPage>
 
       <ActionTypeCreateWizard
         open={showCreate}
@@ -248,6 +270,6 @@ export function ActionsListPage() {
         publishedFunctions={publishedFunctions}
         onCreated={() => void load()}
       />
-    </div>
+    </>
   );
 }

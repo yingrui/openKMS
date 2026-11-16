@@ -1,23 +1,26 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { Code2, ExternalLink, Loader2, Plus } from 'lucide-react';
-import { toast } from 'sonner';
-import { EmptyState } from '../../styles/design-system';
-import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
-import { useOntologyFunctionsList } from '../function-editor/useOntologyFunctionsList';
-import '../ontology/ontology-admin.scss';
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { Code2, ExternalLink, Loader2, Plus } from "lucide-react";
+import { toast } from "sonner";
+import { EmptyState, ListPage } from "../../styles/design-system";
+import {
+  fetchObjectTypes,
+  type ObjectTypeResponse,
+} from "../../data/ontologyApi";
+import { useOntologyFunctionsList } from "../function-editor/useOntologyFunctionsList";
+import "../ontology/ontology-admin.scss";
 
 function statusBadgeClass(status: string): string {
   const normalized = status.toLowerCase();
-  if (normalized === 'active' || normalized === 'published') {
-    return 'ontology-status-badge ontology-status-badge--active';
+  if (normalized === "active" || normalized === "published") {
+    return "ontology-status-badge ontology-status-badge--active";
   }
-  return 'ontology-status-badge';
+  return "ontology-status-badge";
 }
 
 export function FunctionsListPage() {
-  const { t } = useTranslation('ontology');
+  const { t } = useTranslation("ontology");
   const { items, loading } = useOntologyFunctionsList();
   const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
 
@@ -25,7 +28,7 @@ export function FunctionsListPage() {
     void fetchObjectTypes()
       .then((res) => setObjectTypes(res.items))
       .catch((e: unknown) => {
-        toast.error(e instanceof Error ? e.message : t('functions.loadFailed'));
+        toast.error(e instanceof Error ? e.message : t("functions.loadFailed"));
       });
   }, [t]);
 
@@ -36,32 +39,30 @@ export function FunctionsListPage() {
   }, [objectTypes]);
 
   return (
-    <div className="ontology-admin">
-      <header className="page-header">
-        <div>
-          <h1>{t('functions.title')}</h1>
-          <p className="page-subtitle">{t('functions.subtitle')}</p>
-        </div>
-        <Link to="/function-editor/new" className="btn btn-primary">
-          <Plus size={16} aria-hidden />
-          {t('functions.createInEditor')}
-        </Link>
-      </header>
-
-      <div className="ontology-admin-content">
+    <>
+      <ListPage
+        title={t("functions.title")}
+        subtitle={t("functions.subtitle")}
+        actions={
+          <Link to="/function-editor/new" className="btn btn-primary">
+            <Plus size={16} aria-hidden />
+            {t("functions.createInEditor")}
+          </Link>
+        }
+      >
         {loading ? (
           <div className="ds-loading">
             <Loader2 size={32} className="ds-loading__spinner" aria-hidden />
-            <p>{t('shared.loading')}</p>
+            <p>{t("shared.loading")}</p>
           </div>
         ) : items.length === 0 ? (
           <EmptyState
             icon={<Code2 size={32} aria-hidden />}
-            title={t('functions.emptyList')}
+            title={t("functions.emptyList")}
             action={
               <Link to="/function-editor/new" className="btn btn-primary">
                 <Plus size={16} aria-hidden />
-                {t('functions.createInEditor')}
+                {t("functions.createInEditor")}
               </Link>
             }
           />
@@ -70,41 +71,51 @@ export function FunctionsListPage() {
             <table className="ds-table">
               <thead>
                 <tr>
-                  <th>{t('functions.apiName')}</th>
-                  <th>{t('functions.displayName')}</th>
-                  <th>{t('functions.objectType')}</th>
-                  <th>{t('functions.publishedVersion')}</th>
-                  <th>{t('functions.latestVersion')}</th>
-                  <th>{t('functions.status')}</th>
-                  <th className="ds-table-actions">{t('shared.actions')}</th>
+                  <th>{t("functions.apiName")}</th>
+                  <th>{t("functions.displayName")}</th>
+                  <th>{t("functions.objectType")}</th>
+                  <th>{t("functions.publishedVersion")}</th>
+                  <th>{t("functions.latestVersion")}</th>
+                  <th>{t("functions.status")}</th>
+                  <th className="ds-table-actions">{t("shared.actions")}</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((fn) => (
                   <tr key={fn.id}>
                     <td>
-                      <Link to={`/ontology-manager/functions/${fn.id}`} className="ontology-manager-list__api-link">
+                      <Link
+                        to={`/ontology-manager/functions/${fn.id}`}
+                        className="ontology-manager-list__api-link"
+                      >
                         {fn.api_name}
                       </Link>
                     </td>
                     <td>{fn.display_name}</td>
                     <td className="ds-table-muted">
                       {fn.object_type_id
-                        ? objectTypeNameById.get(fn.object_type_id) ?? fn.object_type_id
-                        : '—'}
+                        ? (objectTypeNameById.get(fn.object_type_id) ??
+                          fn.object_type_id)
+                        : "—"}
                     </td>
-                    <td className="ds-table-muted">{fn.published_version ?? '—'}</td>
-                    <td className="ds-table-muted">{fn.latest_version ?? '—'}</td>
+                    <td className="ds-table-muted">
+                      {fn.published_version ?? "—"}
+                    </td>
+                    <td className="ds-table-muted">
+                      {fn.latest_version ?? "—"}
+                    </td>
                     <td>
-                      <span className={statusBadgeClass(fn.status)}>{fn.status}</span>
+                      <span className={statusBadgeClass(fn.status)}>
+                        {fn.status}
+                      </span>
                     </td>
                     <td className="ds-table-actions">
                       <div className="ds-table-btns">
                         <Link
                           to={`/function-editor/${fn.id}`}
                           className="ds-table-icon-link"
-                          title={t('functions.openInEditor')}
-                          aria-label={t('functions.openInEditor')}
+                          title={t("functions.openInEditor")}
+                          aria-label={t("functions.openInEditor")}
                         >
                           <ExternalLink size={16} aria-hidden />
                         </Link>
@@ -116,7 +127,7 @@ export function FunctionsListPage() {
             </table>
           </div>
         )}
-      </div>
-    </div>
+      </ListPage>
+    </>
   );
 }

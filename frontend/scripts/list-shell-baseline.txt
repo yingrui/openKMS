@@ -6,7 +6,5 @@ src/pages/connectors/ConnectorsPage.tsx
 src/pages/console/kubernetes/ConsoleKubernetes.tsx
 src/pages/console/kubernetes/ConsoleKubernetesDetail.tsx
 src/pages/function-editor/FunctionEditorListPage.tsx
-src/pages/ontology-manager/ActionsListPage.tsx
-src/pages/ontology-manager/FunctionsListPage.tsx
 src/pages/ontology/LinkTypesPage.tsx
 src/pages/ontology/ObjectTypesPage.tsx
