@@ -129,6 +129,12 @@
   gap: var(--space-3);
 }
 
+/* One key/value pair: the key above, the value block below; min-width lets a long value wrap instead of
+   widening the panel. */
+.console-k8s-detail-kv__row {
+  min-width: 0;
+}
+
 .console-k8s-detail-kv__key {
   font-size: var(--text-sm);
   font-weight: var(--font-weight-semibold, 600);

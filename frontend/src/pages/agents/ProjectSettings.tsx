@@ -399,7 +399,7 @@ export function ProjectSettings() {
         ) : null}
 
         {activeTab === 'skills' ? (
-          <section className="project-settings-section project-settings-skills-tab">
+          <section className="project-settings-section">
             <h2>{t('settings.skills.heading')}</h2>
             <p className="project-settings-hint project-settings-hint--intro">{t('settings.skills.hint')}</p>
             {registrySkills.length === 0 ? (
