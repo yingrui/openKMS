@@ -1,31 +1,41 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { Database, Plus, MessageCircle, Trash2, Pencil } from 'lucide-react';
-import { toast } from 'sonner';
+import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
+import { Database, Plus, MessageCircle, Trash2, Pencil } from "lucide-react";
+import { toast } from "sonner";
 import {
   fetchKnowledgeBases,
   createKnowledgeBase,
   deleteKnowledgeBase,
   updateKnowledgeBase,
   type KnowledgeBaseResponse,
-} from '../../data/knowledgeBasesApi';
+} from "../../data/knowledgeBasesApi";
 import {
   CARD_PREVIEW_LIMIT,
   LIST_PAGE_SIZE_DEFAULT,
   useStoredViewMode,
   type CardListViewMode,
-} from '../../hooks/useStoredViewMode';
-import { Dialog, FormField, Pagination, ResourceViewToggle, EmptyState } from '../../styles/design-system';
-import './KnowledgeBaseList.scss';
+} from "../../hooks/useStoredViewMode";
+import {
+  Dialog,
+  ListPage,
+  FormField,
+  Pagination,
+  ResourceViewToggle,
+  EmptyState,
+} from "../../styles/design-system";
+import "./KnowledgeBaseList.scss";
 
-const VIEW_STORAGE_KEY = 'knowledge-bases-list-view';
+const VIEW_STORAGE_KEY = "knowledge-bases-list-view";
 
 export function KnowledgeBaseList() {
-  const { t } = useTranslation('knowledgeBase');
-  const { t: ts } = useTranslation('explore');
-  const { t: tc } = useTranslation('common');
-  const [viewMode, setViewMode] = useStoredViewMode<CardListViewMode>(VIEW_STORAGE_KEY, 'card');
+  const { t } = useTranslation("knowledgeBase");
+  const { t: ts } = useTranslation("explore");
+  const { t: tc } = useTranslation("common");
+  const [viewMode, setViewMode] = useStoredViewMode<CardListViewMode>(
+    VIEW_STORAGE_KEY,
+    "card",
+  );
   const [kbs, setKbs] = useState<KnowledgeBaseResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [listPage, setListPage] = useState(0);
@@ -33,11 +43,11 @@ export function KnowledgeBaseList() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [editKb, setEditKb] = useState<KnowledgeBaseResponse | null>(null);
-  const [formName, setFormName] = useState('');
-  const [formDesc, setFormDesc] = useState('');
+  const [formName, setFormName] = useState("");
+  const [formDesc, setFormDesc] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const isCardView = viewMode === 'card';
+  const isCardView = viewMode === "card";
   const fetchLimit = isCardView ? CARD_PREVIEW_LIMIT : listPageSize;
   const fetchOffset = isCardView ? 0 : listPage * listPageSize;
 
@@ -51,7 +61,7 @@ export function KnowledgeBaseList() {
       setKbs(data.items);
       setTotal(data.total);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('toastLoadFailed'));
+      toast.error(e instanceof Error ? e.message : t("toastLoadFailed"));
       setKbs([]);
       setTotal(0);
     } finally {
@@ -78,15 +88,18 @@ export function KnowledgeBaseList() {
     if (!formName.trim()) return;
     setSaving(true);
     try {
-      await createKnowledgeBase({ name: formName.trim(), description: formDesc.trim() || undefined });
+      await createKnowledgeBase({
+        name: formName.trim(),
+        description: formDesc.trim() || undefined,
+      });
       setShowCreate(false);
-      setFormName('');
-      setFormDesc('');
-      toast.success(t('toastCreated'));
+      setFormName("");
+      setFormDesc("");
+      toast.success(t("toastCreated"));
       setListPage(0);
       void load();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : ts('shared.createFailed'));
+      toast.error(e instanceof Error ? e.message : ts("shared.createFailed"));
     } finally {
       setSaving(false);
     }
@@ -96,29 +109,37 @@ export function KnowledgeBaseList() {
     if (!editKb || !formName.trim()) return;
     setSaving(true);
     try {
-      await updateKnowledgeBase(editKb.id, { name: formName.trim(), description: formDesc.trim() || undefined });
+      await updateKnowledgeBase(editKb.id, {
+        name: formName.trim(),
+        description: formDesc.trim() || undefined,
+      });
       setEditKb(null);
-      setFormName('');
-      setFormDesc('');
-      toast.success(t('toastUpdated'));
+      setFormName("");
+      setFormDesc("");
+      toast.success(t("toastUpdated"));
       void load();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : ts('shared.updateFailed'));
+      toast.error(e instanceof Error ? e.message : ts("shared.updateFailed"));
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (kb: KnowledgeBaseResponse, e: React.MouseEvent) => {
+  const handleDelete = async (
+    kb: KnowledgeBaseResponse,
+    e: React.MouseEvent,
+  ) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(t('deleteConfirm', { name: kb.name }))) return;
+    if (!confirm(t("deleteConfirm", { name: kb.name }))) return;
     try {
       await deleteKnowledgeBase(kb.id);
-      toast.success(t('toastDeleted'));
+      toast.success(t("toastDeleted"));
       void load();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : ts('shared.deleteFailed'));
+      toast.error(
+        err instanceof Error ? err.message : ts("shared.deleteFailed"),
+      );
     }
   };
 
@@ -127,54 +148,61 @@ export function KnowledgeBaseList() {
     e.stopPropagation();
     setEditKb(kb);
     setFormName(kb.name);
-    setFormDesc(kb.description || '');
+    setFormDesc(kb.description || "");
   };
 
   const closeDialog = () => {
     setShowCreate(false);
     setEditKb(null);
-    setFormName('');
-    setFormDesc('');
+    setFormName("");
+    setFormDesc("");
   };
 
   return (
-    <div className="ds-resource-list">
-      <div className="page-header ds-resource-list-header">
-        <div>
-          <h1>{t('title')}</h1>
-          <p className="page-subtitle">{t('subtitle')}</p>
-        </div>
-        <div className="ds-resource-list-header-actions">
+    <ListPage
+      title={t("title")}
+      subtitle={t("subtitle")}
+      actions={
+        <>
           {!loading ? (
-            <ResourceViewToggle modes={['card', 'list']} value={viewMode} onChange={switchView} />
+            <ResourceViewToggle
+              modes={["card", "list"]}
+              value={viewMode}
+              onChange={switchView}
+            />
           ) : null}
           <button
             type="button"
             className="btn btn-primary"
             onClick={() => {
               setShowCreate(true);
-              setFormName('');
-              setFormDesc('');
+              setFormName("");
+              setFormDesc("");
             }}
-            aria-label={t('newKb')}
+            aria-label={t("newKb")}
           >
             <Plus size={18} aria-hidden />
-            <span className="ds-compact-label">{t('newKb')}</span>
+            <span className="ds-compact-label">{t("newKb")}</span>
           </button>
-        </div>
-      </div>
-
-      {loading && <p className="ds-resource-list-loading">{ts('shared.loading')}</p>}
+        </>
+      }
+    >
+      {loading && (
+        <p className="ds-resource-list-loading">{ts("shared.loading")}</p>
+      )}
 
       {!loading && total === 0 && (
-        <EmptyState icon={<Database size={48} strokeWidth={1} />} description={t('empty')} />
+        <EmptyState
+          icon={<Database size={48} strokeWidth={1} />}
+          description={t("empty")}
+        />
       )}
 
       {!loading && total > 0 && isCardView && total > kbs.length ? (
         <p className="ds-card-preview-hint">
-          {tc('cardPreviewHint', { shown: kbs.length, total })}
-          <button type="button" onClick={() => switchView('list')}>
-            {tc('viewAllInList')}
+          {tc("cardPreviewHint", { shown: kbs.length, total })}
+          <button type="button" onClick={() => switchView("list")}>
+            {tc("viewAllInList")}
           </button>
         </p>
       ) : null}
@@ -182,16 +210,30 @@ export function KnowledgeBaseList() {
       {!loading && total > 0 && isCardView ? (
         <div className="ds-resource-list-grid">
           {kbs.map((kb) => (
-            <Link key={kb.id} to={`/knowledge-bases/${kb.id}`} className="ds-resource-list-card">
+            <Link
+              key={kb.id}
+              to={`/knowledge-bases/${kb.id}`}
+              className="ds-resource-list-card"
+            >
               <div className="ds-resource-list-card-top">
                 <div className="ds-resource-list-icon">
                   <Database size={28} strokeWidth={1.5} />
                 </div>
                 <div className="ds-resource-list-card-actions">
-                  <button type="button" title={ts('shared.edit')} aria-label={ts('shared.edit')} onClick={(e) => openEdit(kb, e)}>
+                  <button
+                    type="button"
+                    title={ts("shared.edit")}
+                    aria-label={ts("shared.edit")}
+                    onClick={(e) => openEdit(kb, e)}
+                  >
                     <Pencil size={15} />
                   </button>
-                  <button type="button" title={ts('shared.delete')} aria-label={ts('shared.delete')} onClick={(e) => void handleDelete(kb, e)}>
+                  <button
+                    type="button"
+                    title={ts("shared.delete")}
+                    aria-label={ts("shared.delete")}
+                    onClick={(e) => void handleDelete(kb, e)}
+                  >
                     <Trash2 size={15} />
                   </button>
                 </div>
@@ -201,17 +243,19 @@ export function KnowledgeBaseList() {
                 className="ds-resource-list-desc"
                 title={kb.description?.trim() || undefined}
               >
-                {kb.description || ts('shared.noDescription')}
+                {kb.description || ts("shared.noDescription")}
               </p>
               <div className="ds-resource-list-meta">
-                <span>{t('metaDocs', { count: kb.document_count })}</span>
-                <span>{t('metaWikiSpaces', { count: kb.wiki_space_count ?? 0 })}</span>
-                <span>{t('metaFaqs', { count: kb.faq_count })}</span>
-                <span>{t('metaChunks', { count: kb.chunk_count })}</span>
+                <span>{t("metaDocs", { count: kb.document_count })}</span>
+                <span>
+                  {t("metaWikiSpaces", { count: kb.wiki_space_count ?? 0 })}
+                </span>
+                <span>{t("metaFaqs", { count: kb.faq_count })}</span>
+                <span>{t("metaChunks", { count: kb.chunk_count })}</span>
                 {kb.agent_url ? (
                   <span className="kb-rag-badge">
                     <MessageCircle size={14} />
-                    {t('ragBadge')}
+                    {t("ragBadge")}
                   </span>
                 ) : null}
               </div>
@@ -226,9 +270,9 @@ export function KnowledgeBaseList() {
             <table className="ds-resource-table">
               <thead>
                 <tr>
-                  <th>{ts('shared.name')}</th>
-                  <th>{ts('shared.description')}</th>
-                  <th>{t('listColStats')}</th>
+                  <th>{ts("shared.name")}</th>
+                  <th>{ts("shared.description")}</th>
+                  <th>{t("listColStats")}</th>
                   <th aria-hidden />
                 </tr>
               </thead>
@@ -236,29 +280,44 @@ export function KnowledgeBaseList() {
                 {kbs.map((kb) => (
                   <tr key={kb.id}>
                     <td>
-                      <Link to={`/knowledge-bases/${kb.id}`} className="ds-resource-table__link">
+                      <Link
+                        to={`/knowledge-bases/${kb.id}`}
+                        className="ds-resource-table__link"
+                      >
                         {kb.name}
                       </Link>
                       {kb.agent_url ? (
-                        <span className="kb-list-rag-pill">{t('ragBadge')}</span>
+                        <span className="kb-list-rag-pill">
+                          {t("ragBadge")}
+                        </span>
                       ) : null}
                     </td>
-                    <td>{kb.description || ts('shared.noDescription')}</td>
+                    <td>{kb.description || ts("shared.noDescription")}</td>
                     <td className="kb-list-stats">
-                      {t('metaDocs', { count: kb.document_count })}
-                      {' · '}
-                      {t('metaWikiSpaces', { count: kb.wiki_space_count ?? 0 })}
-                      {' · '}
-                      {t('metaFaqs', { count: kb.faq_count })}
-                      {' · '}
-                      {t('metaChunks', { count: kb.chunk_count })}
+                      {t("metaDocs", { count: kb.document_count })}
+                      {" · "}
+                      {t("metaWikiSpaces", { count: kb.wiki_space_count ?? 0 })}
+                      {" · "}
+                      {t("metaFaqs", { count: kb.faq_count })}
+                      {" · "}
+                      {t("metaChunks", { count: kb.chunk_count })}
                     </td>
                     <td>
                       <div className="ds-resource-table__actions">
-                        <button type="button" title={ts('shared.edit')} aria-label={ts('shared.edit')} onClick={(e) => openEdit(kb, e)}>
+                        <button
+                          type="button"
+                          title={ts("shared.edit")}
+                          aria-label={ts("shared.edit")}
+                          onClick={(e) => openEdit(kb, e)}
+                        >
                           <Pencil size={15} />
                         </button>
-                        <button type="button" title={ts('shared.delete')} aria-label={ts('shared.delete')} onClick={(e) => void handleDelete(kb, e)}>
+                        <button
+                          type="button"
+                          title={ts("shared.delete")}
+                          aria-label={ts("shared.delete")}
+                          onClick={(e) => void handleDelete(kb, e)}
+                        >
                           <Trash2 size={15} />
                         </button>
                       </div>
@@ -285,13 +344,17 @@ export function KnowledgeBaseList() {
       <Dialog
         open={showCreate || editKb != null}
         onClose={closeDialog}
-        title={editKb ? t('dialogEdit') : t('dialogNew')}
-        closeAriaLabel={ts('shared.close')}
+        title={editKb ? t("dialogEdit") : t("dialogNew")}
+        closeAriaLabel={ts("shared.close")}
         size="md"
         footer={
           <>
-            <button type="button" className="btn btn-secondary" onClick={closeDialog}>
-              {ts('shared.cancel')}
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={closeDialog}
+            >
+              {ts("shared.cancel")}
             </button>
             <button
               type="button"
@@ -299,28 +362,32 @@ export function KnowledgeBaseList() {
               disabled={!formName.trim() || saving}
               onClick={() => void (editKb ? handleEdit() : handleCreate())}
             >
-              {saving ? ts('shared.saving') : editKb ? ts('shared.save') : ts('shared.create')}
+              {saving
+                ? ts("shared.saving")
+                : editKb
+                  ? ts("shared.save")
+                  : ts("shared.create")}
             </button>
           </>
         }
       >
-        <FormField label={ts('shared.name')}>
+        <FormField label={ts("shared.name")}>
           <input
             type="text"
             value={formName}
             onChange={(e) => setFormName(e.target.value)}
-            placeholder={t('placeholderName')}
+            placeholder={t("placeholderName")}
           />
         </FormField>
-        <FormField label={ts('shared.description')}>
+        <FormField label={ts("shared.description")}>
           <textarea
             value={formDesc}
             onChange={(e) => setFormDesc(e.target.value)}
-            placeholder={t('placeholderDesc')}
+            placeholder={t("placeholderDesc")}
             rows={3}
           />
         </FormField>
       </Dialog>
-    </div>
+    </ListPage>
   );
 }

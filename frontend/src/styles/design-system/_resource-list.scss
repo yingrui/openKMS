@@ -11,23 +11,8 @@
   margin-bottom: var(--space-8);
 }
 
-.ds-resource-list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: var(--space-5);
-}
-
 /* The list's own controls, on a row above it — the same place the catalog puts its search. */
 /* Wide enough to type a name, not a toolbar's worth of space. */
-.ds-resource-list-header-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-}
-
 .ds-resource-list-header .btn {
   display: inline-flex;
   align-items: center;
