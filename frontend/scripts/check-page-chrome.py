@@ -10,6 +10,13 @@ pushed apart by an ancestor's gap, and no rule in the page can cancel a flex `ga
 are inside that shell — a page in `.ontology-admin-content` (ConnectorDetail) is fine as siblings,
 so the check keys off the shell, not off the class alone.
 
+**C. A Catalog page wearing the settings shell.**
+`settings-page-form` is an elevated *card* with its own padding; a list page that wraps its table in it
+sits in a card while its siblings (datasets, models, metrics, quality) sit on the page — same table, same
+type scale, visibly different page. `src/pages/catalog/**` therefore may not use `settings-page-*`: the
+list shell is `page-header` + `DatasetAppTabs` + `.ontology-admin-content` + `.console-datasets-toolbar` +
+`.ds-table-wrap > .console-table`.
+
 **B. A local margin on a `.page-subtitle` that quietly loses.**
 `.page-subtitle` is global (`app-page.scss`) and declares ``margin: 0``. A colocated rule such as
 ``.foo { margin-bottom: var(--space-4) }`` has *equal* specificity, so whether it applies depends on
@@ -104,6 +111,18 @@ def offenders() -> list[str]:
                     "(.account-stack gap splits the tab strip from its panel) — wrap the strip and "
                     "the panel in one `<div className=\"settings-page\">`"
                 )
+
+        # C. A page with the Catalog tab strip is a list page: it must not wear the settings card.
+        if "DatasetAppTabs" in text:
+            for tokens in literals:
+                for token in tokens:
+                    if token in ("settings-page-form", "settings-page-tabs"):
+                        line = text[: text.find(f'"{token}"')].count("\n") + 1
+                        out.append(
+                            f"{rel}:{line}: `{token}` is the settings card, not a list shell — a Catalog "
+                            "list is page-header + DatasetAppTabs + .ontology-admin-content + "
+                            ".ds-table-wrap > .console-table"
+                        )
 
         # B. A local margin that competes with the global `.page-subtitle { margin: 0 }`.
         for tokens in literals:
