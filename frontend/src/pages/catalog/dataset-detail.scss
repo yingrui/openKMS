@@ -199,6 +199,12 @@
     min-width: 0;
   }
 
+  &__actions {
+    display: flex;
+    flex: none;
+    gap: var(--space-1);
+  }
+
   &__meta {
     color: var(--color-text-muted);
     font-size: 0.8125rem;

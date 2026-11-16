@@ -898,7 +898,11 @@
     "joinTargetUnique": "目标侧唯一性",
     "joinUniqueOk": "唯一",
     "joinNotUnique": "不唯一：{{rows}} 行里 {{distinct}} 个不同值，这条关系会把行数放大",
-    "joinUniqueUnknown": "未统计，无法校验——请先刷新该数据集的统计"
+    "joinUniqueUnknown": "未统计，无法校验——请先刷新该数据集的统计",
+    "joinEdited": "关系已更新",
+    "joinEdit": "编辑",
+    "joinEditTitle": "编辑关系",
+    "joinEditHint": "两端数据集与方向不可改；要换端点请删除后新建。"
   },
   "groups": {
     "title": "分组",

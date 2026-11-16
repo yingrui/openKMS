@@ -905,7 +905,11 @@
     "joinTargetUnique": "Target uniqueness",
     "joinUniqueOk": "unique",
     "joinNotUnique": "not unique: {{distinct}} distinct values in {{rows}} rows — this relationship would multiply rows",
-    "joinUniqueUnknown": "no statistics to check against — refresh that dataset first"
+    "joinUniqueUnknown": "no statistics to check against — refresh that dataset first",
+    "joinEdited": "Relationship updated",
+    "joinEdit": "Edit",
+    "joinEditTitle": "Edit relationship",
+    "joinEditHint": "The two datasets and the direction are fixed; to change an endpoint, delete and re-create."
   },
   "groups": {
     "title": "Groups",

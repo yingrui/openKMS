@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDatasetDetail } from './useDatasetDetail';
 import {
@@ -13,6 +13,7 @@ import {
 } from '../../data/datasetsApi';
 import {
   createDatasetJoin,
+  updateDatasetJoin,
   deleteDatasetJoin,
   fetchDatasetJoins,
   type DatasetJoinResponse,
@@ -51,6 +52,7 @@ export function DatasetRelationshipsTab() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [toProfile, setToProfile] = useState<DatasetProfileResponse | null>(null);
+  const [editing, setEditing] = useState<DatasetJoinResponse | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -143,7 +145,27 @@ export function DatasetRelationshipsTab() {
     [joins, datasetId, t],
   );
 
+  const openEdit = (join: DatasetJoinResponse) => {
+    const thisIsFrom = join.from_dataset_id === datasetId;
+    setEditing(join);
+    setTargetId(thisIsFrom ? join.to_dataset_id : join.from_dataset_id);
+    setDirection(thisIsFrom ? 'from' : 'to');
+    setRequired(join.required);
+    const own = thisIsFrom ? join.from_columns : join.to_columns;
+    const other = thisIsFrom ? join.to_columns : join.from_columns;
+    setPairs(own.map((column, index) => ({ from: column, to: other[index] ?? '' })));
+    setJoinName(join.name ?? '');
+    setDescription(join.description ?? '');
+    const ai = (join.ai_context ?? {}) as { instructions?: string; synonyms?: string[]; examples?: string[] };
+    setAiInstructions(ai.instructions ?? '');
+    setAiSynonyms((ai.synonyms ?? []).join(', '));
+    setAiExamples((ai.examples ?? []).join(', '));
+    setFormError(null);
+    setShowForm(true);
+  };
+
   const openCreate = () => {
+    setEditing(null);
     setTargetId('');
     setDirection('from');
     setRequired(true);
@@ -174,6 +196,26 @@ export function DatasetRelationshipsTab() {
     try {
       const synonyms = aiSynonyms.split(',').map((x) => x.trim()).filter(Boolean);
       const examples = aiExamples.split(',').map((x) => x.trim()).filter(Boolean);
+      const ai =
+        aiInstructions.trim() || synonyms.length || examples.length
+          ? { instructions: aiInstructions.trim(), synonyms, examples }
+          : null;
+      if (editing) {
+        await updateDatasetJoin(editing.id, {
+          name: joinName.trim() || null,
+          from_columns: usable.map((p) => p.from),
+          to_columns: usable.map((p) => p.to),
+          required,
+          description: description.trim() || null,
+          ai_context: ai,
+        });
+        toast.success(t('datasets.joinEdited'));
+        setShowForm(false);
+        setEditing(null);
+        setFormError(null);
+        await load();
+        return;
+      }
       await createDatasetJoin({
         name: joinName.trim() || null,
         from_dataset_id: direction === 'from' ? datasetId : targetId,
@@ -182,10 +224,7 @@ export function DatasetRelationshipsTab() {
         to_columns: usable.map((p) => p.to),
         required,
         description: description.trim() || null,
-        ai_context:
-          aiInstructions.trim() || synonyms.length || examples.length
-            ? { instructions: aiInstructions.trim(), synonyms, examples }
-            : null,
+        ai_context: ai,
       });
       toast.success(t('datasets.joinCreated'));
       setShowForm(false);
@@ -259,14 +298,24 @@ export function DatasetRelationshipsTab() {
                     {j.from_columns.map((c, i) => `${c} = ${j.to_columns[i] ?? ''}`).join(', ')}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => void handleDelete(j.id)}
-                  title={t('shared.delete')}
-                >
-                  <Trash2 size={16} aria-hidden />
-                </button>
+                <div className="dataset-join-row__actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => openEdit(j)}
+                    title={t('datasets.joinEdit')}
+                  >
+                    <Pencil size={16} aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => void handleDelete(j.id)}
+                    title={t('shared.delete')}
+                  >
+                    <Trash2 size={16} aria-hidden />
+                  </button>
+                </div>
               </div>
             ))
           )}
@@ -277,7 +326,7 @@ export function DatasetRelationshipsTab() {
         open={showForm}
         onClose={() => !submitting && setShowForm(false)}
         closeDisabled={submitting}
-        title={t('datasets.addRelationship')}
+        title={editing ? t('datasets.joinEditTitle') : t('datasets.addRelationship')}
         closeAriaLabel={t('datasets.closeAria')}
         size="md"
         footer={
@@ -307,8 +356,15 @@ export function DatasetRelationshipsTab() {
               {formError}
             </p>
           ) : null}
+          {editing ? (
+            <p className="page-subtitle">{t('datasets.joinEditHint')}</p>
+          ) : null}
           <FormField label={t('datasets.joinTargetDataset')}>
-            <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+            <select
+              value={targetId}
+              onChange={(e) => setTargetId(e.target.value)}
+              disabled={editing !== null}
+            >
               <option value="">{t('datasets.selectTable')}</option>
               {otherDatasets.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -321,6 +377,7 @@ export function DatasetRelationshipsTab() {
             <select
               value={direction}
               onChange={(e) => setDirection(e.target.value as 'from' | 'to')}
+              disabled={editing !== null}
             >
               <option value="from">{t('datasets.directionThisFrom')}</option>
               <option value="to">{t('datasets.directionThisTo')}</option>
