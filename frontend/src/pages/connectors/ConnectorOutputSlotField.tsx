@@ -90,7 +90,7 @@ export function ConnectorOutputSlotField({
     <div className="console-form-field connector-output-slot">
       <label htmlFor={fieldId}>{slot.label}</label>
       {slot.description ? (
-        <p className="console-modal-hint console-modal-hint--block">{slot.description}</p>
+        <p className="ds-dialog__hint ds-dialog__hint--block">{slot.description}</p>
       ) : null}
       {hasSchema ? (
         <details className="connector-output-schema-details">
@@ -121,7 +121,7 @@ export function ConnectorOutputSlotField({
             </button>
           ) : (
             <div className="connector-output-provision-form">
-              <p className="console-modal-hint">{t('connectors.provisionHint')}</p>
+              <p className="ds-dialog__hint">{t('connectors.provisionHint')}</p>
               <label className="connector-output-provision-label">
                 {t('connectors.provisionDataSource')}
                 <select
@@ -138,7 +138,7 @@ export function ConnectorOutputSlotField({
                 </select>
               </label>
               {pgSources.length === 0 ? (
-                <p className="console-modal-hint">{t('connectors.provisionNoDataSources')}</p>
+                <p className="ds-dialog__hint">{t('connectors.provisionNoDataSources')}</p>
               ) : null}
               <div className="connector-output-provision-row">
                 <label className="connector-output-provision-label">

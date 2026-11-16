@@ -236,7 +236,7 @@ export function ActionTypeCreateWizard({
 
         {step === 'target' && (
           <div className="object-type-create-form">
-            <p className="console-modal-hint">{t('actions.wizard.targetHint')}</p>
+            <p className="ds-dialog__hint">{t('actions.wizard.targetHint')}</p>
             <FormField label={t('actions.objectType')}>
               <select
                 value={objectTypeId}
@@ -275,7 +275,7 @@ export function ActionTypeCreateWizard({
                       />
                       <span>{t(`objectTypes.wizard.actionLabel.${tmpl.id}`)}</span>
                     </label>
-                    <span className="console-modal-hint console-modal-hint--block">
+                    <span className="ds-dialog__hint ds-dialog__hint--block">
                       {t(`objectTypes.wizard.actionHint.${tmpl.id}`)}
                     </span>
                   </li>
@@ -296,7 +296,7 @@ export function ActionTypeCreateWizard({
                     />
                     <span>{t('actions.wizard.intent.custom')}</span>
                   </label>
-                  <span className="console-modal-hint console-modal-hint--block">
+                  <span className="ds-dialog__hint ds-dialog__hint--block">
                     {t('actions.wizard.intent.customHint')}
                   </span>
                 </li>
@@ -332,7 +332,7 @@ export function ActionTypeCreateWizard({
               />
             </FormField>
             {isBuiltinRule ? (
-              <p className="console-modal-hint">{t(`actions.builtinHint.${intent}`)}</p>
+              <p className="ds-dialog__hint">{t(`actions.builtinHint.${intent}`)}</p>
             ) : (
               <FormField label={t('actions.function')}>
                 <select
@@ -348,9 +348,9 @@ export function ActionTypeCreateWizard({
                   ))}
                 </select>
                 {publishedFunctions.length === 0 && (
-                  <span className="console-modal-hint">{t('actions.publishFirstHint')}</span>
+                  <span className="ds-dialog__hint">{t('actions.publishFirstHint')}</span>
                 )}
-                <span className="console-modal-hint console-modal-hint--block">
+                <span className="ds-dialog__hint ds-dialog__hint--block">
                   {t('actions.functionCustomHint')}
                 </span>
               </FormField>

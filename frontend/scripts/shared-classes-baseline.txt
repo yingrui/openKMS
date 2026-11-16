@@ -31,8 +31,6 @@ channel-page-toolbar	pages/articles,pages/documents,pages/media
 channel-table	pages/articles,pages/documents
 channel-table-select-col	pages/articles,pages/documents
 channel-table-wrap	pages/articles,pages/documents
-console-modal-hint	pages/connectors,pages/ontology-manager
-console-modal-section	pages/connectors,pages/ontology-manager
 danger	components,pages/console
 doc-detail-spinner	components/comments,pages/articles,pages/documents
 document-detail	pages/articles,pages/documents,pages/media

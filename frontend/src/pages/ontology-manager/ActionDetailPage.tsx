@@ -555,7 +555,7 @@ export function ActionRulesTab() {
       <EntityViewPanel>
         {isBuiltin ? (
           <div className="entity-view__form">
-            <p className="console-modal-hint">
+            <p className="ds-dialog__hint">
               {t(`actions.builtinRulesHint.${action.rule_type}`, {
                 defaultValue: t('actions.builtinRulesHint.default'),
               })}
@@ -563,7 +563,7 @@ export function ActionRulesTab() {
             {action.rule_type !== 'object_delete' && propertyNames.length > 0 ? (
               <fieldset className="object-type-create-wizard__intent">
                 <legend>{t('actions.writableFields')}</legend>
-                <p className="console-modal-hint">{t('actions.writableFieldsHint')}</p>
+                <p className="ds-dialog__hint">{t('actions.writableFieldsHint')}</p>
                 <ul className="object-type-create-wizard__action-list">
                   {propertyNames.map((name) => (
                     <li key={name}>
@@ -601,7 +601,7 @@ export function ActionRulesTab() {
                 ))}
               </select>
             </EntityViewField>
-            <p className="console-modal-hint">{t('actions.functionCustomHint')}</p>
+            <p className="ds-dialog__hint">{t('actions.functionCustomHint')}</p>
           </div>
         )}
       </EntityViewPanel>

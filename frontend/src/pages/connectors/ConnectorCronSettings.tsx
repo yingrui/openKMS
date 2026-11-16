@@ -46,7 +46,7 @@ export function ConnectorCronSettings({
 
   return (
     <div className="connector-cron-settings">
-      <p className="console-modal-hint">{t('connectors.cronHint')}</p>
+      <p className="ds-dialog__hint">{t('connectors.cronHint')}</p>
 
       <CheckRow
         checked={value.enabled}
@@ -92,7 +92,7 @@ export function ConnectorCronSettings({
       </div>
 
       {value.enabled && cronPreview ? (
-        <p className="console-modal-hint connector-cron-cron-preview">
+        <p className="ds-dialog__hint connector-cron-cron-preview">
           {t('connectors.cronExpression', { cron: cronPreview })}
         </p>
       ) : null}

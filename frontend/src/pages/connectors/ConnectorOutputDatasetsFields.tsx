@@ -31,14 +31,14 @@ export function ConnectorOutputDatasetsFields({
   const slots = selectedKindMeta?.output_slots ?? [];
 
   if (slots.length === 0) {
-    return <p className="console-modal-hint">{t('connectors.outputsNotApplicable')}</p>;
+    return <p className="ds-dialog__hint">{t('connectors.outputsNotApplicable')}</p>;
   }
 
   return (
     <div className="connector-output-datasets-fields">
-      <p className="console-modal-hint">{t('connectors.outputsOptionalHint')}</p>
+      <p className="ds-dialog__hint">{t('connectors.outputsOptionalHint')}</p>
       {scheduleEnabled ? (
-        <p className="console-modal-hint">{t('connectors.outputsClearScheduleHint')}</p>
+        <p className="ds-dialog__hint">{t('connectors.outputsClearScheduleHint')}</p>
       ) : null}
       {slots.map((o) => (
         <ConnectorOutputSlotField

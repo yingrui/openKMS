@@ -156,7 +156,7 @@ export function ConnectorFormFields({
           ))}
         </select>
       </div>
-      {selectedKindMeta ? <p className="console-modal-hint">{selectedKindMeta.description}</p> : null}
+      {selectedKindMeta ? <p className="ds-dialog__hint">{selectedKindMeta.description}</p> : null}
       <CheckRow
         checked={formEnabled}
         onChange={onFormEnabledChange}
@@ -166,9 +166,9 @@ export function ConnectorFormFields({
       />
 
       {hasInputFields && selectedKindMeta ? (
-        <div className="console-modal-section">
+        <div className="ds-dialog__section">
           <h3 className="console-modal-subheading">{t('connectors.sectionInputs')}</h3>
-          <p className="console-modal-hint">{t('connectors.inputsHint')}</p>
+          <p className="ds-dialog__hint">{t('connectors.inputsHint')}</p>
           {selectedKindMeta.input_fields.map((f) => (
             <div key={f.key} className="console-form-field">
               {renderInputControl(f)}
@@ -178,17 +178,17 @@ export function ConnectorFormFields({
       ) : null}
 
       {isSearchTool && selectedKindMeta?.output_schema ? (
-        <div className="console-modal-section">
+        <div className="ds-dialog__section">
           <h3 className="console-modal-subheading">{t('connectors.sectionOutputSchema')}</h3>
-          <p className="console-modal-hint">{t('connectors.outputSchemaHint')}</p>
+          <p className="ds-dialog__hint">{t('connectors.outputSchemaHint')}</p>
           <pre className="connector-output-schema">{JSON.stringify(selectedKindMeta.output_schema, null, 2)}</pre>
         </div>
       ) : null}
 
       {includeOutputs && hasOutputSlots && selectedKindMeta ? (
-        <div className="console-modal-section">
+        <div className="ds-dialog__section">
           <h3 className="console-modal-subheading">{t('connectors.sectionOutputs')}</h3>
-          <p className="console-modal-hint">{t('connectors.outputsHint')}</p>
+          <p className="ds-dialog__hint">{t('connectors.outputsHint')}</p>
           {selectedKindMeta.output_slots.map((o) => (
             <ConnectorOutputSlotField
               key={o.slot}
@@ -208,9 +208,9 @@ export function ConnectorFormFields({
         </div>
       ) : null}
 
-      <div className="console-modal-section">
+      <div className="ds-dialog__section">
         <h3 className="console-modal-subheading">{t('connectors.sectionExtraSettings')}</h3>
-        <p className="console-modal-hint">
+        <p className="ds-dialog__hint">
           {isSearchTool ? t('connectors.searchToolSettingsHint') : t('connectors.settingsKvHint')}
         </p>
         <div className="console-kv-editor" role="group" aria-label={t('connectors.sectionExtraSettings')}>
@@ -263,9 +263,9 @@ export function ConnectorFormFields({
         </div>
       </div>
 
-      <div className="console-modal-section">
+      <div className="ds-dialog__section">
         <h3 className="console-modal-subheading">{t('connectors.sectionSecrets')}</h3>
-        <p className="console-modal-hint">
+        <p className="ds-dialog__hint">
           {isExisting ? t('connectors.secretsKvHintEdit') : t('connectors.secretsKvHintCreate')}
           {selectedKindMeta && selectedKindMeta.secret_keys.length > 0 ? (
             <span> {t('connectors.secretsExpectedKeys', { keys: selectedKindMeta.secret_keys.join(', ') })}</span>

@@ -463,7 +463,7 @@ export function ObjectTypeCreateWizard({
 
         {step === 'actions' && (
           <div className="object-type-create-form">
-            <p className="console-modal-hint">{t('objectTypes.wizard.actionsHint')}</p>
+            <p className="ds-dialog__hint">{t('objectTypes.wizard.actionsHint')}</p>
             <ul className="object-type-create-wizard__action-list">
               {ACTION_TEMPLATES.map((tmpl) => (
                 <li key={tmpl.id}>
@@ -477,7 +477,7 @@ export function ObjectTypeCreateWizard({
                     />
                     <span>{t(`objectTypes.wizard.actionLabel.${tmpl.id}`)}</span>
                   </label>
-                  <span className="console-modal-hint console-modal-hint--block">
+                  <span className="ds-dialog__hint ds-dialog__hint--block">
                     {t(`objectTypes.wizard.actionHint.${tmpl.id}`)}
                   </span>
                 </li>

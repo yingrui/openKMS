@@ -152,7 +152,7 @@ export function ConnectorSyncDialog({
             </button>
           </div>
         </div>
-        <p className="console-modal-hint">{t('connectors.syncDialogSlotsHint')}</p>
+        <p className="ds-dialog__hint">{t('connectors.syncDialogSlotsHint')}</p>
         <CheckList>
           {slots.map((slot) => (
             <CheckListItem

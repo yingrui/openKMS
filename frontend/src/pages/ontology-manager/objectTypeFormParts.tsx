@@ -111,8 +111,8 @@ export function PropertiesEditor({
   const displayProps = fromDataset ? properties : withoutReservedProperties(properties);
 
   return (
-    <div className="console-modal-section">
-      <div className="console-modal-section-header">
+    <div className="ds-dialog__section">
+      <div className="ds-dialog__section-head">
         <span>{t('objectTypes.properties')}</span>
         {!fromDataset && onAdd ? (
           <button type="button" className="btn btn-secondary btn-sm" onClick={onAdd}>
@@ -122,14 +122,14 @@ export function PropertiesEditor({
         ) : null}
       </div>
       {loadingMetadata ? (
-        <p className="console-modal-hint">{t('objectTypes.loadingColumns')}</p>
+        <p className="ds-dialog__hint">{t('objectTypes.loadingColumns')}</p>
       ) : displayProps.length === 0 ? (
-        <p className="console-modal-hint">
+        <p className="ds-dialog__hint">
           {fromDataset ? t('objectTypes.noColumns') : t('objectTypes.propertiesHint')}
         </p>
       ) : (
         <div className="console-obj-properties-list">
-          <p className="console-modal-hint">
+          <p className="ds-dialog__hint">
             {fromDataset
               ? t('objectTypes.primaryKeyOptionalHint')
               : t('objectTypes.handCreatedIdentityHint')}
