@@ -126,7 +126,7 @@ export function SchedulesPage() {
           <p className="jobs-empty">{t('schedules.empty')}</p>
         ) : (
           <>
-            <table className="jobs-table">
+            <table className="ds-table schedules-table">
               <thead>
                 <tr>
                   <th>{t('schedules.colName')}</th>

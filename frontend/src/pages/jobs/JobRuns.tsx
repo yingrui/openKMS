@@ -218,7 +218,7 @@ export function JobRuns() {
             </div>
           ) : (
             <>
-              <table className="jobs-table">
+              <table className="ds-table jobs-table">
                 <thead>
                   <tr>
                     <th>{t('jobs.colId')}</th>
@@ -234,7 +234,7 @@ export function JobRuns() {
                 <tbody>
                   {jobs.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="table-empty">
+                      <td colSpan={8} className="ds-table-empty">
                         {jobsTotal === 0 && !searchDebounced.trim() && !statusFilter
                           ? t('jobs.empty')
                           : t('jobs.noMatches')}

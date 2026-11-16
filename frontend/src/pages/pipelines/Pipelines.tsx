@@ -203,7 +203,7 @@ export function Pipelines() {
               <p>{t('pipelines.loading')}</p>
             </div>
           ) : (
-            <table className="pipelines-table">
+            <table className="ds-table pipelines-table">
               <thead>
                 <tr>
                   <th>{t('pipelines.colName')}</th>
@@ -218,7 +218,7 @@ export function Pipelines() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="table-empty">
+                    <td colSpan={7} className="ds-table-empty">
                       {pipelines.length === 0 ? t('pipelines.empty') : t('pipelines.noMatches')}
                     </td>
                   </tr>

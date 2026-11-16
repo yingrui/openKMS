@@ -153,7 +153,7 @@ export function ConsoleUsers() {
             />
           </div>
           <div className="ds-table-wrap">
-            <table className="console-users-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('users.colUser')}</th>
@@ -178,7 +178,7 @@ export function ConsoleUsers() {
                   <tr>
                     <td
                       colSpan={page.managed_in_console ? 5 : 5}
-                      className="console-users-empty"
+                      className="ds-table-empty"
                     >
                       {search.trim()
                         ? t('users.emptyFilter')

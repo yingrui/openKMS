@@ -70,13 +70,15 @@
 .dataset-er-graph__node-columns {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0;
   margin-top: var(--space-1);
   overflow: hidden;
 }
 
 .dataset-er-graph__node-column {
+  height: 18px;
   overflow: hidden;
+  line-height: 18px;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--color-text-secondary);

@@ -31,18 +31,30 @@ const GAP_Y = 64;
 const PADDING = 24;
 const MAX_COLUMNS = 6;
 const DRAG_THRESHOLD = 4;
+const ROW_HEIGHT_ESTIMATE = ROW_HEIGHT;
 
 type Position = { x: number; y: number };
 
 const boxHeight = (columns: number) =>
   BOX_HEAD + Math.min(columns, MAX_COLUMNS) * ROW_HEIGHT + BOX_FOOT;
 
-/** The y of a column's row inside a box, or the box's middle when that column is not one of the shown rows. */
-const columnAnchorY = (top: number, columns: string[] | undefined, column: string | undefined) => {
-  const height = boxHeight(columns?.length ?? 0);
-  const index = column ? (columns ?? []).indexOf(column) : -1;
+/**
+ * The y of a column's row inside a box. Measured from the DOM when the row has rendered — the head is a name, a
+ * count and a gap whose heights come from the type scale, so arithmetic on constants drifts by a few pixels and
+ * the lines land between rows. The estimate is only the first frame's answer.
+ */
+const columnAnchorY = (
+  top: number,
+  node: ErGraphNode,
+  column: string | undefined,
+  rowOffsets: Record<string, Record<string, number>>,
+) => {
+  const measured = column ? rowOffsets[node.id]?.[column] : undefined;
+  if (measured !== undefined) return top + measured;
+  const height = boxHeight(node.columns?.length ?? 0);
+  const index = column ? (node.columns ?? []).indexOf(column) : -1;
   if (index < 0 || index >= MAX_COLUMNS) return top + height / 2;
-  return top + BOX_HEAD + index * ROW_HEIGHT + ROW_HEIGHT / 2;
+  return top + BOX_HEAD + index * ROW_HEIGHT_ESTIMATE + ROW_HEIGHT_ESTIMATE / 2;
 };
 
 /**
@@ -81,6 +93,8 @@ export function DatasetErGraph({
   const canvasRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
+  const [rowOffsets, setRowOffsets] = useState<Record<string, Record<string, number>>>({});
+  const nodeRefs = useRef(new Map<string, HTMLElement>());
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -121,6 +135,22 @@ export function DatasetErGraph({
   useEffect(() => {
     setPositions(grid);
   }, [grid]);
+
+  /* Row centres relative to each box's top, so an edge meets its field rather than the space next to it. */
+  useEffect(() => {
+    const next: Record<string, Record<string, number>> = {};
+    for (const [id, element] of nodeRefs.current) {
+      const rows: Record<string, number> = {};
+      element.querySelectorAll<HTMLElement>('[data-column]').forEach((row) => {
+        const name = row.dataset.column;
+        if (name) rows[name] = row.offsetTop + row.offsetHeight / 2;
+      });
+      next[id] = rows;
+    }
+    setRowOffsets((current) =>
+      JSON.stringify(current) === JSON.stringify(next) ? current : next,
+    );
+  });
 
   useEffect(() => {
     const onMove = (event: PointerEvent) => {
@@ -189,8 +219,8 @@ export function DatasetErGraph({
     const toNode = nodes.find((node) => node.id === link.target);
     if (!from || !to || !fromNode || !toNode) return [];
     /* Leave the box at the row's edge, so the line reads as leaving that field rather than the box's centre. */
-    const fromY = columnAnchorY(from.y, fromNode.columns, link.fromColumn);
-    const toY = columnAnchorY(to.y, toNode.columns, link.toColumn);
+    const fromY = columnAnchorY(from.y, fromNode, link.fromColumn, rowOffsets);
+    const toY = columnAnchorY(to.y, toNode, link.toColumn, rowOffsets);
     const toLeft = to.x + BOX_WIDTH / 2 < from.x + BOX_WIDTH / 2;
     return [
       {
@@ -261,6 +291,10 @@ export function DatasetErGraph({
           return (
             <div
               key={node.id}
+              ref={(element) => {
+                if (element) nodeRefs.current.set(node.id, element);
+                else nodeRefs.current.delete(node.id);
+              }}
               className="dataset-er-graph__node"
               style={{
                 left: position.x,
@@ -289,7 +323,11 @@ export function DatasetErGraph({
               {columns.length > 0 ? (
                 <span className="dataset-er-graph__node-columns">
                   {columns.map((column) => (
-                    <span key={column} className="dataset-er-graph__node-column">
+                    <span
+                      key={column}
+                      data-column={column}
+                      className="dataset-er-graph__node-column"
+                    >
                       {column}
                     </span>
                   ))}

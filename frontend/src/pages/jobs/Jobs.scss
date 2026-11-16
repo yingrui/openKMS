@@ -34,36 +34,6 @@
   color: var(--color-text);
 }
 
-.jobs-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-md);
-}
-
-.jobs-table th,
-.jobs-table td {
-  padding: var(--space-3) var(--space-4);
-  text-align: left;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.jobs-table th {
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-secondary);
-  background: var(--color-bg-muted);
-  font-size: var(--text-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.jobs-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.jobs-table tbody tr:hover {
-  background: var(--color-bg-muted);
-}
-
 .jobs-table-row-clickable {
   cursor: pointer;
 }
@@ -205,4 +175,17 @@
 .jobs-modal-body label.jobs-modal-checkbox input {
   width: auto;
   margin: 0;
+}
+
+/* The run/schedule tables keep readable columns on phone; their wrap scrolls instead of squeezing
+   labels into vertical characters. */
+.jobs-table,
+.schedules-table {
+  min-width: 900px;
+}
+
+.jobs-table th,
+.schedules-table th,
+.schedules-table td {
+  white-space: nowrap;
 }

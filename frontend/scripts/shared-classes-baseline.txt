@@ -115,4 +115,3 @@ settings-page-section	pages/agents,pages/articles,pages/catalog,pages/chamber,pa
 settings-page-tab	pages/agents,pages/articles,pages/documents,pages/glossaries,pages/media
 settings-page-tabs	pages/agents,pages/articles,pages/catalog,pages/chamber,pages/connectors,pages/documents,pages/glossaries,pages/media
 sreview-btn	components/agents,pages/agents
-table-empty	pages/jobs,pages/models,pages/pipelines

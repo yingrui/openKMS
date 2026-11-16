@@ -22,38 +22,16 @@
   margin-bottom: var(--space-5);
 }
 
-.pipelines-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-base);
+.pipelines-row-inactive {
+  opacity: 0.65;
 }
 
-.pipelines-table th,
-.pipelines-table td {
-  padding: var(--space-3) var(--space-4);
-  text-align: left;
-  border-bottom: 1px solid var(--color-border);
+.pipelines-table {
+  min-width: 900px;
 }
 
 .pipelines-table th {
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  background: var(--color-bg-muted);
-  font-size: var(--text-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.pipelines-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.pipelines-table tbody tr:hover {
-  background: var(--color-bg-muted);
-}
-
-.pipelines-row-inactive {
-  opacity: 0.65;
+  white-space: nowrap;
 }
 
 .pipelines-table-active {
