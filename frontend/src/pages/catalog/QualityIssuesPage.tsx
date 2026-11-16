@@ -179,7 +179,7 @@ export function QualityIssuesPage() {
                         {/* The fix lives on the dataset's Quality tab; this is where you notice it. */}
                         <Link
                           to={`/datasets/${issue.dataset_id}/quality`}
-                          className="console-table-link"
+                          className="console-table-primary"
                         >
                           {issue.dataset_name}
                         </Link>

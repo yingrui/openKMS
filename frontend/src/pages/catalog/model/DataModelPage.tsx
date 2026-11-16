@@ -141,8 +141,8 @@ export function DataModelPage() {
                 {models.map((m) => (
                   <tr key={m.id}>
                     <td>
-                      <Link to={`/data-model/${m.id}`} className="ontology-manager-list__api-link">
-                        <strong>{m.name}</strong>
+                      <Link to={`/data-model/${m.id}`}>
+                        <span className="console-table-primary">{m.name}</span>
                       </Link>
                     </td>
                     <td>{m.datasets.length}</td>

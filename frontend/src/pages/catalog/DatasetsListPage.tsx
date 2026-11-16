@@ -392,11 +392,8 @@ export function DatasetsListPage() {
                   items.map((d) => (
                     <tr key={d.id}>
                       <td>
-                        <Link
-                          to={`/datasets/${d.id}`}
-                          className="ontology-manager-list__api-link"
-                        >
-                          <strong>{datasetLabel(d)}</strong>
+                        <Link to={`/datasets/${d.id}`}>
+                          <span className="console-table-primary">{datasetLabel(d)}</span>
                         </Link>
                       </td>
                       <td>{d.data_source_name ?? t('datasets.dash')}</td>

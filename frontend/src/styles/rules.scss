@@ -43,21 +43,6 @@
   color: var(--color-text-muted);
 }
 
-.rules-name-btn {
-  padding: 0;
-  border: none;
-  background: none;
-  font-weight: 600;
-  color: var(--color-text);
-  cursor: pointer;
-  text-align: left;
-  text-decoration: none;
-
-  &:hover {
-    color: var(--color-accent);
-  }
-}
-
 .rules-paused {
   margin-left: var(--space-2);
   font-size: var(--text-xs);
@@ -279,6 +264,13 @@
   max-width: 640px;
 }
 
+/* The list body: same stacking as the sibling Catalog lists (no card wrapper). */
+.rules-list-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
 /* The rules/incidents switch: a plain two-way toggle in the panel head, not the settings page's tab bar. */
 .rules-view-switch {
   display: flex;
@@ -292,12 +284,14 @@
   padding: 0;
   background: none;
   border: 0;
-  font-size: var(--text-md);
+  /* Same size as the search box and the filters the sibling Catalog lists put on this line. */
+  font-size: var(--text-base);
   color: var(--color-text-muted);
   cursor: pointer;
 
   &.is-active {
     color: var(--color-text);
+    font-weight: 600;
   }
 }
 
@@ -308,6 +302,13 @@
   gap: var(--space-2);
   margin: 0;
   padding-left: var(--space-4);
+}
+
+/* In a table the check is prose, not code: mono and 13px belong to the editor, not to a list cell. */
+.console-table .rules-condition {
+  font-family: inherit;
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
 }
 
 /* What a rule asserts: the kind first (等式 / 阈值), then the sentence — the column reads in one pass. */

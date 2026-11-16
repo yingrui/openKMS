@@ -120,7 +120,11 @@ one form, make the section a `navItems` entry in the shell's rail instead — th
 the ancestor's gap opens a 25px hole between the two halves of the card — no page rule can cancel a
 flex `gap`. Wrap both in one `<div className="settings-page">`. Pages living in
 `.ontology-admin-content` (e.g. `ConnectorDetailPage`) have no such gap and may keep them as siblings.
-`scripts/check-page-chrome.py` flags the entity-view case.
+`scripts/check-page-chrome.py` flags the entity-view case, and — the other half of the same rule — a page
+that renders `DatasetAppTabs` (a Catalog **list**) must not wrap its content in `settings-page-form`: that
+is an elevated card with its own padding, so the same table and the same 14px text sit in a card on one
+list page and on the page itself on the four beside it. A Catalog list is `page-header` + `DatasetAppTabs`
++ `.ontology-admin-content` + `.console-datasets-toolbar` + `.ds-table-wrap > .console-table`.
 
 **Buttons in one group share one size.** `.btn` and `.btn-sm` differ in padding (10px vs 6px) *and*
 line height (`--text-md--line` vs `--text-sm--line`). Under `align-items: center` their boxes centre

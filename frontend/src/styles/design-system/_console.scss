@@ -167,9 +167,24 @@
   padding: 48px 20px !important;
 }
 
+/* A secondary cell is quieter, not bigger: size stays the table's 14px. It used to be --text-md (16px),
+   so a schema/table or description cell rendered larger than every cell beside it. */
+/* The row's own name: one weight and one colour across every Catalog list. It used to be `<strong>`
+   on two lists and a 600 link on another, at the browser's bolder weight here and 600 there. */
+.console-table-primary {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.console-table-primary a,
+.console-table-primary button {
+  color: inherit;
+  font: inherit;
+}
+
 .console-table-muted {
   color: var(--color-text-muted);
-  font-size: var(--text-md);
+  font-size: var(--text-base);
 }
 
 .console-loading {

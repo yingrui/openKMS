@@ -126,7 +126,7 @@ export function MetricsListPage() {
                 {shown.map((metric) => (
                   <tr key={metric.id}>
                     <td>
-                      <Link to={`/data-model/${metric.semantic_model_id}`} className="console-table-link">
+                      <Link to={`/data-model/${metric.semantic_model_id}`} className="console-table-primary">
                         {metric.name}
                       </Link>
                       {metric.business_definition ? (

@@ -40,8 +40,6 @@ import { fetchMetrics, type MetricResponse } from "../../../data/metricsApi";
 import { fetchDatasets, type DatasetResponse } from "../../../data/datasetsApi";
 import { datasetLabel } from "../datasetLabel";
 import { DatasetAppTabs } from "../../../components/ontology/DatasetAppTabs";
-import { PanelToolbar } from "../../../styles/design-system";
-import "../../../styles/settings-page.scss";
 import "../../ontology/ontology-admin.scss";
 import "../../../styles/rules.scss";
 
@@ -300,9 +298,7 @@ export function RulesPage() {
       <DatasetAppTabs />
 
       <div className="ontology-admin-content">
-        <PanelToolbar
-          as="div"
-          tabs={
+        <div className="console-datasets-toolbar">
             <div className="rules-view-switch" role="tablist">
               <button
                 type="button"
@@ -325,10 +321,9 @@ export function RulesPage() {
                 <span className="rules-tab-count">{openEventTotal}</span>
               </button>
             </div>
-          }
-        />
+        </div>
 
-        <div className="settings-page-form">
+        <div className="rules-list-stack">
           {loading ? (
             <div className="console-loading">
               <Loader2
@@ -390,7 +385,7 @@ export function RulesPage() {
                       {t("rules.filterNeverRun")}
                     </label>
                   </div>
-                  <div className="ds-table-wrap ds-table-wrap--flush">
+                  <div className="ds-table-wrap">
                     <table className="console-table">
                       <thead>
                         <tr>
@@ -411,7 +406,7 @@ export function RulesPage() {
                             <td>
                               <Link
                                 to={`/data-rules/${rule.id}`}
-                                className="rules-name-btn"
+                                className="console-table-primary"
                               >
                                 {rule.name ?? "—"}
                               </Link>
