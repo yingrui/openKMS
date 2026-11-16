@@ -514,6 +514,11 @@
   font-size: var(--text-sm);
 }
 
+/* The step's caption, next to its number. */
+.object-type-create-wizard__step-label {
+  font-weight: 500;
+}
+
 .object-type-create-wizard__step-num {
   display: inline-flex;
   align-items: center;
@@ -531,7 +536,12 @@
   background: var(--color-bg-muted);
 }
 
-.object-type-create-wizard__step.is-current .object-type-create-wizard__step-num {
+.object-type-create-wizard__step.is-current /* The step's caption, next to its number. */
+.object-type-create-wizard__step-label {
+  font-weight: 500;
+}
+
+.object-type-create-wizard__step-num {
   border-color: var(--color-accent);
   background: var(--color-accent);
   color: #fff;
@@ -541,7 +551,12 @@
   color: var(--color-text-secondary);
 }
 
-.object-type-create-wizard__step.is-done .object-type-create-wizard__step-num {
+.object-type-create-wizard__step.is-done /* The step's caption, next to its number. */
+.object-type-create-wizard__step-label {
+  font-weight: 500;
+}
+
+.object-type-create-wizard__step-num {
   border-color: var(--color-accent);
   color: var(--color-accent);
 }

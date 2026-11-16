@@ -5,9 +5,7 @@ src/components/agents/AgentsPageSkeleton.tsx uses .page
 src/pages/GlobalSearch.tsx uses .global-search-tab-text
 src/pages/agents/AgentSkillSettings.tsx uses .agent-skill-settings
 src/pages/agents/ProjectSettings.tsx uses .project-settings-skills-tab
-src/pages/chamber/ChamberSettingsPage.tsx uses .settings-page-danger
 src/pages/chamber/ModuleServiceBindingEditor.tsx uses .chamber-module-service
-src/pages/articles/ArticleChannelSettings.tsx uses .settings-page-inline-actions
 src/pages/articles/ArticleDetail.modals.tsx uses .article-review-result
 src/pages/connectors/ConnectorFormFields.tsx uses .connector-input-boolean
 src/pages/connectors/ConnectorOutputDatasetsFields.tsx uses .connector-output-datasets-fields
@@ -25,9 +23,7 @@ src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-qa-msg-bubble
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-qa-msg-feedback
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-col-models
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-section
-src/pages/ontology-manager/ActionTypeCreateWizard.tsx uses .object-type-create-wizard__step-label
 src/pages/catalog/DatasetErDiagram.tsx uses .dataset-er__node--center
-src/pages/ontology-manager/ObjectTypeCreateWizard.tsx uses .object-type-create-wizard__step-label
 src/pages/ontology/LinkTypesPage.tsx uses .page-subtitle--block
 src/pages/ontology/LinksList.tsx uses .links-header
 src/pages/ontology/ObjectsList.tsx uses .objects-header
