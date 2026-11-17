@@ -265,6 +265,10 @@ async def _join_ids_for_requested_fields(
     — reaching a many-side field from a one-side base — would repeat each base row once per match and
     silently inflate every `SUM`, so it is refused by name instead.
 
+    A one-to-one relationship (`from_unique`) is the exception: its source side is unique too, so a base row
+    matches at most one row there and the reverse walk cannot fan out. That is the only case in which this
+    function adds a join against the direction of the foreign key.
+
     This belongs to the semantic model, not to the rules: a field's reachability is a property of the model's
     relationships, and a rule should only have to say which field it uses.
     """
@@ -304,16 +308,46 @@ async def _join_ids_for_requested_fields(
     ).scalars().all()
     wanted_dataset = {f.name: f.dataset_id for f in fields}
 
-    out = list(join_ids or [])
-    joined = {base.id}
+    out, unreachable = _reachable_join_ids(
+        relationships=relationships,
+        wanted_dataset=wanted_dataset,
+        base_id=base.id,
+        field_names=names,
+        join_ids=list(join_ids or []),
+    )
+    for name in unreachable:
+        raise QueryError(
+            f"Field '{name}' lives on the many side of a relationship from this metric's dataset; "
+            "joining it would repeat each row and inflate sums. Aggregate it on its own dataset instead.",
+            QueryFailure(
+                "QUERY_FANOUT_FIELD", REQUEST, wanted_dataset.get(name), params={"field": name}
+            ),
+        )
+    return out
+
+
+def _reachable_join_ids(
+    *,
+    relationships: list[DatasetJoin],
+    wanted_dataset: dict[str, str],
+    base_id: str,
+    field_names: list[str],
+    join_ids: list[str],
+) -> tuple[list[str], list[str]]:
+    """Pick the relationships a request needs; return (join ids, field names that cannot be reached).
+
+    Pure so the direction rule can be tested without a database: many→one always, and to→from only across a
+    one-to-one relationship (`from_unique`), which is the single case where the reverse walk cannot fan out.
+    """
+    out = list(join_ids)
+    joined = {base_id}
     for join in relationships:
         if join.id in out:
             joined.update({join.from_dataset_id, join.to_dataset_id})
 
-    # Walk only the many→one direction, so a chain (A→B→C) is reachable but never a fan-out.
-    for _ in range(4):
+    for _ in range(4):  # a chain A→B→C is reachable; a longer one is a modelling problem, not a query
         changed = False
-        for name in names:
+        for name in field_names:
             target = wanted_dataset.get(name)
             if not target or target in joined:
                 continue
@@ -321,6 +355,13 @@ async def _join_ids_for_requested_fields(
                 join
                 for join in relationships
                 if join.from_dataset_id in joined and join.to_dataset_id == target
+            ]
+            forward += [
+                join
+                for join in relationships
+                if join.from_unique
+                and join.to_dataset_id in joined
+                and join.from_dataset_id == target
             ]
             if not forward:
                 continue
@@ -331,22 +372,19 @@ async def _join_ids_for_requested_fields(
         if not changed:
             break
 
-    for name in names:
-        target = wanted_dataset.get(name)
-        if not target or target in joined:
-            continue
-        backward = [
-            join
+    unreachable = [
+        name
+        for name in field_names
+        if (target := wanted_dataset.get(name))
+        and target not in joined
+        and any(
+            join.to_dataset_id in joined
+            and join.from_dataset_id == target
+            and not join.from_unique
             for join in relationships
-            if join.to_dataset_id in joined and join.from_dataset_id == target
-        ]
-        if backward:
-            raise QueryError(
-                f"Field '{name}' lives on the many side of a relationship from this metric's dataset; "
-                "joining it would repeat each row and inflate sums. Aggregate it on its own dataset instead.",
-                QueryFailure("QUERY_FANOUT_FIELD", REQUEST, target, params={"field": name}),
-            )
-    return out
+        )
+    ]
+    return out, unreachable
 
 
 def _definition_filters(

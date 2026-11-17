@@ -10,6 +10,7 @@ from app.models.dataset_join import DatasetJoin
 from app.models.semantic_model_field import SemanticModelField
 from app.services.data.query import (
     QueryError,
+    _reachable_join_ids,
     _order_sql,
     build_sql,
     dimension_sql,
@@ -445,3 +446,47 @@ def test_expression_rejects_select_subquery():
     with pytest.raises(MetricError):
         validate_sql_fragment("SUM((SELECT 1))", what="expression")
     assert validate_sql_fragment("SUM(amount)") == "SUM(amount)"
+
+
+def _rel(**kw) -> DatasetJoin:
+    base = dict(id="j", from_dataset_id="lines", to_dataset_id="products", required=True)
+    base.update(kw)
+    return DatasetJoin(**base)
+
+
+def test_many_to_one_joins_towards_the_referenced_dataset():
+    out, unreachable = _reachable_join_ids(
+        relationships=[_rel()],
+        wanted_dataset={"product_name": "products"},
+        base_id="lines",
+        field_names=["product_name"],
+        join_ids=[],
+    )
+    assert out == ["j"]
+    assert unreachable == []
+
+
+def test_reaching_a_many_side_from_the_one_side_is_refused():
+    """Without 1:1 the reverse walk would repeat each base row once per match and inflate every sum."""
+    out, unreachable = _reachable_join_ids(
+        relationships=[_rel()],
+        wanted_dataset={"amount": "lines"},
+        base_id="products",
+        field_names=["amount"],
+        join_ids=[],
+    )
+    assert out == []
+    assert unreachable == ["amount"]
+
+
+def test_one_to_one_is_traversable_both_ways():
+    """`from_unique` makes the source side unique, so a target row matches at most one source row."""
+    out, unreachable = _reachable_join_ids(
+        relationships=[_rel(from_unique=True)],
+        wanted_dataset={"amount": "lines"},
+        base_id="products",
+        field_names=["amount"],
+        join_ids=[],
+    )
+    assert out == ["j"]
+    assert unreachable == []
