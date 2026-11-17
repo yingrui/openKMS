@@ -134,25 +134,20 @@ while IFS= read -r hit; do
 done < <(rg -n --no-heading 'background:\s*rgba\(\s*0\s*,\s*0\s*,\s*0' src --glob '*.scss' || true)
 
 
-# --- 10. Large page TSX files -------------------------------------------------
-# Soft limit 700 lines. Allowlist is known debt — shrink it, do not grow it.
+# --- 10. Large TS/TSX files ---------------------------------------------------
+# Soft limit 700 lines across the whole frontend source, including hooks, API clients
+# and graph models. Allowlist is known debt — shrink it, do not grow it.
 PAGE_LINE_LIMIT=700
 PAGE_SIZE_ALLOW='src/pages/knowledge-bases/KnowledgeBaseDetail.tsx
 src/pages/knowledge-bases/useKnowledgeBaseDetail.ts
-src/pages/console/permissions/ConsolePermissionManagement.tsx
-src/pages/articles/ArticleDetail.tsx
-src/pages/documents/DocumentChannel.tsx
-src/pages/wiki/WikiSpaceSettings.tsx
 src/pages/knowledge-map/KnowledgeMap.tsx
-src/pages/knowledge-map/KnowledgeMapHtmlCopilot.tsx
 src/pages/documents/DocumentDetail.infoPanel.tsx
 src/pages/documents/useDocumentDetail.tsx
+src/data/knowledgeBasesApi.ts
 src/pages/ontology/ObjectExplorer.tsx
-src/pages/evaluation/EvaluationDatasetDetail.tsx
-src/pages/ontology/ObjectTypesPage.tsx
 src/pages/console/permissions/ConsoleAccessGroups.tsx
 src/pages/ontology/LinkTypesPage.tsx
-src/contexts/AuthContext.tsx'
+src/graph/ontologySchemaGraphModel.ts'
 
 while IFS= read -r file; do
   [ -z "$file" ] && continue
@@ -162,7 +157,7 @@ while IFS= read -r file; do
       report "$file has $lines lines (limit $PAGE_LINE_LIMIT); split like DocumentDetail (useX / .modals / .splitPanel) — see docs/design-system.md"
     fi
   fi
-done < <(find src/pages src/contexts src/components -name '*.tsx' -o -name '*.ts' 2>/dev/null | grep -v '\.test\.' | grep -v '\.spec\.' || true)
+done < <(find src -type f \( -name '*.tsx' -o -name '*.ts' \) 2>/dev/null | grep -v '\.test\.' | grep -v '\.spec\.' || true)
 
 # --- 11. Unskinned form controls (ratchet) ------------------------------------
 # `.ds-field` styles only the controls *inside* a <FormField>; anything else must carry

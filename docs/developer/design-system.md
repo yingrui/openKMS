@@ -220,7 +220,7 @@ With the header gone, the left rail is the only chrome: brand → Home at the to
 
 New exceptions: one-line SCSS comment + row here.
 
-### Large page files
+### Large TS/TSX files
 
 Reference: **`DocumentDetail`** — thin route entry + splits by concern:
 
@@ -232,7 +232,7 @@ Reference: **`DocumentDetail`** — thin route entry + splits by concern:
 | `X.modals.tsx` / `X.dialogs.tsx` | Dialogs |
 | `X.types.ts` / `X.utils.ts` | Types, pure helpers |
 
-Soft limit **700 lines** per page `.tsx` / hook (enforced by **`check:styles`** allowlist — shrink the allowlist, do not grow it).
+Soft limit **700 lines** per TS/TSX file under `src/` — pages, hooks, API clients and graph models (enforced by **`check:styles`** allowlist — shrink the allowlist, do not grow it).
 
 ## Shared layout SCSS (`frontend/src/styles/`)
 
@@ -343,7 +343,7 @@ npm run check   # typecheck → check:app-layout → check:app-modules → check
 | 7 | New `*-modal-overlay` / `*-dialog-overlay` | **`<Dialog>`** |
 | 8 | `window.confirm(` | **`useConfirm()`** |
 | 9 | Raw `rgba(0,0,0,…)` modal backdrop | **`var(--overlay-backdrop)`** |
-| 10 | New page `.tsx` > 700 lines | Split like **`DocumentDetail`** |
+| 10 | New TS/TSX file under `src/` > 700 lines | Split like **`DocumentDetail`**; the gate covers `pages/`, `contexts/`, `components/`, `data/` and `graph/` |
 | 11 | `var(--token)` that no stylesheet defines | use a token from **`_css-variables.scss`** (or add an alias there). An undefined custom property does not fall back to a theme colour — `fill` becomes black, `stroke` disappears. `scripts/check-undefined-tokens.py` (inside `check:styles`) keeps the set closed; it ignores a `var(--x, fallback)` and names built at build time |
 | 12 | `select` / text `input` with no skin (outside `<FormField>`, no `.ds-control`) | **`<FormField>`**, or **`className="ds-control"`**; use **`ds-control ds-control--compact`** when a dense wrapper owns the padding/type. `scripts/ds-controls-baseline.txt` freezes the remaining **16** bespoke controls — a file only fails when it *adds* one |
 | 12 | `t('key')` missing from the locale files (i18next prints the key, so the UI shows `dataModel.removeDimension`) | add the key, or fix the reference. Only files whose namespace is knowable are checked; a dynamic `useTranslation(ns)` falls back to "exists in some namespace" |
