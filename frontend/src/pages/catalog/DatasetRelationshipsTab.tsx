@@ -376,16 +376,25 @@ export function DatasetRelationshipsTab() {
               ))}
             </select>
           </FormField>
-          <FormField label={t('datasets.joinDirection')}>
-            <select
-              value={direction}
-              onChange={(e) => setDirection(e.target.value as 'from' | 'to')}
-              disabled={editing !== null}
-            >
-              <option value="from">{t('datasets.directionThisFrom')}</option>
-              <option value="to">{t('datasets.directionThisTo')}</option>
-            </select>
-          </FormField>
+          <fieldset className="dataset-joins__direction" disabled={editing !== null}>
+            <legend>{t('datasets.joinDirection')}</legend>
+            {(
+              [
+                ['from', 'datasets.directionThisFrom'],
+                ['to', 'datasets.directionThisTo'],
+              ] as const
+            ).map(([value, key]) => (
+              <label key={value} className="ds-check-row">
+                <input
+                  type="radio"
+                  name="join-direction"
+                  checked={direction === value}
+                  onChange={() => setDirection(value)}
+                />
+                <span>{t(key)}</span>
+              </label>
+            ))}
+          </fieldset>
           <label className="ds-check-row">
             <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
             <span>{t('datasets.joinCardinality')}</span>
@@ -449,6 +458,21 @@ export function DatasetRelationshipsTab() {
               {t('datasets.joinAddPair')}
             </button>
           </div>
+          {targetId && pairs.some((p) => p.from && p.to) ? (
+            <p className="dataset-joins__sentence">
+              {t('datasets.joinSentence', {
+                from: direction === 'from' ? datasetLabel(dataset) : (otherDatasets.find((d) => d.id === targetId) ? datasetLabel(otherDatasets.find((d) => d.id === targetId)!) : targetId),
+                to: direction === 'from' ? (otherDatasets.find((d) => d.id === targetId) ? datasetLabel(otherDatasets.find((d) => d.id === targetId)!) : targetId) : datasetLabel(dataset),
+                pairs: pairs
+                  .filter((p) => p.from && p.to)
+                  .map((p) => (direction === 'from' ? `${p.from} = ${p.to}` : `${p.to} = ${p.from}`))
+                  .join('，'),
+                existence: required
+                  ? t('datasets.joinSentenceRequired')
+                  : t('datasets.joinSentenceOptional'),
+              })}
+            </p>
+          ) : null}
           {pairs.filter((p) => p.to).length > 0 ? (
             <div className="dataset-joins__uniqueness">
               <span className="dataset-joins__uniqueness-label">{t('datasets.joinTargetUnique')}</span>
