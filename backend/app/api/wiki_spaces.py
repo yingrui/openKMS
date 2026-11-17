@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 import uuid
 import zipfile
@@ -550,8 +551,12 @@ async def create_page(
     db.add(page)
     await db.flush()
     await db.refresh(page)
-    upload_wiki_page_markdown_mirror(
-        space.id, page.path, page.body or "", storage_enabled=settings.storage_enabled
+    await asyncio.to_thread(
+        upload_wiki_page_markdown_mirror,
+        space.id,
+        page.path,
+        page.body or "",
+        storage_enabled=settings.storage_enabled,
     )
     return _page_to_response(page)
 
@@ -607,8 +612,12 @@ async def upsert_page_by_path(
         db.add(page)
     await db.flush()
     await db.refresh(page)
-    upload_wiki_page_markdown_mirror(
-        space.id, page.path, page.body or "", storage_enabled=settings.storage_enabled
+    await asyncio.to_thread(
+        upload_wiki_page_markdown_mirror,
+        space.id,
+        page.path,
+        page.body or "",
+        storage_enabled=settings.storage_enabled,
     )
     return _page_to_response(page)
 
@@ -631,7 +640,12 @@ async def delete_page_by_path(
     wiki_path = page.path
     await db.delete(page)
     await db.flush()
-    delete_wiki_page_markdown_mirror(space.id, wiki_path, storage_enabled=settings.storage_enabled)
+    await asyncio.to_thread(
+        delete_wiki_page_markdown_mirror,
+        space.id,
+        wiki_path,
+        storage_enabled=settings.storage_enabled,
+    )
 
 
 @router.get(
@@ -672,8 +686,12 @@ async def patch_page(
     await db.flush()
     await db.refresh(page)
     if body.body is not None:
-        upload_wiki_page_markdown_mirror(
-            space.id, page.path, page.body or "", storage_enabled=settings.storage_enabled
+        await asyncio.to_thread(
+            upload_wiki_page_markdown_mirror,
+            space.id,
+            page.path,
+            page.body or "",
+            storage_enabled=settings.storage_enabled,
         )
     return _page_to_response(page)
 
@@ -693,7 +711,12 @@ async def delete_page(
     wiki_path = page.path
     await db.delete(page)
     await db.flush()
-    delete_wiki_page_markdown_mirror(space.id, wiki_path, storage_enabled=settings.storage_enabled)
+    await asyncio.to_thread(
+        delete_wiki_page_markdown_mirror,
+        space.id,
+        wiki_path,
+        storage_enabled=settings.storage_enabled,
+    )
 
 
 @router.get(
@@ -739,7 +762,12 @@ async def get_wiki_link_graph(
 
     payload = build_link_graph_payload(pages)
     if settings.storage_enabled and pages:
-        upload_object(cache_key, graph_payload_to_json_bytes(payload), content_type="application/json")
+        await asyncio.to_thread(
+            upload_object,
+            cache_key,
+            graph_payload_to_json_bytes(payload),
+            content_type="application/json",
+        )
     return _wiki_link_graph_from_payload(payload)
 
 
@@ -808,7 +836,7 @@ async def upload_wiki_file(
         safe = _safe_storage_basename(orig_name)
         key = f"wiki/{space.id}/files/{fid}/{safe}"
         filename_for_db = orig_name
-        upload_object(key, raw, content_type=content_type)
+        await asyncio.to_thread(upload_object, key, raw, content_type=content_type)
         wf = WikiFile(
             id=fid,
             wiki_space_id=space.id,

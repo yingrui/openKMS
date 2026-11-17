@@ -281,7 +281,7 @@ def test_a_forged_or_expired_cookie_yields_no_actor(monkeypatch):
     async def active_row(_db, _sid):
         return object()
 
-    def boom(_token: str) -> dict:
+    async def boom(_token: str) -> dict:
         raise HTTPException(status_code=401, detail="expired")
 
     monkeypatch.setattr(auth_module, "_verify_token_for_mode", boom)
@@ -292,7 +292,10 @@ def test_a_forged_or_expired_cookie_yields_no_actor(monkeypatch):
     monkeypatch.setattr(auth_module.auth_sessions, "session_active", lambda _row: True)
     monkeypatch.setattr(auth_module.auth_sessions, "access_token_of", lambda _row: "junk")
     assert asyncio.run(auth_module._session_actor(FakeRequest("sid"), FakeDb())) == ({}, "token_not_verified")
-    monkeypatch.setattr(auth_module, "_verify_token_for_mode", lambda _t: {"sub": "u1"})
+    async def verified(_t: str) -> dict:
+        return {"sub": "u1"}
+
+    monkeypatch.setattr(auth_module, "_verify_token_for_mode", verified)
     assert asyncio.run(auth_module._session_actor(FakeRequest("sid"), FakeDb())) == ({"sub": "u1"}, None)
 
 

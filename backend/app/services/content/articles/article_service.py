@@ -7,6 +7,7 @@ under MinIO/S3.
 
 from __future__ import annotations
 
+import asyncio
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -170,7 +171,7 @@ class StoredAttachment:
     path: str  # relative, e.g. "attachments/report.pdf"
 
 
-def store_article_image(
+async def store_article_image(
     article_id: str,
     content: bytes,
     *,
@@ -188,7 +189,9 @@ def store_article_image(
     safe = safe_image_filename(filename, ct)
     unique = f"{uuid4().hex[:8]}-{safe}"
     rel = f"images/{unique}"
-    upload_object(article_object_key(article_id, rel), content, content_type=ct)
+    await asyncio.to_thread(
+        upload_object, article_object_key(article_id, rel), content, content_type=ct
+    )
     return StoredImage(path=rel, filename=safe, size_bytes=len(content), content_type=ct)
 
 
@@ -207,7 +210,9 @@ async def store_article_attachment(
         raise ValueError("Empty attachment")
     safe = safe_attachment_filename(filename or "attachment")
     rel = f"attachments/{safe}"
-    upload_object(article_object_key(article_id, rel), content, content_type=content_type)
+    await asyncio.to_thread(
+        upload_object, article_object_key(article_id, rel), content, content_type=content_type
+    )
     att = ArticleAttachment(
         id=str(uuid4()),
         article_id=article_id,
@@ -346,7 +351,7 @@ async def import_article(
                 continue
             try:
                 image_results.append(
-                    store_article_image(
+                    await store_article_image(
                         article.id,
                         img.content,
                         filename=img.filename,

@@ -561,7 +561,7 @@ async def upload_article_image(
     if not content:
         raise HTTPException(status_code=400, detail="Empty file")
     try:
-        stored = store_article_image(
+        stored = await store_article_image(
             row.id, content, filename=file.filename, content_type=file.content_type
         )
     except ValueError as exc:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -35,7 +36,7 @@ async def report_process_heartbeat(
     }
 
     try:
-        headers, auth = build_internal_service_request_auth()
+        headers, auth = await asyncio.to_thread(build_internal_service_request_auth)
     except ValueError as exc:
         logger.warning("Process heartbeat auth not configured for %s/%s: %s", role, instance_id, exc)
         return

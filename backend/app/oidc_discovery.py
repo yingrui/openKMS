@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import httpx
 
 from app.config import settings
@@ -20,6 +22,11 @@ def get_oidc_provider_metadata() -> dict:
             resp.raise_for_status()
             _metadata = resp.json()
     return _metadata
+
+
+async def get_oidc_provider_metadata_async() -> dict:
+    """The discovery document without blocking the event loop on a cold cache."""
+    return await asyncio.to_thread(get_oidc_provider_metadata)
 
 
 def reset_oidc_provider_metadata() -> None:

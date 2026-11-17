@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import shutil
 import subprocess
@@ -85,7 +86,7 @@ async def install_skill_to_project(
     shutil.copytree(src, dest)
     if skill_id == "openkms":
         _write_openkms_config(dest)
-    _pip_install_requirements(dest)
+    await asyncio.to_thread(_pip_install_requirements, dest)
 
     settings_json = dict(project.settings or {})
     installed = dict(settings_json.get("installed_skills") or {})

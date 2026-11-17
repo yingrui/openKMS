@@ -1,4 +1,5 @@
 """Object types API (admin CRUD + user read)."""
+import asyncio
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -481,11 +482,22 @@ async def _index_object_type_dataset_to_neo4j_session(
         if not rows:
             break
         columns = resolve_neo4j_id_columns_for_row(obj_type, rows[0])
-        for row in rows:
-            nodes_created += merge_object_row_to_neo4j(session, label, columns, row)
-            values = [row.get(column) for column in columns]
-            if all(value is not None for value in values):
-                keep.add(encode_object_id(values))
+
+        def merge_batch(
+            batch: list[dict], *, label: str = label, columns: list[str] = columns
+        ) -> tuple[int, set]:
+            created = 0
+            written: set = set()
+            for row in batch:
+                created += merge_object_row_to_neo4j(session, label, columns, row)
+                values = [row.get(column) for column in columns]
+                if all(value is not None for value in values):
+                    written.add(encode_object_id(values))
+            return created, written
+
+        created, written = await asyncio.to_thread(merge_batch, rows)
+        nodes_created += created
+        keep.update(written)
         offset += len(rows)
         if offset >= total:
             break
@@ -515,10 +527,18 @@ async def _index_object_type_instances_to_neo4j_session(
         if not instances:
             break
         columns = resolve_write_id_columns(obj_type)
-        for inst in instances:
-            row = instance_row_for_neo4j(obj_type, inst)
-            nodes_created += merge_object_row_to_neo4j(session, label, columns, row)
-            keep.add(inst.id)
+        rows = [instance_row_for_neo4j(obj_type, inst) for inst in instances]
+
+        def merge_batch(
+            batch: list[dict], ids: list[str], *, label: str = label, columns: list[str] = columns
+        ) -> int:
+            return sum(
+                merge_object_row_to_neo4j(session, label, columns, row)
+                for row, _ in zip(batch, ids, strict=True)
+            )
+
+        nodes_created += await asyncio.to_thread(merge_batch, rows, [inst.id for inst in instances])
+        keep.update(inst.id for inst in instances)
         offset += len(instances)
         if len(instances) < batch_size:
             break
@@ -750,8 +770,12 @@ async def index_one_object_type_to_neo4j(
                 if reason:
                     prune_skipped = reason
                 else:
-                    nodes_pruned = prune_object_nodes(
-                        session, label=object_label(obj_type), columns=columns, keep=keep
+                    nodes_pruned = await asyncio.to_thread(
+                        prune_object_nodes,
+                        session,
+                        label=object_label(obj_type),
+                        columns=columns,
+                        keep=keep,
                     )
     finally:
         driver.close()

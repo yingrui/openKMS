@@ -1,5 +1,6 @@
 """Document API routes."""
 
+import asyncio
 import hashlib
 import io
 import json
@@ -252,7 +253,9 @@ async def upload_document(
     suffix = Path(filename).suffix.lower()
     ext = suffix.lstrip(".") or "bin"
 
-    upload_object(document_object_key(file_hash, f"original.{ext}"), content)
+    await asyncio.to_thread(
+        upload_object, document_object_key(file_hash, f"original.{ext}"), content
+    )
 
     new_id = str(uuid4())
     doc = Document(
@@ -595,7 +598,9 @@ async def restore_document_markdown(
             detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
         )
     try:
-        markdown = get_document_object(doc.file_hash, "markdown.md").decode("utf-8")
+        markdown = (
+            await asyncio.to_thread(get_document_object, doc.file_hash, "markdown.md")
+        ).decode("utf-8")
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Markdown file not found in storage") from None
     except Exception as e:
@@ -631,10 +636,10 @@ async def rebuild_page_index(
             status_code=503,
             detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
         )
-    markdown = _get_document_markdown(doc)
+    markdown = await _get_document_markdown(doc)
     if not markdown:
         raise HTTPException(status_code=404, detail="Document has no markdown content")
-    page_index = upload_page_index_from_markdown(doc, markdown)
+    page_index = await asyncio.to_thread(upload_page_index_from_markdown, doc, markdown)
     return {
         "structure": page_index.get("structure", []),
         "doc_name": page_index.get("doc_name"),
@@ -679,14 +684,16 @@ async def get_document_page_index(
         raise HTTPException(status_code=500, detail=f"Failed to read page index: {e}") from e
 
 
-def _get_document_markdown(doc: Document) -> str:
+async def _get_document_markdown(doc: Document) -> str:
     """Get document markdown from DB or S3. Raises HTTPException if not available."""
     if doc.markdown and doc.markdown.strip():
         return doc.markdown
     if not doc.file_hash or not settings.storage_enabled:
         return ""
     try:
-        return get_document_object(doc.file_hash, "markdown.md").decode("utf-8")
+        return (
+            await asyncio.to_thread(get_document_object, doc.file_hash, "markdown.md")
+        ).decode("utf-8")
     except FileNotFoundError:
         return ""
 
@@ -710,7 +717,7 @@ async def get_document_section(
             status_code=400,
             detail=f"Document must be fully parsed (status=completed). Current: {doc.status}",
         )
-    markdown = _get_document_markdown(doc)
+    markdown = await _get_document_markdown(doc)
     if not markdown:
         raise HTTPException(status_code=404, detail="Document has no markdown content")
     lines = markdown.split("\n")
@@ -1036,7 +1043,7 @@ async def _process_import_zip(
 
     for filename, content in entries:
         key = document_object_key(doc.file_hash, filename)
-        upload_object(key, content)
+        await asyncio.to_thread(upload_object, key, content)
         if filename == "markdown.md":
             try:
                 imported_markdown = content.decode("utf-8")
@@ -1171,7 +1178,9 @@ async def upload_document_chunked(
     suffix = Path(filename or "document.pdf").suffix.lower()
     ext = suffix.lstrip(".") or "bin"
 
-    upload_object(document_object_key(file_hash, f"original.{ext}"), raw)
+    await asyncio.to_thread(
+        upload_object, document_object_key(file_hash, f"original.{ext}"), raw
+    )
 
     new_id = str(uuid4())
     doc = Document(

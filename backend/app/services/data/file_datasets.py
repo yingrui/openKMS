@@ -11,6 +11,7 @@ refuses to pretend otherwise — see the guards in `datasets.py`, `object_types.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import io
 import json
@@ -308,7 +309,7 @@ async def add_file(
 
     frame = read_file_bytes(content, safe_name)
     key = file_key(dataset.id, version.version, safe_name)
-    upload_object(key, content, "application/octet-stream")
+    await asyncio.to_thread(upload_object, key, content, "application/octet-stream")
 
     date_from, date_to = _date_bounds(frame)
     date_column = _date_column(frame)
@@ -454,7 +455,12 @@ async def publish(db: AsyncSession, dataset: Dataset, version: DatasetVersion) -
         "schema": version.columns or [],
         "files": [file_manifest_entry(f) for f in files],
     }
-    upload_object(key, json.dumps(manifest, ensure_ascii=False, indent=1).encode(), "application/json")
+    await asyncio.to_thread(
+        upload_object,
+        key,
+        json.dumps(manifest, ensure_ascii=False, indent=1).encode(),
+        "application/json",
+    )
     version.manifest_key = key
     version.status = "published"
     version.published_at = datetime.now(timezone.utc)

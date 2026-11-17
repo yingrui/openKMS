@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import io
 import re
 import uuid
@@ -84,7 +85,7 @@ async def upsert_vault_mirror_wiki_file(
     Re-uploading the same vault-relative path reuses storage_key (unique) and overwrites S3.
     """
     key = vault_mirror_object_key(space_id, norm)
-    upload_object(key, raw, content_type=content_type)
+    await asyncio.to_thread(upload_object, key, raw, content_type=content_type)
     res = await db.execute(select(WikiFile).where(WikiFile.storage_key == key))
     existing = res.scalar_one_or_none()
     if existing is not None:
@@ -409,7 +410,8 @@ async def import_vault_entries(
             if not vault_mirror_key_fits(space_id, norm_md):
                 result.warnings.append(f"Vault mirror not stored (S3 key too long): {norm_md[:80]}...")
                 continue
-            upload_object(
+            await asyncio.to_thread(
+                upload_object,
                 vault_mirror_object_key(space_id, norm_md),
                 new_body.encode("utf-8"),
                 content_type="text/markdown; charset=utf-8",
@@ -483,7 +485,8 @@ async def import_markdown_vault_file(
     await db.flush()
     if storage_enabled:
         if vault_mirror_key_fits(space_id, norm):
-            upload_object(
+            await asyncio.to_thread(
+                upload_object,
                 vault_mirror_object_key(space_id, norm),
                 new_body.encode("utf-8"),
                 content_type="text/markdown; charset=utf-8",

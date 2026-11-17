@@ -555,7 +555,8 @@ async def run_kb_index(
         logger.info("Running KB index for %s: %s", knowledge_base_id, cmd_str)
 
         try:
-            result = subprocess.run(
+            result = await asyncio.to_thread(
+                subprocess.run,
                 cmd,
                 capture_output=True,
                 text=True,
@@ -632,7 +633,8 @@ async def run_kb_wiki_space_index(
         logger.info("Running KB wiki-space index for %s / %s: %s", knowledge_base_id, wiki_space_id, cmd_str)
 
         try:
-            result = subprocess.run(
+            result = await asyncio.to_thread(
+                subprocess.run,
                 cmd,
                 capture_output=True,
                 text=True,
@@ -1121,8 +1123,10 @@ async def run_media_generation(
             ext = "png" if media_kind == MEDIA_KIND_IMAGE else "mp4"
             content_type = "image/png" if media_kind == MEDIA_KIND_IMAGE else "video/mp4"
             storage_key = media_original_key(asset_id, ext)
-            upload_object(storage_key, body, content_type=content_type)
-            thumb_key, poster_key = build_and_upload_derivatives(asset_id, body, media_kind, content_type)
+            await asyncio.to_thread(upload_object, storage_key, body, content_type=content_type)
+            thumb_key, poster_key = await asyncio.to_thread(
+                build_and_upload_derivatives, asset_id, body, media_kind, content_type
+            )
             if thumb_key or poster_key:
                 log_lines.append("Thumbnail/poster generated")
             else:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import mimetypes
 import os
 from uuid import uuid4
@@ -216,7 +217,7 @@ async def upload_media_asset(
     asset_id = f"ma_{uuid4().hex[:12]}"
     ext = _safe_ext(filename, media_kind)
     storage_key = media_original_key(asset_id, ext)
-    upload_object(storage_key, body, content_type=content_type)
+    await asyncio.to_thread(upload_object, storage_key, body, content_type=content_type)
 
     asset = MediaAsset(
         id=asset_id,
@@ -231,7 +232,9 @@ async def upload_media_asset(
     )
     from app.services.content.media.media_derivatives import build_and_upload_derivatives
 
-    thumb_key, poster_key = build_and_upload_derivatives(asset_id, body, media_kind, content_type)
+    thumb_key, poster_key = await asyncio.to_thread(
+        build_and_upload_derivatives, asset_id, body, media_kind, content_type
+    )
     asset.thumbnail_key = thumb_key
     asset.poster_key = poster_key
     db.add(asset)
@@ -274,7 +277,7 @@ async def upload_temp_media(
         raise HTTPException(status_code=400, detail="Empty file")
     ext = os.path.splitext(filename)[1] or ".png"
     key = f"_temp/{uuid4().hex}{ext}"
-    upload_object(key, body, content_type=content_type)
+    await asyncio.to_thread(upload_object, key, body, content_type=content_type)
     url = get_redirect_url(key)
     return {"url": url, "key": key}
 
@@ -370,7 +373,7 @@ async def upload_media_chunked(
     asset_id = f"ma_{uuid4().hex[:12]}"
     ext = _safe_ext(fname, media_kind)
     storage_key = media_original_key(asset_id, ext)
-    upload_object(storage_key, raw, content_type=ct)
+    await asyncio.to_thread(upload_object, storage_key, raw, content_type=ct)
 
     asset = MediaAsset(
         id=asset_id,
@@ -385,7 +388,9 @@ async def upload_media_chunked(
     )
     from app.services.content.media.media_derivatives import build_and_upload_derivatives
 
-    thumb_key, poster_key = build_and_upload_derivatives(asset_id, raw, media_kind, ct)
+    thumb_key, poster_key = await asyncio.to_thread(
+        build_and_upload_derivatives, asset_id, raw, media_kind, ct
+    )
     asset.thumbnail_key = thumb_key
     asset.poster_key = poster_key
     db.add(asset)

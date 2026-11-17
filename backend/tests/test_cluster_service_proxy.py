@@ -56,7 +56,10 @@ async def test_session_only_auth_ignores_hosted_app_bearer(monkeypatch):
         async def commit(self):
             return None
 
-    monkeypatch.setattr(auth, "_verify_token_for_mode", lambda token: {"sub": "u1", "tok": token})
+    async def verified(token: str) -> dict:
+        return {"sub": "u1", "tok": token}
+
+    monkeypatch.setattr(auth, "_verify_token_for_mode", verified)
     monkeypatch.setattr(auth.auth_sessions, "get_session", get_session)
     monkeypatch.setattr(auth.auth_sessions, "session_active", lambda _row: True)
     monkeypatch.setattr(auth.auth_sessions, "access_token_of", lambda _row: "openkms-session")
@@ -68,7 +71,10 @@ async def test_session_only_auth_ignores_hosted_app_bearer(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_session_only_auth_requires_session(monkeypatch):
-    monkeypatch.setattr(auth, "_verify_token_for_mode", lambda token: {"sub": "u1"})
+    async def verified(token: str) -> dict:
+        return {"sub": "u1"}
+
+    monkeypatch.setattr(auth, "_verify_token_for_mode", verified)
     req = _request({"Authorization": "Bearer app-token"}, {})
     with pytest.raises(HTTPException) as exc:
         await auth.authenticate_request(req, db=None, session_only=True)

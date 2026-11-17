@@ -41,7 +41,7 @@ from app.services.identity.permissions.permission_resolution import (
     resolve_oidc_permission_keys,
     resolve_user_permission_keys,
 )
-from app.oidc_discovery import get_oidc_provider_metadata
+from app.oidc_discovery import get_oidc_provider_metadata, get_oidc_provider_metadata_async
 from app.i18n.errors import error_detail_no_request, http_error
 
 _JWKS_CLIENT: PyJWKClient | None = None
@@ -149,10 +149,11 @@ def _verify_local_jwt(token: str) -> dict:
         ) from e
 
 
-def _verify_token_for_mode(token: str) -> dict:
+async def _verify_token_for_mode(token: str) -> dict:
     if settings.auth_mode == "local":
         return _verify_local_jwt(token)
-    return _verify_oidc_jwt(token)
+    # OIDC verification may fetch discovery metadata and JWKS over HTTP on a cold cache.
+    return await asyncio.to_thread(_verify_oidc_jwt, token)
 
 
 def _parse_basic_auth(header: str) -> tuple[str, str] | None:
@@ -263,7 +264,7 @@ async def authenticate_request(request: Request, db: AsyncSession, *, session_on
         token = auth_header[7:].strip()
         if token:
             try:
-                payload = _verify_token_for_mode(token)
+                payload = await _verify_token_for_mode(token)
                 _set_auth_state(request, payload, token)
                 return token
             except HTTPException:
@@ -303,7 +304,7 @@ async def authenticate_request(request: Request, db: AsyncSession, *, session_on
                 await auth_sessions.revoke_session(db, row)
                 request.session.pop("auth_sid", None)
                 raise http_error(request, 401, "AUTHENTICATION_REQUIRED") from None
-            payload = _verify_token_for_mode(token)
+            payload = await _verify_token_for_mode(token)
             _set_auth_state(request, payload, token)
             await auth_sessions.touch_session(db, row)
             await db.commit()
@@ -443,7 +444,7 @@ async def _session_actor(request: Request, db: AsyncSession) -> tuple[dict, str 
     except DECRYPT_ERRORS:
         return {}, "token_not_verified"
     try:
-        return _verify_token_for_mode(token), None
+        return await _verify_token_for_mode(token), None
     except HTTPException:
         return {}, "token_not_verified"
 
@@ -493,7 +494,7 @@ def _safe_return_to(raw: str | None) -> str:
 async def _start_oidc_login(request: Request, return_to: str | None) -> RedirectResponse:
     if settings.auth_mode == "local":
         return RedirectResponse(url=f"{_frontend_base()}/login?notice=local_auth", status_code=302)
-    meta = get_oidc_provider_metadata()
+    meta = await get_oidc_provider_metadata_async()
     auth_ep = meta.get("authorization_endpoint")
     if not auth_ep:
         raise http_error(request, 500, "OIDC_METADATA_MISSING_AUTH_ENDPOINT")
@@ -546,7 +547,7 @@ async def oauth2_callback(
         frontend = _frontend_base()
         return RedirectResponse(url=f"{frontend}/?error=no_code", status_code=302)
 
-    meta = get_oidc_provider_metadata()
+    meta = await get_oidc_provider_metadata_async()
     token_ep = meta.get("token_endpoint")
     if not token_ep:
         frontend = _frontend_base()
@@ -584,7 +585,7 @@ async def oauth2_callback(
 
     from app.services.identity.users.oidc_identity_service import upsert_oidc_identity_from_jwt
 
-    payload = _verify_oidc_jwt(access_token)
+    payload = await _verify_token_for_mode(access_token)
     await upsert_oidc_identity_from_jwt(db, payload)
     await db.commit()
     # Signing in is the security event; the callback is a GET, so the mutation middleware never saw it.
@@ -624,7 +625,7 @@ async def logout(request: Request, db: AsyncSession = Depends(get_db)) -> Redire
         await record_session_event("logout", payload, via="logout")
     if settings.auth_mode == "local":
         return RedirectResponse(url=_frontend_base(), status_code=302)
-    meta = get_oidc_provider_metadata()
+    meta = await get_oidc_provider_metadata_async()
     end = meta.get("end_session_endpoint")
     if not end:
         return RedirectResponse(url=_frontend_base(), status_code=302)

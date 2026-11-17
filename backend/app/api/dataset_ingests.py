@@ -3,6 +3,7 @@
 All endpoints require `console:datasets`. The target must be a **data-layer**
 PostgreSQL data source (decision #11).
 """
+import asyncio
 import json
 import uuid
 
@@ -77,7 +78,7 @@ async def start_ingest(
     filename = file.filename or "upload"
     key = f"datasets/uploads/{ingest_id}/{filename}"
     try:
-        upload_object(key, content, file.content_type)
+        await asyncio.to_thread(upload_object, key, content, file.content_type)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Storage upload failed: {exc}") from exc
 

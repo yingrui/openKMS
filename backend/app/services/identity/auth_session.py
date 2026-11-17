@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.auth_session import AuthSession
 from app.models.user import User
-from app.oidc_discovery import get_oidc_provider_metadata
+from app.oidc_discovery import get_oidc_provider_metadata_async
 from app.services.platform.credentials.credential_encryption import decrypt, encrypt
 
 TOUCH_INTERVAL_SECONDS = 60
@@ -210,7 +210,7 @@ async def _refresh_oidc(row: AuthSession) -> bool:
     refresh_token = decrypt(row.refresh_token_enc) if row.refresh_token_enc else ""
     if not refresh_token:
         return False
-    meta = get_oidc_provider_metadata()
+    meta = await get_oidc_provider_metadata_async()
     token_endpoint = meta.get("token_endpoint")
     if not token_endpoint:
         return False

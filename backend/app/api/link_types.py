@@ -1,4 +1,5 @@
 """Link types API (admin CRUD + user read)."""
+import asyncio
 import re
 import uuid
 
@@ -544,20 +545,38 @@ async def _index_link_type_m2m_junction(
             ) from e
         if not rows:
             break
-        for row in rows:
-            src_val = row.get(src_col)
-            tgt_val = row.get(tgt_col)
-            if src_val is None or tgt_val is None:
-                continue
-            session.run(
-                f"MERGE (a:{src_label} {{`{src_columns[0]}`: $src_id}}) "
-                f"MERGE (b:{tgt_label} {{`{tgt_columns[0]}`: $tgt_id}}) "
-                f"MERGE (a)-[r:{rel_type}]->(b)",
-                src_id=src_val,
-                tgt_id=tgt_val,
-            )
-            keep.add((src_val, tgt_val))
-            relationships_created += 1
+        def write_batch(
+            batch: list[dict],
+            *,
+            src_label: str = src_label,
+            tgt_label: str = tgt_label,
+            rel_type: str = rel_type,
+            src_col: str = src_col,
+            tgt_col: str = tgt_col,
+            src_columns: list[str] = src_columns,
+            tgt_columns: list[str] = tgt_columns,
+        ) -> tuple[int, set]:
+            created = 0
+            written: set = set()
+            for row in batch:
+                src_val = row.get(src_col)
+                tgt_val = row.get(tgt_col)
+                if src_val is None or tgt_val is None:
+                    continue
+                session.run(
+                    f"MERGE (a:{src_label} {{`{src_columns[0]}`: $src_id}}) "
+                    f"MERGE (b:{tgt_label} {{`{tgt_columns[0]}`: $tgt_id}}) "
+                    f"MERGE (a)-[r:{rel_type}]->(b)",
+                    src_id=src_val,
+                    tgt_id=tgt_val,
+                )
+                written.add((src_val, tgt_val))
+                created += 1
+            return created, written
+
+        created, written = await asyncio.to_thread(write_batch, rows)
+        relationships_created += created
+        keep.update(written)
         offset += len(rows)
         if offset >= total:
             break
@@ -603,22 +622,39 @@ async def _index_link_type_m2o_source_fk(
             ) from e
         if not rows:
             break
-        for row in rows:
-            tgt_val = row.get(fk_col)
-            if tgt_val is None:
-                continue
-            src_values = link_endpoint_values(src_columns, row)
-            if src_values is None:
-                continue
-            session.run(
-                f"MERGE (a:{src_label} {{{_endpoint_map('s', src_columns)}}}) "
-                f"MERGE (b:{tgt_label} {{`{tgt_columns[0]}`: $tgt_id}}) "
-                f"MERGE (a)-[r:{rel_type}]->(b)",
-                **{f"s{i}": v for i, v in enumerate(src_values)},
-                tgt_id=tgt_val,
-            )
-            keep.add((encode_object_id(src_values), tgt_val))
-            relationships_created += 1
+        def write_batch(
+            batch: list[dict],
+            *,
+            src_label: str = src_label,
+            tgt_label: str = tgt_label,
+            rel_type: str = rel_type,
+            fk_col: str = fk_col,
+            src_columns: list[str] = src_columns,
+            tgt_columns: list[str] = tgt_columns,
+        ) -> tuple[int, set]:
+            created = 0
+            written: set = set()
+            for row in batch:
+                tgt_val = row.get(fk_col)
+                if tgt_val is None:
+                    continue
+                src_values = link_endpoint_values(src_columns, row)
+                if src_values is None:
+                    continue
+                session.run(
+                    f"MERGE (a:{src_label} {{{_endpoint_map('s', src_columns)}}}) "
+                    f"MERGE (b:{tgt_label} {{`{tgt_columns[0]}`: $tgt_id}}) "
+                    f"MERGE (a)-[r:{rel_type}]->(b)",
+                    **{f"s{i}": v for i, v in enumerate(src_values)},
+                    tgt_id=tgt_val,
+                )
+                written.add((encode_object_id(src_values), tgt_val))
+                created += 1
+            return created, written
+
+        created, written = await asyncio.to_thread(write_batch, rows)
+        relationships_created += created
+        keep.update(written)
         offset += len(rows)
         if offset >= total:
             break
@@ -651,6 +687,7 @@ async def _index_link_type_from_saved_instances(
         links = result.scalars().all()
         if not links:
             break
+        pending: list[tuple[list, list]] = []
         for li in links:
             source_obj = await db.get(ObjectInstance, li.source_object_id)
             target_obj = await db.get(ObjectInstance, li.target_object_id)
@@ -663,15 +700,34 @@ async def _index_link_type_from_saved_instances(
                 tgt_values = decode_object_id(li.target_object_id, tgt_columns)
             except ValueError:
                 continue
-            session.run(
-                f"MERGE (a:{src_label} {{{_endpoint_map('s', src_columns)}}}) "
-                f"MERGE (b:{tgt_label} {{{_endpoint_map('t', tgt_columns)}}}) "
-                f"MERGE (a)-[r:{rel_type}]->(b)",
-                **{f"s{i}": v for i, v in enumerate(src_values)},
-                **{f"t{i}": v for i, v in enumerate(tgt_values)},
-            )
-            keep.add((encode_object_id(src_values), encode_object_id(tgt_values)))
-            relationships_created += 1
+            pending.append((src_values, tgt_values))
+
+        def write_batch(
+            batch: list[tuple[list, list]],
+            *,
+            src_label: str = src_label,
+            tgt_label: str = tgt_label,
+            rel_type: str = rel_type,
+            src_columns: list[str] = src_columns,
+            tgt_columns: list[str] = tgt_columns,
+        ) -> tuple[int, set]:
+            created = 0
+            written: set = set()
+            for src_values, tgt_values in batch:
+                session.run(
+                    f"MERGE (a:{src_label} {{{_endpoint_map('s', src_columns)}}}) "
+                    f"MERGE (b:{tgt_label} {{{_endpoint_map('t', tgt_columns)}}}) "
+                    f"MERGE (a)-[r:{rel_type}]->(b)",
+                    **{f"s{i}": v for i, v in enumerate(src_values)},
+                    **{f"t{i}": v for i, v in enumerate(tgt_values)},
+                )
+                written.add((encode_object_id(src_values), encode_object_id(tgt_values)))
+                created += 1
+            return created, written
+
+        created, written = await asyncio.to_thread(write_batch, pending)
+        relationships_created += created
+        keep.update(written)
         offset += len(links)
         if len(links) < batch_size:
             break
@@ -813,7 +869,9 @@ async def index_one_link_type_to_neo4j(
                 if reason:
                     prune_skipped = reason
                 else:
-                    relationships_pruned = prune_link_relationships(session, **_prune_kwargs(ctx))
+                    relationships_pruned = await asyncio.to_thread(
+                        prune_link_relationships, session, **_prune_kwargs(ctx)
+                    )
     finally:
         driver.close()
     if not ok:
