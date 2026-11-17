@@ -99,6 +99,11 @@ export function DatasetRelationshipsTab() {
   // from here; otherwise the selected dataset does.
   /* The `to` side is what a join multiplies by, so its uniqueness is the number that matters while filling the
      form — not an error the reader meets after ten fields. */
+  const thisName = datasetLabel(dataset);
+  const otherName = otherDatasets.some((d) => d.id === targetId)
+    ? datasetLabel(otherDatasets.find((d) => d.id === targetId)!)
+    : t('datasets.selectTable');
+
   const toDatasetId = direction === 'from' ? targetId : datasetId;
 
   useEffect(() => {
@@ -380,18 +385,19 @@ export function DatasetRelationshipsTab() {
             <legend>{t('datasets.joinDirection')}</legend>
             {(
               [
-                ['from', 'datasets.directionThisFrom'],
-                ['to', 'datasets.directionThisTo'],
+                ['from', thisName, otherName],
+                ['to', otherName, thisName],
               ] as const
-            ).map(([value, key]) => (
+            ).map(([value, referrer, referenced]) => (
               <label key={value} className="ds-check-row">
                 <input
                   type="radio"
                   name="join-direction"
                   checked={direction === value}
                   onChange={() => setDirection(value)}
+                  disabled={!targetId}
                 />
-                <span>{t(key)}</span>
+                <span>{t('datasets.directionManyToOne', { referrer, referenced })}</span>
               </label>
             ))}
           </fieldset>
@@ -461,15 +467,13 @@ export function DatasetRelationshipsTab() {
           {targetId && pairs.some((p) => p.from && p.to) ? (
             <p className="dataset-joins__sentence">
               {t('datasets.joinSentence', {
-                from: direction === 'from' ? datasetLabel(dataset) : (otherDatasets.find((d) => d.id === targetId) ? datasetLabel(otherDatasets.find((d) => d.id === targetId)!) : targetId),
-                to: direction === 'from' ? (otherDatasets.find((d) => d.id === targetId) ? datasetLabel(otherDatasets.find((d) => d.id === targetId)!) : targetId) : datasetLabel(dataset),
-                pairs: pairs
-                  .filter((p) => p.from && p.to)
-                  .map((p) => (direction === 'from' ? `${p.from} = ${p.to}` : `${p.to} = ${p.from}`))
-                  .join('，'),
+                referrer: direction === 'from' ? thisName : otherName,
+                referenced: direction === 'from' ? otherName : thisName,
+                left: pairs.filter((p) => p.from && p.to).map((p) => (direction === 'from' ? p.from : p.to)).join(', '),
+                right: pairs.filter((p) => p.from && p.to).map((p) => (direction === 'from' ? p.to : p.from)).join(', '),
                 existence: required
-                  ? t('datasets.joinSentenceRequired')
-                  : t('datasets.joinSentenceOptional'),
+                  ? t('datasets.joinExistenceMandatory')
+                  : t('datasets.joinExistenceOptional'),
               })}
             </p>
           ) : null}
