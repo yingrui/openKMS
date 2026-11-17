@@ -110,3 +110,13 @@ def test_join_refuses_a_composite_target_without_a_declared_key():
         asyncio.run(
             _require_unique_target(_StubDb(_profile(rows=10, distinct=10)), _dataset(), ["a", "b"])
         )
+
+
+def test_one_to_one_checks_the_from_side_too():
+    """1:1 claims both directions, so the source columns must be unique as well as the target's."""
+    from app.services.data.joins import _require_unique_target
+
+    with pytest.raises(JoinValidationError, match="would multiply rows"):
+        asyncio.run(
+            _require_unique_target(_StubDb(_profile(rows=100, distinct=80)), _dataset(), ["sku_id"])
+        )

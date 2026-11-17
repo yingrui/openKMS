@@ -52,6 +52,7 @@ def _join_response(j: DatasetJoin, names: dict[str, str]) -> DatasetJoinResponse
         from_columns=j.from_columns or [],
         to_columns=j.to_columns or [],
         required=j.required,
+        from_unique=j.from_unique,
         ai_context=j.ai_context,
         description=j.description,
         created_by_name=j.created_by_name,
@@ -108,6 +109,7 @@ async def create_dataset_join(
             to_dataset_id=body.to_dataset_id,
             from_columns=body.from_columns,
             to_columns=body.to_columns,
+            from_unique=body.from_unique,
         )
     except JoinValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -122,6 +124,7 @@ async def create_dataset_join(
         from_columns=body.from_columns,
         to_columns=body.to_columns,
         required=body.required,
+        from_unique=body.from_unique,
         ai_context=body.ai_context,
         description=body.description,
         created_by=payload.get("sub") if isinstance(payload.get("sub"), str) else None,
@@ -171,11 +174,20 @@ async def update_dataset_join(
             to_dataset_id=j.to_dataset_id,
             from_columns=new_from_cols,
             to_columns=new_to_cols,
+            from_unique=bool(data.get("from_unique", j.from_unique)),
         )
     except JoinValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    for field in ("name", "from_columns", "to_columns", "required", "ai_context", "description"):
+    for field in (
+        "name",
+        "from_columns",
+        "to_columns",
+        "required",
+        "from_unique",
+        "ai_context",
+        "description",
+    ):
         if field in data:
             setattr(j, field, data[field])
     await db.commit()

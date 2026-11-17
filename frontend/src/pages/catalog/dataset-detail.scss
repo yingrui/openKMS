@@ -78,75 +78,114 @@
   }
 }
 
-.dataset-er {
-  width: 100%;
-  height: auto;
-  max-height: 420px;
-
-  &__empty {
-    color: var(--color-text-muted);
-    padding: var(--space-6);
-    text-align: center;
-  }
-
-  &__edge {
-    stroke: var(--color-border);
-    stroke-width: 1.5;
-  }
-
-  &__edge-label {
-    fill: var(--color-text-muted);
-    font-size: var(--text-xs);
-  }
-
-  &__node {
-    fill: var(--color-bg-surface);
-    stroke: var(--color-border);
-    stroke-width: 1.5;
-
-    &--center {
-      fill: var(--color-accent-subtle);
-      stroke: var(--color-accent);
-    }
-  }
-
-  &__node-label {
-    fill: var(--color-text);
-    font-size: var(--text-sm);
-    font-weight: 600;
-  }
-
-  &__node-sub {
-    fill: var(--color-text-muted);
-    font-size: var(--text-xs);
-  }
-}
-
 /* Two sentences, two options: the form asks the reader what they mean, not what SQL calls it. */
-.dataset-joins__direction {
+
+/* The relationship as it stands: the two tables, their cardinality, the join condition in words and in SQL.
+   It sits above the fields because it is the thing being configured — each field below edits this. */
+.dataset-joins__summary {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding: 0;
-  margin: 0;
-  border: 0;
-
-  legend {
-    margin-bottom: var(--space-1);
-    font-size: var(--text-sm);
-    color: var(--color-text-secondary);
-  }
-}
-
-/* The whole configuration as one sentence: if it reads wrong, one of the fields above is wrong. */
-.dataset-joins__sentence {
-  padding: var(--space-2) var(--space-3);
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--color-text);
+  padding: var(--space-3);
   background: var(--color-accent-subtle);
   border-radius: var(--radius-sm);
 }
+
+/* The relationship itself: two datasets with their cardinality between them, and one button to swap them. */
+/* Three columns, so the middle group sits on the axis no matter how long the dataset names are: the left name
+   grows leftwards, the right name rightwards, and `[N] ⇄ [1]` never drifts. */
+.dataset-joins__cardinality {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.dataset-joins__cardinality-controls {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-self: center;
+}
+
+.dataset-joins__cardinality-side {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* `.ds-control` is `width: 100%`; a cardinality is two characters, so the compound selector wins. */
+.dataset-joins__cardinality .dataset-joins__cardinality-select {
+  flex: none;
+  width: 4.25rem;
+  min-width: 0;
+  text-align: center;
+}
+
+.dataset-joins__swap {
+  flex: none;
+}
+
+.dataset-joins__cardinality-side:first-child {
+  justify-self: end;
+  text-align: right;
+}
+
+.dataset-joins__cardinality-side:last-child {
+  justify-self: start;
+  text-align: left;
+}
+
+.dataset-joins__summary-hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Label above, condition below: crammed onto one line it read as one long identifier. */
+.dataset-joins__summary-condition {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+
+  code {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    overflow-wrap: anywhere;
+  }
+}
+
+.dataset-joins__summary-label {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* Each side of the join condition names its dataset: "产品（SKU） [id]" reads without a header row. */
+.dataset-joins__pair-side {
+  flex: none;
+  max-width: 9rem;
+  overflow: hidden;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.dataset-joins__summary-empty {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 
 /* What the join would multiply by, shown while the columns are chosen. */
 .dataset-joins__uniqueness {

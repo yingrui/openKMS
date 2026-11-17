@@ -36,6 +36,11 @@ class DatasetJoin(Base):
     # A relationship is a bare FK edge plus this optionality — no query/SQL base, and
     # no left/right/full (right ≡ swapped left; the query anchor fixes the join side).
     required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # One-to-one: the `from` columns are unique too, so a target row matches at most one source row.
+    # Verified at save time exactly like the `to` side; both sides unique is what makes an edge 1:1.
+    from_unique: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     ai_context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True)

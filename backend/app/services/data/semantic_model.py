@@ -215,9 +215,14 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
         }
         if r.ai_context:
             rentry["ai_context"] = r.ai_context
-        # `required` (INNER vs LEFT) is ours; the spec has no such field.
+        # `required` (INNER vs LEFT) and `from_unique` (1:1) are ours; the spec has no such fields.
+        extras: dict[str, Any] = {}
         if r.required:
-            rentry["custom_extensions"] = _extension({"required": True})
+            extras["required"] = True
+        if getattr(r, "from_unique", False):
+            extras["from_unique"] = True
+        if extras:
+            rentry["custom_extensions"] = _extension(extras)
         doc["relationships"].append(rentry)
 
     for m in metrics:

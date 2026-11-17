@@ -12,6 +12,7 @@ class DatasetJoinCreate(BaseModel):
     from_columns: list[str] = Field(min_length=1)
     to_columns: list[str] = Field(min_length=1)
     required: bool = False
+    from_unique: bool = False
     ai_context: dict[str, Any] | None = None
     description: str | None = None
 
@@ -21,6 +22,7 @@ class DatasetJoinUpdate(BaseModel):
     from_columns: list[str] | None = None
     to_columns: list[str] | None = None
     required: bool | None = None
+    from_unique: bool | None = None
     ai_context: dict[str, Any] | None = None
     description: str | None = None
 
@@ -35,6 +37,7 @@ class DatasetJoinResponse(BaseModel):
     from_columns: list[str]
     to_columns: list[str]
     required: bool
+    from_unique: bool
     ai_context: dict[str, Any] | None = None
     description: str | None = None
     created_by_name: str | None = None

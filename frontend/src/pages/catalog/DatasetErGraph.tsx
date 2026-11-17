@@ -27,6 +27,8 @@ export type ErGraphLink = {
   toColumn?: string;
   /** A required join draws a solid line; an optional one dashes it. */
   required?: boolean;
+  /** One-to-one: the source side is unique, so it renders as a bar instead of a crow's foot. */
+  fromUnique?: boolean;
 };
 
 const BOX_WIDTH = 208;
@@ -239,7 +241,9 @@ export function DatasetErGraph({
       ),
     ) + PADDING;
   const width = Math.max(contentWidth, size.width);
-  const height = Math.max(contentHeight, size.height);
+  /* Only `fill` stretches the canvas to the container. Otherwise the canvas is exactly the diagram: a canvas
+     that grows to whatever height its own container reports feeds back into the measurement and never settles. */
+  const height = fill ? Math.max(contentHeight, size.height) : contentHeight;
 
   const collapsible = nodes.filter((node) => (node.columns?.length ?? 0) > 0).map((node) => node.id);
 
@@ -266,6 +270,7 @@ export function DatasetErGraph({
            field → field rather than box → box. */
         direction: toLeft ? -1 : 1,
         required: link.required !== false,
+        fromUnique: link.fromUnique === true,
         dimmed: connected !== null && !(link.source === hovered || link.target === hovered),
       },
     ];
@@ -357,6 +362,7 @@ export function DatasetErGraph({
                   fill="none"
                 />
                 {/* from side: crow's foot behind a circle — a dataset may have no relationships at all. */}
+                {edge.fromUnique ? null : (
                 <circle
                   className="dataset-er-graph__edge-end"
                   cx={edge.x1 + edge.direction * 20}
@@ -364,16 +370,27 @@ export function DatasetErGraph({
                   r={3}
                   fill="none"
                 />
-                {foot.map((point, i) => (
+                )}
+                {edge.fromUnique ? (
                   <line
-                    key={i}
                     className="dataset-er-graph__edge-end"
-                    x1={vertex.x}
-                    y1={vertex.y}
-                    x2={point.x}
-                    y2={point.y}
+                    x1={edge.x1 + edge.direction * 12}
+                    y1={edge.y1 - 5}
+                    x2={edge.x1 + edge.direction * 12}
+                    y2={edge.y1 + 5}
                   />
-                ))}
+                ) : (
+                  foot.map((point, i) => (
+                    <line
+                      key={i}
+                      className="dataset-er-graph__edge-end"
+                      x1={vertex.x}
+                      y1={vertex.y}
+                      x2={point.x}
+                      y2={point.y}
+                    />
+                  ))
+                )}
                 {/* to side: one and only one is two bars; zero or one is a circle and a bar. */}
                 <line
                   className="dataset-er-graph__edge-end"

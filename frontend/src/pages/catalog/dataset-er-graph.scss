@@ -1,6 +1,8 @@
 /* One box per dataset, one line per registered join — a diagram, not a force simulation. */
 .dataset-er-graph {
   width: 100%;
+  /* A panel-sized box: the diagram scrolls inside it instead of pushing the page taller as it grows. */
+  max-height: 70vh;
   overflow: auto;
   /* The canvas is at least the container's size, so a box can be dragged into the empty space beside the grid. */
   display: flex;
@@ -38,6 +40,7 @@
 /* Catalog Map view: the diagram claims the space left in the viewport instead of a fixed height. */
 .dataset-er-graph--fill {
   flex: 1;
+  max-height: none;
   min-height: 320px;
 }
 

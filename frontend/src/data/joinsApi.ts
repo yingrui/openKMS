@@ -11,6 +11,7 @@ export interface DatasetJoinResponse {
   from_columns: string[];
   to_columns: string[];
   required: boolean;
+  from_unique: boolean;
   ai_context: Record<string, unknown> | null;
   description: string | null;
   created_by_name: string | null;
@@ -36,6 +37,7 @@ export async function createDatasetJoin(data: {
   from_columns: string[];
   to_columns: string[];
   required: boolean;
+  from_unique?: boolean;
   description?: string | null;
   ai_context?: Record<string, unknown> | null;
 }): Promise<DatasetJoinResponse> {
@@ -53,6 +55,7 @@ export async function updateDatasetJoin(
     from_columns?: string[];
     to_columns?: string[];
     required?: boolean;
+    from_unique?: boolean;
     description?: string | null;
     ai_context?: Record<string, unknown> | null;
   }

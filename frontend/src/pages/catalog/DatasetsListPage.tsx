@@ -119,6 +119,7 @@ export function DatasetsListPage() {
         fromColumn: j.from_columns[0],
         toColumn: j.to_columns[0],
         required: j.required,
+        fromUnique: j.from_unique,
       })),
     [joins],
   );

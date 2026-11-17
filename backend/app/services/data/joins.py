@@ -54,6 +54,7 @@ async def validate_join(
     to_dataset_id: str,
     from_columns: list[str],
     to_columns: list[str],
+    from_unique: bool = False,
 ) -> tuple[Dataset, Dataset]:
     """Validate a relationship and return the (from, to) datasets."""
     if from_dataset_id == to_dataset_id:
@@ -94,6 +95,9 @@ async def validate_join(
         # rows multiplies the rows of every metric built on it, silently — which is why this is a refusal
         # and not a warning.
         await _require_unique_target(db, to, [str(c) for c in to_columns])
+    if from_unique:
+        # One-to-one claims the other direction too: a target row matches at most one source row.
+        await _require_unique_target(db, frm, [str(c) for c in from_columns])
     return frm, to
 
 
