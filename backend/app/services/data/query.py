@@ -8,6 +8,7 @@ dataset and registered relationships — callers never submit those clauses.
 """
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import time
@@ -666,7 +667,9 @@ async def run_query(
 
     started = time.perf_counter()
     try:
-        rows = run_readonly(ds, sql, {**params, **policy_params}, timeout_ms=timeout_ms)
+        rows = await asyncio.to_thread(
+            run_readonly, ds, sql, {**params, **policy_params}, timeout_ms=timeout_ms
+        )
     except (SQLAlchemyError, OSError, TypeError, ValueError) as exc:
         failure = classify_sql_error(exc)
         raise QueryError(f"Query failed: {exc}", failure) from exc

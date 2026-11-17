@@ -1,6 +1,7 @@
 """Dataset profile computation + schema snapshot tracking (read-time insights)."""
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -29,45 +30,49 @@ async def compute_profile(db: AsyncSession, dataset: Dataset) -> tuple[int, list
     if not is_valid_identifier(schema) or not is_valid_identifier(table):
         raise ProfileError("Invalid dataset table.")
     quoted = f'"{schema}"."{table}"'
-    stats: list[dict[str, Any]] = []
-    engine = pg_engine_for_datasource(ds)
-    try:
-        with engine.connect() as conn:
-            total = int(conn.execute(text(f"SELECT COUNT(*) FROM {quoted}")).scalar() or 0)
-            cols = conn.execute(
-                text(
-                    "SELECT column_name FROM information_schema.columns "
-                    "WHERE table_schema = :s AND table_name = :t ORDER BY ordinal_position"
-                ),
-                {"s": schema, "t": table},
-            ).fetchall()
-            for (col,) in cols:
-                name = str(col)
-                if not is_valid_identifier(name):
-                    continue
-                entry: dict[str, Any] = {"column": name}
-                try:
-                    row = conn.execute(
-                        text(
-                            f'SELECT COUNT("{name}") AS nn, COUNT(DISTINCT "{name}") AS nd, '
-                            f'MIN("{name}") AS mn, MAX("{name}") AS mx FROM {quoted}'
+
+    def scan() -> tuple[int, list[dict[str, Any]]]:
+        stats: list[dict[str, Any]] = []
+        engine = pg_engine_for_datasource(ds)
+        try:
+            with engine.connect() as conn:
+                total = int(conn.execute(text(f"SELECT COUNT(*) FROM {quoted}")).scalar() or 0)
+                cols = conn.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_schema = :s AND table_name = :t ORDER BY ordinal_position"
+                    ),
+                    {"s": schema, "t": table},
+                ).fetchall()
+                for (col,) in cols:
+                    name = str(col)
+                    if not is_valid_identifier(name):
+                        continue
+                    entry: dict[str, Any] = {"column": name}
+                    try:
+                        row = conn.execute(
+                            text(
+                                f'SELECT COUNT("{name}") AS nn, COUNT(DISTINCT "{name}") AS nd, '
+                                f'MIN("{name}") AS mn, MAX("{name}") AS mx FROM {quoted}'
+                            )
+                        ).mappings().first()
+                        non_null = int((row or {}).get("nn") or 0)
+                        entry.update(
+                            {
+                                "null_count": total - non_null,
+                                "distinct_count": int((row or {}).get("nd") or 0),
+                                "min": serialize_cell_value((row or {}).get("mn")),
+                                "max": serialize_cell_value((row or {}).get("mx")),
+                            }
                         )
-                    ).mappings().first()
-                    non_null = int((row or {}).get("nn") or 0)
-                    entry.update(
-                        {
-                            "null_count": total - non_null,
-                            "distinct_count": int((row or {}).get("nd") or 0),
-                            "min": serialize_cell_value((row or {}).get("mn")),
-                            "max": serialize_cell_value((row or {}).get("mx")),
-                        }
-                    )
-                except (SQLAlchemyError, ValueError, TypeError):  # MIN/MAX unsupported for some types
-                    entry.update({"null_count": None, "distinct_count": None, "min": None, "max": None})
-                stats.append(entry)
-        return total, stats
-    finally:
-        engine.dispose()
+                    except (SQLAlchemyError, ValueError, TypeError):  # MIN/MAX unsupported for some types
+                        entry.update({"null_count": None, "distinct_count": None, "min": None, "max": None})
+                    stats.append(entry)
+                return total, stats
+        finally:
+            engine.dispose()
+
+    return await asyncio.to_thread(scan)
 
 
 async def store_profile(

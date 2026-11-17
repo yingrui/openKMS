@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 import uuid
 from typing import Any
@@ -150,11 +151,14 @@ async def validate_dataset_for_slot(
         raise ValueError(f"Data source not found for dataset {dataset_id}")
     if ds.kind != "postgresql":
         raise ValueError(f"Dataset {dataset_id} is not on a PostgreSQL data source.")
-    engine = pg_engine_for_datasource(ds)
-    try:
-        cols = _fetch_table_columns(engine, dataset.schema_name, dataset.table_name)
-    finally:
-        engine.dispose()
+    def read_columns() -> dict[str, str]:
+        engine = pg_engine_for_datasource(ds)
+        try:
+            return _fetch_table_columns(engine, dataset.schema_name, dataset.table_name)
+        finally:
+            engine.dispose()
+
+    cols = await asyncio.to_thread(read_columns)
     if not cols:
         raise ValueError(
             f"Dataset table {dataset.schema_name}.{dataset.table_name} does not exist "
@@ -214,16 +218,20 @@ async def provision_dataset_for_slot(
         )
 
     ddl = build_create_table_ddl(pg_schema, pg_table, slot_spec.dataset_columns)
-    engine = pg_engine_for_datasource(ds)
-    try:
-        with engine.begin() as conn:
-            conn.execute(text(ddl))
-        cols = _fetch_table_columns(engine, pg_schema, pg_table)
-        issues = validate_table_columns(cols, slot_spec.dataset_columns)
-        if issues:
-            raise ValueError(f"Provisioned table failed validation: {'; '.join(issues)}")
-    finally:
-        engine.dispose()
+
+    def provision() -> dict[str, str]:
+        engine = pg_engine_for_datasource(ds)
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(ddl))
+            return _fetch_table_columns(engine, pg_schema, pg_table)
+        finally:
+            engine.dispose()
+
+    cols = await asyncio.to_thread(provision)
+    issues = validate_table_columns(cols, slot_spec.dataset_columns)
+    if issues:
+        raise ValueError(f"Provisioned table failed validation: {'; '.join(issues)}")
 
     label = (display_name or "").strip() or slot_spec.label
     dataset = Dataset(

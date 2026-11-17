@@ -6,6 +6,7 @@ Not a full SQL ACL product — callers must stay within listed schema.table name
 """
 from __future__ import annotations
 
+import asyncio
 import re
 import time
 from typing import Any
@@ -393,7 +394,9 @@ async def run_model_sql(
 
     started = time.monotonic()
     try:
-        result_rows = run_readonly(ds, probe_sql, params, timeout_ms=DEFAULT_TIMEOUT_MS)
+        result_rows = await asyncio.to_thread(
+            run_readonly, ds, probe_sql, params, timeout_ms=DEFAULT_TIMEOUT_MS
+        )
     except SQLAlchemyError as exc:
         raise QueryError(
             str(exc),

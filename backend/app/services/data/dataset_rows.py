@@ -20,6 +20,7 @@ no "definition" side to fix, so `kind=definition` would misdirect the user.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 
@@ -197,7 +198,7 @@ async def query_dataset_summary(
     offset = max(0, int(offset))
 
     try:
-        types = table_column_types(ds, schema, table)
+        types = await asyncio.to_thread(table_column_types, ds, schema, table)
     except (SQLAlchemyError, OSError, TypeError, ValueError) as exc:
         raise QueryError(f"Reading the table's columns failed: {exc}", _data_failure(exc)) from exc
 
@@ -217,23 +218,28 @@ async def query_dataset_summary(
         offset=offset,
     )
 
-    engine = pg_engine_for_datasource(ds)
+    def summarise() -> tuple[list[str], list[dict[str, Any]]]:
+        engine = pg_engine_for_datasource(ds)
+        try:
+            with engine.connect() as conn:
+                tx = conn.begin()
+                conn.exec_driver_sql(f"SET LOCAL statement_timeout = {int(ROWS_TIMEOUT_MS)}")
+                result = conn.execute(text(sql), params)
+                names = list(result.keys())
+                rows = [
+                    {k: serialize_cell_value(v) for k, v in zip(names, r, strict=True)}
+                    for r in result.fetchall()
+                ]
+                tx.rollback()
+                return names, rows
+        finally:
+            engine.dispose()
+
     started = time.perf_counter()
     try:
-        with engine.connect() as conn:
-            tx = conn.begin()
-            conn.exec_driver_sql(f"SET LOCAL statement_timeout = {int(ROWS_TIMEOUT_MS)}")
-            result = conn.execute(text(sql), params)
-            names = list(result.keys())
-            rows = [
-                {k: serialize_cell_value(v) for k, v in zip(names, r, strict=True)}
-                for r in result.fetchall()
-            ]
-            tx.rollback()
+        names, rows = await asyncio.to_thread(summarise)
     except (SQLAlchemyError, OSError, TypeError, ValueError) as exc:
         raise QueryError(f"Summarising rows failed: {exc}", _data_failure(exc)) from exc
-    finally:
-        engine.dispose()
 
     duration_ms = int((time.perf_counter() - started) * 1000)
     capped = len(rows) > limit
@@ -274,7 +280,7 @@ async def query_dataset_rows(
     offset = max(0, int(offset))
 
     try:
-        columns = table_column_names(ds, schema, table)
+        columns = await asyncio.to_thread(table_column_names, ds, schema, table)
     except (SQLAlchemyError, OSError, TypeError, ValueError) as exc:
         raise QueryError(f"Reading the table's columns failed: {exc}", _data_failure(exc)) from exc
 
@@ -295,28 +301,33 @@ async def query_dataset_rows(
         sql += " OFFSET :offset"
         page_params["offset"] = offset
 
-    engine = pg_engine_for_datasource(ds)
+    def read() -> tuple[list[str], list[dict[str, Any]], int | None, str]:
+        engine = pg_engine_for_datasource(ds)
+        try:
+            with engine.connect() as conn:
+                tx = conn.begin()
+                conn.exec_driver_sql(f"SET LOCAL statement_timeout = {int(ROWS_TIMEOUT_MS)}")
+                total, total_kind = _resolve_total(
+                    conn, qualified=quoted, where_sql=where_sql, params=params
+                )
+                # The bounded count above may have shortened this transaction's leash (a savepoint
+                # rollback restores it, but not always): the page query gets the full browse timeout.
+                conn.exec_driver_sql(f"SET LOCAL statement_timeout = {int(ROWS_TIMEOUT_MS)}")
+                result = conn.execute(text(sql), page_params)
+                names = list(result.keys())
+                rows = [
+                    {k: serialize_cell_value(v) for k, v in zip(names, r, strict=True)}
+                    for r in result.fetchall()
+                ]
+                tx.rollback()
+                return names, rows, total, total_kind
+        finally:
+            engine.dispose()
+
     try:
-        with engine.connect() as conn:
-            tx = conn.begin()
-            conn.exec_driver_sql(f"SET LOCAL statement_timeout = {int(ROWS_TIMEOUT_MS)}")
-            total, total_kind = _resolve_total(
-                conn, qualified=quoted, where_sql=where_sql, params=params
-            )
-            # The bounded count above may have shortened this transaction's leash (a savepoint
-            # rollback restores it, but not always): the page query gets the full browse timeout.
-            conn.exec_driver_sql(f"SET LOCAL statement_timeout = {int(ROWS_TIMEOUT_MS)}")
-            result = conn.execute(text(sql), page_params)
-            names = list(result.keys())
-            rows = [
-                {k: serialize_cell_value(v) for k, v in zip(names, r, strict=True)}
-                for r in result.fetchall()
-            ]
-            tx.rollback()
+        names, rows, total, total_kind = await asyncio.to_thread(read)
     except (SQLAlchemyError, OSError, TypeError, ValueError) as exc:
         raise QueryError(f"Reading rows failed: {exc}", _data_failure(exc)) from exc
-    finally:
-        engine.dispose()
 
     next_after = None
     if valid_sort and rows:

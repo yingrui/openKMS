@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from urllib.parse import quote_plus
 
@@ -75,13 +76,18 @@ async def get_dataset_row_count(db: AsyncSession, dataset_id: str) -> int:
     if not resolved:
         return 0
     dataset, ds = resolved
-    try:
+
+    def count() -> int:
         engine = pg_engine_for_datasource(ds)
-        with engine.connect() as conn:
-            quoted = f'"{dataset.schema_name}"."{dataset.table_name}"'
-            total = conn.execute(text(f"SELECT COUNT(*) FROM {quoted}")).scalar() or 0
-        engine.dispose()
-        return int(total)
+        try:
+            with engine.connect() as conn:
+                quoted = f'"{dataset.schema_name}"."{dataset.table_name}"'
+                return int(conn.execute(text(f"SELECT COUNT(*) FROM {quoted}")).scalar() or 0)
+        finally:
+            engine.dispose()
+
+    try:
+        return await asyncio.to_thread(count)
     except (SQLAlchemyError, OSError, ValueError, TypeError):
         return 0
 
@@ -94,18 +100,24 @@ async def get_dataset_row_count_where_not_null(
     if not resolved or not is_valid_identifier(column_name):
         return 0
     dataset, ds = resolved
-    try:
+
+    def count() -> int:
         engine = pg_engine_for_datasource(ds)
-        with engine.connect() as conn:
-            quoted = f'"{dataset.schema_name}"."{dataset.table_name}"'
-            total = (
-                conn.execute(
-                    text(f'SELECT COUNT(*) FROM {quoted} WHERE "{column_name}" IS NOT NULL')
-                ).scalar()
-                or 0
-            )
-        engine.dispose()
-        return int(total)
+        try:
+            with engine.connect() as conn:
+                quoted = f'"{dataset.schema_name}"."{dataset.table_name}"'
+                total = (
+                    conn.execute(
+                        text(f'SELECT COUNT(*) FROM {quoted} WHERE "{column_name}" IS NOT NULL')
+                    ).scalar()
+                    or 0
+                )
+                return int(total)
+        finally:
+            engine.dispose()
+
+    try:
+        return await asyncio.to_thread(count)
     except (SQLAlchemyError, OSError, ValueError, TypeError):
         return 0
 
@@ -241,23 +253,26 @@ async def fetch_dataset_rows_page(
     else:
         params["offset"] = offset
 
-    engine = pg_engine_for_datasource(ds)
-    try:
-        with engine.connect() as conn:
-            total = conn.execute(text(f"SELECT COUNT(*) FROM {quoted}{where_sql}")).scalar() or 0
-            sql = f"SELECT * FROM {quoted}{where_sql}{order_sql} LIMIT :limit"
-            if not use_keyset:
-                sql += " OFFSET :offset"
-            rows_result = conn.execute(text(sql), params)
-            columns = list(rows_result.keys())
-            rows = [
-                {k: serialize_cell_value(v) for k, v in zip(columns, r, strict=True)}
-                for r in rows_result.fetchall()
-            ]
-        next_after = None
-        if valid_sort and rows:
-            candidate = rows[-1].get(str(sort))
-            next_after = None if candidate is None else str(candidate)
-        return rows, int(total), next_after
-    finally:
-        engine.dispose()
+    def fetch() -> tuple[list[dict], int, str | None]:
+        engine = pg_engine_for_datasource(ds)
+        try:
+            with engine.connect() as conn:
+                total = conn.execute(text(f"SELECT COUNT(*) FROM {quoted}{where_sql}")).scalar() or 0
+                sql = f"SELECT * FROM {quoted}{where_sql}{order_sql} LIMIT :limit"
+                if not use_keyset:
+                    sql += " OFFSET :offset"
+                rows_result = conn.execute(text(sql), params)
+                names = list(rows_result.keys())
+                rows = [
+                    {k: serialize_cell_value(v) for k, v in zip(names, r, strict=True)}
+                    for r in rows_result.fetchall()
+                ]
+            next_after = None
+            if valid_sort and rows:
+                candidate = rows[-1].get(str(sort))
+                next_after = None if candidate is None else str(candidate)
+            return rows, int(total), next_after
+        finally:
+            engine.dispose()
+
+    return await asyncio.to_thread(fetch)

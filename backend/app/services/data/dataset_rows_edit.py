@@ -11,6 +11,7 @@ Safety model:
 """
 from __future__ import annotations
 
+import asyncio
 import uuid
 from typing import Any
 
@@ -108,66 +109,72 @@ async def apply_row_ops(
         raise RowEditError("Row editing is only supported for PostgreSQL datasets.")
     table = _quote_table(dataset)
 
-    applied: list[dict[str, Any]] = []
-    inserted = updated = deleted = 0
-    engine = pg_engine_for_datasource(ds)
+    def apply() -> tuple[list[dict[str, Any]], int, int, int]:
+        applied: list[dict[str, Any]] = []
+        inserted = updated = deleted = 0
+        engine = pg_engine_for_datasource(ds)
+        try:
+            with engine.begin() as conn:
+                for raw in ops:
+                    kind = str(raw.get("op") or "").lower()
+                    params: dict[str, Any] = {}
+                    if kind == "insert":
+                        cols_sql, ph_sql = _columns(raw.get("values") or {}, params)
+                        sql = f"INSERT INTO {table} ({cols_sql}) VALUES ({ph_sql})"
+                        if not dry_run:
+                            conn.execute(text(sql), params)
+                        inserted += 1
+                    elif kind in ("update", "delete"):
+                        if not pk_cols:
+                            raise RowEditError("Update/delete require a primary key on the dataset.")
+                        pk = raw.get("pk") or {}
+                        missing = [c for c in pk_cols if c not in pk]
+                        if missing:
+                            raise RowEditError(f"Missing primary-key values: {', '.join(missing)}")
+                        where = _predicate(pk, params, "pk")
+                        expect = raw.get("expect") or {}
+                        if expect:
+                            where += " AND " + _predicate(expect, params, "ex")
+                        if kind == "update":
+                            sql = f"UPDATE {table} SET {_assignments(raw.get('values') or {}, params)} WHERE {where}"
+                        else:
+                            sql = f"DELETE FROM {table} WHERE {where}"
+                        if not dry_run:
+                            result = conn.execute(text(sql), params)
+                            if result.rowcount == 0:
+                                raise RowEditError(
+                                    "No row matched (row missing or changed by someone else) — refresh and retry."
+                                )
+                        if kind == "update":
+                            updated += 1
+                        else:
+                            deleted += 1
+                    else:
+                        raise RowEditError(f"Unknown op '{kind}'.")
+                    applied.append(raw)
+            return applied, inserted, updated, deleted
+        finally:
+            engine.dispose()
+
     try:
-        with engine.begin() as conn:
-            for raw in ops:
-                kind = str(raw.get("op") or "").lower()
-                params: dict[str, Any] = {}
-                if kind == "insert":
-                    cols_sql, ph_sql = _columns(raw.get("values") or {}, params)
-                    sql = f"INSERT INTO {table} ({cols_sql}) VALUES ({ph_sql})"
-                    if not dry_run:
-                        conn.execute(text(sql), params)
-                    inserted += 1
-                elif kind in ("update", "delete"):
-                    if not pk_cols:
-                        raise RowEditError("Update/delete require a primary key on the dataset.")
-                    pk = raw.get("pk") or {}
-                    missing = [c for c in pk_cols if c not in pk]
-                    if missing:
-                        raise RowEditError(f"Missing primary-key values: {', '.join(missing)}")
-                    where = _predicate(pk, params, "pk")
-                    expect = raw.get("expect") or {}
-                    if expect:
-                        where += " AND " + _predicate(expect, params, "ex")
-                    if kind == "update":
-                        sql = f"UPDATE {table} SET {_assignments(raw.get('values') or {}, params)} WHERE {where}"
-                    else:
-                        sql = f"DELETE FROM {table} WHERE {where}"
-                    if not dry_run:
-                        result = conn.execute(text(sql), params)
-                        if result.rowcount == 0:
-                            raise RowEditError(
-                                "No row matched (row missing or changed by someone else) — refresh and retry."
-                            )
-                    if kind == "update":
-                        updated += 1
-                    else:
-                        deleted += 1
-                else:
-                    raise RowEditError(f"Unknown op '{kind}'.")
-                applied.append(raw)
-            if not dry_run:
-                for raw in applied:
-                    db.add(
-                        DatasetEdit(
-                            id=str(uuid.uuid4()),
-                            dataset_id=dataset.id,
-                            op=str(raw.get("op")).lower(),
-                            pk=raw.get("pk"),
-                            before=raw.get("expect"),
-                            after=raw.get("values"),
-                            actor=actor,
-                            actor_name=actor_name,
-                        )
-                    )
+        applied, inserted, updated, deleted = await asyncio.to_thread(apply)
     except RowEditError:
         raise
     except Exception as exc:  # surface DB errors as 400, not 500
         raise RowEditError(f"Edit failed: {exc}") from exc
-    finally:
-        engine.dispose()
+
+    if not dry_run:
+        for raw in applied:
+            db.add(
+                DatasetEdit(
+                    id=str(uuid.uuid4()),
+                    dataset_id=dataset.id,
+                    op=str(raw.get("op")).lower(),
+                    pk=raw.get("pk"),
+                    before=raw.get("expect"),
+                    after=raw.get("values"),
+                    actor=actor,
+                    actor_name=actor_name,
+                )
+            )
     return {"inserted": inserted, "updated": updated, "deleted": deleted}

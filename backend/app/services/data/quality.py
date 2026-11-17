@@ -7,6 +7,7 @@ next door, where they have tests.
 """
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -59,8 +60,8 @@ async def run_rule(db: AsyncSession, dataset: Dataset, rule: QualityRule) -> dic
         ref_table=ref_table,
     )
     try:
-        names, rows = run_readonly_names(
-            ds, built.sql, built.params, timeout_ms=RULE_SQL_TIMEOUT_MS
+        names, rows = await asyncio.to_thread(
+            run_readonly_names, ds, built.sql, built.params, timeout_ms=RULE_SQL_TIMEOUT_MS
         )
     except QualityError:
         raise

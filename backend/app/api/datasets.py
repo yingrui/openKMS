@@ -1,4 +1,5 @@
 """Datasets API – CRUD and list tables from DataSource (admin-only)."""
+import asyncio
 import uuid
 from collections import Counter
 
@@ -161,21 +162,26 @@ async def list_tables_from_source(
             status_code=400,
             detail="Listing tables is only supported for PostgreSQL data sources",
         )
-    try:
+    def list_tables() -> list[tuple[str, str]]:
         engine = pg_engine_for_datasource(ds)
-        with engine.connect() as conn:
-            result = conn.execute(
-                text("""
-                SELECT table_schema, table_name
-                FROM information_schema.tables
-                WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
-                  AND table_type = 'BASE TABLE'
-                ORDER BY table_schema, table_name
-                """)
-            )
-            rows = result.fetchall()
-        engine.dispose()
-        return [TableInfo(schema_name=r[0], table_name=r[1]) for r in rows]
+        try:
+            with engine.connect() as conn:
+                result = conn.execute(
+                    text("""
+                    SELECT table_schema, table_name
+                    FROM information_schema.tables
+                    WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+                      AND table_type = 'BASE TABLE'
+                    ORDER BY table_schema, table_name
+                    """)
+                )
+                return [(str(r[0]), str(r[1])) for r in result.fetchall()]
+        finally:
+            engine.dispose()
+
+    try:
+        rows = await asyncio.to_thread(list_tables)
+        return [TableInfo(schema_name=schema, table_name=table) for schema, table in rows]
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Failed to list tables: {e}") from e
 
@@ -419,20 +425,25 @@ async def get_dataset_metadata(
     schema, table = dataset.schema_name, dataset.table_name
     if not is_valid_identifier(schema) or not is_valid_identifier(table):
         raise HTTPException(status_code=400, detail="Invalid schema or table name")
-    try:
+    def read_columns():
         engine = pg_engine_for_datasource(ds)
-        with engine.connect() as conn:
-            result = conn.execute(
-                text("""
-                SELECT column_name, data_type, udt_name, is_nullable, ordinal_position
-                FROM information_schema.columns
-                WHERE table_schema = :schema AND table_name = :table
-                ORDER BY ordinal_position
-                """),
-                {"schema": schema, "table": table},
-            )
-            rows = result.fetchall()
-        engine.dispose()
+        try:
+            with engine.connect() as conn:
+                result = conn.execute(
+                    text("""
+                    SELECT column_name, data_type, udt_name, is_nullable, ordinal_position
+                    FROM information_schema.columns
+                    WHERE table_schema = :schema AND table_name = :table
+                    ORDER BY ordinal_position
+                    """),
+                    {"schema": schema, "table": table},
+                )
+                return result.fetchall()
+        finally:
+            engine.dispose()
+
+    try:
+        rows = await asyncio.to_thread(read_columns)
         descriptions = await description_map(db, dataset.id)
         out: list[ColumnMetadata] = []
         for r in rows:
