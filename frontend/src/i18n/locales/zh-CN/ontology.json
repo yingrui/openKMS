@@ -919,7 +919,7 @@
     "cardOneToOne": "{{left}} 1 → 1 {{right}}",
     "cardNTo1Hint": "一条 {{left}} 记录最多对应一条 {{right}} 记录，且必须存在",
     "cardNToZeroOrOneHint": "一条 {{left}} 记录最多对应一条 {{right}} 记录，被引用记录可以为空",
-    "cardOneToOneHint": "两端各自最多一条；需要先声明 {{left}} 侧的唯一键，当前未校验",
+    "cardOneToOneHint": "两端各自最多一条；保存时校验 {{left}} 与 {{right}} 侧字段都唯一",
     "cardUnsupported": "暂不支持",
     "joinCondition": "连接条件",
     "joinCardinalityLeft": "左侧基数",
@@ -927,7 +927,9 @@
     "joinSwapDirection": "交换持有外键的一方",
     "cardShortNTo1": "N → 1",
     "cardShortNToZeroOrOne": "N → 0..1",
-    "cardOneToOneShort": "1 → 1"
+    "cardOneToOneShort": "1 → 1",
+    "cardOneToZeroOrOne": "{{left}} 1 → 0..1 {{right}}",
+    "cardOneToZeroOrOneHint": "一条 {{left}} 记录最多对应一条 {{right}} 记录；保存时校验 {{left}} 侧字段唯一，被引用记录可以为空"
   },
   "groups": {
     "title": "分组",

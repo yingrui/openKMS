@@ -926,7 +926,7 @@
     "cardOneToOne": "{{left}} 1 → 1 {{right}}",
     "cardNTo1Hint": "One {{left}} row matches at most one {{right}} row, and that row must exist",
     "cardNToZeroOrOneHint": "One {{left}} row matches at most one {{right}} row; the referenced row may be missing",
-    "cardOneToOneHint": "At most one on each side; needs a declared unique key on {{left}}, not checked yet",
+    "cardOneToOneHint": "At most one on each side; the save checks that both {{left}} and {{right}} fields are unique",
     "cardUnsupported": "not supported yet",
     "joinCondition": "Join condition",
     "joinCardinalityLeft": "Left cardinality",
@@ -934,7 +934,9 @@
     "joinSwapDirection": "Swap which dataset holds the foreign key",
     "cardShortNTo1": "N → 1",
     "cardShortNToZeroOrOne": "N → 0..1",
-    "cardOneToOneShort": "1 → 1"
+    "cardOneToOneShort": "1 → 1",
+    "cardOneToZeroOrOne": "{{left}} 1 → 0..1 {{right}}",
+    "cardOneToZeroOrOneHint": "One {{left}} row matches at most one {{right}} row; the save checks {{left}} is unique, and the referenced row may be missing"
   },
   "groups": {
     "title": "Groups",

@@ -431,11 +431,13 @@ export function DatasetRelationshipsTab() {
                   <span className="dataset-joins__cardinality-controls">
                     <select
                       className="ds-control dataset-joins__cardinality-select"
-                      value="N"
-                      disabled
+                      value={fromUnique ? '1' : 'N'}
+                      onChange={(e) => setFromUnique(e.target.value === '1')}
+                      disabled={editing !== null}
                       aria-label={t('datasets.joinCardinalityLeft')}
                     >
                       <option value="N">N</option>
+                      <option value="1">1</option>
                     </select>
                     <button
                       type="button"
@@ -463,10 +465,16 @@ export function DatasetRelationshipsTab() {
                   </span>
                 </div>
                 <p className="dataset-joins__summary-hint">
-                  {t(required ? 'datasets.cardNTo1Hint' : 'datasets.cardNToZeroOrOneHint', {
-                    left: leftName,
-                    right: rightName,
-                  })}
+                  {t(
+                    fromUnique
+                      ? required
+                        ? 'datasets.cardOneToOneHint'
+                        : 'datasets.cardOneToZeroOrOneHint'
+                      : required
+                        ? 'datasets.cardNTo1Hint'
+                        : 'datasets.cardNToZeroOrOneHint',
+                    { left: leftName, right: rightName },
+                  )}
                 </p>
                 <p className="dataset-joins__summary-condition">
                   <span className="dataset-joins__summary-label">{t('datasets.joinCondition')}</span>
