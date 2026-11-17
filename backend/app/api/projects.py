@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import shutil
 from typing import Any
 
@@ -175,7 +176,8 @@ async def create_project(request: Request, body: ProjectCreate, db: AsyncSession
     try:
         if git_url:
             username, token = await _optional_git_credential(db, sub, body.git_credential_id)
-            git_service.git_clone_into_project(
+            await asyncio.to_thread(
+                git_service.git_clone_into_project,
                 p.id,
                 git_url,
                 username=username,
@@ -418,7 +420,7 @@ async def patch_settings(
 async def git_init(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     sub = get_jwt_sub(request)
     p = await _get_owned_project(db, project_id, sub)
-    git_service.git_init(project_id, p.settings or {})
+    await asyncio.to_thread(git_service.git_init, project_id, p.settings or {})
     p.git_initialized = True
     await db.flush()
     return GitInitResponse(git_initialized=True)
@@ -432,7 +434,7 @@ async def git_init(project_id: str, request: Request, db: AsyncSession = Depends
 async def git_status(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     sub = get_jwt_sub(request)
     await _get_owned_project(db, project_id, sub)
-    data = git_service.git_status(project_id)
+    data = await asyncio.to_thread(git_service.git_status, project_id)
     return GitStatusResponse(**data)
 
 
@@ -449,7 +451,8 @@ async def git_log(
 ):
     sub = get_jwt_sub(request)
     await _get_owned_project(db, project_id, sub)
-    return GitLogResponse(entries=git_service.git_log(project_id, limit=limit))
+    entries = await asyncio.to_thread(git_service.git_log, project_id, limit)
+    return GitLogResponse(entries=entries)
 
 
 @router.post(
@@ -464,11 +467,15 @@ async def git_commit(
 ):
     sub = get_jwt_sub(request)
     p = await _get_owned_project(db, project_id, sub)
-    if body.paths:
-        git_service.git_add(project_id, git_service.safe_paths(body.paths))
-    elif body.stage_all:
-        git_service.git_add(project_id, None)
-    out = git_service.git_commit(project_id, body.message, p.settings or {})
+
+    def commit() -> str:
+        if body.paths:
+            git_service.git_add(project_id, git_service.safe_paths(body.paths))
+        elif body.stage_all:
+            git_service.git_add(project_id, None)
+        return git_service.git_commit(project_id, body.message, p.settings or {})
+
+    out = await asyncio.to_thread(commit)
     return {"ok": True, "output": out}
 
 
@@ -484,7 +491,7 @@ async def git_stage(
 ):
     sub = get_jwt_sub(request)
     await _get_owned_project(db, project_id, sub)
-    git_service.git_add(project_id, git_service.safe_paths(body.paths))
+    await asyncio.to_thread(git_service.git_add, project_id, git_service.safe_paths(body.paths))
     return {"ok": True}
 
 
@@ -500,7 +507,7 @@ async def git_unstage(
 ):
     sub = get_jwt_sub(request)
     await _get_owned_project(db, project_id, sub)
-    git_service.git_unstage(project_id, git_service.safe_paths(body.paths))
+    await asyncio.to_thread(git_service.git_unstage, project_id, git_service.safe_paths(body.paths))
     return {"ok": True}
 
 
@@ -516,7 +523,7 @@ async def git_discard(
 ):
     sub = get_jwt_sub(request)
     await _get_owned_project(db, project_id, sub)
-    git_service.git_discard(project_id, git_service.safe_paths(body.paths))
+    await asyncio.to_thread(git_service.git_discard, project_id, git_service.safe_paths(body.paths))
     return {"ok": True}
 
 
@@ -535,7 +542,8 @@ async def git_diff(
     sub = get_jwt_sub(request)
     await _get_owned_project(db, project_id, sub)
     safe = git_service.safe_paths([path])[0] if path else None
-    return GitDiffResponse(diff=git_service.git_diff(project_id, safe, staged=staged))
+    diff = await asyncio.to_thread(git_service.git_diff, project_id, safe, staged=staged)
+    return GitDiffResponse(diff=diff)
 
 
 @router.get(
@@ -546,10 +554,15 @@ async def git_diff(
 async def git_branches(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     sub = get_jwt_sub(request)
     await _get_owned_project(db, project_id, sub)
-    return GitBranchesResponse(
-        branches=git_service.git_branches(project_id),
-        current=git_service.git_current_branch(project_id),
-    )
+
+    def branches() -> tuple[list[str], str | None]:
+        return (
+            git_service.git_branches(project_id),
+            git_service.git_current_branch(project_id),
+        )
+
+    names, current = await asyncio.to_thread(branches)
+    return GitBranchesResponse(branches=names, current=current)
 
 
 def _creator_from_request(request: Request) -> tuple[str | None, str | None]:

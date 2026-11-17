@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
@@ -66,7 +68,8 @@ async def git_clone(
     if not body.url.startswith("https://"):
         raise HTTPException(status_code=400, detail="Only HTTPS remotes are supported")
     username, token = await _resolve_credential(db, sub, body.credential_id)
-    git_service.git_clone_into_project(
+    await asyncio.to_thread(
+        git_service.git_clone_into_project,
         project_id,
         body.url,
         username=username,
@@ -98,10 +101,16 @@ async def git_remote(
     url = body.url.strip()
     if not url.startswith("https://"):
         raise HTTPException(status_code=400, detail="Only HTTPS remotes are supported")
-    if not (project_root(project_id) / ".git").exists():
-        git_service.git_init(project_id, p.settings or {})
+    initialized = not (project_root(project_id) / ".git").exists()
+
+    def configure_remote() -> None:
+        if initialized:
+            git_service.git_init(project_id, p.settings or {})
+        git_service.git_remote_add(project_id, url)
+
+    await asyncio.to_thread(configure_remote)
+    if initialized:
         p.git_initialized = True
-    git_service.git_remote_add(project_id, url)
     _persist_git_settings(p, remote_url=url, credential_id=body.credential_id)
     await db.flush()
     return {"ok": True, "git_initialized": True, "remote_url": url}
@@ -122,7 +131,7 @@ async def git_pull(
     username, token = await _resolve_credential(db, sub, body.credential_id)
     if not token:
         raise HTTPException(status_code=400, detail="credential_id is required for remote git")
-    out = git_service.git_pull(project_id, username or "", token)
+    out = await asyncio.to_thread(git_service.git_pull, project_id, username or "", token)
     return {"ok": True, "output": out}
 
 
@@ -141,5 +150,5 @@ async def git_push(
     username, token = await _resolve_credential(db, sub, body.credential_id)
     if not token:
         raise HTTPException(status_code=400, detail="credential_id is required for remote git")
-    out = git_service.git_push(project_id, username or "", token)
+    out = await asyncio.to_thread(git_service.git_push, project_id, username or "", token)
     return {"ok": True, "output": out}
