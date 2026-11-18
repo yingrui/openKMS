@@ -229,10 +229,11 @@
   background: var(--color-accent-subtle);
 }
 
-.channel-table-select-col {
+.channel-table th.channel-table-select-col,
+.channel-table td.channel-table-select-col {
   width: 40px;
-  padding-left: var(--space-3) !important;
-  padding-right: var(--space-2) !important;
+  padding-left: var(--space-3);
+  padding-right: var(--space-2);
   vertical-align: middle;
 }
 

@@ -1307,12 +1307,12 @@
 
 @include max-width(ds.$km-layout-max) {
   .document-detail-split {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr;
     min-height: 0;
   }
   .document-detail-split[data-extended-images="true"],
   .document-detail-split[data-extended-markdown="true"] {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr;
   }
 }
 @include max-width(ds.$bp-md-min) {
