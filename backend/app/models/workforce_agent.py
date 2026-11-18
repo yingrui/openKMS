@@ -1,0 +1,144 @@
+"""Workforce agents: Q&A services that put a knowledge base to work for external callers.
+
+A knowledge base says *what is known* (documents, wiki pages, FAQ, chunks, embeddings, retrieval
+depth). A workforce agent says *how that knowledge answers for someone outside openKMS* — the
+instructions, the model, the skills, the answer policy, the workspace and sandbox, and the slice of
+Catalog / Ontology it may consult. One knowledge base may back several agents with different roles.
+
+The agent is a **delegated read-only identity of its owner**: binding a knowledge base requires the
+owner to be able to read it, and the agent's credentials never outlive the owner. See
+`docs/features/workforce.md`.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.database import Base
+
+#: Active agents serve; archived agents are hidden and their credentials stop working. Archive,
+#: not delete: the binding rows and the audit trail keep pointing at a row that exists.
+AGENT_STATUS_ACTIVE = "active"
+AGENT_STATUS_ARCHIVED = "archived"
+
+
+class WorkforceAgent(Base):
+    __tablename__ = "workforce_agents"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    #: The creator. Their identity is the ceiling on what the agent may read; deleting the owner
+    #: invalidates the agent because nothing resolves `owner_sub` any more.
+    owner_sub: Mapped[str] = mapped_column(String(512), nullable=False, index=True)
+    owner_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
+
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default=AGENT_STATUS_ACTIVE, server_default=AGENT_STATUS_ACTIVE
+    )
+
+    #: Which skills are enabled. `null` → the qa-agent core defaults, same rule as a knowledge base.
+    agent_skills: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    #: The agent's runtime configuration minus `retrieval` — retrieval depth is a property of the
+    #: knowledge source (`knowledge_bases.agent_config.retrieval`) and is merged in at request time.
+    agent_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    #: Set when the agent was created as a knowledge base's default runtime, so the knowledge base's
+    #: own Q&A resolves one agent instead of keeping a second copy of the same configuration.
+    origin_knowledge_base_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey("knowledge_bases.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class WorkforceAgentKB(Base):
+    """The knowledge sources an agent may answer from."""
+
+    __tablename__ = "workforce_agent_kbs"
+    __table_args__ = (
+        UniqueConstraint("agent_id", "knowledge_base_id", name="uq_workforce_agent_kb"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    agent_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("workforce_agents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    knowledge_base_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    #: How this agent names the source ("制度库", "财报"). Absent → the knowledge base name.
+    label: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    #: Ordering for a caller that shows the sources; lower first. Not a routing policy.
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class WorkforceAgentSemanticModel(Base):
+    """Catalog models the agent may query (replaces the per-KB scope for a workforce agent)."""
+
+    __tablename__ = "workforce_agent_semantic_models"
+    __table_args__ = (
+        UniqueConstraint("agent_id", "semantic_model_id", name="uq_workforce_agent_semantic_model"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    agent_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("workforce_agents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    semantic_model_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("semantic_models.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class WorkforceAgentOntologyGroup(Base):
+    """Ontology groups whose object types and links the agent may read."""
+
+    __tablename__ = "workforce_agent_ontology_groups"
+    __table_args__ = (
+        UniqueConstraint("agent_id", "ontology_group_id", name="uq_workforce_agent_ontology_group"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    agent_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("workforce_agents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    ontology_group_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("ontology_groups.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class WorkforceAgentCredential(Base):
+    """A service credential for one agent (`wfks.{id}.{secret}`).
+
+    Separate from a personal API key on purpose: revoking it stops this agent without touching the
+    owner's own access, and the audit trail says *which agent* called rather than "some user".
+    """
+
+    __tablename__ = "workforce_agent_credentials"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    agent_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("workforce_agents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    #: First characters of the token for display; the secret itself is only hashed.
+    key_prefix: Mapped[str] = mapped_column(String(32), nullable=False)
+    secret_hash: Mapped[str] = mapped_column(Text, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -136,6 +136,9 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
     column_time_formats: dict[str, dict[str, str | None]] = {}
     for column in columns:
         column_time_formats.setdefault(column.dataset_id, {})[column.column_name] = column.time_format
+    column_time_formats: dict[str, dict[str, str | None]] = {}
+    for column in columns:
+        column_time_formats.setdefault(column.dataset_id, {})[column.column_name] = column.time_format
     ds_names = {ds.id: ds.name for ds in (await db.execute(select(DataSource))).scalars().all()}
     name_by_id = {d.id: _dataset_name(d) for d in datasets}
 
@@ -273,9 +276,6 @@ async def _dataset_index(
 ) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
     """Return (by_id, by_source, by_name) → dataset id."""
     datasets = (await db.execute(select(Dataset))).scalars().all()
-    column_time_formats: dict[str, dict[str, str | None]] = {}
-    for column in columns:
-        column_time_formats.setdefault(column.dataset_id, {})[column.column_name] = column.time_format
     ds_names = {ds.id: ds.name for ds in (await db.execute(select(DataSource))).scalars().all()}
     by_id: dict[str, str] = {}
     by_source: dict[str, str] = {}
