@@ -9,7 +9,13 @@ from app.database import Base
 
 
 class KnowledgeBase(Base):
-    """Knowledge base: groups documents, FAQs, and chunks for RAG Q&A."""
+    """Knowledge base: a corpus and how to search it.
+
+    It holds the content (linked documents, wiki spaces, FAQs, and the chunks embedded from them) and the
+    retrieval settings that belong to that content — how deep to search, whether to rerank. How an answer is
+    produced, and who may ask, is a workforce agent's business (`models/workforce_agent.py`); several agents
+    can answer from one corpus with different instructions, skills and policies.
+    """
 
     __tablename__ = "knowledge_bases"
 
