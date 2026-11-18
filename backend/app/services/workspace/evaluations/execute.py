@@ -197,6 +197,7 @@ async def _run_items(
 
 
 async def _ask_agent(
+    db: AsyncSession,
     client: httpx.AsyncClient,
     ask_url: str,
     kb: KnowledgeBase,
@@ -210,12 +211,13 @@ async def _ask_agent(
     Returned rather than raised: an unreachable answer is recorded against its own item, while a missing agent URL (a
     configuration mistake) still surfaces as the caller's HTTPException.
     """
-    from app.services.content.knowledge_bases.qa_agent_proxy import ask_agent_body
+    from app.services.content.knowledge_bases.qa_agent_proxy import ask_agent_body_for_kb
 
     try:
         resp = await client.post(
             ask_url,
-            json=ask_agent_body(
+            json=await ask_agent_body_for_kb(
+                db,
                 kb=kb,
                 question=item.query,
                 conversation_history=[],
@@ -307,7 +309,7 @@ async def run_qa_answer_evaluation(
     async with httpx.AsyncClient(timeout=120.0) as client:
 
         async def run_one(item: EvaluationItem) -> dict[str, Any]:
-            data, error = await _ask_agent(client, ask_url, kb, item, access_token)
+            data, error = await _ask_agent(db, client, ask_url, kb, item, access_token)
             if data is None:
                 return _item_result(
                     item,
@@ -430,6 +432,7 @@ async def run_data_query_evaluation(
         async def run_one(item: EvaluationItem) -> dict[str, Any]:
             # One trace per item, grouped under the evaluation run: a score needs a trace to attach to.
             data, error = await _ask_agent(
+                db,
                 client,
                 ask_url,
                 kb,

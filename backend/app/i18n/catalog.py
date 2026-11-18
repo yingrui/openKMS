@@ -52,6 +52,10 @@ MESSAGES: dict[str, dict[str, str]] = {
         "en": "The data source rejected the query. See the details for what it said.",
         "zh_CN": "数据源拒绝了该查询。详情见错误原文。",
     },
+    "WORKFORCE_CREDENTIAL_READ_ONLY": {
+        "en": "A workforce agent credential may only read. Ask through the agent's own endpoint.",
+        "zh_CN": "数字员工的凭证只能读。请通过该数字员工自己的问答端点调用。",
+    },
     # Grid row filters (Data tab): the caller picked a column/operator that does not apply.
     # Data Insights: a run needs a source, and a semantic-model block needs a metric.
     "REPORT_SOURCE_KIND_UNKNOWN": {

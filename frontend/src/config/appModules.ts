@@ -18,6 +18,7 @@ import {
   LayoutGrid,
   Table2,
   Sparkles,
+  Users,
 } from 'lucide-react';
 import type { FeatureToggleKey } from '../data/featureTogglesApi';
 
@@ -133,6 +134,20 @@ export const APP_MODULES: AppModule[] = [
     showInConsoleNav: false,
     featureToggle: 'agents',
     isActive: agentsActive,
+  },
+  {
+    id: 'workforce',
+    kind: 'suite_app',
+    layer: 'application',
+    order: 15,
+    homePath: '/workforce',
+    icon: Users,
+    labelKey: 'workforce',
+    taglineKey: 'appTaglineWorkforce',
+    showInLauncher: true,
+    showInMainSidebar: true,
+    showInConsoleNav: false,
+    isActive: (p) => p === '/workforce' || p.startsWith('/workforce/'),
   },
   {
     id: 'documents',

@@ -129,6 +129,7 @@ def _parse_sources(raw: Any) -> list[SearchResult]:
 
 
 async def _run_kb_ask_non_stream(
+    db: AsyncSession,
     kb: KnowledgeBase,
     kb_id: str,
     question: str,
@@ -138,14 +139,18 @@ async def _run_kb_ask_non_stream(
 ) -> tuple[str, list[SearchResult]]:
     if not kb.agent_url:
         raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
-    from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
+    from app.services.content.knowledge_bases.qa_agent_proxy import (
+        agent_kb_path,
+        ask_agent_body_for_kb,
+    )
 
     url = agent_kb_path(kb.agent_url, kb_id, "ask")
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
                 url,
-                json=ask_agent_body(
+                json=await ask_agent_body_for_kb(
+                    db,
                     kb=kb,
                     question=question,
                     conversation_history=history,
@@ -217,10 +222,14 @@ async def _ndjson_kb_qa_stream_persist(
         )
         return
 
-    from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
+    from app.services.content.knowledge_bases.qa_agent_proxy import (
+        agent_kb_path,
+        ask_agent_body_for_kb,
+    )
 
     stream_url = agent_kb_path(kb.agent_url, kb_id, "ask/stream")
-    stream_payload = ask_agent_body(
+    stream_payload = await ask_agent_body_for_kb(
+        db,
         kb=kb,
         question=question,
         conversation_history=history,
@@ -649,7 +658,9 @@ def build_kb_conversation_router(surface: str, path_segment: str) -> APIRouter:
                 },
             )
 
-        answer, sources = await _run_kb_ask_non_stream(kb, kb_id, question, history, token, body.session_id)
+        answer, sources = await _run_kb_ask_non_stream(
+            db, kb, kb_id, question, history, token, body.session_id
+        )
         tool_payload: dict[str, Any] = {}
         if sources:
             tool_payload[KB_QA_SOURCES_KEY] = _sources_to_json(sources)

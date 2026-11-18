@@ -91,6 +91,24 @@ def _is_data_plane(method: str, path: str) -> bool:
     return False
 
 
+def _is_workforce_serve(method: str, path: str) -> bool:
+    """`POST /api/workforce/agents/{id}/ask` — the service endpoint an integrator calls.
+
+    Its gate is the agent's credential plus the agent's bound knowledge sources, both decided in the
+    handler. No operation key may stand in for that: a caller needs no permission *key*, only a token
+    for that agent.
+    """
+    if method != "POST":
+        return False
+    parts = [p for p in path.split("/") if p]
+    return (
+        len(parts) == 5
+        and parts[:3] == ["api", "workforce", "agents"]
+        and bool(parts[3])
+        and parts[4] == "ask"
+    )
+
+
 def _norm_path(path: str) -> str:
     p = path.split("?", 1)[0]
     if len(p) > 1 and p.endswith("/"):
@@ -135,8 +153,8 @@ class StrictPermissionPatternMiddleware:
             async with async_session_maker() as db:
                 await authenticate_request(request, db)
         except HTTPException as e:
-            if e.status_code == 401:
-                await JSONResponse({"detail": e.detail}, status_code=401)(scope, receive, send)
+            if e.status_code in (401, 403):
+                await JSONResponse({"detail": e.detail}, status_code=e.status_code)(scope, receive, send)
                 return
             raise
 
@@ -161,6 +179,20 @@ class StrictPermissionPatternMiddleware:
         # the data resource grant (a public model is open to any authenticated caller). No
         # permission key may stand in for that decision.
         if _is_data_plane(method, path):
+            await self.app(scope, receive, send)
+            return
+
+        # A workforce credential is a **read-only** delegation: an integrator's token may retrieve and
+        # consult, never mutate. The one exception is the serve endpoint, which is a POST by shape but
+        # a read by effect.
+        if getattr(request.state, "openkms_workforce_agent_id", None) and method not in ("GET", "HEAD"):
+            if not _is_workforce_serve(method, path):
+                await JSONResponse(
+                    {"detail": "A workforce credential may only read"}, status_code=403
+                )(scope, receive, send)
+                return
+
+        if _is_workforce_serve(method, path):
             await self.app(scope, receive, send)
             return
 

@@ -21,7 +21,13 @@ from app.database import get_db
 from app.services.identity.acl.data_scope import bootstrap_owner_acl, effective_wiki_space_ids, scope_applies
 from app.services.content.documents.document_lifecycle import source_current_for_rag_sql
 from app.services.content.documents.document_scope import require_document_by_id_read
-from app.services.content.knowledge_bases.knowledge_base_read import kb_stats, kb_to_response, list_knowledge_bases_page
+from app.services.content.knowledge_bases.knowledge_base_read import (
+    kb_stats,
+    kb_to_response,
+    list_knowledge_bases_page,
+)
+from app.services.workforce.agent_config import agent_config_payload
+from app.services.workforce.read import default_agent_for_kb, default_agents_by_kb
 from app.services.content.knowledge_bases.kb_scope import require_knowledge_base_manage
 from app.services.content.wiki.wiki_page_scope import require_wiki_page_by_id_read
 from app.services.content.wiki.wiki_scope import load_wiki_space_scoped
@@ -120,10 +126,20 @@ async def create_knowledge_base(
     await db.flush()
     if isinstance(sub, str):
         await bootstrap_owner_acl(db, RT_KNOWLEDGE_BASE, kb.id, sub)
+    # A knowledge base is a knowledge source; its own Q&A is one workforce agent's job. Create that
+    # agent with the knowledge base so there is never a second copy of the same runtime configuration.
+    from app.api.workforce import ensure_default_agent
+
+    agent = await ensure_default_agent(
+        db,
+        kb=kb,
+        owner_sub=sub if isinstance(sub, str) else "",
+        owner_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
+    )
     await db.commit()
     await db.refresh(kb)
     stats = await kb_stats(db, kb.id)
-    return kb_to_response(kb, stats)
+    return kb_to_response(kb, stats, agent.id)
 
 
 @router.get("/{kb_id}", response_model=KnowledgeBaseResponse)
@@ -132,7 +148,8 @@ async def get_knowledge_base(
     db: AsyncSession = Depends(get_db),
 ):
     stats = await kb_stats(db, kb.id)
-    return kb_to_response(kb, stats)
+    agents_by_kb = await default_agents_by_kb(db, [kb.id])
+    return kb_to_response(kb, stats, agents_by_kb.get(kb.id))
 
 
 @router.put("/{kb_id}", response_model=KnowledgeBaseResponse)
@@ -147,8 +164,20 @@ async def update_knowledge_base(
         setattr(kb, field, value)
     await db.flush()
     await db.refresh(kb)
+    # The Agent tab still speaks this API. Mirror the runtime half onto the knowledge base's default
+    # agent so the two surfaces cannot drift; `retrieval` is the knowledge base's own (see
+    # `services/workforce/agent_config.py`). Removed when the tab moves to the agent.
+    agent = None
+    if "agent_config" in update_data or "agent_skills" in update_data:
+        agent = await default_agent_for_kb(db, kb.id)
+        if agent is not None:
+            agent.agent_skills = kb.agent_skills
+            agent.agent_config = agent_config_payload(kb.agent_config)
+            await db.flush()
     stats = await kb_stats(db, kb.id)
-    return kb_to_response(kb, stats)
+    if agent is None:
+        agent = await default_agent_for_kb(db, kb.id)
+    return kb_to_response(kb, stats, agent.id if agent is not None else None)
 
 
 @router.post("/{kb_id}/index-job", response_model=JobResponse, status_code=201)

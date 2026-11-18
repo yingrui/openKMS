@@ -27,10 +27,3 @@ export function kbComputeSearchDiff(prev: KbSearchSnapshot, cur: KbSearchSnapsho
   return { added, removed, moved };
 }
 
-export function kbHasRetrievalProvenance(s: SearchResult): boolean {
-  if (s.chunk_index != null && s.chunk_index !== undefined) return true;
-  if (s.retrieval_mode) return true;
-  const d = s.retrieval_debug;
-  if (d && typeof d === 'object' && Object.keys(d).length > 0) return true;
-  return false;
-}

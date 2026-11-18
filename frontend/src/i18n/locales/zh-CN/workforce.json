@@ -111,5 +111,7 @@
   "chatTitle": "对话",
   "chatOpen": "与数字员工交流",
   "chatPickSourceTitle": "选择知识源",
-  "chatPickSourceLead": "一次对话只属于一个知识源。选择要与「{{name}}」讨论的来源。"
+  "chatPickSourceLead": "一次对话只属于一个知识源。选择要与「{{name}}」讨论的来源。",
+  "backToAgent": "返回数字员工",
+  "chatSettings": "数字员工设置"
 }

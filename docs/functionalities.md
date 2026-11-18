@@ -11,6 +11,7 @@ Per-feature reference, split by topic under `docs/features/`. The table below is
 | [Media library](features/media.md) | Media channels, image/video assets, metadata, upload, Zhipu AI generation ( **`media`** toggle, default off) |
 | [Comments](features/comments.md) | User comments and 0–5 ratings on articles, documents, KBs, wiki spaces, agent projects |
 | [Knowledge bases](features/knowledge-bases.md) | KB CRUD, FAQs, chunks, semantic search, QA proxy, kb-index |
+| [Workforce agents](features/workforce.md) | Workforce agents (数字员工): instructions/model/skills/policy per service, knowledge-source bindings, read-only service credentials, `POST /api/workforce/agents/{id}/ask` |
 | [Wiki spaces](features/wiki-spaces.md) | Wiki content (path-addressed pages, files, vault), import, graph view |
 | [Evaluation](features/evaluation.md) | Evaluations, items, runs, compare (experimental toggle; quality-improvement workflows still evolving) |
 | [Glossaries](features/glossaries.md) | Bilingual terms, AI suggestion, import/export |

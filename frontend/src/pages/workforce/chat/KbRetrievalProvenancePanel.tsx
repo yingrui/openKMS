@@ -1,5 +1,5 @@
-import type { SearchResult } from '../../data/knowledgeBasesApi';
-import { kbHasRetrievalProvenance } from './KnowledgeBaseDetail.searchUtils';
+import type { SearchResult } from '../../../data/knowledgeBasesApi';
+import { kbHasRetrievalProvenance } from './qaUtils';
 
 interface KbRetrievalProvenanceProps {
   s: SearchResult;

@@ -111,5 +111,7 @@
   "chatTitle": "Chat",
   "chatOpen": "Talk to this agent",
   "chatPickSourceTitle": "Choose a knowledge source",
-  "chatPickSourceLead": "A conversation stays with one source. Pick the one to talk to {{name}} about."
+  "chatPickSourceLead": "A conversation stays with one source. Pick the one to talk to {{name}} about.",
+  "backToAgent": "Back to agent",
+  "chatSettings": "Agent settings"
 }

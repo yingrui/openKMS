@@ -444,6 +444,7 @@
     "qaFilesRefresh": "Refresh",
     "qaFilesClose": "Close files",
     "qaFilesResize": "Resize files panel",
-    "qaFilesResizeHint": "Drag to resize the files panel"
+    "qaFilesResizeHint": "Drag to resize the files panel",
+    "toastFaqCreateFailed": "Could not create the FAQ"
   }
 }

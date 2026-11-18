@@ -11,7 +11,7 @@ flowchart TB
   end
 
   subgraph Backend["Backend (FastAPI)"]
-    API["knowledge-map (/api/knowledge-map, incl. overview A2UI + NDJSON designer; legacy map-html), home, chamber (/api/chamber/apps), document-channels, article-channels, articles, documents, knowledge-bases, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
+    API["knowledge-map (/api/knowledge-map, incl. overview A2UI + NDJSON designer; legacy map-html), home, chamber (/api/chamber/apps), document-channels, article-channels, articles, documents, knowledge-bases, workforce, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
   end
 
   subgraph Storage["Data & Processing"]
@@ -113,7 +113,7 @@ Ontology SPA sources live under `frontend/src/pages/ontology/`. **Chamber** live
 frontend/src/
 ├── App.tsx, main.tsx, index.scss
 ├── pages/
-│   ├── documents/, articles/, wiki/, knowledge-bases/, knowledge-map/
+│   ├── documents/, articles/, wiki/, knowledge-bases/, workforce/, knowledge-map/
 │   ├── evaluation/, glossaries/, ontology/, chamber/, console/
 │   ├── agents/, pipelines/, jobs/, models/, auth/, connectors/
 │   └── Home.tsx, Profile.tsx, UserSettings.tsx, GlobalSearch.tsx
@@ -180,7 +180,7 @@ backend/
 │   ├── models/                 # document, wiki, knowledge_base, evaluation, …
 │   ├── schemas/                # paired with api domains
 │   ├── services/
-│   │   ├── acl/, documents/, knowledge_bases/, wiki/, ontology/, deep_agents/, connectors/, …  # one package per domain
+│   │   ├── acl/, documents/, knowledge_bases/, workforce/, wiki/, ontology/, deep_agents/, connectors/, …  # one package per domain
 │   │   └── *.py                # cross-cutting: storage, feature_toggles, chunked_upload, openkms_cli_subprocess
 │   ├── jobs/tasks.py
 │   ├── i18n/
@@ -267,6 +267,8 @@ qa-agent/
 - **Purpose**: Separate RAG + ontology + Catalog service for Q&A against knowledge bases; configurable per KB via `agent_url` and **`agent_skills`**
 - **Architecture**: LangGraph state graph: `retrieve` (KB search) → `generate` (LLM with tools for the selected skills) ⇄ `tools` (union of registered skill tools). RAG via `POST /api/knowledge-bases/{id}/search`; ontology via groups/object-types/link-types + `POST /api/ontology/explore` (Cypher); Catalog via linked semantic models + `POST /api/semantic-models/{id}/query` and **`…/sql`** (SQL Lab). Does not access the database directly. Linked models/groups on the KB (`kb_semantic_models` / `kb_ontology_groups`) scope tools only — not RAG ACL. Path `kb_id` is authoritative; body `agent_skills` selects which skills bind (null → core: ontology, catalog, page_index).
 - **Ontology / Catalog skills**: Ontology tools may restrict schema to linked groups. Catalog skill lists metrics on linked models, runs Chart-Data-like queries (metric or expression + filters/where/having), or a read-only SELECT against the model’s tables via SQL Lab; answers cite `metric` / `semantic_model` sources. Optional insurance demo skills load only when listed on the KB.
+- **Workforce agents**: the same qa-agent answers for a service as well as for a knowledge base. A workforce agent (`workforce_agents`) owns instructions, model, skills, answer policy, workspace/sandbox and its Catalog/Ontology bindings; retrieval depth stays on the knowledge base. `POST /api/workforce/agents/{id}/ask` is authenticated by the agent's own `wfks.…` credential — a read-only delegation of its creator's identity — and forwards to the same `/knowledge-bases/{kb_id}/ask` path with the agent's configuration. A knowledge base's own Q&A resolves its default agent, so the two surfaces share one configuration. See [Workforce agents](../features/workforce.md).
+
 - **Integration**: Backend proxies `POST /api/knowledge-bases/{kb_id}/ask` and **`POST …/ask/stream`** to `{kb.agent_url}/knowledge-bases/{kb_id}/ask` and **`…/ask/stream`**, passing the user's access token and **`agent_skills`**. For **persisted threads**, **`POST /api/knowledge-bases/{kb_id}/agent-conversations/{cid}/messages`** stores each turn in PostgreSQL and streams by forwarding qa-agent NDJSON (then writes the final assistant message, **`kb_qa_sources_v1`**, and optional tool traces). The SPA full-page Q&A uses the same **`delta` / `tool_*` / `done`** shapes as project agents for the live rail.
 - **Port**: 8103 by default
 

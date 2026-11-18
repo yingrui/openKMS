@@ -1,7 +1,7 @@
-import type { AgentMessageItem } from '../../data/agentApi';
-import { KB_QA_SOURCES_V1, type SearchResult } from '../../data/knowledgeBasesApi';
-import { assistantHistoryStreamParts } from '../../components/wiki/wikiCopilotStreamParts';
-import type { ChatMessage } from './KnowledgeBaseDetail.types';
+import type { AgentMessageItem } from '../../../data/agentApi';
+import { KB_QA_SOURCES_V1, type SearchResult } from '../../../data/knowledgeBasesApi';
+import { assistantHistoryStreamParts } from '../../../components/wiki/wikiCopilotStreamParts';
+import type { ChatMessage } from './types';
 
 function kbAgentItemsToChatMessages(items: AgentMessageItem[]): ChatMessage[] {
   const out: ChatMessage[] = [];
@@ -135,3 +135,12 @@ export {
   kbQaChipTitle,
   kbQaExpandedDetailPreviewMaxLen,
 };
+
+/** Does this source carry the retrieval trace the Q&A panel reads? */
+export function kbHasRetrievalProvenance(s: SearchResult): boolean {
+  if (s.chunk_index != null && s.chunk_index !== undefined) return true;
+  if (s.retrieval_mode) return true;
+  const d = s.retrieval_debug;
+  if (d && typeof d === 'object' && Object.keys(d).length > 0) return true;
+  return false;
+}

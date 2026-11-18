@@ -267,6 +267,13 @@ Notable gaps:
   It is the one precedent in the system for "prompt text stored per KB".
 - Nothing records **which prompt produced an answer**, so a behaviour change cannot be attributed to a text change.
 
+> **Where this configuration lives today.** The runtime half — instructions, model, skills, answer
+> policy, orchestration, workspace, sandbox, observability — belongs to a **workforce agent**, not to the
+> knowledge base: one corpus may back several services with different roles. `retrieval` (`top_k` /
+> `rerank` / `min_score`) stays on the knowledge base, because depth is a property of the corpus. The
+> knowledge base's Agent tab still edits all of it; the backend mirrors the runtime half onto the base's
+> default agent and the base's own Q&A reads that agent. See [Workforce agents](workforce.md).
+
 ## Proposed configuration: one `agent_config` JSONB per KB
 
 One grouped object with a strict schema validated on write — `chunk_config` is the existing precedent, and it beats a dozen

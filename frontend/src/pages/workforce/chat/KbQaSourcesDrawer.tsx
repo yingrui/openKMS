@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
 import type { TFunction } from 'i18next';
-import type { SearchResult } from '../../data/knowledgeBasesApi';
+import type { SearchResult } from '../../../data/knowledgeBasesApi';
 import { KbQaEvidenceCard } from './KbQaDataEvidence';
 import { KbRetrievalProvenancePanel } from './KbRetrievalProvenancePanel';
 import {
@@ -11,7 +11,7 @@ import {
   kbQaShowRetrievalScore,
   kbQaSourceCardModifierClass,
   kbQaTruncatePreview,
-} from './KnowledgeBaseDetail.qaUtils';
+} from './qaUtils';
 
 export type KbQaSourcesPanelPayload = {
   replyKey: string;

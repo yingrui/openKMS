@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Bot, Settings, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -32,15 +32,6 @@ import {
   updateChunk,
   enqueueKnowledgeBaseIndexJob,
   enqueueKnowledgeBaseWikiSpaceIndexJob,
-  listKbAgentConversations,
-  listAllKbAgentMessages,
-  createKbAgentConversation,
-  deleteKbAgentConversation,
-  patchKbAgentConversation,
-  postKbAgentMessageStream,
-  getStoredKbQaConversationId,
-  setStoredKbQaConversationId,
-  clearStoredKbQaConversationId,
   type KnowledgeBaseResponse,
   type KBDocumentResponse,
   type KBWikiSpaceResponse,
@@ -51,66 +42,34 @@ import {
   type ChunkResponse,
   type SearchResult,
 } from '../../data/knowledgeBasesApi';
-import type { AgentConversationResponse } from '../../data/agentApi';
 import { fetchDocuments, fetchDocumentById, type DocumentListItemResponse } from '../../data/documentsApi';
 import { fetchAllWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import { fetchSemanticModels } from '../../data/semanticModelsApi';
 import { fetchOntologyGroups } from '../../data/ontologyGroupsApi';
 import { fetchChannelById } from '../../data/channelsApi';
 import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
-import { useImmersiveView } from '../../contexts/ImmersiveShellContext';
 import { normalizeExtractionSchemaToFields } from '../../data/channelUtils';
 import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
-import { applyCopilotStreamEvent } from '../../components/agents/agentStreamState';
-import {
-  kbAgentItemsToChatMessages,
-  kbQaLineId,
-} from './KnowledgeBaseDetail.qaUtils';
 import { kbComputeSearchDiff, kbSnapshotFromResults } from './KnowledgeBaseDetail.searchUtils';
 import { configValuesToMetadata, objToConfigValues } from './KnowledgeBaseDetail.metadataUtils';
-import type { GroundingReport } from '../../data/knowledgeBasesApi';
 import {
   TAB_ORDER,
-  type ChatMessage,
   type KbSearchRetrievalDiff,
   type KbSearchSnapshot,
-  type KbQaFeedbackVote,
   type SettingsSubTabId,
   type TabId,
 } from './KnowledgeBaseDetail.types';
 
-function kbQaPath(kbId: string, conversationId?: string | null): string {
-  if (conversationId) return `/knowledge-bases/${kbId}/qa/${conversationId}`;
-  return `/knowledge-bases/${kbId}/qa`;
-}
-
 export function useKnowledgeBaseDetail() {
-  const { id: kbId, conversationId: routeConversationId } = useParams<{
-    id: string;
-    conversationId?: string;
-  }>();
+  const { id: kbId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { channels } = useEnsureDocumentChannels();
   const { t } = useTranslation('knowledgeBase');
   const [kb, setKb] = useState<KnowledgeBaseResponse | null>(null);
   const initialTab = (searchParams.get('tab') as TabId) || 'documents';
   const [activeTab, setActiveTab] = useState<TabId>(TAB_ORDER.includes(initialTab) ? initialTab : 'documents');
-  const qaFullPage = Boolean(
-    kbId &&
-      (location.pathname === `/knowledge-bases/${kbId}/qa` ||
-        location.pathname.startsWith(`/knowledge-bases/${kbId}/qa/`)),
-  );
   const [loading, setLoading] = useState(true);
-
-  const openQaFullPage = useCallback(
-    (conversationId?: string | null) => {
-      if (!kbId) return;
-      navigate(kbQaPath(kbId, conversationId));
-    },
-    [kbId, navigate],
-  );
 
   const kbDetailPath = useCallback(
     (tab: TabId) => {
@@ -124,21 +83,11 @@ export function useKnowledgeBaseDetail() {
   const selectKbTab = useCallback(
     (tab: TabId) => {
       setActiveTab(tab);
-      if (!kbId || qaFullPage) return;
+      if (!kbId) return;
       navigate(kbDetailPath(tab), { replace: true });
     },
-    [kbId, qaFullPage, navigate, kbDetailPath],
+    [kbId, navigate, kbDetailPath],
   );
-
-  const exitQaFullPageNav = useCallback(() => {
-    if (!kbId) return;
-    navigate(kbDetailPath(activeTab));
-  }, [kbId, navigate, kbDetailPath, activeTab]);
-
-  const openQaSettingsNav = useCallback(() => {
-    if (!kbId) return;
-    navigate(kbDetailPath('settings'));
-  }, [kbId, navigate, kbDetailPath]);
 
   // Documents
   const [docs, setDocs] = useState<KBDocumentResponse[]>([]);
@@ -225,36 +174,6 @@ export function useKnowledgeBaseDetail() {
   const [searchForceDense, setSearchForceDense] = useState(false);
   const searchPrevSnapshotRef = useRef<KbSearchSnapshot | null>(null);
   const [searchRetrievalDiff, setSearchRetrievalDiff] = useState<KbSearchRetrievalDiff | null>(null);
-
-  // QA
-  const [qaInput, setQaInput] = useState('');
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [qaFeedback, setQaFeedback] = useState<Record<string, KbQaFeedbackVote>>({});
-  const [qaLoading, setQaLoading] = useState(false);
-  const qaStreamAbortRef = useRef<AbortController | null>(null);
-  /** Langfuse session id for KB Q&A turns while this full-page chat is open (opaque UUID).
-   *  Private: the page drives it through `beginQaTraceSession` / `clearQaTraceSession`, so
-   *  no ref crosses into render (React's compiler rejects refs read off a view-model). */
-  const qaTraceSessionRef = useRef<string | null>(null);
-  /** The same id as state, because the workspace panel needs it during render and a ref may not be read there. */
-  const [qaSessionId, setQaSessionId] = useState<string | null>(null);
-  const beginQaTraceSession = useCallback(() => {
-    const id = crypto.randomUUID();
-    qaTraceSessionRef.current = id;
-    setQaSessionId(id);
-  }, []);
-  const clearQaTraceSession = useCallback(() => {
-    qaTraceSessionRef.current = null;
-    setQaSessionId(null);
-  }, []);
-  /** Which source indexes are expanded (full detail), keyed by assistant ``replyKey``. */
-  const kbIdRef = useRef(kbId);
-  kbIdRef.current = kbId;
-  const [kbQaConvId, setKbQaConvId] = useState<string | null>(null);
-  const [kbQaConversations, setKbQaConversations] = useState<AgentConversationResponse[]>([]);
-  const [kbQaConvsLoading, setKbQaConvsLoading] = useState(false);
-  const [kbQaConvReady, setKbQaConvReady] = useState(false);
-  const kbQaMainScrollRef = useRef<HTMLDivElement | null>(null);
 
   // Settings (the agent's own fields live in the Agent tab, which owns `agent_url`/`agent_skills`/`agent_config` — one
   // editor per field, so saving one screen cannot revert what was set on another).
@@ -417,96 +336,6 @@ export function useKnowledgeBaseDetail() {
     if (activeTab === 'faqs') loadFaqs();
     if (activeTab === 'chunks') loadChunks();
   }, [activeTab, loadDocs, loadKbWikiSpaces, loadKbAgentScope, loadFaqs, loadChunks]);
-
-  useEffect(() => {
-    if (qaFullPage && kb && !kb.agent_url) {
-      exitQaFullPageNav();
-    }
-  }, [qaFullPage, kb, exitQaFullPageNav]);
-
-  // A visit starts on the entry button, but a reload or a pasted URL lands here without one — and then
-  // both the ask and the files rail would have no session to name, so the workspace would look empty.
-  useEffect(() => {
-    if (qaFullPage && kb?.agent_url && qaSessionId === null) beginQaTraceSession();
-  }, [qaFullPage, kb?.agent_url, qaSessionId, beginQaTraceSession]);
-
-  useImmersiveView('openkms-kb-qa-fullpage', Boolean(qaFullPage && kb?.agent_url));
-
-  useLayoutEffect(() => {
-    if (!qaFullPage || !kb?.agent_url) return;
-    const sc = kbQaMainScrollRef.current;
-    if (!sc) return;
-    sc.scrollTop = sc.scrollHeight;
-  }, [qaFullPage, kb?.agent_url, chatMessages, qaLoading]);
-
-  const loadKbQaMessagesForConversation = useCallback(
-    async (conversationId: string) => {
-      if (!kbId) return;
-      const msgs = await listAllKbAgentMessages(kbId, conversationId);
-      setChatMessages(kbAgentItemsToChatMessages(msgs));
-      setQaFeedback({});
-    },
-    [kbId]
-  );
-
-  useEffect(() => {
-    if (!qaFullPage || !kbId) return;
-    let cancelled = false;
-    (async () => {
-      setKbQaConvReady(false);
-      setKbQaConvsLoading(true);
-      try {
-        const items = await listKbAgentConversations(kbId);
-        if (cancelled) return;
-        setKbQaConversations(items);
-        const routeValid =
-          routeConversationId && items.some((x) => x.id === routeConversationId)
-            ? routeConversationId
-            : null;
-        const stored = getStoredKbQaConversationId(kbId);
-        const validStored = stored && items.some((x) => x.id === stored) ? stored : null;
-        const nextId = routeValid || validStored || items[0]?.id || null;
-        setKbQaConvId(nextId);
-        if (nextId) {
-          setStoredKbQaConversationId(kbId, nextId);
-          if (nextId !== routeConversationId) {
-            navigate(kbQaPath(kbId, nextId), { replace: true });
-          }
-          try {
-            await loadKbQaMessagesForConversation(nextId);
-          } catch {
-            if (!cancelled) {
-              setChatMessages([]);
-              toast.error(t('detail.qaToastLoadMessagesFailed'));
-            }
-          }
-        } else {
-          clearStoredKbQaConversationId(kbId);
-          if (routeConversationId) {
-            navigate(kbQaPath(kbId), { replace: true });
-          }
-          if (!cancelled) setChatMessages([]);
-        }
-      } catch {
-        if (!cancelled) toast.error(t('detail.qaToastLoadConversationsFailed'));
-      } finally {
-        if (!cancelled) {
-          setKbQaConvsLoading(false);
-          setKbQaConvReady(true);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    qaFullPage,
-    kbId,
-    routeConversationId,
-    navigate,
-    t,
-    loadKbQaMessagesForConversation,
-  ]);
 
   // --- Document picker ---
   const alreadyAddedIds = linkedDocIds;
@@ -752,36 +581,11 @@ export function useKnowledgeBaseDetail() {
 
   // --- FAQ handlers ---
 
-  const kbQaAssistantText = (msg: ChatMessage): string => msg.content?.trim() ?? '';
-
-  const setKbQaFeedbackVote = (key: string, vote: KbQaFeedbackVote) => {
-    setQaFeedback((prev) => {
-      if (prev[key] === vote) {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      }
-      return { ...prev, [key]: vote };
-    });
-  };
-
   const closeFaqDialog = () => {
     setShowFaqDialog(false);
     setEditFaq(null);
     setFaqDialogSource('manual');
     setFaqPolishing(false);
-  };
-
-  const openFaqFromQa = (question: string, answer: string) => {
-    setEditFaq(null);
-    setFaqDialogSource('from_qa');
-    setFaqQuestion(question.trim());
-    setFaqAnswer(answer.trim());
-    setFaqLabelsValues({});
-    setFaqDocMetadataValues({});
-    setFaqLabelAllowMultiple({});
-    setFaqMetadataIsArray({});
-    setShowFaqDialog(true);
   };
 
   const handlePolishFaqAnswer = async () => {
@@ -1086,217 +890,6 @@ export function useKnowledgeBaseDetail() {
     }
   };
 
-  // --- QA (persisted threads; NDJSON via backend → qa-agent, like wiki copilot) ---
-  const onSelectKbQaConversation = async (id: string) => {
-    if (!kbId || !id || id === kbQaConvId) return;
-    setKbQaConvId(id);
-    setStoredKbQaConversationId(kbId, id);
-    navigate(kbQaPath(kbId, id));
-    try {
-      await loadKbQaMessagesForConversation(id);
-    } catch {
-      toast.error(t('detail.qaToastLoadMessagesFailed'));
-    }
-  };
-
-  const onNewKbQaChat = async () => {
-    if (!kbId) return;
-    try {
-      const c = await createKbAgentConversation(kbId);
-      setKbQaConvId(c.id);
-      setStoredKbQaConversationId(kbId, c.id);
-      setKbQaConversations((prev) => [c, ...prev.filter((x) => x.id !== c.id)]);
-      setChatMessages([]);
-      setQaFeedback({});
-      navigate(kbQaPath(kbId, c.id));
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.qaToastNewChatFailed'));
-    }
-  };
-
-  const onRenameKbQaChat = async (id: string, title: string) => {
-    if (!kbId) return;
-    try {
-      const updated = await patchKbAgentConversation(kbId, id, { title });
-      setKbQaConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.qaToastRenameChatFailed'));
-    }
-  };
-
-  const onDeleteKbQaChat = async (id: string) => {
-    if (!kbId) return;
-    const deletingActive = kbQaConvId === id;
-    try {
-      await deleteKbAgentConversation(kbId, id);
-      const items = await listKbAgentConversations(kbId);
-      setKbQaConversations(items);
-      if (!deletingActive) return;
-      const next = items[0]?.id || null;
-      setKbQaConvId(next);
-      if (next) {
-        setStoredKbQaConversationId(kbId, next);
-        navigate(kbQaPath(kbId, next), { replace: true });
-        await loadKbQaMessagesForConversation(next);
-      } else {
-        clearStoredKbQaConversationId(kbId);
-        navigate(kbQaPath(kbId), { replace: true });
-        setChatMessages([]);
-      }
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.qaToastDeleteChatFailed'));
-    }
-  };
-
-  const handleAsk = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!kbId || !qaInput.trim() || !kbQaConvReady) return;
-    const startedKb = kbId;
-    const userText = qaInput.trim();
-
-    qaStreamAbortRef.current?.abort();
-    const ac = new AbortController();
-    qaStreamAbortRef.current = ac;
-
-    setQaInput('');
-    const tempUserId = kbQaLineId();
-    const asstStreamId = kbQaLineId();
-    let streamPersistedUserId: string | null = null;
-
-    setChatMessages((prev) => [
-      ...prev,
-      { id: tempUserId, role: 'user', content: userText },
-      { id: asstStreamId, role: 'assistant', content: '', streamParts: [], replyKey: asstStreamId },
-    ]);
-    setQaLoading(true);
-    try {
-      let convId = kbQaConvId;
-      if (!convId) {
-        const c = await createKbAgentConversation(kbId);
-        if (startedKb !== kbIdRef.current) return;
-        convId = c.id;
-        setKbQaConvId(c.id);
-        setKbQaConversations((prev) => [c, ...prev.filter((x) => x.id !== c.id)]);
-        setStoredKbQaConversationId(kbId, c.id);
-        navigate(kbQaPath(kbId, c.id), { replace: true });
-      }
-
-      await postKbAgentMessageStream(
-        kbId,
-        convId,
-        userText,
-        (ev) => {
-          if (startedKb !== kbIdRef.current) return;
-          if (ev.type === 'user') {
-            streamPersistedUserId = ev.message.id;
-          }
-          if (ev.type === 'done' && !('user' in ev)) {
-            setChatMessages((prev) => {
-              const next = [...prev];
-              for (let i = next.length - 1; i >= 0; i--) {
-                if (next[i].role === 'assistant') {
-                  const m = next[i];
-                  next[i] = {
-                    ...m,
-                    content: ev.answer,
-                    sources: ev.sources,
-                    streamParts: m.streamParts && m.streamParts.length > 0 ? m.streamParts : undefined,
-                  };
-                  break;
-                }
-              }
-              return next;
-            });
-            return;
-          }
-          if (ev.type === 'error') {
-            if ('message' in ev && ev.message) {
-              setChatMessages((prev) =>
-                prev.map((p) =>
-                  p.id === asstStreamId
-                    ? {
-                        ...p,
-                        id: ev.message.id,
-                        content: ev.message.content,
-                        replyKey: ev.message.id,
-                      }
-                    : p,
-                ),
-              );
-              return;
-            }
-            const msg = `${t('detail.qaErrorPrefix')} ${ev.detail}${ev.answer ? ` ${ev.answer}` : ''}`;
-            setChatMessages((prev) => {
-              const next = [...prev];
-              for (let i = next.length - 1; i >= 0; i--) {
-                if (next[i].role === 'assistant') {
-                  next[i] = { ...next[i], role: 'assistant', content: msg };
-                  break;
-                }
-              }
-              return next;
-            });
-            return;
-          }
-          applyCopilotStreamEvent<ChatMessage>(ev, { asstStreamId, userTempId: tempUserId, userText }, {
-            setLines: setChatMessages,
-            getText: (p) => p.content,
-            setText: (p, text) => ({ ...p, content: text }),
-            onDone: (prev, { userText: savedText, streamed, ev: doneEv, asstStreamId: aId, userTempId: uId }) => {
-              const kbDone = doneEv as Extract<typeof ev, { type: 'done' }> & {
-                user: { id: string };
-                message: { id: string; content: string };
-                sources?: SearchResult[];
-              } & {
-                grounding?: GroundingReport | null;
-                warnings?: string[];
-                verified?: boolean;
-              };
-              const without = prev.filter(
-                (p) => p.id !== aId && p.id !== kbDone.user.id && (uId == null || p.id !== uId),
-              );
-              const parts = streamed?.role === 'assistant' ? streamed.streamParts : undefined;
-              return [
-                ...without,
-                { id: kbDone.user.id, role: 'user' as const, content: savedText },
-                {
-                  id: kbDone.message.id,
-                  role: 'assistant' as const,
-                  content: kbDone.message.content,
-                  sources: kbDone.sources,
-                  grounding: kbDone.grounding ?? null,
-                  warnings: kbDone.warnings ?? [],
-                  verified: kbDone.verified ?? true,
-                  streamParts: parts && parts.length > 0 ? parts : undefined,
-                  replyKey: kbDone.message.id,
-                },
-              ];
-            },
-          });
-        },
-        { signal: ac.signal, session_id: qaTraceSessionRef.current ?? undefined }
-      );
-      if (startedKb === kbIdRef.current) {
-        void listKbAgentConversations(kbId).then((list) => setKbQaConversations(list));
-      }
-    } catch (err: unknown) {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      if (startedKb !== kbIdRef.current) return;
-      const persisted = streamPersistedUserId;
-      const stripIds = (p: ChatMessage) =>
-        p.id !== asstStreamId &&
-        p.id !== tempUserId &&
-        (persisted == null || p.id !== persisted);
-      const msg = `${t('detail.qaErrorPrefix')} ${err instanceof Error ? err.message : t('detail.toastAnswerFailed')}`;
-      setQaInput(userText);
-      setChatMessages((prev) => prev.filter(stripIds));
-      toast.error(msg);
-    } finally {
-      setQaLoading(false);
-      if (qaStreamAbortRef.current === ac) qaStreamAbortRef.current = null;
-    }
-  };
-
   // --- Settings ---
   const handleSaveSettings = async () => {
     if (!kbId) return;
@@ -1335,10 +928,6 @@ export function useKnowledgeBaseDetail() {
     initialTab,
     activeTab,
     setActiveTab: selectKbTab,
-    qaFullPage,
-    openQaFullPage,
-    exitQaFullPageNav,
-    openQaSettingsNav,
     loading,
     docs,
     docTotal,
@@ -1472,26 +1061,6 @@ export function useKnowledgeBaseDetail() {
     setSearchForceDense,
     searchRetrievalDiff,
     setSearchRetrievalDiff,
-    qaInput,
-    setQaInput,
-    chatMessages,
-    setChatMessages,
-    qaFeedback,
-    setQaFeedback,
-    qaLoading,
-    setQaLoading,
-    beginQaTraceSession,
-    clearQaTraceSession,
-    qaSessionId,
-    kbQaConvId,
-    setKbQaConvId,
-    kbQaConversations,
-    setKbQaConversations,
-    kbQaConvsLoading,
-    setKbQaConvsLoading,
-    kbQaConvReady,
-    setKbQaConvReady,
-    kbQaMainScrollRef,
     settingsEmbeddingModelId,
     setSettingsEmbeddingModelId,
     settingsFaqPrompt,
@@ -1522,11 +1091,6 @@ export function useKnowledgeBaseDetail() {
     loadFaqs,
     loadChunks,
     enqueueIndexJob,
-    loadKbQaMessagesForConversation,
-    onSelectKbQaConversation,
-    onNewKbQaChat,
-    onRenameKbQaChat,
-    onDeleteKbQaChat,
     alreadyAddedIds,
     openDocPicker,
     closeDocPicker,
@@ -1548,7 +1112,6 @@ export function useKnowledgeBaseDetail() {
     handleRemoveOntologyGroupFromKb,
     handleIndexWikiSpace,
     closeFaqDialog,
-    openFaqFromQa,
     handlePolishFaqAnswer,
     handleSaveFaq,
     handleDeleteFaq,
@@ -1563,9 +1126,6 @@ export function useKnowledgeBaseDetail() {
     closeChunkDialog,
     handleSaveChunk,
     handleSearch,
-    handleAsk,
-    setKbQaFeedbackVote,
-    kbQaAssistantText,
     handleSaveSettings,
     configValuesToMetadata,
     objToConfigValues,

@@ -47,7 +47,9 @@ import zhMedia from './locales/zh-CN/media.json';
 import enOntology from './locales/en/ontology.json';
 import zhOntology from './locales/zh-CN/ontology.json';
 import enChamber from './locales/en/chamber.json';
+import enWorkforce from './locales/en/workforce.json';
 import zhChamber from './locales/zh-CN/chamber.json';
+import zhWorkforce from './locales/zh-CN/workforce.json';
 
 export const OPENKMS_LOCALE_STORAGE_KEY = 'openkms_locale';
 
@@ -144,6 +146,7 @@ void i18n
         media: enMedia,
         ontology: enOntology,
         chamber: enChamber,
+        workforce: enWorkforce,
       },
       'zh-CN': {
         common: zhCommon,
@@ -169,6 +172,7 @@ void i18n
         media: zhMedia,
         ontology: zhOntology,
         chamber: zhChamber,
+        workforce: zhWorkforce,
       },
     },
   });

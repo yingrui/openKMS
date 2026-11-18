@@ -404,7 +404,7 @@ body.openkms-kb-qa-fullpage .header {
   display: none;
 }
 
-body.openkms-kb-qa-fullpage .app-content--compact:has(.kb-detail--qa-fullpage) .kb-detail.kb-detail--qa-fullpage {
+body.openkms-kb-qa-fullpage .app-content--compact:has(.kb-qa-page) .kb-qa-page {
   min-height: 0;
 }
 
@@ -430,7 +430,7 @@ body.openkms-kb-qa-fullpage .app-content--compact .content-comments-shell__main 
   max-height: 100%;
 }
 
-body.openkms-kb-qa-fullpage .app-content--compact .kb-detail.kb-detail--qa-fullpage {
+body.openkms-kb-qa-fullpage .app-content--compact .kb-qa-page {
   flex: 1;
   min-height: 0;
   height: 100%;

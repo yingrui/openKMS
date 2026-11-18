@@ -14,7 +14,7 @@ Track these **separately** — see [Goals — agent service](goals.md#goals-agen
 
 | Lane | What it is | Tracked under |
 |------|------------|---------------|
-| **KB Q&A delivery** | Per-KB **qa-agent** service: path-scoped `/knowledge-bases/{id}/ask|stream|retrieve`, sourced answers; KB **`agent_skills`** + optional **Catalog + ontology-group scope** (live query tools, not RAG) | [Knowledge bases](features/knowledge-bases.md) (API + SPA Q&A UI) |
+| **KB Q&A delivery** | Per-KB **qa-agent** service: path-scoped `/knowledge-bases/{id}/ask|stream|retrieve`, sourced answers; KB **`agent_skills`** + optional **Catalog + ontology-group scope** (live query tools, not RAG). **Workforce agents** publish the same answers to callers outside openKMS, each with its own instructions/model/skills/policy and a read-only service credential | [Knowledge bases](features/knowledge-bases.md) (API + SPA Q&A UI) · [Workforce agents](features/workforce.md) |
 | **In-app agents** | Assistants and workspaces to **author and maintain** content inside openKMS | [openkms-agents](features/openkms-agents.md), map designer; backlog [#in-product-agents-high](#in-product-agents-high) |
 
 **Not in scope for “unified in-app assistant”:** merging KB Q&A delivery with project agents or a single global chat shell.
@@ -29,6 +29,7 @@ Shipped scope is indexed in [Functionalities](functionalities.md); each linked f
 | Connectors | Tushare sync + Zhipu search shipped; more sync kinds and downstream hooks ([backlog](#connectors-high)) |
 | Evaluation | Experimental toggle; quality-improvement workflows still evolving ([backlog](#evaluation--knowledge-quality-high)) |
 | Project agents runtime | Open gaps in [Tech debt — Project agents](tech_debt.md#project-agents-deep-agents) |
+| Workforce agents | **Shipped (v1):** agent-owned runtime configuration, knowledge-source bindings, read-only `wfks.` credentials, `POST /api/workforce/agents/{id}/ask`; **not yet:** multi-source answers, agent-scoped Catalog/Ontology resolution, publish/version/quota |
 
 ## Strategic priorities {#strategic-priorities}
 

@@ -14,6 +14,8 @@ from app.models.knowledge_base import KnowledgeBase
 from app.schemas.knowledge_base import KnowledgeBaseListResponse, KnowledgeBaseResponse
 from app.services.identity.acl.resource_acl_constants import RT_KNOWLEDGE_BASE
 from app.services.identity.acl.resource_list_acl import readable_id_filter
+from app.services.content.knowledge_bases.qa_agent_proxy import resolve_agent_url
+from app.services.workforce.read import default_agents_by_kb
 
 
 async def kb_stats_batch(db: AsyncSession, kb_ids: list[str]) -> dict[str, dict[str, int]]:
@@ -48,7 +50,9 @@ async def kb_stats(db: AsyncSession, kb_id: str) -> dict[str, int]:
     )
 
 
-def kb_to_response(kb: KnowledgeBase, stats: dict[str, int]) -> KnowledgeBaseResponse:
+def kb_to_response(
+    kb: KnowledgeBase, stats: dict[str, int], default_agent_id: str | None = None
+) -> KnowledgeBaseResponse:
     return KnowledgeBaseResponse(
         id=kb.id,
         name=kb.name,
@@ -61,6 +65,8 @@ def kb_to_response(kb: KnowledgeBase, stats: dict[str, int]) -> KnowledgeBaseRes
         chunk_config=kb.chunk_config,
         faq_prompt=kb.faq_prompt,
         metadata_keys=kb.metadata_keys,
+        default_agent_id=default_agent_id,
+        qa_available=resolve_agent_url(kb) is not None,
         created_at=kb.created_at,
         updated_at=kb.updated_at,
         **stats,
@@ -92,6 +98,7 @@ async def list_knowledge_bases_page(
     kbs = list((await db.execute(q)).scalars().all())
 
     stats_by_id = await kb_stats_batch(db, [kb.id for kb in kbs])
+    agents_by_kb = await default_agents_by_kb(db, [kb.id for kb in kbs])
     items = [
         kb_to_response(
             kb,
@@ -99,6 +106,7 @@ async def list_knowledge_bases_page(
                 kb.id,
                 {"document_count": 0, "wiki_space_count": 0, "faq_count": 0, "chunk_count": 0},
             ),
+            agents_by_kb.get(kb.id),
         )
         for kb in kbs
     ]

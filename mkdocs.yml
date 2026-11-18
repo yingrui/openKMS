@@ -178,6 +178,7 @@ nav:
       - Comments: features/comments.md
       - Knowledge bases: features/knowledge-bases.md
       - Knowledge-base QA agent: features/knowledge-base-qa-agent.md
+      - Workforce agents: features/workforce.md
       - Wiki spaces: features/wiki-spaces.md
       - Evaluation: features/evaluation.md
       - Data-query evaluation (design): features/data-query-evaluation.md

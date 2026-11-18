@@ -34,6 +34,8 @@ from app.api.models import router as models_router
 from app.api.pipelines import router as pipelines_router
 from app.api.agent_prompts import router as agent_prompts_router
 from app.api.knowledge_bases import router as knowledge_bases_router
+from app.api.workforce import router as workforce_router
+from app.api.workforce import service_router as workforce_service_router
 from app.api.wiki_spaces import router as wiki_spaces_router
 
 from app.api.agent_skills import router as agent_skills_router
@@ -221,6 +223,8 @@ app.include_router(internal_process_heartbeat_router)
 app.include_router(providers_router, prefix="/api")
 app.include_router(jobs_router, prefix="/api")
 app.include_router(knowledge_bases_router, prefix="/api")
+app.include_router(workforce_router, prefix="/api")
+app.include_router(workforce_service_router, prefix="/api")
 app.include_router(agent_prompts_router, prefix="/api")
 app.include_router(wiki_spaces_router, prefix="/api")
 

@@ -1,4 +1,4 @@
 export {
   playgroundHrefFromDataQuery,
   type CatalogPlaygroundQuerySeed,
-} from '../../data/catalogPlaygroundHref';
+} from '../../../data/catalogPlaygroundHref';

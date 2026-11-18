@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Download, File, Loader2, PanelRightClose, RefreshCw } from 'lucide-react';
-import { downloadQaSessionFile, fetchQaSessionFiles, type QaSessionFile } from '../../data/knowledgeBasesApi';
-import '../../styles/files-rail.scss';
+import { downloadQaSessionFile, fetchQaSessionFiles, type QaSessionFile } from '../../../data/knowledgeBasesApi';
+import '../../../styles/files-rail.scss';
 
 /**
  * What this conversation produced, and what it was given.

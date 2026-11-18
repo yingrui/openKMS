@@ -252,7 +252,7 @@ export function KnowledgeBaseList() {
                 </span>
                 <span>{t("metaFaqs", { count: kb.faq_count })}</span>
                 <span>{t("metaChunks", { count: kb.chunk_count })}</span>
-                {kb.agent_url ? (
+                {kb.qa_available ? (
                   <span className="kb-rag-badge">
                     <MessageCircle size={14} />
                     {t("ragBadge")}
@@ -286,7 +286,7 @@ export function KnowledgeBaseList() {
                       >
                         {kb.name}
                       </Link>
-                      {kb.agent_url ? (
+                      {kb.qa_available ? (
                         <span className="kb-list-rag-pill">
                           {t("ragBadge")}
                         </span>

@@ -139,6 +139,13 @@ class WorkforceAgentCredential(Base):
     key_prefix: Mapped[str] = mapped_column(String(32), nullable=False)
     secret_hash: Mapped[str] = mapped_column(Text, nullable=False)
 
+    #: `local` | `oidc` — how the owner's identity was resolved when the credential was issued.
+    auth_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="local")
+    #: OIDC only: the owner's realm roles at issue time, mirroring a personal API key. A credential
+    #: carries its owner's identity; re-resolving roles on every call would let a role change made
+    #: for unrelated reasons silently widen what an integrator can read.
+    oidc_realm_roles: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

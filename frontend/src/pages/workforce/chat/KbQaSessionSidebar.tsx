@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Loader2, MoreHorizontal, Pencil, Plus, Settings, Trash2 } from 'lucide-react';
-import type { AgentConversationResponse } from '../../data/agentApi';
+import type { AgentConversationResponse } from '../../../data/agentApi';
 import './KbQaSessionSidebar.scss';
 
 function sessionLabel(c: AgentConversationResponse): string {
@@ -43,6 +43,8 @@ export function KbQaSessionSidebar({
   onDelete,
 }: Props) {
   const { t } = useTranslation('knowledgeBase');
+  /* The rail belongs to the conversation, so its own labels come from the conversation's namespace. */
+  const { t: tw } = useTranslation('workforce');
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -94,7 +96,7 @@ export function KbQaSessionSidebar({
         {!hideBackLink ? (
           <button type="button" className="kb-qa-sessions-back" onClick={onBack}>
             <ArrowLeft size={14} />
-            {t('detail.qaBackToKb')}
+            {tw('backToAgent')}
           </button>
         ) : null}
         <div className="kb-qa-sessions-context-block">
@@ -103,14 +105,14 @@ export function KbQaSessionSidebar({
             <button
               type="button"
               className="kb-qa-sessions-settings"
-              title={t('detail.qaSettingsTitle')}
-              aria-label={t('detail.qaSettingsTitle')}
+              title={tw('chatSettings')}
+              aria-label={tw('chatSettings')}
               onClick={onOpenSettings}
             >
               <Settings size={16} strokeWidth={1.75} />
             </button>
           </div>
-          <div className="kb-qa-sessions-sub">{t('detail.qaTitle')}</div>
+          <div className="kb-qa-sessions-sub">{tw('chatTitle')}</div>
         </div>
         <button
           type="button"

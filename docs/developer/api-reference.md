@@ -193,6 +193,24 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/knowledge-bases/{id}/wiki-spaces` | List wiki spaces linked to the KB (for RAG indexing) |
 | POST | `/api/knowledge-bases/{id}/wiki-spaces` | Link a wiki space (`{ "wiki_space_id": "…" }`); pages are included on next `kb-index` |
 | DELETE | `/api/knowledge-bases/{id}/wiki-spaces/{wiki_space_id}` | Unlink wiki space and delete KB chunks whose `wiki_page_id` belongs to that space |
+| GET | `/api/workforce/agents` | Owner-scoped workforce agent list (`limit`, `offset`); admins see all |
+| POST | `/api/workforce/agents` | Create an agent; optional `knowledge_base_ids` are bound (each checked against the caller's read access) |
+| GET | `/api/workforce/agents/{id}` | Agent detail with knowledge-source, semantic-model and ontology-group bindings |
+| PUT | `/api/workforce/agents/{id}` | Update name, description, `agent_skills`, `agent_config` (wholesale). `retrieval` is not part of the agent's config |
+| DELETE | `/api/workforce/agents/{id}` | Archive the agent (204); its credentials stop working |
+| GET | `/api/workforce/agents/{id}/knowledge-bases` | List bound knowledge sources |
+| POST | `/api/workforce/agents/{id}/knowledge-bases` | Bind a source (`knowledge_base_id`, optional `label`, `priority`) |
+| DELETE | `/api/workforce/agents/{id}/knowledge-bases/{binding_id}` | Unbind a knowledge source |
+| GET | `/api/workforce/agents/{id}/semantic-models` | List bound Catalog models |
+| POST | `/api/workforce/agents/{id}/semantic-models` | Bind a model (`semantic_model_id`) |
+| DELETE | `/api/workforce/agents/{id}/semantic-models/{binding_id}` | Unbind a model |
+| GET | `/api/workforce/agents/{id}/ontology-groups` | List bound ontology groups |
+| POST | `/api/workforce/agents/{id}/ontology-groups` | Bind an ontology group (`ontology_group_id`) |
+| DELETE | `/api/workforce/agents/{id}/ontology-groups/{binding_id}` | Unbind an ontology group |
+| GET | `/api/workforce/agents/{id}/credentials` | List credentials (prefix, last used, revoked — never the secret) |
+| POST | `/api/workforce/agents/{id}/credentials` | Mint a credential (`name`). The `wfks.…` token is in this response only |
+| DELETE | `/api/workforce/agents/{id}/credentials/{credential_id}` | Revoke a credential |
+| POST | `/api/workforce/agents/{id}/ask` | **Service plane.** Authenticated by the agent's `wfks.…` credential, never by a session; `kb_id` names the one bound source. See [Workforce agents](../features/workforce.md) |
 | GET | `/api/knowledge-bases/{id}/semantic-models` | List semantic models linked as **qa-agent Catalog scope** (not RAG) |
 | POST | `/api/knowledge-bases/{id}/semantic-models` | Link a semantic model (`{ "semantic_model_id": "…" }`) |
 | DELETE | `/api/knowledge-bases/{id}/semantic-models/{semantic_model_id}` | Unlink a semantic model from the KB |

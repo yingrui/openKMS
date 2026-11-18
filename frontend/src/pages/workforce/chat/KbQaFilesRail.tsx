@@ -2,8 +2,8 @@ import { useCallback, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FolderTree } from 'lucide-react';
 import { KbQaFilesPanel } from './KbQaFilesPanel';
-import { useFilesRailWidth } from '../../hooks/useFilesRailWidth';
-import '../../styles/files-rail.scss';
+import { useFilesRailWidth } from '../../../hooks/useFilesRailWidth';
+import '../../../styles/files-rail.scss';
 
 const RAIL_MIN_PX = 200;
 const RAIL_DEFAULT_PX = 400;

@@ -28,6 +28,8 @@ FRONTEND_FEATURES: list[dict[str, Any]] = [
     {"path_pattern": "/articles/*", "label": "Article detail", "section": "Content", "note": None},
     {"path_pattern": "/knowledge-bases", "label": "Knowledge bases list", "section": "Content", "note": None},
     {"path_pattern": "/knowledge-bases/*", "label": "Knowledge base detail", "section": "Content", "note": None},
+    {"path_pattern": "/workforce", "label": "Workforce agents", "section": "Content", "note": "knowledge_bases:read/write"},
+    {"path_pattern": "/workforce/*", "label": "Workforce agent detail", "section": "Content", "note": "knowledge_bases:read/write"},
     {"path_pattern": "/wikis", "label": "Wiki spaces list", "section": "Content", "note": None},
     {"path_pattern": "/wikis/*", "label": "Wiki space / pages", "section": "Content", "note": None},
     {"path_pattern": "/evaluations", "label": "Evaluations", "section": "Content", "note": "Feature toggle: evaluations"},

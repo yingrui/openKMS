@@ -1,0 +1,79 @@
+@use '../../styles/design-system/mixins' as *;
+@use '../../styles/design-system/tokens' as ds;
+
+// Workforce detail: three shapes a table cannot express — a list of bindings, a one-line picker, and
+// the copy-ready request. Page-local: one area owns them.
+
+.workforce-bindings {
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-elevated);
+  }
+}
+
+.workforce-inline-form {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+
+  .ds-control {
+    min-width: 0;
+    max-width: 22rem;
+  }
+
+  @include max-width(ds.$bp-md-min) {
+    flex-wrap: wrap;
+
+    .ds-control {
+      max-width: 100%;
+      flex: 1 1 10rem;
+    }
+  }
+}
+
+.workforce-token {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+
+  code {
+    display: block;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    word-break: break-all;
+  }
+
+  .btn {
+    align-self: flex-start;
+  }
+}
+
+.workforce-curl {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-x: auto;
+  white-space: pre;
+}

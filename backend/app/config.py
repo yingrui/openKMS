@@ -261,6 +261,14 @@ class Settings(BaseSettings):
     )
     worker_basic_user: str = Field(default="", validation_alias="OPENKMS_WORKER_BASIC_USER")
     worker_basic_password: str = Field(default="", validation_alias="OPENKMS_WORKER_BASIC_PASSWORD")
+    qa_agent_url: str | None = Field(
+        default=None,
+        validation_alias="OPENKMS_QA_AGENT_URL",
+        description=(
+            "Default qa-agent base URL for workforce agents. A knowledge base that names its own "
+            "``agent_url`` still wins, so older deployments keep working."
+        ),
+    )
     qa_agent_basic_user: str = Field(default="", validation_alias="OPENKMS_QA_AGENT_BASIC_USER")
     qa_agent_basic_password: str = Field(default="", validation_alias="OPENKMS_QA_AGENT_BASIC_PASSWORD")
 

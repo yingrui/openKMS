@@ -242,6 +242,56 @@ async def _authenticate_personal_api_key(request: Request, db: AsyncSession, tok
     return token
 
 
+async def _authenticate_workforce_credential(
+    request: Request, db: AsyncSession, token: str
+) -> str | None:
+    """If token is wfks.{credential_id}.{secret}, authenticate as the agent's owner.
+
+    A workforce credential is the **delegated read-only identity of the agent's owner** (see
+    `docs/features/workforce.md`): the payload below carries the owner's subject and claims, plus
+    `openkms_workforce_agent_id` so the strict-permission middleware can hold it to reads and the
+    service endpoint can tell which agent called.
+    """
+    from app.services.workforce.credentials import (
+        is_credential_token,
+        touch_credential,
+        verify_credential,
+    )
+
+    if not is_credential_token(token):
+        return None
+    resolved = await verify_credential(db, token)
+    if resolved is None:
+        return None
+    agent, credential = resolved
+    await touch_credential(credential.id)
+
+    if credential.auth_mode == "local":
+        user = await db.get(User, agent.owner_sub)
+        if user is None:
+            return None
+        payload = {
+            **_user_claims(user),
+            "iss": LOCAL_JWT_ISS,
+            "iat": int(time.time()),
+            "exp": int(time.time()) + int(settings.local_jwt_exp_hours * 3600),
+        }
+    else:
+        roles = credential.oidc_realm_roles if isinstance(credential.oidc_realm_roles, list) else []
+        role_strs = [str(r) for r in roles if r is not None and str(r).strip()]
+        payload = {
+            "sub": agent.owner_sub,
+            "preferred_username": agent.owner_name or agent.name,
+            "name": agent.owner_name or agent.name,
+            "realm_access": {"roles": role_strs},
+        }
+    payload["openkms_auth_via"] = "wfks"
+    payload["openkms_workforce_agent_id"] = agent.id
+    _set_auth_state(request, payload, token)
+    request.state.openkms_workforce_agent = agent
+    return token
+
+
 def _hash_api_key_secret(secret: str) -> str:
     return bcrypt.hashpw(secret.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
@@ -253,11 +303,75 @@ def _verify_api_key_secret(secret: str, secret_hash: str) -> bool:
         return False
 
 
+def _workforce_credential_is_serving(request: Request) -> bool:
+    """`POST /api/workforce/agents/{id}/ask` — the one mutation a workforce credential may make.
+
+    It is a POST by shape and a read by effect; the handler still checks the agent's binding.
+    """
+    if request.method != "POST":
+        return False
+    parts = [p for p in request.url.path.split("/") if p]
+    return (
+        len(parts) == 5
+        and parts[:3] == ["api", "workforce", "agents"]
+        and parts[4] == "ask"
+    )
+
+
+#: Query endpoints that are a POST by shape and a read by effect. The agent's own skills need them:
+#: retrieval (`…/search`), the Catalog metric and SQL Lab tools (`…/query`, `…/sql`), and graph
+#: exploration (`/api/ontology/explore`). Nothing here writes.
+_QUERY_POST_TAILS = frozenset({"search", "query", "sql", "explore"})
+
+
+def _workforce_credential_is_querying(request: Request) -> bool:
+    if request.method != "POST":
+        return False
+    parts = [p for p in request.url.path.split("/") if p]
+    if len(parts) < 3 or parts[0] != "api":
+        return False
+    tail = parts[-1]
+    if tail not in _QUERY_POST_TAILS:
+        return False
+    if parts[1] == "knowledge-bases" and len(parts) == 4 and tail == "search":
+        return True
+    if parts[1] == "semantic-models" and len(parts) == 4 and tail in ("query", "sql"):
+        return True
+    return parts[1:3] == ["ontology", "explore"] and len(parts) == 3
+
+
+def _reject_workforce_mutation(request: Request) -> None:
+    """A workforce credential reads and queries — it can never change anything.
+
+    Enforced here rather than in a route so it holds for every endpoint, in every permission mode.
+    The three exceptions are the agent's own work: serving an answer, and the query endpoints its
+    skills call.
+    """
+    payload = request.state.openkms_jwt_payload
+    if not payload.get("openkms_workforce_agent_id"):
+        return
+    if (
+        request.method in ("GET", "HEAD")
+        or _workforce_credential_is_serving(request)
+        or _workforce_credential_is_querying(request)
+    ):
+        return
+    raise http_error(request, 403, "WORKFORCE_CREDENTIAL_READ_ONLY")
+
+
 async def authenticate_request(request: Request, db: AsyncSession, *, session_only: bool = False) -> str:
     """Bearer JWT or personal API key, session cookie JWT, or (local mode) HTTP Basic for CLI.
 
     ``session_only`` ignores the Authorization header (it belongs to a proxied hosted app).
     """
+    token = await _authenticate_request(request, db, session_only=session_only)
+    _reject_workforce_mutation(request)
+    return token
+
+
+async def _authenticate_request(
+    request: Request, db: AsyncSession, *, session_only: bool = False
+) -> str:
     auth_header = None if session_only else request.headers.get("Authorization")
 
     if auth_header and auth_header.lower().startswith("bearer "):
@@ -271,6 +385,9 @@ async def authenticate_request(request: Request, db: AsyncSession, *, session_on
                 api = await _authenticate_personal_api_key(request, db, token)
                 if api:
                     return api
+                wfk = await _authenticate_workforce_credential(request, db, token)
+                if wfk:
+                    return wfk
                 raise
 
     if settings.auth_mode == "local" and auth_header:

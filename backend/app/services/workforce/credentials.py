@@ -15,6 +15,8 @@ import bcrypt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.database import async_session_maker
+
 from app.models.workforce_agent import (
     AGENT_STATUS_ACTIVE,
     WorkforceAgent,
@@ -40,7 +42,12 @@ def _verify_secret(secret: str, secret_hash: str) -> bool:
 
 
 async def mint_credential(
-    db: AsyncSession, *, agent_id: str, name: str
+    db: AsyncSession,
+    *,
+    agent_id: str,
+    name: str,
+    auth_mode: str,
+    oidc_realm_roles: list[str] | None = None,
 ) -> tuple[WorkforceAgentCredential, str]:
     """Create a credential row and return (row, full token). The token is not recoverable later."""
     credential_id = str(uuid4())
@@ -51,6 +58,8 @@ async def mint_credential(
         name=name[:128],
         key_prefix=f"{TOKEN_PREFIX}.{credential_id[:8]}",
         secret_hash=_hash_secret(secret),
+        auth_mode=auth_mode,
+        oidc_realm_roles=oidc_realm_roles,
     )
     db.add(row)
     await db.flush()
@@ -76,9 +85,21 @@ async def verify_credential(
     agent = await db.get(WorkforceAgent, row.agent_id)
     if agent is None or agent.status != AGENT_STATUS_ACTIVE:
         return None
-    row.last_used_at = datetime.now(timezone.utc)
-    await db.flush()
     return agent, row
+
+
+async def touch_credential(credential_id: str) -> None:
+    """Record "last used" in its own transaction.
+
+    Flushing it on the request session would hold a row lock until the handler finishes, and a service
+    call that fans out (qa-agent calling back with the same credential) then deadlocks on itself. Same
+    rule as a personal API key.
+    """
+    async with async_session_maker() as db:
+        row = await db.get(WorkforceAgentCredential, credential_id)
+        if row is not None and row.revoked_at is None:
+            row.last_used_at = datetime.now(timezone.utc)
+            await db.commit()
 
 
 async def revoked_credential_ids(db: AsyncSession, agent_id: str) -> set[str]:

@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -18,26 +17,13 @@ import {
   Loader2,
   Filter,
   ChevronDown,
-  ArrowUp,
   RefreshCw,
-  ThumbsUp,
-  ThumbsDown,
-  FolderTree,
 } from 'lucide-react';
 import { fetchDocumentById } from '../../data/documentsApi';
 import { fetchChannelById } from '../../data/channelsApi';
 import { normalizeExtractionSchemaToFields } from '../../data/channelUtils';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
-import { AgentAssistantStreamBody } from '../../components/agents/AgentAssistantStreamBody';
-import { KbQaSessionSidebar } from '../../components/knowledge-bases/KbQaSessionSidebar';
-import { AgentMessageBody } from '../../components/agents/AgentMessageBody';
-import { KbRetrievalProvenancePanel } from './KbRetrievalProvenancePanel';
-import {
-  KbQaSourcesDrawer,
-  KbQaSourcesPill,
-  type KbQaSourcesPanelPayload,
-} from './KbQaSourcesDrawer';
 import {
   KbChunkDialog,
   KbDocPickerDialog,
@@ -45,24 +31,21 @@ import {
   KbGenerateFaqDialog,
   KbWikiSpacePickerDialog,
 } from './KnowledgeBaseDetail.dialogs';
-import {
-  kbQaFeedbackKey,
-  splitQaSources,
-} from './KnowledgeBaseDetail.qaUtils';
 import { KbAgentSettings } from './KbAgentSettings';
-import { KbQaFilesRail } from './KbQaFilesRail';
 import { TAB_ICONS, TAB_ORDER } from './KnowledgeBaseDetail.types';
 import { useKnowledgeBaseDetail } from './useKnowledgeBaseDetail';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import { PanelToolbar } from '../../styles/design-system';
-import { useIsMobile } from '../../hooks/useIsMobile';
+import {
+  KbRetrievalProvenancePanel,
+} from '../workforce/chat';
 import './KnowledgeBaseDetail.scss';
+import '../workforce/chat/KbQaChat.scss';
 
 export function KnowledgeBaseDetail() {
   const {
     loadKb,
-    kbId,   channels, t, kb,  activeTab, setActiveTab, qaFullPage,
-    openQaFullPage, exitQaFullPageNav, openQaSettingsNav, loading, docs, docTotal, docPage, setDocPage, docPageSize, setDocPageSize,
+    kbId,   channels, t, kb,  activeTab, setActiveTab, loading, docs, docTotal, docPage, setDocPage, docPageSize, setDocPageSize,
       genDocs,  showDocPicker,  pickerSearch,
      pickerResults,  pickerLoading, pickerSelected, 
     pickerSelectedChannel,  pickerChannelExpanded, 
@@ -85,49 +68,24 @@ export function KnowledgeBaseDetail() {
     searchQuery, setSearchQuery, searchType, setSearchType, searchResults, 
     searching,  hasSearched,  searchOptionsExpanded, setSearchOptionsExpanded,
     searchLabelFilters, searchMetadataFilters, setSearchMetadataFilters, searchTopK, setSearchTopK,
-    searchForceDense, setSearchForceDense, searchRetrievalDiff,  qaInput,
-    setQaInput, chatMessages,  qaFeedback,  qaLoading, 
-    beginQaTraceSession, clearQaTraceSession, kbQaConvId, qaSessionId,
-     kbQaConversations,  kbQaConvsLoading, 
-    kbQaConvReady,  kbQaMainScrollRef,
-    settingsEmbeddingModelId, setSettingsEmbeddingModelId, settingsFaqPrompt, setSettingsFaqPrompt,
+    searchForceDense, setSearchForceDense, searchRetrievalDiff,  settingsEmbeddingModelId, setSettingsEmbeddingModelId, settingsFaqPrompt, setSettingsFaqPrompt,
     settingsChunkStrategy, setSettingsChunkStrategy, settingsChunkSize, setSettingsChunkSize,
     settingsChunkOverlap, setSettingsChunkOverlap, settingsMetadataKeys, setSettingsMetadataKeys,
     embeddingModels, llmModels, settingsSaving,  settingsSubTab, setSettingsSubTab,
     indexJobSubmitting,  settingsSubTabs,   
         enqueueIndexJob, 
-    onSelectKbQaConversation, onNewKbQaChat, onRenameKbQaChat, onDeleteKbQaChat, alreadyAddedIds,
+    alreadyAddedIds,
     openDocPicker, closeDocPicker,  handlePickerSearch, handlePickerChannelSelect,
     handlePickerChannelToggle, handleAddSelectedDocuments, handleRemoveDocument, togglePickerDoc,
     pickerTotalPages, openWikiSpacePicker, closeWikiSpacePicker, handleAddWikiSpaceToKb, handleRemoveWikiSpaceFromKb,
     handleAddSemanticModelToKb, handleRemoveSemanticModelFromKb,
     handleAddOntologyGroupToKb, handleRemoveOntologyGroupFromKb,
-    handleIndexWikiSpace, closeFaqDialog, openFaqFromQa, handlePolishFaqAnswer, handleSaveFaq,
+    handleIndexWikiSpace, closeFaqDialog, handlePolishFaqAnswer, handleSaveFaq,
     handleDeleteFaq, openGenerateModal, closeGenerateModal, handleGenerateFaqs, handleSaveGeneratedFaqs,
     handleGenBackToConfig, openChunkEdit, openChunkViewFromId, openChunkEditFromId, closeChunkDialog,
-    handleSaveChunk, handleSearch, handleAsk, setKbQaFeedbackVote, kbQaAssistantText, handleSaveSettings,
+    handleSaveChunk, handleSearch, handleSaveSettings,
      objToConfigValues, pickerCanPrev, pickerCanNext, toggleGenDoc, removeGenPreviewFaq,
   } = useKnowledgeBaseDetail();
-  const isMobile = useIsMobile();
-  const [qaSessionsOpen, setQaSessionsOpen] = useState(false);
-  const [qaSourcesPanel, setQaSourcesPanel] = useState<KbQaSourcesPanelPayload | null>(null);
-  /** The workspace rail: the conversation's files, on the right, hidden until asked for — as in the project agent. */
-  const [qaFilesOpen, setQaFilesOpen] = useState(false);
-  const qaShellBodyRef = useRef<HTMLDivElement>(null);
-
-  // Leaving the mobile layout closes the sessions drawer. Adjusting state during render
-  // (instead of in an effect) avoids a second render pass with a stale drawer.
-  if (!isMobile && qaSessionsOpen) setQaSessionsOpen(false);
-
-  useEffect(() => {
-    if (!isMobile || !qaSessionsOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setQaSessionsOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [isMobile, qaSessionsOpen]);
-
   if (loading) return <div className="kb-detail"><p>{t('detail.loading')}</p></div>;
   if (!kb) return <div className="kb-detail"><p>{t('detail.notFound')}</p></div>;
 
@@ -150,296 +108,6 @@ export function KnowledgeBaseDetail() {
       onSaveFaq={handleSaveFaq}
     />
   );
-
-  const exitQaFullPage = () => {
-    clearQaTraceSession();
-    setQaSourcesPanel(null);
-    setQaSessionsOpen(false);
-    exitQaFullPageNav();
-  };
-
-  const openQaSettings = () => {
-    clearQaTraceSession();
-    setQaSourcesPanel(null);
-    setQaSessionsOpen(false);
-    openQaSettingsNav();
-  };
-
-  if (qaFullPage && kb.agent_url) {
-    const sidebar = (
-      <KbQaSessionSidebar
-        kbName={kb.name}
-        conversations={kbQaConversations}
-        activeId={kbQaConvId}
-        loading={kbQaConvsLoading}
-        disabled={qaLoading}
-        hideBackLink={isMobile}
-        onSessionActivate={isMobile ? () => setQaSessionsOpen(false) : undefined}
-        onBack={exitQaFullPage}
-        onOpenSettings={openQaSettings}
-        onSelectSession={(id) => {
-          setQaSourcesPanel(null);
-          void onSelectKbQaConversation(id);
-        }}
-        onNewChat={() => {
-          setQaSourcesPanel(null);
-          void onNewKbQaChat();
-        }}
-        onRename={onRenameKbQaChat}
-        onDelete={onDeleteKbQaChat}
-      />
-    );
-
-    return (
-      <ContentCommentsShell
-        resourceType="knowledge_base"
-        resourceId={kb.id}
-        hideComments
-      >
-      <div className={`kb-detail kb-detail--qa-fullpage${isMobile ? ' kb-detail--qa-mobile' : ''}`}>
-        <div className="kb-qa-shell">
-          {isMobile ? (
-            <PanelToolbar
-              as="div"
-              className="kb-qa-mobile-toolbar"
-              leading={
-                <>
-                  <button
-                    type="button"
-                    className="kb-qa-mobile-back"
-                    onClick={exitQaFullPage}
-                    aria-label={t('detail.qaBackAria')}
-                  >
-                    <ArrowLeft size={18} />
-                    <span className="ds-compact-label">{t('detail.qaBackToKb')}</span>
-                  </button>
-                  <span className="kb-qa-mobile-title" title={kb.name}>
-                    {kb.name}
-                  </span>
-                </>
-              }
-              actions={
-                <>
-                  <button
-                    type="button"
-                    className={`kb-qa-mobile-chrome-btn${qaSessionsOpen ? ' is-active' : ''}`}
-                    onClick={() => setQaSessionsOpen((o) => !o)}
-                    aria-expanded={qaSessionsOpen}
-                    aria-controls="kb-qa-sessions-drawer"
-                    aria-label={t('detail.qaChatsAria')}
-                  >
-                    <MessageSquare size={18} aria-hidden />
-                    <span className="ds-compact-label">{t('detail.qaChatsLabel')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`kb-qa-mobile-chrome-btn${qaFilesOpen ? ' is-active' : ''}`}
-                    onClick={() => setQaFilesOpen((v) => !v)}
-                    aria-expanded={qaFilesOpen}
-                    aria-controls="kb-qa-files-rail"
-                    aria-label={t('detail.qaFiles')}
-                  >
-                    <FolderTree size={18} aria-hidden />
-                    <span className="ds-compact-label">{t('detail.qaFiles')}</span>
-                  </button>
-                </>
-              }
-            />
-          ) : null}
-          <div className="kb-qa-shell-body" ref={qaShellBodyRef}>
-            {isMobile ? (
-              <div
-                id="kb-qa-sessions-drawer"
-                className={`kb-qa-sessions-drawer${qaSessionsOpen ? ' is-open' : ''}`}
-                aria-hidden={!qaSessionsOpen}
-              >
-                {sidebar}
-              </div>
-            ) : (
-              sidebar
-            )}
-            <main className="kb-qa-main">
-              <div className="kb-qa-main-scroll" ref={kbQaMainScrollRef}>
-                {chatMessages.length === 0 && !qaLoading ? (
-                  <div className="kb-qa-hero">
-                    <div className="kb-qa-hero-mark" aria-hidden>
-                      <Sparkles size={28} strokeWidth={1.75} />
-                    </div>
-                    <h1 className="kb-qa-hero-title">{t('detail.qaHeroTitle', { name: kb.name })}</h1>
-                    <p className="kb-qa-hero-sub">{t('detail.qaHeroSubtitle')}</p>
-                  </div>
-                ) : null}
-                {chatMessages.length > 0 ? (
-                  <div className="kb-qa-thread kb-qa-messages kb-qa-messages--fullpage">
-                {chatMessages.map((msg, i) => {
-                  const isLast = i === chatMessages.length - 1;
-                  return (
-                    <div key={msg.id ?? `msg-fp-${i}`} className={`kb-qa-msg kb-qa-msg-${msg.role}`}>
-                      <span className="kb-qa-msg-label">
-                        {msg.role === 'user' ? t('detail.qaLabelYou') : t('detail.qaLabelAssistant')}
-                      </span>
-                      {msg.role === 'assistant' && msg.streamParts && msg.streamParts.length > 0 ? (
-                        <div className="kb-qa-assistant-stream">
-                          <AgentAssistantStreamBody
-                            streamParts={msg.streamParts}
-                            fallbackText={msg.content}
-                          />
-                        </div>
-                      ) : msg.role === 'assistant' &&
-                        !msg.content &&
-                        !(msg.streamParts && msg.streamParts.length) &&
-                        qaLoading &&
-                        isLast ? (
-                        <div className="kb-qa-msg-bubble kb-qa-msg-bubble--assistant kb-qa-typing">
-                          {t('detail.qaThinking')}
-                        </div>
-                      ) : (
-                        <div
-                          className={
-                            msg.role === 'user' ? 'kb-qa-msg-bubble kb-qa-msg-bubble--user' : 'kb-qa-msg-bubble kb-qa-msg-bubble--assistant'
-                          }
-                        >
-                          <AgentMessageBody
-                            text={msg.content}
-                            variant={msg.role === 'user' ? 'user' : 'assistant'}
-                          />
-                        </div>
-                      )}
-                      {msg.role === 'assistant' &&
-                        !(qaLoading && isLast) &&
-                        (() => {
-                          const assistantText = kbQaAssistantText(msg);
-                          const { evidence, references } = splitQaSources(msg.sources ?? []);
-                          const hasSources = evidence.length > 0 || references.length > 0;
-                          const showFeedback = Boolean(assistantText);
-                          const warnings = msg.warnings ?? [];
-                          if (!hasSources && !showFeedback && warnings.length === 0) return null;
-                          const feedbackKey = kbQaFeedbackKey(msg, i);
-                          const feedback = qaFeedback[feedbackKey];
-                          const prev = chatMessages[i - 1];
-                          const question = prev?.role === 'user' ? prev.content.trim() : '';
-                          const rk = msg.replyKey ?? `legacy-${i}`;
-                          const sourcesOpen = qaSourcesPanel?.replyKey === rk;
-                          return (
-                            <div className="kb-qa-msg-actions">
-                              {warnings.length > 0 ? (
-                                /* What the agent could not source. Shown, not hidden: the reader decides whether to trust
-                                   the numbers, and the KB asked to be told. */
-                                <ul className="kb-qa-grounding-warning" role="status">
-                                  {warnings.map((w) => (
-                                    <li key={w}>{w}</li>
-                                  ))}
-                                </ul>
-                              ) : null}
-                              {hasSources ? (
-                                <KbQaSourcesPill
-                                  evidenceCount={evidence.length}
-                                  referenceCount={references.length}
-                                  open={sourcesOpen}
-                                  t={t}
-                                  onClick={() =>
-                                    setQaSourcesPanel((prev) =>
-                                      prev?.replyKey === rk
-                                        ? null
-                                        : { replyKey: rk, evidence, references }
-                                    )
-                                  }
-                                />
-                              ) : null}
-                              {showFeedback ? (
-                                <div className="kb-qa-msg-feedback">
-                                  <button
-                                    type="button"
-                                    className={`kb-qa-feedback-btn kb-qa-feedback-btn--up${feedback === 'up' ? ' kb-qa-feedback-btn--active' : ''}`}
-                                    aria-label={t('detail.qaFeedbackUpAria')}
-                                    aria-pressed={feedback === 'up'}
-                                    onClick={() => setKbQaFeedbackVote(feedbackKey, 'up')}
-                                  >
-                                    <ThumbsUp size={16} strokeWidth={2} aria-hidden />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className={`kb-qa-feedback-btn kb-qa-feedback-btn--down${feedback === 'down' ? ' kb-qa-feedback-btn--active' : ''}`}
-                                    aria-label={t('detail.qaFeedbackDownAria')}
-                                    aria-pressed={feedback === 'down'}
-                                    onClick={() => setKbQaFeedbackVote(feedbackKey, 'down')}
-                                  >
-                                    <ThumbsDown size={16} strokeWidth={2} aria-hidden />
-                                  </button>
-                                  {feedback === 'up' && question ? (
-                                    <button
-                                      type="button"
-                                      className="kb-qa-sources-action-btn"
-                                      aria-label={t('detail.qaSaveAsFaqAria')}
-                                      onClick={() => openFaqFromQa(question, assistantText)}
-                                    >
-                                      {t('detail.qaSaveAsFaq')}
-                                    </button>
-                                  ) : null}
-                                </div>
-                              ) : null}
-                            </div>
-                          );
-                        })()}
-                    </div>
-                  );
-                })}
-                  </div>
-                ) : null}
-              </div>
-              <div className="kb-qa-composer-outer">
-                <form className="kb-qa-composer" onSubmit={handleAsk}>
-                  <textarea
-                    className="kb-qa-composer-input"
-                    placeholder={t('detail.qaPlaceholder')}
-                    value={qaInput}
-                    onChange={(e) => setQaInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
-                      }
-                    }}
-                    disabled={qaLoading || !kbQaConvReady}
-                    rows={1}
-                    autoComplete="off"
-                    aria-label={t('detail.qaPlaceholder')}
-                  />
-                  <button
-                    type="submit"
-                    className="kb-qa-composer-send"
-                    disabled={qaLoading || !qaInput.trim() || !kbQaConvReady}
-                    aria-label={t('detail.qaSendAria')}
-                  >
-                    <ArrowUp size={18} strokeWidth={2.25} aria-hidden />
-                  </button>
-                </form>
-                <p className="kb-qa-composer-hint">{t('detail.qaComposerHint')}</p>
-              </div>
-            </main>
-            {/* The conversation's files, as the project agent has them: a rail on the right that can be hidden. */}
-            <KbQaFilesRail
-              kbId={kb.id}
-              sessionId={qaSessionId}
-              open={qaFilesOpen}
-              onOpen={() => setQaFilesOpen(true)}
-              onCollapse={() => setQaFilesOpen(false)}
-              isMobile={isMobile}
-              containerRef={qaShellBodyRef}
-              suppressToggle={qaSourcesPanel !== null}
-            />
-            <KbQaSourcesDrawer
-              panel={qaSourcesPanel}
-              onClose={() => setQaSourcesPanel(null)}
-              t={t}
-            />
-          </div>
-        </div>
-        {faqDialog}
-      </div>
-      </ContentCommentsShell>
-    );
-  }
 
   return (
     <ContentCommentsShell resourceType="knowledge_base" resourceId={kb.id}>
@@ -478,19 +146,16 @@ export function KnowledgeBaseDetail() {
               <span className="ds-compact-label">{t('detail.indexJobHeader')}</span>
             </button>
           ) : null}
-        {kb.agent_url ? (
-          <button
-            type="button"
+        {kb.qa_available && kb.default_agent_id ? (
+          /* The conversation is a workforce screen; this is only the way in from the corpus it answers about. */
+          <Link
             className="btn btn-primary btn-sm kb-detail-header-qa-btn"
-            onClick={() => {
-              beginQaTraceSession();
-              openQaFullPage();
-            }}
+            to={`/workforce/${kb.default_agent_id}/chat?kb=${encodeURIComponent(kb.id)}`}
             aria-label={t('detail.qaOpenChat')}
           >
             <MessageSquare size={18} aria-hidden />
             <span className="ds-compact-label">{t('detail.qaOpenChat')}</span>
-          </button>
+          </Link>
         ) : null}
         </div>
       </header>

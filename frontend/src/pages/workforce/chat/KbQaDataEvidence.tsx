@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { TFunction } from 'i18next';
-import { highlightSql } from '../../components/quality/sqlHighlight';
-import '../../components/quality/SqlEditor.scss';
-import type { CatalogDataQuery, SearchResult } from '../../data/knowledgeBasesApi';
+import { highlightSql } from '../../../components/quality/sqlHighlight';
+import '../../../components/quality/SqlEditor.scss';
+import type { CatalogDataQuery, SearchResult } from '../../../data/knowledgeBasesApi';
 import { playgroundHrefFromDataQuery } from './kbQaPlaygroundHref';
 
 function cellText(value: unknown): string {

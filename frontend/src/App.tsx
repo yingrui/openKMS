@@ -105,6 +105,15 @@ const MediaGenerate = lazy(() => import('./pages/media/MediaGenerate').then((m) 
 const KnowledgeBaseDetail = lazy(() =>
   import('./pages/knowledge-bases/KnowledgeBaseDetail').then((m) => ({ default: m.KnowledgeBaseDetail })),
 );
+const WorkforceList = lazy(() =>
+  import('./pages/workforce/WorkforceList').then((m) => ({ default: m.WorkforceList })),
+);
+const WorkforceDetail = lazy(() =>
+  import('./pages/workforce/WorkforceDetail').then((m) => ({ default: m.WorkforceDetail })),
+);
+const WorkforceChat = lazy(() =>
+  import('./pages/workforce/WorkforceChat').then((m) => ({ default: m.WorkforceChat })),
+);
 const Pipelines = lazy(() => import('./pages/pipelines/Pipelines').then((m) => ({ default: m.Pipelines })));
 const JobRuns = lazy(() => import('./pages/jobs/JobRuns').then((m) => ({ default: m.JobRuns })));
 const SchedulesPage = lazy(() => import('./pages/jobs/SchedulesPage').then((m) => ({ default: m.SchedulesPage })));
@@ -461,9 +470,8 @@ function App() {
             <Route path="view/:id" element={<MediaDetail />} />
           </Route>
           <Route path="knowledge-bases" element={<KnowledgeBaseList />} />
-          <Route path="knowledge-bases/:id/qa/:conversationId" element={<KnowledgeBaseDetail />} />
-          <Route path="knowledge-bases/:id/qa" element={<KnowledgeBaseDetail />} />
           <Route path="knowledge-bases/:id" element={<KnowledgeBaseDetail />} />
+          <Route path="workforce" element={<WorkforceList />} />
           <Route path="agents" element={<FeatureGate feature="agents"><ProjectList /></FeatureGate>} />
           <Route path="agents/skills/:skillId/settings" element={<FeatureGate feature="agents"><AgentSkillSettings /></FeatureGate>} />
           <Route path="agents/skills" element={<FeatureGate feature="agents"><AgentSkillsPage /></FeatureGate>} />
@@ -509,6 +517,9 @@ function App() {
               <Route path="sharing" element={<ModelSharingTab />} />
               <Route path="settings" element={<ModelSettingsTab />} />
             </Route>
+            <Route path="workforce/:agentId" element={<WorkforceDetail />} />
+            <Route path="workforce/:agentId/chat" element={<WorkforceChat />} />
+            <Route path="workforce/:agentId/chat/:conversationId" element={<WorkforceChat />} />
             <Route path="data-rules/new" element={<RuleNewPage />} />
             <Route path="data-rules/:ruleId" element={<RuleDetailPage />}>
               <Route index element={<RuleOverviewTab />} />

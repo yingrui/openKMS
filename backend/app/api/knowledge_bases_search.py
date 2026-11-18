@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth
 from app.api.kb_router_deps import get_kb_scoped
+from app.services.content.knowledge_bases.qa_agent_proxy import resolve_agent_url
 from app.database import get_db
 from app.models.knowledge_base import KnowledgeBase
 from pydantic import ValidationError
@@ -53,11 +54,11 @@ async def semantic_search(
         or (body.search_type and body.search_type != "all")
     )
 
-    if kb.agent_url and not has_filters and not body.force_dense:
+    if resolve_agent_url(kb) and not has_filters and not body.force_dense:
         try:
             async with httpx.AsyncClient(timeout=180.0) as client:
                 resp = await client.post(
-                    agent_kb_path(kb.agent_url, kb_id, "retrieve"),
+                    agent_kb_path(resolve_agent_url(kb) or "", kb_id, "retrieve"),
                     json=retrieve_agent_body(
                         kb=kb,
                         query=body.query,
@@ -95,20 +96,25 @@ async def ask_question(
     db: AsyncSession = Depends(get_db),
 ):
     """Forward question to the configured QA agent service."""
-    if not kb.agent_url:
+    if not resolve_agent_url(kb):
         raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
 
-    from app.services.content.knowledge_bases.qa_agent_proxy import agent_error, agent_kb_path, ask_agent_body
+    from app.services.content.knowledge_bases.qa_agent_proxy import (
+        agent_error,
+        agent_kb_path,
+        ask_agent_body_for_kb,
+    )
 
     from app.services.workspace.evaluations.prompt_store import resolve_system_prompt
 
     prompt_text, prompt_version = await resolve_system_prompt(db, kb_id)
-    url = agent_kb_path(kb.agent_url, kb_id, "ask")
+    url = agent_kb_path(resolve_agent_url(kb) or "", kb_id, "ask")
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
                 url,
-                json=ask_agent_body(
+                json=await ask_agent_body_for_kb(
+                    db,
                     kb=kb,
                     question=body.question,
                     conversation_history=body.conversation_history,
@@ -149,11 +155,11 @@ async def list_qa_session_files(
     The files live with the agent (they are its workspace), so this is a proxy — and the ACL check is here, because the agent
     is not where a user's access to a knowledge base is decided.
     """
-    if not kb.agent_url:
+    if not resolve_agent_url(kb):
         raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
     from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path
 
-    url = agent_kb_path(kb.agent_url, kb_id, f"sessions/{session_id}/files")
+    url = agent_kb_path(resolve_agent_url(kb) or "", kb_id, f"sessions/{session_id}/files")
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.get(url)
@@ -173,11 +179,13 @@ async def download_qa_session_file(
     kb: KnowledgeBase = Depends(get_kb_scoped),
 ):
     """One artifact as bytes. The agent serves it; this decides whether the caller may have it."""
-    if not kb.agent_url:
+    if not resolve_agent_url(kb):
         raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
     from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path
 
-    url = agent_kb_path(kb.agent_url, kb_id, f"sessions/{session_id}/files/download")
+    url = agent_kb_path(
+            resolve_agent_url(kb) or "", kb_id, f"sessions/{session_id}/files/download"
+        )
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             upstream = await client.get(url, params={"path": path})
@@ -203,15 +211,20 @@ async def ask_question_stream(
     body: AskRequest,
     token: str = Depends(require_auth),
     kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
 ):
     """Proxy streaming NDJSON from the QA agent (delta lines, then done)."""
-    if not kb.agent_url:
+    if not resolve_agent_url(kb):
         raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
 
-    from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
+    from app.services.content.knowledge_bases.qa_agent_proxy import (
+        agent_kb_path,
+        ask_agent_body_for_kb,
+    )
 
-    url = agent_kb_path(kb.agent_url, kb_id, "ask/stream")
-    payload = ask_agent_body(
+    url = agent_kb_path(resolve_agent_url(kb) or "", kb_id, "ask/stream")
+    payload = await ask_agent_body_for_kb(
+        db,
         kb=kb,
         question=body.question,
         conversation_history=body.conversation_history,
