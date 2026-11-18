@@ -29,6 +29,7 @@ from app.models.metric_definition import MetricDefinition
 from app.models.semantic_model import SemanticModel
 from app.models.semantic_model_field import SemanticModelField
 from app.services.data.expressions import ANSI, dialect_sql, normalize_expression
+from app.services.data.time_role import resolve_time_role
 from app.services.data.metric_refs import metric_references
 from app.services.data.semantic_model_fields import OSSIE_DATATYPES
 from app.services.data.semantic_models import member_ids, set_members
@@ -132,6 +133,9 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
             select(MetricDefinition).where(MetricDefinition.semantic_model_id == model.id)
         )
     ).scalars().all()
+    column_time_formats: dict[str, dict[str, str | None]] = {}
+    for column in columns:
+        column_time_formats.setdefault(column.dataset_id, {})[column.column_name] = column.time_format
     ds_names = {ds.id: ds.name for ds in (await db.execute(select(DataSource))).scalars().all()}
     name_by_id = {d.id: _dataset_name(d) for d in datasets}
 
@@ -184,15 +188,18 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
                 or {"dialects": [{"dialect": "ANSI_SQL", "expression": f.column_name or f.name}]}
             )
             fentry: dict[str, Any] = {"name": f.name, "expression": fexpr}
-            dimension = dict(f.dimension or {})
-            period_kind = dimension.pop("period_kind", None)
-            period_format = dimension.pop("period_format", None)
-            if dimension:
-                fentry["dimension"] = dimension
-            if period_kind or period_format:
-                # Ossie's `dimension` allows only `is_time`; the calendar is ours.
+            # Ossie's `dimension` allows only `is_time`; the calendar is ours, derived from the column's
+            # `time_format` (which lives with the data, not with the model).
+            time_format = column_time_formats.get(f.dataset_id, {}).get(f.column_name or "")
+            is_time, kind = resolve_time_role(
+                datatype=f.datatype,
+                time_format=time_format,
+                field_dimension=f.dimension,
+            )
+            fentry["dimension"] = {"is_time": is_time}
+            if is_time and time_format:
                 fentry["custom_extensions"] = _extension(
-                    {"period": {"kind": period_kind, "format": period_format}}
+                    {"period": {"format": time_format, "kind": kind}}
                 )
             if f.label:
                 fentry["label"] = f.label
@@ -266,6 +273,9 @@ async def _dataset_index(
 ) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
     """Return (by_id, by_source, by_name) → dataset id."""
     datasets = (await db.execute(select(Dataset))).scalars().all()
+    column_time_formats: dict[str, dict[str, str | None]] = {}
+    for column in columns:
+        column_time_formats.setdefault(column.dataset_id, {})[column.column_name] = column.time_format
     ds_names = {ds.id: ds.name for ds in (await db.execute(select(DataSource))).scalars().all()}
     by_id: dict[str, str] = {}
     by_source: dict[str, str] = {}
