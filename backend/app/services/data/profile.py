@@ -50,28 +50,27 @@ async def compute_profile(db: AsyncSession, dataset: Dataset) -> tuple[int, list
                         continue
                     entry: dict[str, Any] = {"column": name, "null_count": None,
                                              "distinct_count": None, "min": None, "max": None}
-                    # Counts are defined for every type, so they are asked for on their own: a value range
-                    # that cannot be computed must not cost the counts as well.
-                    counted = conn.execute(
-                        text(
-                            f'SELECT COUNT("{name}") AS nn, COUNT(DISTINCT "{name}") AS nd FROM {quoted}'
-                        )
-                    ).mappings().first()
-                    entry["null_count"] = total - int((counted or {}).get("nn") or 0)
-                    entry["distinct_count"] = int((counted or {}).get("nd") or 0)
-                    # `MIN(uuid)` has no such function, and the failure aborts the connection's transaction —
-                    # so every later column used to come back empty too. A savepoint keeps the damage local,
-                    # which is also what makes "no range for this type" a per-column fact instead of a guess.
-                    try:
+                    # Three questions, three degrees of "any type can answer this", so each is asked on its
+                    # own inside a savepoint: a type that cannot answer one of them must not cost the others,
+                    # and a failed statement must not abort the connection's transaction for every later
+                    # column (`MIN(uuid)` and `COUNT(DISTINCT json)` both do exactly that).
+                    def ask(sql: str) -> dict[str, Any]:
                         with conn.begin_nested():
-                            row = conn.execute(
-                                text(
-                                    f'SELECT MIN("{name}") AS mn, MAX("{name}") AS mx FROM {quoted}'
-                                )
-                            ).mappings().first()
-                            entry["min"] = serialize_cell_value((row or {}).get("mn"))
-                            entry["max"] = serialize_cell_value((row or {}).get("mx"))
-                    except (SQLAlchemyError, ValueError, TypeError):  # no ordering for this type
+                            return dict(conn.execute(text(sql)).mappings().first() or {})
+
+                    non_null = ask(f'SELECT COUNT("{name}") AS nn FROM {quoted}')["nn"]
+                    entry["null_count"] = total - int(non_null or 0)
+                    try:
+                        entry["distinct_count"] = int(
+                            ask(f'SELECT COUNT(DISTINCT "{name}") AS nd FROM {quoted}')["nd"] or 0
+                        )
+                    except (SQLAlchemyError, ValueError, TypeError):  # no equality for this type (json)
+                        pass
+                    try:
+                        ranged = ask(f'SELECT MIN("{name}") AS mn, MAX("{name}") AS mx FROM {quoted}')
+                        entry["min"] = serialize_cell_value(ranged.get("mn"))
+                        entry["max"] = serialize_cell_value(ranged.get("mx"))
+                    except (SQLAlchemyError, ValueError, TypeError):  # no ordering for this type (uuid)
                         pass
                     stats.append(entry)
                 return total, stats
