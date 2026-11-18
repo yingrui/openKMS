@@ -3,17 +3,17 @@ import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import type { SearchResult } from '../../../data/knowledgeBasesApi';
-import { KbQaEvidenceCard } from './KbQaDataEvidence';
-import { KbRetrievalProvenancePanel } from './KbRetrievalProvenancePanel';
+import { ChatEvidenceCard } from './ChatDataEvidence';
+import { ChatRetrievalProvenancePanel } from './ChatRetrievalProvenancePanel';
 import {
-  kbQaExpandedDetailPreviewMaxLen,
-  kbQaNormalizeSourceKind,
-  kbQaShowRetrievalScore,
-  kbQaSourceCardModifierClass,
-  kbQaTruncatePreview,
-} from './qaUtils';
+  chatExpandedPreviewMaxLen,
+  chatSourceKind,
+  chatShowRetrievalScore,
+  chatSourceCardModifierClass,
+  chatTruncatePreview,
+} from './chatUtils';
 
-export type KbQaSourcesPanelPayload = {
+export type ChatSourcesPanelPayload = {
   replyKey: string;
   evidence: SearchResult[];
   references: SearchResult[];
@@ -28,16 +28,16 @@ function ReferenceCard({
   index: number;
   t: TFunction;
 }) {
-  const kind = kbQaNormalizeSourceKind(s.source_type);
-  const mod = kbQaSourceCardModifierClass(s.source_type);
-  const kindLabel = t(`detail.qaSourceKind.${kind}`, {
+  const kind = chatSourceKind(s.source_type);
+  const mod = chatSourceCardModifierClass(s.source_type);
+  const kindLabel = t(`chat.sourceKind.${kind}`, {
     defaultValue: s.source_type || kind,
   });
-  const detailPreview = kbQaTruncatePreview(
+  const detailPreview = chatTruncatePreview(
     s.content || '',
-    kbQaExpandedDetailPreviewMaxLen(s.source_type)
+    chatExpandedPreviewMaxLen(s.source_type)
   );
-  const showScore = kbQaShowRetrievalScore(s.source_type, s.score);
+  const showScore = chatShowRetrievalScore(s.source_type, s.score);
   return (
     <div className={`kb-qa-source-card kb-qa-source-card--static kb-qa-sources-drawer__ref ${mod}`}>
       <span className="kb-qa-sources-drawer__index" aria-hidden>
@@ -49,15 +49,15 @@ function ReferenceCard({
           /* Whether the answer drew on this source, or the query merely ran. Every source is kept either way. */
           <span
             className={`kb-qa-source-card__usage kb-qa-source-card__usage--${s.usage}`}
-            title={t(`detail.qaSourceUsage.${s.usage}Hint`)}
+            title={t(`chat.sourceUsage.${s.usage}Hint`)}
           >
-            {t(`detail.qaSourceUsage.${s.usage}`)}
+            {t(`chat.sourceUsage.${s.usage}`)}
             {s.usage === 'used' && s.traceable_numbers ? ` · ${s.traceable_numbers}` : ''}
           </span>
         ) : null}
         {showScore ? (
           <span className="kb-qa-source-card__score">
-            {t('detail.qaSourceScore', { pct: (s.score * 100).toFixed(0) })}
+            {t('chat.sourceScore', { pct: (s.score * 100).toFixed(0) })}
           </span>
         ) : null}
       </div>
@@ -77,17 +77,17 @@ function ReferenceCard({
         )}
       </div>
       {detailPreview ? <p className="kb-qa-source-card__preview">{detailPreview}</p> : null}
-      <KbRetrievalProvenancePanel s={s} t={t} />
+      <ChatRetrievalProvenancePanel s={s} t={t} />
     </div>
   );
 }
 
-export function KbQaSourcesDrawer({
+export function ChatSourcesDrawer({
   panel,
   onClose,
   t,
 }: {
-  panel: KbQaSourcesPanelPayload | null;
+  panel: ChatSourcesPanelPayload | null;
   onClose: () => void;
   t: TFunction;
 }) {
@@ -109,38 +109,38 @@ export function KbQaSourcesDrawer({
       id="kb-qa-sources-drawer"
       className="kb-qa-sources-drawer"
       role="complementary"
-      aria-label={t('detail.qaSourcesDrawerAria')}
+      aria-label={t('chat.sourcesDrawerAria')}
     >
       <header className="kb-qa-sources-drawer__head">
         <div className="kb-qa-sources-drawer__title">
-          <h2>{t('detail.qaSourcesDrawerTitle')}</h2>
+          <h2>{t('chat.sourcesDrawerTitle')}</h2>
           <span className="kb-qa-sources-drawer__count">
-            {t('detail.qaSourcesDrawerCount', { count: total })}
+            {t('chat.sourcesDrawerCount', { count: total })}
           </span>
         </div>
         <button
           type="button"
           className="kb-qa-sources-drawer__close"
           onClick={onClose}
-          aria-label={t('detail.qaSourcesDrawerClose')}
+          aria-label={t('chat.sourcesDrawerClose')}
         >
           <X size={18} aria-hidden />
         </button>
       </header>
       <div className="kb-qa-sources-drawer__body">
         {evidence.length > 0 ? (
-          <section className="kb-qa-sources-drawer__section" aria-label={t('detail.qaDataEvidenceAria')}>
-            <h3 className="kb-qa-sources-drawer__section-title">{t('detail.qaDataEvidenceHeading')}</h3>
+          <section className="kb-qa-sources-drawer__section" aria-label={t('chat.dataEvidenceAria')}>
+            <h3 className="kb-qa-sources-drawer__section-title">{t('chat.dataEvidenceHeading')}</h3>
             <div className="kb-qa-sources-drawer__cards">
               {evidence.map((s, i) => (
-                <KbQaEvidenceCard key={`ev-${s.id}-${i}`} s={s} t={t} />
+                <ChatEvidenceCard key={`ev-${s.id}-${i}`} s={s} t={t} />
               ))}
             </div>
           </section>
         ) : null}
         {references.length > 0 ? (
-          <section className="kb-qa-sources-drawer__section" aria-label={t('detail.qaSourcesAria')}>
-            <h3 className="kb-qa-sources-drawer__section-title">{t('detail.qaSourcesHeading')}</h3>
+          <section className="kb-qa-sources-drawer__section" aria-label={t('chat.sourcesAria')}>
+            <h3 className="kb-qa-sources-drawer__section-title">{t('chat.sourcesHeading')}</h3>
             <div className="kb-qa-sources-drawer__cards">
               {references.map((s, i) => (
                 <ReferenceCard key={`ref-${s.id}-${i}`} s={s} index={i + 1} t={t} />
@@ -153,7 +153,7 @@ export function KbQaSourcesDrawer({
   );
 }
 
-export function KbQaSourcesPill({
+export function ChatSourcesPill({
   evidenceCount,
   referenceCount,
   open,
@@ -170,14 +170,14 @@ export function KbQaSourcesPill({
   if (total === 0) return null;
   let summary: string;
   if (evidenceCount > 0 && referenceCount > 0) {
-    summary = t('detail.qaSourcesPillMixed', {
+    summary = t('chat.sourcesPillMixed', {
       evidence: evidenceCount,
       references: referenceCount,
     });
   } else if (evidenceCount > 0) {
-    summary = t('detail.qaSourcesPillEvidence', { count: evidenceCount });
+    summary = t('chat.sourcesPillEvidence', { count: evidenceCount });
   } else {
-    summary = t('detail.qaSourcesPillReferences', { count: referenceCount });
+    summary = t('chat.sourcesPillReferences', { count: referenceCount });
   }
   return (
     <button
@@ -187,7 +187,7 @@ export function KbQaSourcesPill({
       aria-controls="kb-qa-sources-drawer"
       onClick={onClick}
     >
-      <span className="kb-qa-sources-pill__label">{t('detail.qaSourcesPillLabel')}</span>
+      <span className="kb-qa-sources-pill__label">{t('chat.sourcesPillLabel')}</span>
       <span className="kb-qa-sources-pill__summary">{summary}</span>
     </button>
   );

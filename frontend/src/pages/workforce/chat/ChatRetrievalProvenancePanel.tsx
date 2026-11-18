@@ -1,12 +1,12 @@
 import type { SearchResult } from '../../../data/knowledgeBasesApi';
-import { kbHasRetrievalProvenance } from './qaUtils';
+import { kbHasRetrievalProvenance } from './chatUtils';
 
 interface KbRetrievalProvenanceProps {
   s: SearchResult;
   t: (key: string, options?: Record<string, unknown>) => string;
 }
 
-export function KbRetrievalProvenancePanel({ s, t }: KbRetrievalProvenanceProps) {
+export function ChatRetrievalProvenancePanel({ s, t }: KbRetrievalProvenanceProps) {
   if (!kbHasRetrievalProvenance(s)) return null;
   const dbg = s.retrieval_debug;
   const num = (v: unknown): string | null => {

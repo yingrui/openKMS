@@ -16,7 +16,7 @@ import '../../../styles/files-rail.scss';
  * Scoped to the **conversation**: `sessionId` is this visit's id, so one user never sees another's files, and a new
  * conversation starts empty.
  */
-export function KbQaFilesPanel({
+export function ChatFilesPanel({
   kbId,
   sessionId,
   onCollapse,
@@ -25,7 +25,7 @@ export function KbQaFilesPanel({
   sessionId: string | null;
   onCollapse: () => void;
 }) {
-  const { t } = useTranslation('knowledgeBase');
+  const { t } = useTranslation('workforce');
   const [files, setFiles] = useState<QaSessionFile[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -50,8 +50,8 @@ export function KbQaFilesPanel({
     <>
       <div className="files-rail-head">
         <div className="files-rail-head-title-row">
-          <span className="files-rail-head-title" title={t('detail.qaFiles')}>
-            {t('detail.qaFiles')}
+          <span className="files-rail-head-title" title={t('chat.files')}>
+            {t('chat.files')}
           </span>
           {files.length > 0 ? (
             <span className="files-rail-chip files-rail-chip--static">{files.length}</span>
@@ -63,8 +63,8 @@ export function KbQaFilesPanel({
             className="files-rail-icon-btn"
             onClick={() => void load()}
             disabled={loading || !sessionId}
-            title={t('detail.qaFilesRefresh')}
-            aria-label={t('detail.qaFilesRefresh')}
+            title={t('chat.filesRefresh')}
+            aria-label={t('chat.filesRefresh')}
           >
             {loading ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
           </button>
@@ -72,8 +72,8 @@ export function KbQaFilesPanel({
             type="button"
             className="files-rail-icon-btn"
             onClick={onCollapse}
-            title={t('detail.qaFilesClose')}
-            aria-label={t('detail.qaFilesClose')}
+            title={t('chat.filesClose')}
+            aria-label={t('chat.filesClose')}
           >
             <PanelRightClose size={16} />
           </button>
@@ -99,10 +99,10 @@ export function KbQaFilesPanel({
         </ul>
       ) : loading ? (
         <p className="files-rail-empty">
-          <Loader2 size={14} className="animate-spin" aria-hidden /> {t('detail.qaFilesLoading')}
+          <Loader2 size={14} className="animate-spin" aria-hidden /> {t('chat.filesLoading')}
         </p>
       ) : (
-        <p className="files-rail-empty">{t('detail.qaFilesEmpty')}</p>
+        <p className="files-rail-empty">{t('chat.filesEmpty')}</p>
       )}
     </>
   );

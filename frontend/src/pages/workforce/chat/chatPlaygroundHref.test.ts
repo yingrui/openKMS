@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { playgroundHrefFromDataQuery } from './kbQaPlaygroundHref';
+import { playgroundHrefFromDataQuery } from './chatPlaygroundHref';
 
 describe('playgroundHrefFromDataQuery', () => {
   it('prefers SQL Lab when sql is present', () => {

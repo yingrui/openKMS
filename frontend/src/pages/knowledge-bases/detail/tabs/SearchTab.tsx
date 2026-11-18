@@ -3,7 +3,7 @@ import type { TFunction } from 'i18next';
 import { ChevronDown, ChevronRight, Filter, Search as SearchIcon, Send } from 'lucide-react';
 import type { SearchResult } from '../../../../data/knowledgeBasesApi';
 import type { KbSearchRetrievalDiff } from '../../KnowledgeBaseDetail.types';
-import { KbRetrievalProvenancePanel } from '../../../workforce/chat';
+import { ChatRetrievalProvenancePanel } from '../../../workforce/chat';
 import './SearchTab.scss';
 
 export type KbSearchType = 'all' | 'chunks' | 'faqs';
@@ -251,7 +251,7 @@ export function SearchTab({
                 <span className="kb-search-result-score">
                   {t('detail.matchPercent', { pct: (r.score * 100).toFixed(0) })}
                 </span>
-                <KbRetrievalProvenancePanel s={r} t={t} />
+                <ChatRetrievalProvenancePanel s={r} t={t} />
                 {r.source_type === 'chunk' ? (
                   <div className="kb-search-result-chunk-actions">
                     <button

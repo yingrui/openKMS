@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SearchResult } from '../../../data/knowledgeBasesApi';
-import { isDataEvidenceSource, splitQaSources } from './qaUtils';
+import { isDataEvidenceSource, splitQaSources } from './chatUtils';
 
 function src(partial: Partial<SearchResult> & Pick<SearchResult, 'id' | 'source_type'>): SearchResult {
   return {

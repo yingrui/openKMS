@@ -26,17 +26,17 @@ function kbAgentItemsToChatMessages(items: AgentMessageItem[]): ChatMessage[] {
   return out;
 }
 
-function kbQaLineId(): string {
+function chatLineId(): string {
   return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
     : `line_${Date.now()}`;
 }
 
-function kbQaFeedbackKey(msg: ChatMessage, index: number): string {
+function chatFeedbackKey(msg: ChatMessage, index: number): string {
   return msg.replyKey ?? msg.id ?? `idx-${index}`;
 }
 
-function kbQaNormalizeSourceKind(sourceType: string | null | undefined): string {
+function chatSourceKind(sourceType: string | null | undefined): string {
   const k = (sourceType || 'chunk').toLowerCase();
   if (
     k === 'ontology' ||
@@ -52,7 +52,7 @@ function kbQaNormalizeSourceKind(sourceType: string | null | undefined): string 
 }
 
 function isDataEvidenceSource(s: SearchResult): boolean {
-  const k = kbQaNormalizeSourceKind(s.source_type);
+  const k = chatSourceKind(s.source_type);
   return k === 'metric' || k === 'semantic_model';
 }
 
@@ -69,8 +69,8 @@ function splitQaSources(sources: SearchResult[]): {
   return { evidence, references };
 }
 
-function kbQaSourceCardModifierClass(sourceType: string | null | undefined): string {
-  const k = kbQaNormalizeSourceKind(sourceType);
+function chatSourceCardModifierClass(sourceType: string | null | undefined): string {
+  const k = chatSourceKind(sourceType);
   if (k === 'ontology') return 'kb-qa-source-card--ontology';
   if (k === 'document_section') return 'kb-qa-source-card--section';
   if (k === 'faq') return 'kb-qa-source-card--faq';
@@ -78,23 +78,23 @@ function kbQaSourceCardModifierClass(sourceType: string | null | undefined): str
   return 'kb-qa-source-card--chunk';
 }
 
-function kbQaTruncatePreview(text: string, maxLen: number): string {
+function chatTruncatePreview(text: string, maxLen: number): string {
   const n = text.replace(/\s+/g, ' ').trim();
   if (!n) return '';
   if (n.length <= maxLen) return n;
   return `${n.slice(0, Math.max(0, maxLen - 1))}…`;
 }
 
-function kbQaShowRetrievalScore(sourceType: string | null | undefined, score: number): boolean {
-  const k = kbQaNormalizeSourceKind(sourceType);
+function chatShowRetrievalScore(sourceType: string | null | undefined, score: number): boolean {
+  const k = chatSourceKind(sourceType);
   if (k === 'ontology' || k === 'document_section' || k === 'metric' || k === 'semantic_model') {
     return false;
   }
   return score < 0.999;
 }
 
-function kbQaSourceChipModifierClass(sourceType: string | null | undefined): string {
-  const k = kbQaNormalizeSourceKind(sourceType);
+function chatSourceChipModifierClass(sourceType: string | null | undefined): string {
+  const k = chatSourceKind(sourceType);
   if (k === 'ontology') return 'kb-qa-source-chip--ontology';
   if (k === 'document_section') return 'kb-qa-source-chip--section';
   if (k === 'faq') return 'kb-qa-source-chip--faq';
@@ -114,8 +114,8 @@ function kbQaChipTitle(s: SearchResult, maxLen = 26): string {
   return `${x.slice(0, Math.max(0, maxLen - 1))}…`;
 }
 
-function kbQaExpandedDetailPreviewMaxLen(sourceType: string | null | undefined): number {
-  const k = kbQaNormalizeSourceKind(sourceType);
+function chatExpandedPreviewMaxLen(sourceType: string | null | undefined): number {
+  const k = chatSourceKind(sourceType);
   if (k === 'ontology' || k === 'metric' || k === 'semantic_model') return 12_000;
   if (k === 'document_section') return 4_000;
   return 1_200;
@@ -123,17 +123,17 @@ function kbQaExpandedDetailPreviewMaxLen(sourceType: string | null | undefined):
 
 export {
   kbAgentItemsToChatMessages,
-  kbQaLineId,
-  kbQaFeedbackKey,
-  kbQaNormalizeSourceKind,
+  chatLineId,
+  chatFeedbackKey,
+  chatSourceKind,
   isDataEvidenceSource,
   splitQaSources,
-  kbQaSourceCardModifierClass,
-  kbQaTruncatePreview,
-  kbQaShowRetrievalScore,
-  kbQaSourceChipModifierClass,
+  chatSourceCardModifierClass,
+  chatTruncatePreview,
+  chatShowRetrievalScore,
+  chatSourceChipModifierClass,
   kbQaChipTitle,
-  kbQaExpandedDetailPreviewMaxLen,
+  chatExpandedPreviewMaxLen,
 };
 
 /** Does this source carry the retrieval trace the Q&A panel reads? */

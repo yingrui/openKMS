@@ -26,7 +26,6 @@ import type { FAQResponse } from '../../data/knowledgeBasesApi';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import './KnowledgeBaseDetail.scss';
 import './detail/dialogs.scss';
-import '../workforce/chat/KbQaChat.scss';
 
 export function KnowledgeBaseDetail() {
   const {

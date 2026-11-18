@@ -18,8 +18,8 @@ import {
 } from '../../../data/knowledgeBasesApi';
 import type { AgentConversationResponse } from '../../../data/agentApi';
 import { applyCopilotStreamEvent } from '../../../components/agents/agentStreamState';
-import { kbAgentItemsToChatMessages, kbQaLineId } from './qaUtils';
-import type { ChatMessage, KbQaFeedbackVote } from './types';
+import { kbAgentItemsToChatMessages, chatLineId } from './chatUtils';
+import type { ChatMessage, ChatFeedbackVote } from './types';
 
 /**
  * One conversation with a workforce agent, kept in the thread store the knowledge base already writes.
@@ -31,7 +31,7 @@ import type { ChatMessage, KbQaFeedbackVote } from './types';
  * `agentId` is only used to build URLs — the thread belongs to the knowledge source (`kb.id`), which is why
  * the store and the API are the knowledge-base ones.
  */
-export function useKbQaChat({
+export function useAgentChat({
   agentId,
   kb,
   conversationId,
@@ -52,7 +52,7 @@ export function useKbQaChat({
 
   const [qaInput, setQaInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [qaFeedback, setQaFeedback] = useState<Record<string, KbQaFeedbackVote>>({});
+  const [qaFeedback, setQaFeedback] = useState<Record<string, ChatFeedbackVote>>({});
   const [qaLoading, setQaLoading] = useState(false);
   const qaStreamAbortRef = useRef<AbortController | null>(null);
 
@@ -127,7 +127,7 @@ export function useKbQaChat({
           } catch {
             if (!cancelled) {
               setChatMessages([]);
-              toast.error(t('detail.qaToastLoadMessagesFailed'));
+              toast.error(t('chat.toastLoadMessagesFailed'));
             }
           }
         } else {
@@ -136,7 +136,7 @@ export function useKbQaChat({
           if (!cancelled) setChatMessages([]);
         }
       } catch {
-        if (!cancelled) toast.error(t('detail.qaToastLoadConversationsFailed'));
+        if (!cancelled) toast.error(t('chat.toastLoadConversationsFailed'));
       } finally {
         if (!cancelled) {
           setKbQaConvsLoading(false);
@@ -157,7 +157,7 @@ export function useKbQaChat({
     try {
       await loadMessagesForConversation(id);
     } catch {
-      toast.error(t('detail.qaToastLoadMessagesFailed'));
+      toast.error(t('chat.toastLoadMessagesFailed'));
     }
   };
 
@@ -171,7 +171,7 @@ export function useKbQaChat({
       setQaFeedback({});
       navigate(chatPath(c.id));
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.qaToastNewChatFailed'));
+      toast.error(e instanceof Error ? e.message : t('chat.toastNewChatFailed'));
     }
   };
 
@@ -180,7 +180,7 @@ export function useKbQaChat({
       const updated = await patchKbAgentConversation(kbId, id, { title });
       setKbQaConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.qaToastRenameChatFailed'));
+      toast.error(e instanceof Error ? e.message : t('chat.toastRenameChatFailed'));
     }
   };
 
@@ -203,11 +203,11 @@ export function useKbQaChat({
         setChatMessages([]);
       }
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.qaToastDeleteChatFailed'));
+      toast.error(e instanceof Error ? e.message : t('chat.toastDeleteChatFailed'));
     }
   };
 
-  const setFeedbackVote = (key: string, vote: KbQaFeedbackVote) => {
+  const setFeedbackVote = (key: string, vote: ChatFeedbackVote) => {
     setQaFeedback((prev) => {
       if (prev[key] === vote) {
         const next = { ...prev };
@@ -231,8 +231,8 @@ export function useKbQaChat({
     qaStreamAbortRef.current = ac;
 
     setQaInput('');
-    const tempUserId = kbQaLineId();
-    const asstStreamId = kbQaLineId();
+    const tempUserId = chatLineId();
+    const asstStreamId = chatLineId();
     let streamPersistedUserId: string | null = null;
 
     setChatMessages((prev) => [
@@ -297,7 +297,7 @@ export function useKbQaChat({
               );
               return;
             }
-            const msg = `${t('detail.qaErrorPrefix')} ${ev.detail}${ev.answer ? ` ${ev.answer}` : ''}`;
+            const msg = `${t('chat.errorPrefix')} ${ev.detail}${ev.answer ? ` ${ev.answer}` : ''}`;
             setChatMessages((prev) => {
               const next = [...prev];
               for (let i = next.length - 1; i >= 0; i--) {
@@ -360,7 +360,7 @@ export function useKbQaChat({
       const persisted = streamPersistedUserId;
       const stripIds = (p: ChatMessage) =>
         p.id !== asstStreamId && p.id !== tempUserId && (persisted == null || p.id !== persisted);
-      const msg = `${t('detail.qaErrorPrefix')} ${
+      const msg = `${t('chat.errorPrefix')} ${
         err instanceof Error ? err.message : t('detail.toastAnswerFailed')
       }`;
       setQaInput(userText);

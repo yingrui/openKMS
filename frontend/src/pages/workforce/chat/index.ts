@@ -8,16 +8,16 @@
  * The screen itself is still mounted by the knowledge-base route while the page is split out; every piece
  * below already belongs to this package, so the remaining move is the page and its styles, not the parts.
  */
-export { KbQaEvidenceCard } from './KbQaDataEvidence';
-export { KbQaFilesPanel } from './KbQaFilesPanel';
-export { KbQaFilesRail } from './KbQaFilesRail';
-export { KbQaSessionSidebar } from './KbQaSessionSidebar';
+export { ChatEvidenceCard } from './ChatDataEvidence';
+export { ChatFilesPanel } from './ChatFilesPanel';
+export { ChatFilesRail } from './ChatFilesRail';
+export { ChatSessionSidebar } from './ChatSessionSidebar';
 export {
-  KbQaSourcesDrawer,
-  KbQaSourcesPill,
-  type KbQaSourcesPanelPayload,
-} from './KbQaSourcesDrawer';
-export { KbRetrievalProvenancePanel } from './KbRetrievalProvenancePanel';
-export { playgroundHrefFromDataQuery } from './kbQaPlaygroundHref';
-export * from './qaUtils';
-export type { ChatMessage, KbQaFeedbackVote } from './types';
+  ChatSourcesDrawer,
+  ChatSourcesPill,
+  type ChatSourcesPanelPayload,
+} from './ChatSourcesDrawer';
+export { ChatRetrievalProvenancePanel } from './ChatRetrievalProvenancePanel';
+export { playgroundHrefFromDataQuery } from './chatPlaygroundHref';
+export * from './chatUtils';
+export type { ChatMessage, ChatFeedbackVote } from './types';

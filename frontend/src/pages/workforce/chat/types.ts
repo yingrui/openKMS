@@ -19,4 +19,4 @@ export interface ChatMessage {
   verified?: boolean;
 }
 
-export type KbQaFeedbackVote = 'up' | 'down';
+export type ChatFeedbackVote = 'up' | 'down';

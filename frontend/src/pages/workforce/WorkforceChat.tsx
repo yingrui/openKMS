@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { fetchWorkforceAgent, type WorkforceAgentDetail } from '../../data/workforceApi';
 import { fetchKnowledgeBase, type KnowledgeBaseResponse } from '../../data/knowledgeBasesApi';
 import { ListPage } from '../../styles/design-system';
-import { KbQaChatPage } from './chat/KbQaChatPage';
+import { AgentChatPage } from './chat/AgentChatPage';
 
 /**
  * The Workforce entry to a conversation.
@@ -99,7 +99,7 @@ export function WorkforceChat() {
         </div>
       );
     }
-    return <KbQaChatPage agentId={agent.id} kb={kb} />;
+    return <AgentChatPage agentId={agent.id} kb={kb} />;
   }
 
   const sources = agent.knowledge_bases;

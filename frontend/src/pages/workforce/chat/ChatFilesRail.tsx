@@ -1,7 +1,7 @@
 import { useCallback, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FolderTree } from 'lucide-react';
-import { KbQaFilesPanel } from './KbQaFilesPanel';
+import { ChatFilesPanel } from './ChatFilesPanel';
 import { useFilesRailWidth } from '../../../hooks/useFilesRailWidth';
 import '../../../styles/files-rail.scss';
 
@@ -19,7 +19,7 @@ const CHAT_MIN_PX = 300;
  * The shell owns the open state because the phone toolbar opens the same rail; this owns the width,
  * which the project agent remembers the same way.
  */
-export function KbQaFilesRail({
+export function ChatFilesRail({
   kbId,
   sessionId,
   open,
@@ -40,7 +40,7 @@ export function KbQaFilesRail({
   /** The Sources drawer owns the chat's top-right corner while it is open; two chips there overlap. */
   suppressToggle: boolean;
 }) {
-  const { t } = useTranslation('knowledgeBase');
+  const { t } = useTranslation('workforce');
   const clampRailWidth = useCallback((w: number, containerWidth: number) => {
     const max = Math.max(RAIL_MIN_PX, containerWidth - SESSIONS_PX - CHAT_MIN_PX - 8);
     return Math.round(Math.min(max, Math.max(RAIL_MIN_PX, w)));
@@ -62,11 +62,11 @@ export function KbQaFilesRail({
         onClick={onOpen}
         aria-expanded={false}
         aria-controls="kb-qa-files-rail"
-        title={t('detail.qaFiles')}
-        aria-label={t('detail.qaFiles')}
+        title={t('chat.files')}
+        aria-label={t('chat.files')}
       >
         <FolderTree size={14} aria-hidden />
-        {t('detail.qaFiles')}
+        {t('chat.files')}
       </button>
     );
   }
@@ -80,8 +80,8 @@ export function KbQaFilesRail({
           aria-valuenow={rail.width}
           aria-valuemin={RAIL_MIN_PX}
           aria-valuemax={clampRailWidth(9999, rail.containerWidthPx)}
-          aria-label={t('detail.qaFilesResize')}
-          title={t('detail.qaFilesResizeHint')}
+          aria-label={t('chat.filesResize')}
+          title={t('chat.filesResizeHint')}
           onMouseDown={rail.onResizePointerDown}
         />
       ) : null}
@@ -89,9 +89,9 @@ export function KbQaFilesRail({
         id="kb-qa-files-rail"
         className="kb-qa-files-rail"
         style={isMobile ? undefined : { width: rail.width }}
-        aria-label={t('detail.qaFiles')}
+        aria-label={t('chat.files')}
       >
-        <KbQaFilesPanel kbId={kbId} sessionId={sessionId} onCollapse={onCollapse} />
+        <ChatFilesPanel kbId={kbId} sessionId={sessionId} onCollapse={onCollapse} />
       </aside>
     </>
   );

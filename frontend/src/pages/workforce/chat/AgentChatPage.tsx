@@ -9,12 +9,12 @@ import { useImmersiveView } from '../../../contexts/ImmersiveShellContext';
 import { Dialog, FormField, PanelToolbar } from '../../../styles/design-system';
 import { AgentAssistantStreamBody } from '../../../components/agents/AgentAssistantStreamBody';
 import { AgentMessageBody } from '../../../components/agents/AgentMessageBody';
-import { KbQaFilesRail } from './KbQaFilesRail';
-import { KbQaSessionSidebar } from './KbQaSessionSidebar';
-import { KbQaSourcesDrawer, KbQaSourcesPill, type KbQaSourcesPanelPayload } from './KbQaSourcesDrawer';
-import { kbQaFeedbackKey, splitQaSources } from './qaUtils';
-import { useKbQaChat } from './useKbQaChat';
-import './KbQaChat.scss';
+import { ChatFilesRail } from './ChatFilesRail';
+import { ChatSessionSidebar } from './ChatSessionSidebar';
+import { ChatSourcesDrawer, ChatSourcesPill, type ChatSourcesPanelPayload } from './ChatSourcesDrawer';
+import { chatFeedbackKey, splitQaSources } from './chatUtils';
+import { useAgentChat } from './useAgentChat';
+import './AgentChat.scss';
 
 /**
  * The conversation screen: session rail, thread, composer, sources, files.
@@ -26,16 +26,18 @@ import './KbQaChat.scss';
  * The copy is the knowledge-base one (`knowledgeBase` i18n namespace, `detail.qa*`): the screen moved, its
  * words did not need to.
  */
-export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBaseResponse }) {
-  const { t } = useTranslation('knowledgeBase');
+export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBaseResponse }) {
+  const { t } = useTranslation('workforce');
+  /* Saving an answer as a knowledge-base FAQ: the words for that live with the FAQ feature, not here. */
+  const { t: tk } = useTranslation('knowledgeBase');
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  const chat = useKbQaChat({ agentId, kb, conversationId, navigate, t });
+  const chat = useAgentChat({ agentId, kb, conversationId, navigate, t });
 
   const [sessionsOpen, setSessionsOpen] = useState(false);
-  const [sourcesPanel, setSourcesPanel] = useState<KbQaSourcesPanelPayload | null>(null);
+  const [sourcesPanel, setSourcesPanel] = useState<ChatSourcesPanelPayload | null>(null);
   const [filesOpen, setFilesOpen] = useState(false);
   const shellBodyRef = useRef<HTMLDivElement>(null);
 
@@ -80,9 +82,9 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
         answer: faqAnswer.trim(),
       });
       setFaqAnswer(res.answer);
-      toast.success(t('detail.toastFaqPolished'));
+      toast.success(tk('detail.toastFaqPolished'));
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastFaqPolishFailed'));
+      toast.error(e instanceof Error ? e.message : tk('detail.toastFaqPolishFailed'));
     } finally {
       setFaqPolishing(false);
     }
@@ -95,17 +97,17 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
         question: faqQuestion.trim(),
         answer: faqAnswer.trim(),
       });
-      toast.success(t('detail.toastFaqCreated'));
+      toast.success(tk('detail.toastFaqCreated'));
       closeFaq();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastFaqCreateFailed'));
+      toast.error(e instanceof Error ? e.message : tk('detail.toastFaqCreateFailed'));
     }
   };
 
   const goToAgent = () => navigate(`/workforce/${agentId}`);
 
   const sidebar = (
-    <KbQaSessionSidebar
+    <ChatSessionSidebar
       kbName={kb.name}
       conversations={chat.kbQaConversations}
       activeId={chat.kbQaConvId}
@@ -141,10 +143,10 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
                   type="button"
                   className="kb-qa-mobile-back"
                   onClick={goToAgent}
-                  aria-label={t('detail.qaBackAria')}
+                  aria-label={t('chat.backAria')}
                 >
                   <ArrowLeft size={18} />
-                  <span className="ds-compact-label">{t('detail.qaBackToKb')}</span>
+                  <span className="ds-compact-label">{t('chat.backToKb')}</span>
                 </button>
                 <span className="kb-qa-mobile-title" title={kb.name}>
                   {kb.name}
@@ -159,10 +161,10 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
                   onClick={() => setSessionsOpen((o) => !o)}
                   aria-expanded={sessionsOpen}
                   aria-controls="kb-qa-sessions-drawer"
-                  aria-label={t('detail.qaChatsAria')}
+                  aria-label={t('chat.chatsAria')}
                 >
                   <MessageSquare size={18} aria-hidden />
-                  <span className="ds-compact-label">{t('detail.qaChatsLabel')}</span>
+                  <span className="ds-compact-label">{t('chat.chatsLabel')}</span>
                 </button>
                 <button
                   type="button"
@@ -170,10 +172,10 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
                   onClick={() => setFilesOpen((v) => !v)}
                   aria-expanded={filesOpen}
                   aria-controls="kb-qa-files-rail"
-                  aria-label={t('detail.qaFiles')}
+                  aria-label={t('chat.files')}
                 >
                   <FolderTree size={18} aria-hidden />
-                  <span className="ds-compact-label">{t('detail.qaFiles')}</span>
+                  <span className="ds-compact-label">{t('chat.files')}</span>
                 </button>
               </>
             }
@@ -200,8 +202,8 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
                   <div className="kb-qa-hero-mark" aria-hidden>
                     <Sparkles size={28} strokeWidth={1.75} />
                   </div>
-                  <h1 className="kb-qa-hero-title">{t('detail.qaHeroTitle', { name: kb.name })}</h1>
-                  <p className="kb-qa-hero-sub">{t('detail.qaHeroSubtitle')}</p>
+                  <h1 className="kb-qa-hero-title">{t('chat.heroTitle', { name: kb.name })}</h1>
+                  <p className="kb-qa-hero-sub">{t('chat.heroSubtitle')}</p>
                 </div>
               ) : null}
 
@@ -215,7 +217,7 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
                         className={`kb-qa-msg kb-qa-msg-${msg.role}`}
                       >
                         <span className="kb-qa-msg-label">
-                          {msg.role === 'user' ? t('detail.qaLabelYou') : t('detail.qaLabelAssistant')}
+                          {msg.role === 'user' ? t('chat.labelYou') : t('chat.labelAssistant')}
                         </span>
                         {msg.role === 'assistant' && msg.streamParts && msg.streamParts.length > 0 ? (
                           <div className="kb-qa-assistant-stream">
@@ -230,7 +232,7 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
                           chat.qaLoading &&
                           isLast ? (
                           <div className="kb-qa-msg-bubble kb-qa-msg-bubble--assistant kb-qa-typing">
-                            {t('detail.qaThinking')}
+                            {t('chat.thinking')}
                           </div>
                         ) : (
                           <div
@@ -255,7 +257,7 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
                             const showFeedback = Boolean(assistantText);
                             const warnings = msg.warnings ?? [];
                             if (!hasSources && !showFeedback && warnings.length === 0) return null;
-                            const feedbackKey = kbQaFeedbackKey(msg, i);
+                            const feedbackKey = chatFeedbackKey(msg, i);
                             const feedback = chat.qaFeedback[feedbackKey];
                             const prev = chat.chatMessages[i - 1];
                             const question = prev?.role === 'user' ? prev.content.trim() : '';
@@ -273,7 +275,7 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
                                   </ul>
                                 ) : null}
                                 {hasSources ? (
-                                  <KbQaSourcesPill
+                                  <ChatSourcesPill
                                     evidenceCount={evidence.length}
                                     referenceCount={references.length}
                                     open={sourcesOpen}
@@ -294,7 +296,7 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
                                       className={`kb-qa-feedback-btn kb-qa-feedback-btn--up${
                                         feedback === 'up' ? ' kb-qa-feedback-btn--active' : ''
                                       }`}
-                                      aria-label={t('detail.qaFeedbackUpAria')}
+                                      aria-label={t('chat.feedbackUpAria')}
                                       aria-pressed={feedback === 'up'}
                                       onClick={() => chat.setFeedbackVote(feedbackKey, 'up')}
                                     >
@@ -305,7 +307,7 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
                                       className={`kb-qa-feedback-btn kb-qa-feedback-btn--down${
                                         feedback === 'down' ? ' kb-qa-feedback-btn--active' : ''
                                       }`}
-                                      aria-label={t('detail.qaFeedbackDownAria')}
+                                      aria-label={t('chat.feedbackDownAria')}
                                       aria-pressed={feedback === 'down'}
                                       onClick={() => chat.setFeedbackVote(feedbackKey, 'down')}
                                     >
@@ -315,10 +317,10 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
                                       <button
                                         type="button"
                                         className="kb-qa-sources-action-btn"
-                                        aria-label={t('detail.qaSaveAsFaqAria')}
+                                        aria-label={t('chat.saveAsFaqAria')}
                                         onClick={() => openFaqFromAnswer(question, assistantText)}
                                       >
-                                        {t('detail.qaSaveAsFaq')}
+                                        {t('chat.saveAsFaq')}
                                       </button>
                                     ) : null}
                                   </div>
@@ -337,7 +339,7 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
               <form className="kb-qa-composer" onSubmit={chat.handleAsk}>
                 <textarea
                   className="kb-qa-composer-input"
-                  placeholder={t('detail.qaPlaceholder')}
+                  placeholder={t('chat.placeholder')}
                   value={chat.qaInput}
                   onChange={(e) => chat.setQaInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -349,23 +351,23 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
                   disabled={chat.qaLoading || !chat.kbQaConvReady}
                   rows={1}
                   autoComplete="off"
-                  aria-label={t('detail.qaPlaceholder')}
+                  aria-label={t('chat.placeholder')}
                 />
                 <button
                   type="submit"
                   className="kb-qa-composer-send"
                   disabled={chat.qaLoading || !chat.qaInput.trim() || !chat.kbQaConvReady}
-                  aria-label={t('detail.qaSendAria')}
+                  aria-label={t('chat.sendAria')}
                 >
                   <ArrowUp size={18} strokeWidth={2.25} aria-hidden />
                 </button>
               </form>
-              <p className="kb-qa-composer-hint">{t('detail.qaComposerHint')}</p>
+              <p className="kb-qa-composer-hint">{t('chat.composerHint')}</p>
             </div>
           </main>
 
           {/* The conversation's files, as the project agent has them: a rail on the right that can be hidden. */}
-          <KbQaFilesRail
+          <ChatFilesRail
             kbId={kb.id}
             sessionId={chat.qaSessionId}
             open={filesOpen}
@@ -375,7 +377,7 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
             containerRef={shellBodyRef}
             suppressToggle={sourcesPanel !== null}
           />
-          <KbQaSourcesDrawer panel={sourcesPanel} onClose={() => setSourcesPanel(null)} t={t} />
+          <ChatSourcesDrawer panel={sourcesPanel} onClose={() => setSourcesPanel(null)} t={t} />
         </div>
       </div>
 
@@ -385,11 +387,11 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
       <Dialog
         open={faqOpen}
         onClose={closeFaq}
-        title={t('detail.faqDialogSaveFromQa')}
+        title={tk('detail.faqDialogSaveFromQa')}
         footer={
           <>
             <button type="button" className="btn btn-secondary" onClick={closeFaq}>
-              {t('detail.cancel')}
+              {tk('detail.cancel')}
             </button>
             <button
               type="button"
@@ -397,20 +399,20 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
               disabled={!faqQuestion.trim() || !faqAnswer.trim()}
               onClick={() => void saveFaq()}
             >
-              {t('detail.create')}
+              {tk('detail.create')}
             </button>
           </>
         }
       >
-        <p className="ds-field__hint">{t('detail.faqDialogSaveFromQaHint')}</p>
-        <FormField label={t('detail.question')}>
+        <p className="ds-field__hint">{tk('detail.faqDialogSaveFromQaHint')}</p>
+        <FormField label={tk('detail.question')}>
           <input
             className="ds-control"
             value={faqQuestion}
             onChange={(e) => setFaqQuestion(e.target.value)}
           />
         </FormField>
-        <FormField label={t('detail.answer')}>
+        <FormField label={tk('detail.answer')}>
           <textarea
             className="ds-control"
             rows={6}
@@ -424,7 +426,7 @@ export function KbQaChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBa
           disabled={faqPolishing || !faqQuestion.trim() || !faqAnswer.trim()}
           onClick={() => void polishFaq()}
         >
-          {t('detail.faqPolishAnswerAria')}
+          {tk('detail.faqPolishAnswerAria')}
         </button>
       </Dialog>
     </div>

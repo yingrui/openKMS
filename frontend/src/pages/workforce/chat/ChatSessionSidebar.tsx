@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Loader2, MoreHorizontal, Pencil, Plus, Settings, Trash2 } from 'lucide-react';
 import type { AgentConversationResponse } from '../../../data/agentApi';
-import './KbQaSessionSidebar.scss';
+import './ChatSessionSidebar.scss';
 
 function sessionLabel(c: AgentConversationResponse): string {
   if (c.title?.trim()) return c.title.trim();
@@ -27,7 +27,7 @@ interface Props {
   onDelete: (sessionId: string) => void | Promise<void>;
 }
 
-export function KbQaSessionSidebar({
+export function ChatSessionSidebar({
   kbName,
   conversations,
   activeId,
@@ -42,9 +42,7 @@ export function KbQaSessionSidebar({
   onRename,
   onDelete,
 }: Props) {
-  const { t } = useTranslation('knowledgeBase');
-  /* The rail belongs to the conversation, so its own labels come from the conversation's namespace. */
-  const { t: tw } = useTranslation('workforce');
+  const { t } = useTranslation('workforce');
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -91,12 +89,12 @@ export function KbQaSessionSidebar({
   };
 
   return (
-    <aside className="kb-qa-sessions" aria-label={t('detail.qaChatsAria')}>
+    <aside className="kb-qa-sessions" aria-label={t('chat.chatsAria')}>
       <div className="kb-qa-sessions-head">
         {!hideBackLink ? (
           <button type="button" className="kb-qa-sessions-back" onClick={onBack}>
             <ArrowLeft size={14} />
-            {tw('backToAgent')}
+            {t('backToAgent')}
           </button>
         ) : null}
         <div className="kb-qa-sessions-context-block">
@@ -105,14 +103,14 @@ export function KbQaSessionSidebar({
             <button
               type="button"
               className="kb-qa-sessions-settings"
-              title={tw('chatSettings')}
-              aria-label={tw('chatSettings')}
+              title={t('chatSettings')}
+              aria-label={t('chatSettings')}
               onClick={onOpenSettings}
             >
               <Settings size={16} strokeWidth={1.75} />
             </button>
           </div>
-          <div className="kb-qa-sessions-sub">{tw('chatTitle')}</div>
+          <div className="kb-qa-sessions-sub">{t('chatTitle')}</div>
         </div>
         <button
           type="button"
@@ -124,17 +122,17 @@ export function KbQaSessionSidebar({
           disabled={disabled || loading}
         >
           <Plus size={15} strokeWidth={2} />
-          {t('detail.qaNewChat')}
+          {t('chat.newChat')}
         </button>
       </div>
       <div className="kb-qa-sessions-scroll">
         {loading ? (
           <div className="kb-qa-sessions-loading" role="status">
             <Loader2 size={20} className="kb-qa-sessions-spinner" aria-hidden />
-            <span>{t('detail.qaChatsLoading')}</span>
+            <span>{t('chat.chatsLoading')}</span>
           </div>
         ) : sorted.length === 0 ? (
-          <p className="kb-qa-sessions-empty">{t('detail.qaNoChatsYet')}</p>
+          <p className="kb-qa-sessions-empty">{t('chat.noChatsYet')}</p>
         ) : (
           sorted.map((c) => (
             <div
@@ -148,7 +146,7 @@ export function KbQaSessionSidebar({
                   className="kb-qa-session-rename"
                   value={renameValue}
                   maxLength={512}
-                  aria-label={t('detail.qaSessionRename')}
+                  aria-label={t('chat.sessionRename')}
                   onChange={(e) => setRenameValue(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -178,7 +176,7 @@ export function KbQaSessionSidebar({
                   <button
                     type="button"
                     className="kb-qa-session-more"
-                    aria-label={t('detail.qaSessionActions')}
+                    aria-label={t('chat.sessionActions')}
                     aria-expanded={menuOpenId === c.id}
                     aria-haspopup="menu"
                     onClick={(e) => {
@@ -198,7 +196,7 @@ export function KbQaSessionSidebar({
                         onClick={() => startRename(c)}
                       >
                         <Pencil size={14} />
-                        <span>{t('detail.qaSessionRename')}</span>
+                        <span>{t('chat.sessionRename')}</span>
                       </button>
                       <button
                         type="button"
@@ -210,7 +208,7 @@ export function KbQaSessionSidebar({
                         }}
                       >
                         <Trash2 size={14} />
-                        <span>{t('detail.qaSessionDelete')}</span>
+                        <span>{t('chat.sessionDelete')}</span>
                       </button>
                     </div>
                   ) : null}
