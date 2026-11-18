@@ -240,7 +240,7 @@ With the header gone, the left rail is the only chrome: brand → Home at the to
 | `.app-content--object-explorer` | Flex fill, token padding |
 | `.app-page-pane:has(> .entity-view)` | Ontology Manager entity detail fills the pane; scroll inside `.entity-view__main` only |
 | Route rendering `EntityViewShell` outside a pane | A shell only fills the window when a `.app-page-pane` is above it; without one the sidebar's right rule stops at the end of its own content. Put the route in `PagePaneLayout` (or the ontology rail layout) — `scripts/check-entity-view-routes.py` fails otherwise |
-| `body:has(.app-page-pane > .entity-view)` (entity-view.scss) | Data-layer entity detail (`/datasets/:id`, `/data-model/:modelId`) has no rail marker to opt into the full-height chain, so the shell asks for it; `.app-content` gives up its padding to the pane |
+| `body:has(.app-page-pane > .entity-view)` (entity-view.scss) | Entity detail (`/datasets/:id`, `/data-model/:modelId`, `/knowledge-bases/:id`) has no rail marker to opt into the full-height chain, so the shell asks for it; `.app-content` gives up its padding to the pane. **These rules key on the direct child**, so **nothing may wrap `.entity-view`**: put page-level chrome (the comments shell, a provider that renders an element) *inside* the shell. A wrapper in between silently restores `.app-content`'s gutter on top of the pane's — two gutters, and no window-height chain |
 
 New exceptions: one-line SCSS comment + row here.
 
@@ -437,7 +437,7 @@ Reach for a **shared primitive** before writing markup. The list below is the an
 | Whole detail page with several sections | **`<EntityViewShell>` + `navItems`** (see the dataset and semantic-model pages) | sidebar identity + routed sections |
 | Collapsible section | **`<EntityViewPanel title defaultCollapsed>`** | not a hand-rolled `<details>` |
 | Card surface | **`.account-card`** / **`<EntityViewPanel>`** | |
-| Tabs | **`.settings-page-tabs` + `.settings-page-form`** (shared, `src/styles/settings-page.scss`) for page sections; page-local tab row (KB) **or** `EntityViewShell` nav where the route already uses that shell | no `ds-tabs` primitive exists. A page that uses these classes **must import `settings-page.scss`** — the class names match nothing otherwise, which renders unstyled buttons and a white gap where the card belongs. Inside `EntityViewShell`, wrap the strip and the panel in one **`.settings-page`** so `.account-stack`'s gap cannot split the card |
+| Tabs | **`.settings-page-tabs` + `.settings-page-form`** (shared, `src/styles/settings-page.scss`) for page sections; `EntityViewShell` nav when the page is an entity detail (datasets, semantic models, knowledge bases) — a page-local tab row only where no shell applies | no `ds-tabs` primitive exists. A page that uses these classes **must import `settings-page.scss`** — the class names match nothing otherwise, which renders unstyled buttons and a white gap where the card belongs. Inside `EntityViewShell`, wrap the strip and the panel in one **`.settings-page`** so `.account-stack`'s gap cannot split the card |
 | Pagination | **`<Pagination>`** | server-side when the API supports it, otherwise slice |
 | Empty / loading state | **`<EmptyState>`** / `console-loading` | |
 | Search box | **`<SearchField>`** (`.ds-search`) and **`<FilterSelect>`** (`.ds-filter`) | one primitive for list toolbars and panel headers; pass `label` / `placeholder` / `className` / `disabled` / `autoFocus`. Do not hand-roll another magnifier + input wrapper |

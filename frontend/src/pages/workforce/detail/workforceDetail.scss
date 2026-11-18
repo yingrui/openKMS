@@ -1,5 +1,5 @@
-@use '../../styles/design-system/mixins' as *;
-@use '../../styles/design-system/tokens' as ds;
+@use '../../../styles/design-system/mixins' as *;
+@use '../../../styles/design-system/tokens' as ds;
 
 // Workforce detail: three shapes a table cannot express — a list of bindings, a one-line picker, and
 // the copy-ready request. Page-local: one area owns them.

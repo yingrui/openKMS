@@ -1,408 +1,103 @@
-import { Link } from 'react-router-dom';
-import {
-  ArrowLeft,
-  Loader2,
-  RefreshCw,
-} from 'lucide-react';
-import {
-  KbChunkDialog,
-  KbDocPickerDialog,
-  KbFaqDialog,
-  KbGenerateFaqDialog,
-  KbWikiSpacePickerDialog,
-} from './KnowledgeBaseDetail.dialogs';
-import { TAB_ICONS, TAB_ORDER } from './KnowledgeBaseDetail.types';
+import { Navigate, Outlet, useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { Loader2, RefreshCw } from 'lucide-react';
+import { KnowledgeBaseDialogs } from './detail/KnowledgeBaseDialogs';
+import { TAB_ORDER, TAB_PATHS, type TabId } from './KnowledgeBaseDetail.types';
 import { useKnowledgeBaseDetail } from './useKnowledgeBaseDetail';
-import { DocumentsTab } from './detail/tabs/DocumentsTab';
-import { WikiSpacesTab } from './detail/tabs/WikiSpacesTab';
-import { DataScopeTab } from './detail/tabs/DataScopeTab';
-import { FaqsTab } from './detail/tabs/FaqsTab';
-import { ChunksTab } from './detail/tabs/ChunksTab';
-import { SearchTab } from './detail/tabs/SearchTab';
-import { SettingsTab } from './detail/tabs/SettingsTab';
-import { metadataArrayFlags } from './detail/faqMetadata';
-import type { FAQResponse } from '../../data/knowledgeBasesApi';
+import { KnowledgeBaseDetailCtx } from './KnowledgeBaseDetailCtx';
+import { EntityViewLoading, EntityViewPanel, EntityViewShell } from '../shared/EntityViewShell';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import './KnowledgeBaseDetail.scss';
 import './detail/dialogs.scss';
 
+/**
+ * A knowledge base — the same shell the dataset and semantic-model pages use: identity, counts and the
+ * rail in the sidebar, one section per route, and the base's dialogs mounted once beside them.
+ *
+ * Every section hangs off `/knowledge-bases/:id`, so a link to `…/faqs` means the FAQs tab and the
+ * browser's back button walks the reader through what they actually visited.
+ */
 export function KnowledgeBaseDetail() {
-  const {
-    channels, t, kb,  activeTab, setActiveTab, loading, docs, docTotal, docPage, setDocPage, docPageSize, setDocPageSize,
-      genDocs,  showDocPicker,  pickerSearch,
-     pickerResults,  pickerLoading, pickerSelected, 
-    pickerSelectedChannel,  pickerChannelExpanded, 
-      pickerPage, setPickerPage, pickerPageSize,
-    pickerTotal,  pickerAdding,  kbWikiSpaces,
-    kbSemanticModels, kbOntologyGroups, allSemanticModels, allOntologyGroups, scopeBusyId,
-    showWikiSpacePicker,  wikiSpacePickerItems, 
-    wikiSpacePickerLoading,  wikiSpaceBusyId,  faqs,
-    faqTotal, faqPage, setFaqPage, faqPageSize, setFaqPageSize, showFaqDialog, setShowFaqDialog,
-    faqDialogSource, setFaqDialogSource, faqPolishing,  editFaq, setEditFaq,
-    faqQuestion, setFaqQuestion, faqAnswer, setFaqAnswer, setFaqLabelsValues, faqDocMetadataValues,
-    setFaqDocMetadataValues, setFaqLabelAllowMultiple, faqMetadataIsArray, setFaqMetadataIsArray,
-    showGenerateModal,  genSelectedDocs, setGenSelectedDocs, genModelId,
-    setGenModelId, genPrompt, setGenPrompt, generating,  genProgress, 
-    genStep,  genPreviewFaqs,  genSaving,  chunks,
-    chunkTotal, chunkPage, setChunkPage, chunkPageSize, setChunkPageSize, editChunk, 
-    showChunkDialog,  chunkContent, setChunkContent, 
-    chunkDocMetadataValues, setChunkDocMetadataValues,  chunkMetadataIsArray,
-     chunkSaving,  chunkDialogReadOnly, 
-    searchQuery, setSearchQuery, searchType, setSearchType, searchResults, 
-    searching,  hasSearched,  searchOptionsExpanded, setSearchOptionsExpanded,
-    searchLabelFilters, searchMetadataFilters, setSearchMetadataFilters, searchTopK, setSearchTopK,
-    searchForceDense, setSearchForceDense, searchRetrievalDiff,  settingsEmbeddingModelId, setSettingsEmbeddingModelId, settingsFaqPrompt, setSettingsFaqPrompt,
-    settingsChunkStrategy, setSettingsChunkStrategy, settingsChunkSize, setSettingsChunkSize,
-    settingsChunkOverlap, setSettingsChunkOverlap, settingsMetadataKeys, setSettingsMetadataKeys,
-    retrievalTopK, setRetrievalTopK, retrievalRerank, setRetrievalRerank,
-    embeddingModels, llmModels, settingsSaving,  settingsSubTab, setSettingsSubTab,
-    indexJobSubmitting,  settingsSubTabs,   
-        enqueueIndexJob, 
-    alreadyAddedIds,
-    openDocPicker, closeDocPicker,  handlePickerSearch, handlePickerChannelSelect,
-    handlePickerChannelToggle, handleAddSelectedDocuments, handleRemoveDocument, togglePickerDoc,
-    pickerTotalPages, openWikiSpacePicker, closeWikiSpacePicker, handleAddWikiSpaceToKb, handleRemoveWikiSpaceFromKb,
-    handleAddSemanticModelToKb, handleRemoveSemanticModelFromKb,
-    handleAddOntologyGroupToKb, handleRemoveOntologyGroupFromKb,
-    handleIndexWikiSpace, closeFaqDialog, handlePolishFaqAnswer, handleSaveFaq,
-    handleDeleteFaq, openGenerateModal, closeGenerateModal, handleGenerateFaqs, handleSaveGeneratedFaqs,
-    handleGenBackToConfig, openChunkEdit, openChunkViewFromId, openChunkEditFromId, closeChunkDialog,
-    handleSaveChunk, handleSearch, handleSaveSettings,
-     objToConfigValues, pickerCanPrev, pickerCanNext, toggleGenDoc, removeGenPreviewFaq,
-  } = useKnowledgeBaseDetail();
-  if (loading) return <div className="kb-detail"><p>{t('detail.loading')}</p></div>;
-  if (!kb) return <div className="kb-detail"><p>{t('detail.notFound')}</p></div>;
+  const d = useKnowledgeBaseDetail();
+  const { t, kb, loading } = d;
+  const { id: kbId } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const { pathname } = useLocation();
 
-  const faqDialog = (
-    <KbFaqDialog
-      show={showFaqDialog}
-      editFaq={editFaq}
-      faqDialogSource={faqDialogSource}
-      faqPolishing={faqPolishing}
-      onClose={closeFaqDialog}
-      faqQuestion={faqQuestion}
-      onFaqQuestionChange={setFaqQuestion}
-      faqAnswer={faqAnswer}
-      onFaqAnswerChange={setFaqAnswer}
-      onPolishFaqAnswer={() => void handlePolishFaqAnswer()}
-      metadataKeys={kb.metadata_keys}
-      faqMetadataIsArray={faqMetadataIsArray}
-      faqDocMetadataValues={faqDocMetadataValues}
-      onFaqDocMetadataValuesChange={setFaqDocMetadataValues}
-      onSaveFaq={handleSaveFaq}
-    />
-  );
+  /* The route table accepts any `<section>` slug, so a typo must not render the documents list at a URL
+     that claims otherwise: send it back to the base. */
+  const segments = pathname.split('/').filter(Boolean);
+  const sectionSegment = segments.length > 2 ? segments[segments.length - 1] : '';
+  const knownSection = Object.values(TAB_PATHS).includes(sectionSegment);
+  if (sectionSegment && !knownSection && kbId) {
+    return <Navigate to={`/knowledge-bases/${kbId}`} replace />;
+  }
 
-  /** New FAQ: empty fields, with the KB's metadata keys laid out for the dialog. */
-  const openAddFaq = () => {
-    setEditFaq(null);
-    setFaqDialogSource('manual');
-    setFaqQuestion('');
-    setFaqAnswer('');
-    setFaqLabelsValues(objToConfigValues({}, kb.metadata_keys ?? undefined));
-    setFaqDocMetadataValues(objToConfigValues({}, kb.metadata_keys ?? undefined));
-    setFaqLabelAllowMultiple({});
-    setFaqMetadataIsArray({});
-    setShowFaqDialog(true);
-  };
+  /* `?tab=faqs` was how a section was linked before it had its own URL. Keep the old links working. */
+  const legacyTab = searchParams.get('tab');
+  const legacySegment = legacyTab ? TAB_PATHS[legacyTab as TabId] : undefined;
+  if (legacyTab && legacySegment !== undefined && kbId) {
+    return (
+      <Navigate
+        to={`/knowledge-bases/${kbId}${legacySegment ? `/${legacySegment}` : ''}`}
+        replace
+      />
+    );
+  }
 
-  /** Edit FAQ: load its metadata, and ask the document's channel which keys are lists for this document. */
-  const openEditFaq = async (faq: FAQResponse) => {
-    setEditFaq(faq);
-    setFaqDialogSource('manual');
-    setFaqQuestion(faq.question);
-    setFaqAnswer(faq.answer);
-    const metaValues = objToConfigValues(faq.doc_metadata, kb.metadata_keys ?? undefined);
-    setFaqLabelsValues(metaValues);
-    setFaqDocMetadataValues(metaValues);
-    setFaqLabelAllowMultiple({});
-    setFaqMetadataIsArray(await metadataArrayFlags(faq.document_id, kb.metadata_keys));
-    setShowFaqDialog(true);
-  };
+  if (loading) return <EntityViewLoading label={t('detail.loading')} />;
+  if (!kb) return <p className="page-subtitle">{t('detail.notFound')}</p>;
+
+  const base = `/knowledge-bases/${kb.id}`;
+  const stats = [
+    t('detail.statDocs', { count: kb.document_count }),
+    t('detail.statWikiSpaces', { count: kb.wiki_space_count ?? 0 }),
+    t('detail.statFaqs', { count: kb.faq_count }),
+    t('detail.statChunks', { count: kb.chunk_count }),
+  ].join(' · ');
 
   return (
-    <ContentCommentsShell resourceType="knowledge_base" resourceId={kb.id}>
-    <div className="kb-detail">
-      <Link to="/knowledge-bases" className="kb-detail-back" aria-label={t('detail.backToList')}>
-        <ArrowLeft size={18} />
-        <span className="ds-compact-label">{t('detail.backToList')}</span>
-      </Link>
-
-      <header className="kb-detail-header kb-detail-header--split">
-        <div className="kb-detail-header-text">
-          <h1>{kb.name}</h1>
-          <p className="kb-detail-desc">{kb.description || t('detail.noDescription')}</p>
-          <div className="kb-detail-stats">
-            <span>{t('detail.statDocs', { count: kb.document_count })}</span>
-            <span>{t('detail.statWikiSpaces', { count: kb.wiki_space_count ?? 0 })}</span>
-            <span>{t('detail.statFaqs', { count: kb.faq_count })}</span>
-            <span>{t('detail.statChunks', { count: kb.chunk_count })}</span>
-          </div>
-        </div>
-        <div className="kb-detail-header-actions">
-          {kb.embedding_model_id ? (
+    <KnowledgeBaseDetailCtx.Provider value={d}>
+      {/* Inside the shell, not around it: `.entity-view` must be the pane's direct child or the pane
+          never fills the window and `.app-content` keeps its gutter on top of the pane's (two gutters). */}
+      <EntityViewShell
+        backTo="/knowledge-bases"
+        backLabel={t('detail.backToList')}
+        title={kb.name}
+        meta={stats}
+        identityAction={
+          kb.embedding_model_id ? (
             <button
               type="button"
-              className="btn btn-secondary btn-sm kb-detail-header-index-btn"
-              onClick={() => void enqueueIndexJob()}
-              disabled={indexJobSubmitting}
+              onClick={() => void d.enqueueIndexJob()}
+              disabled={d.indexJobSubmitting}
               title={t('detail.indexJobHeaderTitle')}
               aria-label={t('detail.indexJobHeader')}
             >
-              {indexJobSubmitting ? (
-                <Loader2 size={18} className="kb-spinner-inline" aria-hidden />
+              {d.indexJobSubmitting ? (
+                <Loader2 size={14} className="kb-spinner-inline" aria-hidden />
               ) : (
-                <RefreshCw size={18} aria-hidden />
+                <RefreshCw size={14} aria-hidden />
               )}
-              <span className="ds-compact-label">{t('detail.indexJobHeader')}</span>
+              <span>{t('detail.indexJobHeader')}</span>
             </button>
-          ) : null}
-        </div>
-      </header>
-
-      <div className="kb-detail-tabs">
-        {TAB_ORDER.map((tabId) => {
-          const Icon = TAB_ICONS[tabId];
-          const label = t(`detail.tabs.${tabId}`);
-          return (
-            <button
-              key={tabId}
-              type="button"
-              className={`kb-tab ${activeTab === tabId ? 'active' : ''}`}
-              onClick={() => setActiveTab(tabId)}
-              aria-label={label}
-            >
-              <Icon size={18} aria-hidden />
-              <span className="ds-compact-label">{label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="kb-detail-content">
-        {/* ===== DOCUMENTS TAB ===== */}
-        {activeTab === 'documents' && (
-          <DocumentsTab
-            t={t}
-            docs={docs}
-            docTotal={docTotal}
-            docPage={docPage}
-            docPageSize={docPageSize}
-            onPageChange={setDocPage}
-            onPageSizeChange={setDocPageSize}
-            onAdd={openDocPicker}
-            onRemove={handleRemoveDocument}
-          />
-        )}
-
-        {/* ===== WIKI SPACES TAB ===== */}
-        {activeTab === 'wiki_spaces' && (
-          <WikiSpacesTab
-            t={t}
-            spaces={kbWikiSpaces}
-            hasEmbeddingModel={Boolean(kb.embedding_model_id)}
-            busyId={wikiSpaceBusyId}
-            onAdd={() => void openWikiSpacePicker()}
-            onIndex={(id) => void handleIndexWikiSpace(id)}
-            onRemove={(id) => void handleRemoveWikiSpaceFromKb(id)}
-          />
-        )}
-
-        {/* ===== DATA SCOPE TAB ===== */}
-        {activeTab === 'data_scope' && (
-          <DataScopeTab
-            t={t}
-            semanticModels={kbSemanticModels}
-            ontologyGroups={kbOntologyGroups}
-            allSemanticModels={allSemanticModels}
-            allOntologyGroups={allOntologyGroups}
-            busyId={scopeBusyId}
-            onAddSemanticModel={(id) => void handleAddSemanticModelToKb(id)}
-            onRemoveSemanticModel={(id) => void handleRemoveSemanticModelFromKb(id)}
-            onAddOntologyGroup={(id) => void handleAddOntologyGroupToKb(id)}
-            onRemoveOntologyGroup={(id) => void handleRemoveOntologyGroupFromKb(id)}
-          />
-        )}
-
-        {/* ===== FAQS TAB ===== */}
-        {activeTab === 'faqs' && (
-          <FaqsTab
-            t={t}
-            faqs={faqs}
-            total={faqTotal}
-            page={faqPage}
-            pageSize={faqPageSize}
-            onPageChange={setFaqPage}
-            onPageSizeChange={setFaqPageSize}
-            onGenerate={() => void openGenerateModal()}
-            onAdd={openAddFaq}
-            onEdit={(faq) => void openEditFaq(faq)}
-            onDelete={(id) => void handleDeleteFaq(id)}
-          />
-        )}
-
-        {/* ===== CHUNKS TAB ===== */}
-        {activeTab === 'chunks' && (
-          <ChunksTab
-            t={t}
-            chunks={chunks}
-            total={chunkTotal}
-            page={chunkPage}
-            pageSize={chunkPageSize}
-            onPageChange={setChunkPage}
-            onPageSizeChange={setChunkPageSize}
-            onEdit={openChunkEdit}
-          />
-        )}
-
-        {/* ===== SEARCH TAB ===== */}
-        {activeTab === 'search' && (
-          <SearchTab
-            t={t}
-            query={searchQuery}
-            onQueryChange={setSearchQuery}
-            searchType={searchType}
-            onSearchTypeChange={setSearchType}
-            onSubmit={handleSearch}
-            searching={searching}
-            results={searchResults}
-            hasSearched={hasSearched}
-            optionsOpen={searchOptionsExpanded}
-            onToggleOptions={() => setSearchOptionsExpanded((o) => !o)}
-            activeFilterCount={
-              [
-                Object.values(searchLabelFilters).some(Boolean),
-                Object.values(searchMetadataFilters).some(Boolean),
-                searchForceDense,
-                searchTopK !== 10,
-              ].filter(Boolean).length
-            }
-            topK={searchTopK}
-            onTopKChange={setSearchTopK}
-            forceDense={searchForceDense}
-            onForceDenseChange={setSearchForceDense}
-            metadataKeys={kb.metadata_keys}
-            metadataFilters={searchMetadataFilters}
-            onMetadataFilterChange={(key, value) =>
-              setSearchMetadataFilters((prev) => ({ ...prev, [key]: value }))
-            }
-            retrievalDiff={searchRetrievalDiff}
-            onChunkView={(id) => void openChunkViewFromId(id)}
-            onChunkEdit={(id) => void openChunkEditFromId(id)}
-          />
-        )}
-
-        {/* ===== SETTINGS TAB ===== */}
-        {activeTab === 'settings' && kb && (
-          <SettingsTab
-            t={t}
-            kbId={kb.id}
-            kb={kb}
-            subTabs={settingsSubTabs}
-            subTab={settingsSubTab ?? 'general'}
-            onSubTabChange={setSettingsSubTab}
-            embeddingModels={embeddingModels}
-            embeddingModelId={settingsEmbeddingModelId}
-            onEmbeddingModelIdChange={setSettingsEmbeddingModelId}
-            chunkStrategy={settingsChunkStrategy}
-            onChunkStrategyChange={setSettingsChunkStrategy}
-            chunkSize={settingsChunkSize}
-            onChunkSizeChange={setSettingsChunkSize}
-            chunkOverlap={settingsChunkOverlap}
-            onChunkOverlapChange={setSettingsChunkOverlap}
-            faqPrompt={settingsFaqPrompt}
-            onFaqPromptChange={setSettingsFaqPrompt}
-            metadataKeys={settingsMetadataKeys}
-            onMetadataKeysChange={setSettingsMetadataKeys}
-            retrievalTopK={retrievalTopK}
-            onRetrievalTopKChange={setRetrievalTopK}
-            retrievalRerank={retrievalRerank}
-            onRetrievalRerankChange={setRetrievalRerank}
-            saving={settingsSaving}
-            onSave={() => void handleSaveSettings()}
-            indexJobSubmitting={indexJobSubmitting}
-            onEnqueueIndex={() => void enqueueIndexJob()}
-          />
-        )}
-      </div>
-
-      <KbGenerateFaqDialog
-        show={showGenerateModal}
-        genStep={genStep}
-        onClose={closeGenerateModal}
-        generating={generating}
-        genSaving={genSaving}
-        genProgress={genProgress}
-        genModelId={genModelId}
-        onGenModelIdChange={setGenModelId}
-        llmModels={llmModels}
-        genPrompt={genPrompt}
-        onGenPromptChange={setGenPrompt}
-        genDocs={genDocs}
-        genSelectedDocs={genSelectedDocs}
-        onGenSelectedDocsChange={setGenSelectedDocs}
-        onToggleGenDoc={toggleGenDoc}
-        genPreviewFaqs={genPreviewFaqs}
-        onRemoveGenPreviewFaq={removeGenPreviewFaq}
-        onGenerateFaqs={() => void handleGenerateFaqs()}
-        onGenBackToConfig={handleGenBackToConfig}
-        onSaveGeneratedFaqs={() => void handleSaveGeneratedFaqs()}
-      />
-
-      <KbDocPickerDialog
-        show={showDocPicker}
-        onClose={closeDocPicker}
-        pickerAdding={pickerAdding}
-        channels={channels}
-        pickerSelectedChannel={pickerSelectedChannel}
-        pickerChannelExpanded={pickerChannelExpanded}
-        onPickerChannelSelect={handlePickerChannelSelect}
-        onPickerChannelToggle={handlePickerChannelToggle}
-        pickerSearch={pickerSearch}
-        onPickerSearch={handlePickerSearch}
-        pickerLoading={pickerLoading}
-        pickerResults={pickerResults}
-        alreadyAddedIds={alreadyAddedIds}
-        pickerSelected={pickerSelected}
-        onTogglePickerDoc={togglePickerDoc}
-        pickerTotal={pickerTotal}
-        pickerPage={pickerPage}
-        pickerPageSize={pickerPageSize}
-        onPickerPageChange={setPickerPage}
-        pickerCanPrev={pickerCanPrev}
-        pickerCanNext={pickerCanNext}
-        pickerTotalPages={pickerTotalPages}
-        onAddSelectedDocuments={() => void handleAddSelectedDocuments()}
-      />
-
-      <KbWikiSpacePickerDialog
-        show={showWikiSpacePicker}
-        onClose={closeWikiSpacePicker}
-        wikiSpacePickerLoading={wikiSpacePickerLoading}
-        wikiSpacePickerItems={wikiSpacePickerItems}
-        kbWikiSpaces={kbWikiSpaces}
-        wikiSpaceBusyId={wikiSpaceBusyId}
-        onAddWikiSpaceToKb={(id) => void handleAddWikiSpaceToKb(id)}
-      />
-
-      <KbChunkDialog
-        show={showChunkDialog}
-        editChunk={editChunk}
-        onClose={closeChunkDialog}
-        chunkSaving={chunkSaving}
-        chunkContent={chunkContent}
-        onChunkContentChange={setChunkContent}
-        chunkDialogReadOnly={chunkDialogReadOnly}
-        metadataKeys={kb?.metadata_keys}
-        chunkMetadataIsArray={chunkMetadataIsArray}
-        chunkDocMetadataValues={chunkDocMetadataValues}
-        onChunkDocMetadataValuesChange={setChunkDocMetadataValues}
-        onSaveChunk={() => void handleSaveChunk()}
-      />
-
-      {faqDialog}
-    </div>
-    </ContentCommentsShell>
+          ) : null
+        }
+        navItems={TAB_ORDER.map((tab) => ({
+          to: TAB_PATHS[tab] ? `${base}/${TAB_PATHS[tab]}` : base,
+          label: t(`detail.tabs.${tab}`),
+          end: tab === 'documents',
+        }))}
+      >
+        {/* The card the tab used to be drawn inside, now that the shell owns the page chrome. The
+            comments rail is fixed to the window edge, so it costs nothing to host it here. */}
+        <ContentCommentsShell resourceType="knowledge_base" resourceId={kb.id}>
+          <EntityViewPanel>
+            <Outlet />
+          </EntityViewPanel>
+        </ContentCommentsShell>
+      </EntityViewShell>
+      <KnowledgeBaseDialogs />
+    </KnowledgeBaseDetailCtx.Provider>
   );
 }
 

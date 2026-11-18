@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   fetchKnowledgeBase,
@@ -8,45 +8,26 @@ import {
 } from '../../data/knowledgeBasesApi';
 import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { configValuesToMetadata, objToConfigValues } from './KnowledgeBaseDetail.metadataUtils';
+import { metadataArrayFlags } from './detail/faqMetadata';
+import type { FAQResponse } from '../../data/knowledgeBasesApi';
 import { useKbChunks } from './detail/hooks/useKbChunks';
 import { useKbDocuments } from './detail/hooks/useKbDocuments';
 import { useKbScope } from './detail/hooks/useKbScope';
 import { useKbFaqs } from './detail/hooks/useKbFaqs';
 import { useKbSettings } from './detail/hooks/useKbSettings';
 import { useKbSearch } from './detail/hooks/useKbSearch';
-import {
-  TAB_ORDER,
-  type TabId,
-} from './KnowledgeBaseDetail.types';
+import { tabFromPathname, type TabId } from './KnowledgeBaseDetail.types';
 
 export function useKnowledgeBaseDetail() {
   const { id: kbId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { channels } = useEnsureDocumentChannels();
   const { t } = useTranslation('knowledgeBase');
   const [kb, setKb] = useState<KnowledgeBaseResponse | null>(null);
-  const initialTab = (searchParams.get('tab') as TabId) || 'documents';
-  const [activeTab, setActiveTab] = useState<TabId>(TAB_ORDER.includes(initialTab) ? initialTab : 'documents');
+  /* The section is the route: `/knowledge-bases/:id/faqs` *is* the FAQs tab. */
+  const activeTab: TabId = tabFromPathname(location.pathname);
   const [loading, setLoading] = useState(true);
-
-  const kbDetailPath = useCallback(
-    (tab: TabId) => {
-      if (!kbId) return '/knowledge-bases';
-      if (tab === 'documents') return `/knowledge-bases/${kbId}`;
-      return `/knowledge-bases/${kbId}?tab=${encodeURIComponent(tab)}`;
-    },
-    [kbId],
-  );
-
-  const selectKbTab = useCallback(
-    (tab: TabId) => {
-      setActiveTab(tab);
-      if (!kbId) return;
-      navigate(kbDetailPath(tab), { replace: true });
-    },
-    [kbId, navigate, kbDetailPath],
-  );
 
   const settingsSeedRef = useRef<((row: KnowledgeBaseResponse) => void) | null>(null);
   const settingsState = useKbSettings({
@@ -77,14 +58,6 @@ export function useKnowledgeBaseDetail() {
     loadModels();
   }, [loadKb, loadModels]);
 
-  useEffect(() => {
-    const q = searchParams.get('tab');
-    if (!q) return;
-    if (TAB_ORDER.includes(q as TabId)) {
-      setActiveTab(q as TabId);
-    }
-  }, [searchParams]);
-
   const docsState = useKbDocuments({ kbId, channels, loadKb, t });
   const scopeState = useKbScope({ kbId, kb, loadKb, t });
   const loadDocs = docsState.loadDocs;
@@ -112,6 +85,38 @@ export function useKnowledgeBaseDetail() {
      flat surface, so a tab reads `search.searchQuery` only when it is the tab that asks. */
   const search = useKbSearch({ kbId, t });
 
+  /** New FAQ: empty fields, with the KB's metadata keys laid out for the dialog. */
+  const openAddFaq = useCallback(() => {
+    faqsState.setEditFaq(null);
+    faqsState.setFaqDialogSource('manual');
+    faqsState.setFaqQuestion('');
+    faqsState.setFaqAnswer('');
+    faqsState.setFaqLabelsValues(objToConfigValues({}, kb?.metadata_keys ?? undefined));
+    faqsState.setFaqDocMetadataValues(objToConfigValues({}, kb?.metadata_keys ?? undefined));
+    faqsState.setFaqLabelAllowMultiple({});
+    faqsState.setFaqMetadataIsArray({});
+    faqsState.setShowFaqDialog(true);
+  }, [faqsState, kb]);
+
+  /** Edit FAQ: load its metadata, and ask the document's channel which keys are lists for it. */
+  const openEditFaq = useCallback(
+    async (faq: FAQResponse) => {
+      faqsState.setEditFaq(faq);
+      faqsState.setFaqDialogSource('manual');
+      faqsState.setFaqQuestion(faq.question);
+      faqsState.setFaqAnswer(faq.answer);
+      const metaValues = objToConfigValues(faq.doc_metadata, kb?.metadata_keys ?? undefined);
+      faqsState.setFaqLabelsValues(metaValues);
+      faqsState.setFaqDocMetadataValues(metaValues);
+      faqsState.setFaqLabelAllowMultiple({});
+      faqsState.setFaqMetadataIsArray(
+        await metadataArrayFlags(faq.document_id, kb?.metadata_keys),
+      );
+      faqsState.setShowFaqDialog(true);
+    },
+    [faqsState, kb],
+  );
+
   return {
     ...docsState,
     ...scopeState,
@@ -121,13 +126,12 @@ export function useKnowledgeBaseDetail() {
     ...search,
     kbId,
     navigate,
-    searchParams,
     channels,
     t,
     kb,
-    initialTab,
     activeTab,
-    setActiveTab: selectKbTab,
+    openAddFaq,
+    openEditFaq,
     loading,
     loadKb,
     configValuesToMetadata,

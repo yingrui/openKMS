@@ -654,18 +654,6 @@
 }
 
 @include max-width(ds.$bp-md-min) {
-  .kb-detail-content {
-    padding: var(--space-3);
-  }
-
-  .kb-detail-header {
-    margin-bottom: var(--space-4);
-  }
-
-  .kb-detail-header h1 {
-    font-size: calc(var(--text-page-title) * 0.85);
-  }
-
   .kb-table-btns button,
   .kb-table-btns a {
     min-width: var(--tap-min);

@@ -105,6 +105,9 @@ const MediaGenerate = lazy(() => import('./pages/media/MediaGenerate').then((m) 
 const KnowledgeBaseDetail = lazy(() =>
   import('./pages/knowledge-bases/KnowledgeBaseDetail').then((m) => ({ default: m.KnowledgeBaseDetail })),
 );
+const KbSection = lazy(() =>
+  import('./pages/knowledge-bases/detail/KbSection').then((m) => ({ default: m.KbSection })),
+);
 const WorkforceList = lazy(() =>
   import('./pages/workforce/WorkforceList').then((m) => ({ default: m.WorkforceList })),
 );
@@ -114,6 +117,7 @@ const WorkforceDetail = lazy(() =>
 const WorkforceChat = lazy(() =>
   import('./pages/workforce/WorkforceChat').then((m) => ({ default: m.WorkforceChat })),
 );
+import { WORKFORCE_TABS } from './pages/workforce/detail/tabs';
 const Pipelines = lazy(() => import('./pages/pipelines/Pipelines').then((m) => ({ default: m.Pipelines })));
 const JobRuns = lazy(() => import('./pages/jobs/JobRuns').then((m) => ({ default: m.JobRuns })));
 const SchedulesPage = lazy(() => import('./pages/jobs/SchedulesPage').then((m) => ({ default: m.SchedulesPage })));
@@ -470,7 +474,6 @@ function App() {
             <Route path="view/:id" element={<MediaDetail />} />
           </Route>
           <Route path="knowledge-bases" element={<KnowledgeBaseList />} />
-          <Route path="knowledge-bases/:id" element={<KnowledgeBaseDetail />} />
           <Route path="workforce" element={<WorkforceList />} />
           <Route path="workforce/:agentId/chat" element={<WorkforceChat />} />
           <Route path="workforce/:agentId/chat/:conversationId" element={<WorkforceChat />} />
@@ -509,6 +512,13 @@ function App() {
           <Route path="data-metrics" element={<MetricsListPage />} />
           {/* app-layout-exception: entity detail needs the pane (gutter + scroll + full height) */}
           <Route element={<PagePaneLayout />}>
+            {/* app-layout-exception: entity detail needs the pane (shell + one route per section) */}
+            {/* Sections are `/knowledge-bases/:id/<section>`; the shell names them (`TAB_PATHS`) and
+                sends an unknown one back to the documents list. */}
+            <Route path="knowledge-bases/:id" element={<KnowledgeBaseDetail />}>
+              <Route index element={<KbSection />} />
+              <Route path=":section" element={<KbSection />} />
+            </Route>
             <Route path="data-model/:modelId" element={<SemanticModelDetailPage />}>
               <Route index element={<ModelMetricsSection />} />
               <Route path="datasets" element={<ModelDatasetsSection />} />
@@ -519,7 +529,16 @@ function App() {
               <Route path="sharing" element={<ModelSharingTab />} />
               <Route path="settings" element={<ModelSettingsTab />} />
             </Route>
-            <Route path="workforce/:agentId" element={<WorkforceDetail />} />
+            <Route path="workforce/:agentId" element={<WorkforceDetail />}>
+              {/* One tab list, shared with the shell's rail — see `pages/workforce/detail/tabs.ts`. */}
+              {WORKFORCE_TABS.map(({ segment, Component }, i) => (
+                <Route
+                  key={segment || 'index'}
+                  {...(i === 0 ? { index: true } : { path: segment })}
+                  element={<Component />}
+                />
+              ))}
+            </Route>
             <Route path="data-rules/new" element={<RuleNewPage />} />
             <Route path="data-rules/:ruleId" element={<RuleDetailPage />}>
               <Route index element={<RuleOverviewTab />} />
