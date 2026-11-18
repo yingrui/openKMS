@@ -360,6 +360,11 @@ body:has(.app-content--function-editor-workspace) .app-main {
   }
 }
 
+/* The page carries the gutter when it is a `.ds-page` — see `design-system/_table.scss`. Two would double it. */
+.app-content:has(> .ds-page) {
+  padding: 0;
+}
+
 .app-content--compact .kb-detail {
   height: calc(100vh - var(--header-height, 56px) - var(--space-6));
 }

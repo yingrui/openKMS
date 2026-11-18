@@ -162,13 +162,18 @@
   }
 }
 
-/* A page that is neither a list nor an entity (a form, an ops detail): the page box, no header, no table. */
+/* A page that is neither a list nor an entity (a form, an ops detail): the page box, no header, no table.
+ *
+ * It carries the app gutter itself — from the same tokens as `.app-content` and `.app-page-pane`, never a
+ * literal — because it also renders inside layouts that own no padding (the ontology suite's rail routes do
+ * not pad `.app-content`). The shell therefore stops padding when a `.ds-page` is what it wraps; without
+ * that, every list page sat 24px further in than the pages beside it. */
 .ds-page {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
   width: 100%;
-  padding: var(--space-6);
+  padding: var(--app-page-padding-y) var(--app-page-padding-x);
   box-sizing: border-box;
 }
 

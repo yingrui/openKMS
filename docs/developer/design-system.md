@@ -97,7 +97,9 @@ Six compile-time tokens in **`_tokens.scss`** — use **`@include max-width(ds.$
 
 ## Spacing rhythm
 
-4px grid — **`var(--space-*)`** in rules. Common: label↔control **`--space-2`**, form gap **`--space-3`**, card stack **`--space-5`**, actions **`--space-6`**, page header→content **`--space-6`**. App gutters: **`--app-page-padding-x/y`** on **`.app-content`** or **`.app-page-pane`** only. Half-step: **`--gap-compact`**, **`--padding-compact-*`**.
+4px grid — **`var(--space-*)`** in rules. Common: label↔control **`--space-2`**, form gap **`--space-3`**, card stack **`--space-5`**, actions **`--space-6`**, page header→content **`--space-6`**. App gutters: **`--app-page-padding-x/y`**, from exactly one owner — **`.app-content`**, **`.app-page-pane`**, or a
+**`.ds-page`** (which renders inside rail layouts that do not pad the shell, so it carries the gutter itself; the shell
+stops padding when it wraps one). Two of them is how list pages ended up 24px further in than the pages beside them. Half-step: **`--gap-compact`**, **`--padding-compact-*`**.
 
 **Dividers do not stack.** `.entity-view__main .page-header` carries `padding-bottom` and a
 `border-bottom` because content usually follows it directly. When a **tab strip** follows instead,
