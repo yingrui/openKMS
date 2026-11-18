@@ -2,23 +2,14 @@ import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
   ChevronRight,
-  HelpCircle,
   Search as SearchIcon,
   Send,
-  Layers,
-  Plus,
-  Trash2,
-  Sparkles,
   MessageSquare,
-  Pencil,
   Loader2,
   Filter,
   ChevronDown,
   RefreshCw,
 } from 'lucide-react';
-import { fetchDocumentById } from '../../data/documentsApi';
-import { fetchChannelById } from '../../data/channelsApi';
-import { normalizeExtractionSchemaToFields } from '../../data/channelUtils';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import {
@@ -33,8 +24,12 @@ import { TAB_ICONS, TAB_ORDER } from './KnowledgeBaseDetail.types';
 import { useKnowledgeBaseDetail } from './useKnowledgeBaseDetail';
 import { DocumentsTab } from './detail/tabs/DocumentsTab';
 import { WikiSpacesTab } from './detail/tabs/WikiSpacesTab';
+import { DataScopeTab } from './detail/tabs/DataScopeTab';
+import { FaqsTab } from './detail/tabs/FaqsTab';
+import { ChunksTab } from './detail/tabs/ChunksTab';
+import { metadataArrayFlags } from './detail/faqMetadata';
+import type { FAQResponse } from '../../data/knowledgeBasesApi';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
-import { PanelToolbar } from '../../styles/design-system';
 import {
   KbRetrievalProvenancePanel,
 } from '../workforce/chat';
@@ -107,6 +102,33 @@ export function KnowledgeBaseDetail() {
       onSaveFaq={handleSaveFaq}
     />
   );
+
+  /** New FAQ: empty fields, with the KB's metadata keys laid out for the dialog. */
+  const openAddFaq = () => {
+    setEditFaq(null);
+    setFaqDialogSource('manual');
+    setFaqQuestion('');
+    setFaqAnswer('');
+    setFaqLabelsValues(objToConfigValues({}, kb.metadata_keys ?? undefined));
+    setFaqDocMetadataValues(objToConfigValues({}, kb.metadata_keys ?? undefined));
+    setFaqLabelAllowMultiple({});
+    setFaqMetadataIsArray({});
+    setShowFaqDialog(true);
+  };
+
+  /** Edit FAQ: load its metadata, and ask the document's channel which keys are lists for this document. */
+  const openEditFaq = async (faq: FAQResponse) => {
+    setEditFaq(faq);
+    setFaqDialogSource('manual');
+    setFaqQuestion(faq.question);
+    setFaqAnswer(faq.answer);
+    const metaValues = objToConfigValues(faq.doc_metadata, kb.metadata_keys ?? undefined);
+    setFaqLabelsValues(metaValues);
+    setFaqDocMetadataValues(metaValues);
+    setFaqLabelAllowMultiple({});
+    setFaqMetadataIsArray(await metadataArrayFlags(faq.document_id, kb.metadata_keys));
+    setShowFaqDialog(true);
+  };
 
   return (
     <ContentCommentsShell resourceType="knowledge_base" resourceId={kb.id}>
@@ -209,435 +231,49 @@ export function KnowledgeBaseDetail() {
 
         {/* ===== DATA SCOPE TAB ===== */}
         {activeTab === 'data_scope' && (
-          <section className="kb-section">
-            <PanelToolbar
-              className="kb-section-header"
-              leading={<span>{t('detail.dataScopeTitle')}</span>}
-            />
-            <p className="kb-section-desc">{t('detail.dataScopeHint')}</p>
-            <div className="kb-agent-scope-panel">
-              <div className="kb-agent-scope-block">
-                <div className="kb-agent-scope-heading">{t('detail.agentScopeSemanticModels')}</div>
-                <div className="kb-agent-scope-add">
-                  <select
-                    className="ds-control"
-                    aria-label={t('detail.agentScopeAddSemanticModel')}
-                    defaultValue=""
-                    disabled={!!scopeBusyId}
-                    onChange={(e) => {
-                      const id = e.target.value;
-                      e.target.value = '';
-                      if (id) void handleAddSemanticModelToKb(id);
-                    }}
-                  >
-                    <option value="">{t('detail.agentScopeAddSemanticModel')}</option>
-                    {allSemanticModels
-                      .filter((m) => !kbSemanticModels.some((k) => k.semantic_model_id === m.id))
-                      .map((m) => (
-                        <option key={m.id} value={m.id}>{m.name}</option>
-                      ))}
-                  </select>
-                </div>
-                {kbSemanticModels.length === 0 ? (
-                  <p className="kb-empty-text">{t('detail.agentScopeEmptySemanticModels')}</p>
-                ) : (
-                  <ul className="kb-agent-scope-list">
-                    {kbSemanticModels.map((m) => (
-                      <li key={m.id} className="kb-agent-scope-item">
-                        <div className="kb-agent-scope-item-main">
-                          <span className="kb-agent-scope-item-name">{m.name}</span>
-                          {m.metric_names.length > 0 ? (
-                            <span className="kb-agent-scope-item-meta">
-                              {t('detail.agentScopeMetricCount', { count: m.metric_names.length })}
-                            </span>
-                          ) : null}
-                        </div>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm"
-                          disabled={scopeBusyId === m.semantic_model_id}
-                          onClick={() => void handleRemoveSemanticModelFromKb(m.semantic_model_id)}
-                        >
-                          {t('detail.remove')}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <div className="kb-agent-scope-block">
-                <div className="kb-agent-scope-heading">{t('detail.agentScopeOntologyGroups')}</div>
-                <div className="kb-agent-scope-add">
-                  <select
-                    className="ds-control"
-                    aria-label={t('detail.agentScopeAddOntologyGroup')}
-                    defaultValue=""
-                    disabled={!!scopeBusyId}
-                    onChange={(e) => {
-                      const id = e.target.value;
-                      e.target.value = '';
-                      if (id) void handleAddOntologyGroupToKb(id);
-                    }}
-                  >
-                    <option value="">{t('detail.agentScopeAddOntologyGroup')}</option>
-                    {allOntologyGroups
-                      .filter((g) => !kbOntologyGroups.some((k) => k.ontology_group_id === g.id))
-                      .map((g) => (
-                        <option key={g.id} value={g.id}>{g.display_name}</option>
-                      ))}
-                  </select>
-                </div>
-                {kbOntologyGroups.length === 0 ? (
-                  <p className="kb-empty-text">{t('detail.agentScopeEmptyOntologyGroups')}</p>
-                ) : (
-                  <ul className="kb-agent-scope-list">
-                    {kbOntologyGroups.map((g) => (
-                      <li key={g.id} className="kb-agent-scope-item">
-                        <div className="kb-agent-scope-item-main">
-                          <span className="kb-agent-scope-item-name">{g.display_name}</span>
-                          <span className="kb-agent-scope-item-meta">
-                            {t('detail.agentScopeObjectTypeCount', { count: g.object_type_count })}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm"
-                          disabled={scopeBusyId === g.ontology_group_id}
-                          onClick={() => void handleRemoveOntologyGroupFromKb(g.ontology_group_id)}
-                        >
-                          {t('detail.remove')}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          </section>
+          <DataScopeTab
+            t={t}
+            semanticModels={kbSemanticModels}
+            ontologyGroups={kbOntologyGroups}
+            allSemanticModels={allSemanticModels}
+            allOntologyGroups={allOntologyGroups}
+            busyId={scopeBusyId}
+            onAddSemanticModel={(id) => void handleAddSemanticModelToKb(id)}
+            onRemoveSemanticModel={(id) => void handleRemoveSemanticModelFromKb(id)}
+            onAddOntologyGroup={(id) => void handleAddOntologyGroupToKb(id)}
+            onRemoveOntologyGroup={(id) => void handleRemoveOntologyGroupFromKb(id)}
+          />
         )}
 
         {/* ===== FAQS TAB ===== */}
         {activeTab === 'faqs' && (
-          <section className="kb-section">
-            <PanelToolbar
-              className="kb-section-header"
-              leading={<span>{t('detail.faqsTitle', { count: faqTotal })}</span>}
-              actions={
-                <div className="kb-section-header-btns">
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => void openGenerateModal()}
-                    aria-label={t('detail.generateFaq')}
-                  >
-                    <Sparkles size={16} aria-hidden />
-                    <span className="ds-compact-label">{t('detail.generateFaq')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    aria-label={t('detail.addFaq')}
-                    onClick={() => {
-                    setEditFaq(null);
-                    setFaqDialogSource('manual');
-                    setFaqQuestion('');
-                    setFaqAnswer('');
-                    setFaqLabelsValues(objToConfigValues({}, kb?.metadata_keys ?? undefined));
-                    setFaqDocMetadataValues(objToConfigValues({}, kb?.metadata_keys ?? undefined));
-                    setFaqLabelAllowMultiple({});
-                    setFaqMetadataIsArray({});
-                    setShowFaqDialog(true);
-                  }}
-                  >
-                    <Plus size={16} aria-hidden />
-                    <span className="ds-compact-label">{t('detail.addFaq')}</span>
-                  </button>
-                </div>
-              }
-            />
-
-            {faqTotal === 0 ? (
-              <p className="kb-empty-text">{t('detail.emptyFaqs')}</p>
-            ) : (
-              <>
-              <div className="ds-table-wrap">
-                <table className="kb-table">
-                  <thead>
-                    <tr>
-                      <th className="kb-table-question-col">{t('detail.colQuestion')}</th>
-                      <th>{t('detail.colAnswer')}</th>
-                      <th className="kb-table-source-col">{t('detail.colSource')}</th>
-                      <th className="kb-table-actions">{t('detail.actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {faqs.map((faq) => (
-                      <tr key={faq.id}>
-                        <td className="kb-table-question-col">
-                          <div className="kb-table-name">
-                            <HelpCircle size={18} />
-                            <span>{faq.question}</span>
-                          </div>
-                        </td>
-                        <td className="kb-table-excerpt">{faq.answer}</td>
-                        <td className="kb-table-source-col">
-                          <span
-                            className="kb-table-source"
-                            title={faq.document_name || faq.document_id || undefined}
-                          >
-                            {faq.document_name || faq.document_id || t('detail.dash')}
-                          </span>
-                        </td>
-                        <td className="kb-table-actions">
-                          <div className="kb-table-btns">
-                            <button type="button" title={t('detail.edit')} aria-label={t('detail.edit')} onClick={async () => {
-                              setEditFaq(faq);
-                              setFaqDialogSource('manual');
-                              setFaqQuestion(faq.question);
-                              setFaqAnswer(faq.answer);
-                              const metaValues = objToConfigValues(faq.doc_metadata, kb?.metadata_keys ?? undefined);
-                              setFaqLabelsValues(metaValues);
-                              setFaqDocMetadataValues(metaValues);
-                              const metadataIsArray: Record<string, boolean> = {};
-                              if (faq.document_id && kb?.metadata_keys?.length) {
-                                try {
-                                  const doc = await fetchDocumentById(faq.document_id);
-                                  const channel = await fetchChannelById(doc.channel_id);
-                                  const metaFields = normalizeExtractionSchemaToFields(channel.extraction_schema ?? null);
-                                  const metaMap = new Map(metaFields.map((f) => [f.key, f.type === 'array']));
-                                  const lcMap = new Map(
-                                    (channel.label_config ?? []).map((lc: { key: string; type?: string }) => [lc.key, lc.type === 'list[object_type]'])
-                                  );
-                                  for (const k of kb.metadata_keys) {
-                                    metadataIsArray[k] = metaMap.get(k) ?? lcMap.get(k) ?? false;
-                                  }
-                                } catch {
-                                  /* default to false */
-                                }
-                              }
-                              setFaqLabelAllowMultiple({});
-                              setFaqMetadataIsArray(metadataIsArray);
-                              setShowFaqDialog(true);
-                            }}>
-                              <Pencil size={16} />
-                            </button>
-                            <button type="button" title={t('detail.remove')} aria-label={t('detail.remove')} onClick={() => handleDeleteFaq(faq.id)}>
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {faqTotal > 0 && (
-                <div className="kb-pagination">
-                  <div className="kb-pagination-info">
-                    <span>
-                      {t('detail.paginationRange', {
-                        start: faqTotal === 0 ? 0 : faqPage * faqPageSize + 1,
-                        end: Math.min((faqPage + 1) * faqPageSize, faqTotal),
-                        total: faqTotal,
-                      })}
-                    </span>
-                    <label>
-                      <span>{t('detail.pageSize')}</span>
-                      <select
-                        value={faqPageSize}
-                        onChange={(e) => {
-                          setFaqPageSize(Number(e.target.value));
-                          setFaqPage(0);
-                        }}
-                        className="ds-control"
-                      >
-                        {[25, 50, 100, 200].map((n) => (
-                          <option key={n} value={n}>{n}</option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  {Math.ceil(faqTotal / faqPageSize) > 1 && (
-                    <div className="kb-pagination-btns">
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setFaqPage(0)}
-                        disabled={faqPage === 0}
-                        title={t('detail.firstPage')}
-                      >
-                        «
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setFaqPage((p) => Math.max(0, p - 1))}
-                        disabled={faqPage === 0}
-                      >
-                        {t('detail.previous')}
-                      </button>
-                      <span className="kb-pagination-nums">
-                        {t('detail.pageOf', {
-                          current: faqPage + 1,
-                          total: Math.ceil(faqTotal / faqPageSize) || 1,
-                        })}
-                      </span>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setFaqPage((p) => Math.min(Math.ceil(faqTotal / faqPageSize) - 1, p + 1))}
-                        disabled={faqPage >= Math.ceil(faqTotal / faqPageSize) - 1}
-                      >
-                        {t('detail.next')}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setFaqPage(Math.ceil(faqTotal / faqPageSize) - 1)}
-                        disabled={faqPage >= Math.ceil(faqTotal / faqPageSize) - 1}
-                        title={t('detail.lastPage')}
-                      >
-                        »
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-              </>
-            )}
-          </section>
+          <FaqsTab
+            t={t}
+            faqs={faqs}
+            total={faqTotal}
+            page={faqPage}
+            pageSize={faqPageSize}
+            onPageChange={setFaqPage}
+            onPageSizeChange={setFaqPageSize}
+            onGenerate={() => void openGenerateModal()}
+            onAdd={openAddFaq}
+            onEdit={(faq) => void openEditFaq(faq)}
+            onDelete={(id) => void handleDeleteFaq(id)}
+          />
         )}
 
         {/* ===== CHUNKS TAB ===== */}
         {activeTab === 'chunks' && (
-          <section className="kb-section">
-            <PanelToolbar
-              className="kb-section-header"
-              leading={<span>{t('detail.chunksTitle', { count: chunkTotal })}</span>}
-            />
-            {chunkTotal === 0 ? (
-              <p className="kb-empty-text">{t('detail.emptyChunks')}</p>
-            ) : (
-              <>
-              <div className="ds-table-wrap">
-                <table className="kb-table">
-                  <thead>
-                    <tr>
-                      <th>{t('detail.chunkSource')}</th>
-                      <th>{t('detail.colExcerpt')}</th>
-                      <th>{t('detail.colTokens')}</th>
-                      <th>{t('detail.colEmbedded')}</th>
-                      <th className="kb-table-actions">{t('detail.actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {chunks.map((chunk) => (
-                      <tr key={chunk.id}>
-                        <td>
-                          <div className="kb-table-name">
-                            <Layers size={18} />
-                            {chunk.document_id ? (
-                              <Link to={`/documents/view/${chunk.document_id}`}>{chunk.document_name || chunk.document_id}</Link>
-                            ) : chunk.wiki_page_id && chunk.wiki_space_id ? (
-                              <Link to={`/wikis/${chunk.wiki_space_id}/pages/${chunk.wiki_page_id}`}>
-                                {chunk.document_name || chunk.wiki_page_id}
-                              </Link>
-                            ) : (
-                              <span>{chunk.document_name || chunk.document_id || chunk.wiki_page_id || t('detail.dash')}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="kb-table-excerpt">{chunk.content.slice(0, 150)}...</td>
-                        <td>{chunk.token_count ?? t('detail.dash')}</td>
-                        <td>{chunk.has_embedding ? t('detail.yes') : t('detail.no')}</td>
-                        <td className="kb-table-actions">
-                          <div className="kb-table-btns">
-                            <button type="button" title={t('detail.edit')} aria-label={t('detail.edit')} onClick={() => openChunkEdit(chunk)}>
-                              <Pencil size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {chunkTotal > 0 && (
-                <div className="kb-pagination">
-                  <div className="kb-pagination-info">
-                    <span>
-                      {t('detail.paginationRange', {
-                        start: chunkTotal === 0 ? 0 : chunkPage * chunkPageSize + 1,
-                        end: Math.min((chunkPage + 1) * chunkPageSize, chunkTotal),
-                        total: chunkTotal,
-                      })}
-                    </span>
-                    <label>
-                      <span>{t('detail.pageSize')}</span>
-                      <select
-                        value={chunkPageSize}
-                        onChange={(e) => {
-                          setChunkPageSize(Number(e.target.value));
-                          setChunkPage(0);
-                        }}
-                        className="ds-control"
-                      >
-                        {[25, 50, 100, 200].map((n) => (
-                          <option key={n} value={n}>{n}</option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  {Math.ceil(chunkTotal / chunkPageSize) > 1 && (
-                    <div className="kb-pagination-btns">
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setChunkPage(0)}
-                        disabled={chunkPage === 0}
-                        title={t('detail.firstPage')}
-                      >
-                        «
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setChunkPage((p) => Math.max(0, p - 1))}
-                        disabled={chunkPage === 0}
-                      >
-                        {t('detail.previous')}
-                      </button>
-                      <span className="kb-pagination-nums">
-                        {t('detail.pageOf', {
-                          current: chunkPage + 1,
-                          total: Math.ceil(chunkTotal / chunkPageSize) || 1,
-                        })}
-                      </span>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setChunkPage((p) => Math.min(Math.ceil(chunkTotal / chunkPageSize) - 1, p + 1))}
-                        disabled={chunkPage >= Math.ceil(chunkTotal / chunkPageSize) - 1}
-                      >
-                        {t('detail.next')}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setChunkPage(Math.ceil(chunkTotal / chunkPageSize) - 1)}
-                        disabled={chunkPage >= Math.ceil(chunkTotal / chunkPageSize) - 1}
-                        title={t('detail.lastPage')}
-                      >
-                        »
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-              </>
-            )}
-          </section>
+          <ChunksTab
+            t={t}
+            chunks={chunks}
+            total={chunkTotal}
+            page={chunkPage}
+            pageSize={chunkPageSize}
+            onPageChange={setChunkPage}
+            onPageSizeChange={setChunkPageSize}
+            onEdit={openChunkEdit}
+          />
         )}
 
         {/* ===== SEARCH TAB ===== */}

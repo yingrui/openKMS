@@ -3,6 +3,7 @@ import type { TFunction } from 'i18next';
 import { Eye, FileStack, Plus, Trash2 } from 'lucide-react';
 import type { KBDocumentResponse } from '../../../../data/knowledgeBasesApi';
 import { PanelToolbar } from '../../../../styles/design-system';
+import { KbPagination } from '../KbPagination';
 
 /**
  * The documents linked into this knowledge base.
@@ -32,8 +33,6 @@ export function DocumentsTab({
   onAdd: () => void;
   onRemove: (documentId: string) => void;
 }) {
-  const lastPage = Math.ceil(docTotal / docPageSize) - 1;
-
   return (
     <section className="kb-section">
       <PanelToolbar
@@ -102,75 +101,14 @@ export function DocumentsTab({
               </tbody>
             </table>
           </div>
-          <div className="kb-pagination">
-            <div className="kb-pagination-info">
-              <span>
-                {t('detail.paginationRange', {
-                  start: docTotal === 0 ? 0 : docPage * docPageSize + 1,
-                  end: Math.min((docPage + 1) * docPageSize, docTotal),
-                  total: docTotal,
-                })}
-              </span>
-              <label>
-                <span>{t('detail.pageSize')}</span>
-                <select
-                  value={docPageSize}
-                  onChange={(e) => {
-                    onPageSizeChange(Number(e.target.value));
-                    onPageChange(0);
-                  }}
-                  className="ds-control"
-                >
-                  {[25, 50, 100, 200].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            {lastPage > 0 && (
-              <div className="kb-pagination-btns">
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => onPageChange(0)}
-                  disabled={docPage === 0}
-                  title={t('detail.firstPage')}
-                >
-                  «
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => onPageChange(Math.max(0, docPage - 1))}
-                  disabled={docPage === 0}
-                >
-                  {t('detail.previous')}
-                </button>
-                <span className="kb-pagination-nums">
-                  {t('detail.pageOf', { current: docPage + 1, total: lastPage + 1 })}
-                </span>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => onPageChange(Math.min(lastPage, docPage + 1))}
-                  disabled={docPage >= lastPage}
-                >
-                  {t('detail.next')}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => onPageChange(lastPage)}
-                  disabled={docPage >= lastPage}
-                  title={t('detail.lastPage')}
-                >
-                  »
-                </button>
-              </div>
-            )}
-          </div>
+          <KbPagination
+            t={t}
+            total={docTotal}
+            page={docPage}
+            pageSize={docPageSize}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
         </>
       )}
     </section>
