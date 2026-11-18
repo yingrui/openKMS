@@ -91,7 +91,7 @@
 
 .btn.btn-danger {
   background: var(--color-error);
-  color: #fff;
+  color: var(--color-error-contrast);
   border-color: var(--color-error);
 
   &:hover:not(:disabled) {
