@@ -496,7 +496,7 @@
     "erOneOnly": "one and only one",
     "erZeroOrOne": "zero or one",
     "erLegendHint": "The many side is structural (a foreign key); the target side’s 1 vs 0..1 is the form’s \"require a match\" option.",
-    "dimensionFromColumn": "The period comes from the dataset column’s time period (its format already names the granularity); it is not set here.",
+    "dimensionFromColumn": "The time dimension comes from the dataset column (its format already names the granularity); this only overrides it.",
     "sortDesc": "Descending",
     "sortAsc": "Ascending"
   },
@@ -940,7 +940,7 @@
     "cardOneToOneShort": "1 → 1",
     "cardOneToZeroOrOne": "{{left}} 1 → 0..1 {{right}}",
     "cardOneToZeroOrOneHint": "One {{left}} row matches at most one {{right}} row; the save checks {{left}} is unique, and the referenced row may be missing",
-    "colTimeRole": "Time period",
+    "colTimeRole": "Time dimension",
     "timeRoleYes": "yes",
     "timeRoleYesPeriod": "yes ({{kind}})",
     "timeRoleNo": "no",

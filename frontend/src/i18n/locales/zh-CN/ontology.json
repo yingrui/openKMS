@@ -491,7 +491,7 @@
     "erOneOnly": "有且仅有一条",
     "erZeroOrOne": "零或一条",
     "erLegendHint": "外键侧的\"多\"由数据集结构决定；目标侧的 1 与 0..1 在关系表单的「要求匹配到行」里配置。",
-    "dimensionFromColumn": "时间周期由数据集列的「时间周期」决定（格式已说明粒度），这里不再单独设置。",
+    "dimensionFromColumn": "时间维度由数据集列决定（格式已说明粒度），这里只做覆盖。",
     "sortDesc": "降序",
     "sortAsc": "升序"
   },
@@ -933,7 +933,7 @@
     "cardOneToOneShort": "1 → 1",
     "cardOneToZeroOrOne": "{{left}} 1 → 0..1 {{right}}",
     "cardOneToZeroOrOneHint": "一条 {{left}} 记录最多对应一条 {{right}} 记录；保存时校验 {{left}} 侧字段唯一，被引用记录可以为空",
-    "colTimeRole": "时间周期",
+    "colTimeRole": "时间维度",
     "timeRoleYes": "是",
     "timeRoleYesPeriod": "是（{{kind}}）",
     "timeRoleNo": "否",
