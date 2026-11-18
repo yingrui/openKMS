@@ -67,7 +67,7 @@ export function ModelDatasetsSection() {
   const [datatype, setDatatype] = useState('');
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
-  const [dimensionMode, setDimensionMode] = useState<'auto' | 'time' | 'regular'>('auto');
+  const [dimensionMode, setDimensionMode] = useState<'auto' | 'regular'>('auto');
   /** The calendar a time dimension holds — a period is an instance of it. */
   const [ai, setAi] = useState<AiContext>({ instructions: '', synonyms: '', examples: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -221,13 +221,7 @@ export function ModelDatasetsSection() {
     setDatatype(f.datatype ?? '');
     setLabel(f.label ?? '');
     setDescription(f.description ?? '');
-    setDimensionMode(
-      typeof f.dimension?.is_time === 'boolean'
-        ? f.dimension.is_time
-          ? 'time'
-          : 'regular'
-        : 'auto',
-    );
+    setDimensionMode(f.dimension?.is_time === false ? 'regular' : 'auto');
     setAi({
       instructions: String((f.ai_context?.instructions as string) ?? ''),
       synonyms: ((f.ai_context?.synonyms as string[]) ?? []).join(', '),
@@ -267,11 +261,7 @@ export function ModelDatasetsSection() {
       label: label.trim() || null,
       description: description.trim() || null,
       dimension:
-        dimensionMode === 'auto'
-          ? null
-          : dimensionMode === 'regular'
-            ? { is_time: false }
-            : { is_time: true },
+        dimensionMode === 'auto' ? null : { is_time: false },
       ai_context: hasAi ? { instructions: ai.instructions.trim(), synonyms, examples } : null,
     };
     setSubmitting(true);
@@ -637,17 +627,14 @@ export function ModelDatasetsSection() {
             <select
               value={dimensionMode}
               onChange={(e) =>
-                setDimensionMode(e.target.value as 'auto' | 'time' | 'regular')
+                setDimensionMode(e.target.value as 'auto' | 'regular')
               }
             >
               <option value="auto">{t('dataModel.dimensionAuto')}</option>
-              <option value="time">{t('dataModel.dimensionYes')}</option>
               <option value="regular">{t('dataModel.dimensionNo')}</option>
             </select>
           </FormField>
-          {dimensionMode === 'time' ? (
-            <p className="page-subtitle">{t('dataModel.dimensionFromColumn')}</p>
-          ) : null}
+          <p className="page-subtitle">{t('dataModel.dimensionFromColumn')}</p>
           <FormField label={t('datasets.aiInstructions')}>
             <textarea
               rows={2}
