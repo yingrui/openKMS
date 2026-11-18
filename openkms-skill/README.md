@@ -41,7 +41,7 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `ontology functions` | list/get/executions | create, save-version, validate, publish, execute* |
 | `ontology action-types` | list/get/logs | create, update, delete, execute |
 | `ontology groups` | list/get | create, update |
-| `evaluations` / `evaluation-runs` | list/get/compare | create/update/run/items |
+| `evaluations` / `evaluations runs` | list/get/compare | create/update/run/items |
 | `chamber` | `list`, `get` | `create`, `patch`, `publish`, `delete` (hosted Kubernetes Services) |
 | `kubernetes` | clusters list/get, namespaces, deployments, pods, services, logs | `apply`, `delete` (allowlisted kinds; kubeconfig never downloaded) |
 
@@ -113,7 +113,7 @@ python scripts/cli.py wiki put-page \
 ### 6. Compare two evaluation runs
 
 ```bash
-python scripts/cli.py evaluation-runs compare \
+python scripts/cli.py evaluations runs compare \
   --evaluation-id <eval> --run-a <runA> --run-b <runB>
 ```
 

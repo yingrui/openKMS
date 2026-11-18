@@ -348,9 +348,9 @@ Requires **`knowledge_map:read`** (tree, link list) and **`knowledge_map:write`*
 | `evaluations items update` | PUT | `/api/evaluations/{id}/items/{item_id}` | Partial: `query`, `expected_answer`, `topic`, `sort_order`. |
 | `evaluations items delete` | DELETE | `/api/evaluations/{id}/items/{item_id}` | 204. |
 | `evaluations run` | POST | `/api/evaluations/{id}/run` | Body optionally `{evaluation_type: "search_retrieval"\|"qa_answer"\|"wiki_content_coverage"}` (default `search_retrieval`). `wiki_content_coverage` requires a linked `wiki_space_id`. |
-| `evaluation-runs list` | GET | `/api/evaluations/{evaluation_id}/runs` | Paginated. |
-| `evaluation-runs get` | GET | `/api/evaluations/{evaluation_id}/runs/{run_id}` | Full run with per-item results. |
-| `evaluation-runs compare` | GET | `/api/evaluations/{evaluation_id}/runs/compare?run_a=&run_b=` | Returns per-metric diffs between two runs. |
+| `evaluations runs list` | GET | `/api/evaluations/{evaluation_id}/runs` | Paginated. |
+| `evaluations runs get` | GET | `/api/evaluations/{evaluation_id}/runs/{run_id}` | Full run with per-item results. |
+| `evaluations runs compare` | GET | `/api/evaluations/{evaluation_id}/runs/compare?run_a=&run_b=` | Returns per-metric diffs between two runs. |
 
 ### Chamber apps — chamber
 

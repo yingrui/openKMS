@@ -1,9 +1,10 @@
 """A CLI group is named after the route it wraps.
 
 `kb` wrapped `/api/knowledge-bases`, `apps` wrapped `/api/chamber`, and `rules` wrapped
-`/api/metric-rules` — three groups whose names could not be guessed from the API they call. The cost is paid
-by whoever reads the CLI help and then has to search for the route, and by whoever reads the route and cannot
-guess the command.
+`/api/metric-rules` — groups whose names could not be guessed from the API they call. The cost is paid by
+whoever reads the CLI help and then has to search for the route, and by whoever reads the route and cannot
+guess the command. The same reasoning moved two sub-resources under their parent: FAQs are
+`knowledge-bases faqs`, runs are `evaluations runs`, because that is where the routes put them.
 
 So the mapping is written down here: every top-level group declares the route prefix it speaks to, and the
 module that implements it must contain that prefix. A rename on either side fails, and a new group cannot be
@@ -54,7 +55,6 @@ NAMED_AFTER_ROUTE: dict[str, str] = {
 DELIBERATELY_NOT_A_ROUTE: dict[str, str] = {
     "api": "reads /openapi.json — the route table itself",
     "audit": "/api/console/audit-events — the console's log, reached through `console`",
-    "evaluation-runs": "/api/evaluations/{id}/runs — a sub-resource of `evaluations`",
     "ping": "/api/auth/me — an identity smoke test, not a resource list",
 }
 
@@ -109,7 +109,12 @@ def test_a_route_named_group_actually_calls_that_route():
 
 def test_abbreviated_names_are_gone():
     """`kb`, `kb-faq` and `apps` were the three names that could not be guessed from the API."""
-    retired = {"kb": "knowledge-bases", "kb-faq": "knowledge-bases faqs", "apps": "chamber"}
+    retired = {
+        "kb": "knowledge-bases",
+        "kb-faq": "knowledge-bases faqs",
+        "apps": "chamber",
+        "evaluation-runs": "evaluations runs",
+    }
     groups = set(registered_groups())
     back = sorted(name for name in retired if name in groups)
     assert not back, f"retired group names came back: {back} — use {[retired[n] for n in back]}"

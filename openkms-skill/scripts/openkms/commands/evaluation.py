@@ -289,7 +289,9 @@ def add_subparser(sub) -> None:
     add_write_flags(rn)
     rn.set_defaults(fn=cmd_ds_run)
 
-    rs = sub.add_parser("evaluation-runs", help="Evaluation runs (saved)")
+    # Runs are a sub-resource of an evaluation in the API (`/api/evaluations/{id}/runs`),
+    # so they are a sub-group here too.
+    rs = ds_sub.add_parser("runs", help="Saved runs of one evaluation")
     rs_sub = rs.add_subparsers(dest="er_cmd", required=True)
 
     rls = rs_sub.add_parser("list", help="List runs for an evaluation")

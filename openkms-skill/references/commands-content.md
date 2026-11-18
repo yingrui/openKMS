@@ -38,7 +38,7 @@ Prefix every invocation with `python scripts/cli.py` (or the project-agent path 
 | Knowledge map tree / links | `knowledge-map nodes tree` · `knowledge-map resource-links list` |
 | Comments | `comments list --resource-type document --resource-id ID` |
 | Media list | `media list [--channel-id ID]` |
-| Evaluation metadata / items / runs | `evaluations get --id EV_ID` · `evaluations items list --id EV_ID` · `evaluation-runs list --evaluation-id EV_ID` · `evaluation-runs get …` · `evaluation-runs compare …` |
+| Evaluation metadata / items / runs | `evaluations get --id EV_ID` · `evaluations items list --id EV_ID` · `evaluations runs list --evaluation-id EV_ID` · `evaluations runs get …` · `evaluations runs compare …` |
 
 ## Write
 
