@@ -377,7 +377,7 @@ body.openkms-agent-chat .header {
   display: none;
 }
 
-body.openkms-agent-chat:has(.kb-qa-page) .kb-qa-page {
+body.openkms-agent-chat:has(.agent-chat-page) .agent-chat-page {
   min-height: 0;
 }
 
@@ -403,7 +403,7 @@ body.openkms-agent-chat .app-content .content-comments-shell__main {
   max-height: 100%;
 }
 
-body.openkms-agent-chat .app-content .kb-qa-page {
+body.openkms-agent-chat .app-content .agent-chat-page {
   flex: 1;
   min-height: 0;
   height: 100%;

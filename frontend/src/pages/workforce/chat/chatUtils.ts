@@ -71,11 +71,11 @@ function splitQaSources(sources: SearchResult[]): {
 
 function chatSourceCardModifierClass(sourceType: string | null | undefined): string {
   const k = chatSourceKind(sourceType);
-  if (k === 'ontology') return 'kb-qa-source-card--ontology';
-  if (k === 'document_section') return 'kb-qa-source-card--section';
-  if (k === 'faq') return 'kb-qa-source-card--faq';
-  if (k === 'metric' || k === 'semantic_model') return 'kb-qa-source-card--metric';
-  return 'kb-qa-source-card--chunk';
+  if (k === 'ontology') return 'agent-chat-source-card--ontology';
+  if (k === 'document_section') return 'agent-chat-source-card--section';
+  if (k === 'faq') return 'agent-chat-source-card--faq';
+  if (k === 'metric' || k === 'semantic_model') return 'agent-chat-source-card--metric';
+  return 'agent-chat-source-card--chunk';
 }
 
 function chatTruncatePreview(text: string, maxLen: number): string {
@@ -95,11 +95,11 @@ function chatShowRetrievalScore(sourceType: string | null | undefined, score: nu
 
 function chatSourceChipModifierClass(sourceType: string | null | undefined): string {
   const k = chatSourceKind(sourceType);
-  if (k === 'ontology') return 'kb-qa-source-chip--ontology';
-  if (k === 'document_section') return 'kb-qa-source-chip--section';
-  if (k === 'faq') return 'kb-qa-source-chip--faq';
-  if (k === 'metric' || k === 'semantic_model') return 'kb-qa-source-chip--metric';
-  return 'kb-qa-source-chip--chunk';
+  if (k === 'ontology') return 'agent-chat-source-chip--ontology';
+  if (k === 'document_section') return 'agent-chat-source-chip--section';
+  if (k === 'faq') return 'agent-chat-source-chip--faq';
+  if (k === 'metric' || k === 'semantic_model') return 'agent-chat-source-chip--metric';
+  return 'agent-chat-source-chip--chunk';
 }
 
 function chipTitle(s: SearchResult, maxLen = 26): string {

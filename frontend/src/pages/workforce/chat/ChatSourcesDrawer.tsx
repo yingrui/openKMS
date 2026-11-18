@@ -39,16 +39,16 @@ function ReferenceCard({
   );
   const showScore = chatShowRetrievalScore(s.source_type, s.score);
   return (
-    <div className={`kb-qa-source-card kb-qa-source-card--static kb-qa-sources-drawer__ref ${mod}`}>
-      <span className="kb-qa-sources-drawer__index" aria-hidden>
+    <div className={`agent-chat-source-card agent-chat-source-card--static agent-chat-sources-drawer__ref ${mod}`}>
+      <span className="agent-chat-sources-drawer__index" aria-hidden>
         {index}
       </span>
-      <div className="kb-qa-source-card__head">
-        <span className="kb-qa-source-card__kind">{kindLabel}</span>
+      <div className="agent-chat-source-card__head">
+        <span className="agent-chat-source-card__kind">{kindLabel}</span>
         {s.usage ? (
           /* Whether the answer drew on this source, or the query merely ran. Every source is kept either way. */
           <span
-            className={`kb-qa-source-card__usage kb-qa-source-card__usage--${s.usage}`}
+            className={`agent-chat-source-card__usage agent-chat-source-card__usage--${s.usage}`}
             title={t(`chat.sourceUsage.${s.usage}Hint`)}
           >
             {t(`chat.sourceUsage.${s.usage}`)}
@@ -56,27 +56,27 @@ function ReferenceCard({
           </span>
         ) : null}
         {showScore ? (
-          <span className="kb-qa-source-card__score">
+          <span className="agent-chat-source-card__score">
             {t('chat.sourceScore', { pct: (s.score * 100).toFixed(0) })}
           </span>
         ) : null}
       </div>
-      <div className="kb-qa-source-card__title">
+      <div className="agent-chat-source-card__title">
         {s.wiki_page_id && s.wiki_space_id ? (
-          <Link className="kb-qa-source-card__link" to={`/wikis/${s.wiki_space_id}/pages/${s.wiki_page_id}`}>
+          <Link className="agent-chat-source-card__link" to={`/wikis/${s.wiki_space_id}/pages/${s.wiki_page_id}`}>
             {s.source_name || s.wiki_page_id}
           </Link>
         ) : s.document_id ? (
-          <Link className="kb-qa-source-card__link" to={`/documents/view/${s.document_id}`}>
+          <Link className="agent-chat-source-card__link" to={`/documents/view/${s.document_id}`}>
             {s.source_name || s.document_id}
           </Link>
         ) : (
-          <span className="kb-qa-source-card__title-text">
+          <span className="agent-chat-source-card__title-text">
             {s.source_name || t('detail.faqSourceFallback')}
           </span>
         )}
       </div>
-      {detailPreview ? <p className="kb-qa-source-card__preview">{detailPreview}</p> : null}
+      {detailPreview ? <p className="agent-chat-source-card__preview">{detailPreview}</p> : null}
       <ChatRetrievalProvenancePanel s={s} t={t} />
     </div>
   );
@@ -106,32 +106,32 @@ export function ChatSourcesDrawer({
 
   return (
     <aside
-      id="kb-qa-sources-drawer"
-      className="kb-qa-sources-drawer"
+      id="agent-chat-sources-drawer"
+      className="agent-chat-sources-drawer"
       role="complementary"
       aria-label={t('chat.sourcesDrawerAria')}
     >
-      <header className="kb-qa-sources-drawer__head">
-        <div className="kb-qa-sources-drawer__title">
+      <header className="agent-chat-sources-drawer__head">
+        <div className="agent-chat-sources-drawer__title">
           <h2>{t('chat.sourcesDrawerTitle')}</h2>
-          <span className="kb-qa-sources-drawer__count">
+          <span className="agent-chat-sources-drawer__count">
             {t('chat.sourcesDrawerCount', { count: total })}
           </span>
         </div>
         <button
           type="button"
-          className="kb-qa-sources-drawer__close"
+          className="agent-chat-sources-drawer__close"
           onClick={onClose}
           aria-label={t('chat.sourcesDrawerClose')}
         >
           <X size={18} aria-hidden />
         </button>
       </header>
-      <div className="kb-qa-sources-drawer__body">
+      <div className="agent-chat-sources-drawer__body">
         {evidence.length > 0 ? (
-          <section className="kb-qa-sources-drawer__section" aria-label={t('chat.dataEvidenceAria')}>
-            <h3 className="kb-qa-sources-drawer__section-title">{t('chat.dataEvidenceHeading')}</h3>
-            <div className="kb-qa-sources-drawer__cards">
+          <section className="agent-chat-sources-drawer__section" aria-label={t('chat.dataEvidenceAria')}>
+            <h3 className="agent-chat-sources-drawer__section-title">{t('chat.dataEvidenceHeading')}</h3>
+            <div className="agent-chat-sources-drawer__cards">
               {evidence.map((s, i) => (
                 <ChatEvidenceCard key={`ev-${s.id}-${i}`} s={s} t={t} />
               ))}
@@ -139,9 +139,9 @@ export function ChatSourcesDrawer({
           </section>
         ) : null}
         {references.length > 0 ? (
-          <section className="kb-qa-sources-drawer__section" aria-label={t('chat.sourcesAria')}>
-            <h3 className="kb-qa-sources-drawer__section-title">{t('chat.sourcesHeading')}</h3>
-            <div className="kb-qa-sources-drawer__cards">
+          <section className="agent-chat-sources-drawer__section" aria-label={t('chat.sourcesAria')}>
+            <h3 className="agent-chat-sources-drawer__section-title">{t('chat.sourcesHeading')}</h3>
+            <div className="agent-chat-sources-drawer__cards">
               {references.map((s, i) => (
                 <ReferenceCard key={`ref-${s.id}-${i}`} s={s} index={i + 1} t={t} />
               ))}
@@ -182,13 +182,13 @@ export function ChatSourcesPill({
   return (
     <button
       type="button"
-      className={`kb-qa-sources-pill${open ? ' is-open' : ''}`}
+      className={`agent-chat-sources-pill${open ? ' is-open' : ''}`}
       aria-expanded={open}
-      aria-controls="kb-qa-sources-drawer"
+      aria-controls="agent-chat-sources-drawer"
       onClick={onClick}
     >
-      <span className="kb-qa-sources-pill__label">{t('chat.sourcesPillLabel')}</span>
-      <span className="kb-qa-sources-pill__summary">{summary}</span>
+      <span className="agent-chat-sources-pill__label">{t('chat.sourcesPillLabel')}</span>
+      <span className="agent-chat-sources-pill__summary">{summary}</span>
     </button>
   );
 }

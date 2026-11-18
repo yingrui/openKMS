@@ -1,5 +1,6 @@
 import type { SearchResult } from '../../../data/knowledgeBasesApi';
 import { kbHasRetrievalProvenance } from './chatUtils';
+import './ChatRetrievalProvenancePanel.scss';
 
 interface KbRetrievalProvenanceProps {
   s: SearchResult;
@@ -45,11 +46,11 @@ export function ChatRetrievalProvenancePanel({ s, t }: KbRetrievalProvenanceProp
   if (rr != null && num(rr) != null) rows.push({ label: t('detail.retrieval.rerankScore'), value: num(rr)! });
   if (!rows.length && !stageLine && !modeLabel) return null;
   return (
-    <div className="kb-retrieval-panel">
-      <div className="kb-retrieval-panel__title">{t('detail.retrieval.panelTitle')}</div>
-      <dl className="kb-retrieval-panel__dl">
+    <div className="agent-chat-retrieval">
+      <div className="agent-chat-retrieval__title">{t('detail.retrieval.panelTitle')}</div>
+      <dl className="agent-chat-retrieval__dl">
         {rows.map((row) => (
-          <div key={row.label} className="kb-retrieval-panel__row">
+          <div key={row.label} className="agent-chat-retrieval__row">
             <dt>{row.label}</dt>
             <dd>{row.value}</dd>
           </div>

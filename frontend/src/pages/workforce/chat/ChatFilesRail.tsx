@@ -61,7 +61,7 @@ export function ChatFilesRail({
         className="files-rail-toggle files-rail-chip"
         onClick={onOpen}
         aria-expanded={false}
-        aria-controls="kb-qa-files-rail"
+        aria-controls="agent-chat-files-rail"
         title={t('chat.files')}
         aria-label={t('chat.files')}
       >
@@ -86,8 +86,8 @@ export function ChatFilesRail({
         />
       ) : null}
       <aside
-        id="kb-qa-files-rail"
-        className="kb-qa-files-rail"
+        id="agent-chat-files-rail"
+        className="agent-chat-files-rail"
         style={isMobile ? undefined : { width: rail.width }}
         aria-label={t('chat.files')}
       >

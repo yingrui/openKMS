@@ -36,7 +36,7 @@ function evidenceTitle(s: SearchResult, t: TFunction): string {
 
 function SqlReadonly({ sql }: { sql: string }) {
   return (
-    <pre className="kb-qa-data-sql">
+    <pre className="agent-chat-data-sql">
       {highlightSql(sql).map((token, index) => (
         <span key={index} className={`sql-editor__${token.kind}`}>
           {token.text}
@@ -58,8 +58,8 @@ function ResultTable({ dq }: { dq: CatalogDataQuery }) {
     return null;
   }
   return (
-    <div className="ds-table-wrap kb-qa-data-table-host">
-      <table className="kb-qa-data-table">
+    <div className="ds-table-wrap agent-chat-data-table-host">
+      <table className="agent-chat-data-table">
         <thead>
           <tr>
             {columns.map((c) => (
@@ -70,7 +70,7 @@ function ResultTable({ dq }: { dq: CatalogDataQuery }) {
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="kb-qa-data-table__empty">
+              <td colSpan={columns.length} className="agent-chat-data-table__empty">
                 —
               </td>
             </tr>
@@ -97,18 +97,18 @@ export function ChatEvidenceCard({ s, t }: { s: SearchResult; t: TFunction }) {
   const sql = (dq?.sql || '').trim();
 
   return (
-    <div className="kb-qa-data-card">
-      <div className="kb-qa-data-card__head">
-        <span className="kb-qa-data-card__mode">{modeLabel(dq, t)}</span>
-        <span className="kb-qa-data-card__title">{evidenceTitle(s, t)}</span>
+    <div className="agent-chat-data-card">
+      <div className="agent-chat-data-card__head">
+        <span className="agent-chat-data-card__mode">{modeLabel(dq, t)}</span>
+        <span className="agent-chat-data-card__title">{evidenceTitle(s, t)}</span>
         {rowCount != null ? (
-          <span className="kb-qa-data-card__meta">
+          <span className="agent-chat-data-card__meta">
             {t('chat.dataEvidenceRows', { count: rowCount })}
             {dq?.capped ? ` · ${t('chat.dataEvidenceCapped')}` : ''}
           </span>
         ) : null}
         {modelId ? (
-          <Link className="kb-qa-data-card__link" to={playgroundHrefFromDataQuery(modelId, dq)}>
+          <Link className="agent-chat-data-card__link" to={playgroundHrefFromDataQuery(modelId, dq)}>
             {t('chat.dataEvidenceOpenPlayground')}
           </Link>
         ) : null}
@@ -116,13 +116,13 @@ export function ChatEvidenceCard({ s, t }: { s: SearchResult; t: TFunction }) {
 
       {dq ? <ResultTable dq={dq} /> : null}
 
-      {!dq && s.content ? <p className="kb-qa-data-card__fallback">{s.content}</p> : null}
+      {!dq && s.content ? <p className="agent-chat-data-card__fallback">{s.content}</p> : null}
 
       {sql ? (
-        <div className="kb-qa-data-sql-block">
+        <div className="agent-chat-data-sql-block">
           <button
             type="button"
-            className="kb-qa-sources-action-btn"
+            className="agent-chat-sources-action-btn"
             aria-expanded={sqlOpen}
             onClick={() => setSqlOpen((v) => !v)}
           >

@@ -131,24 +131,24 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
   );
 
   return (
-    <div className={`kb-qa-page${isMobile ? ' kb-qa-page--mobile' : ''}`}>
-      <div className="kb-qa-shell">
+    <div className={`agent-chat-page${isMobile ? ' agent-chat-page--mobile' : ''}`}>
+      <div className="agent-chat-shell">
         {isMobile ? (
           <PanelToolbar
             as="div"
-            className="kb-qa-mobile-toolbar"
+            className="agent-chat-mobile-toolbar"
             leading={
               <>
                 <button
                   type="button"
-                  className="kb-qa-mobile-back"
+                  className="agent-chat-mobile-back"
                   onClick={goToAgent}
                   aria-label={t('chat.backAria')}
                 >
                   <ArrowLeft size={18} />
                   <span className="ds-compact-label">{t('chat.backToKb')}</span>
                 </button>
-                <span className="kb-qa-mobile-title" title={kb.name}>
+                <span className="agent-chat-mobile-title" title={kb.name}>
                   {kb.name}
                 </span>
               </>
@@ -157,10 +157,10 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
               <>
                 <button
                   type="button"
-                  className={`kb-qa-mobile-chrome-btn${sessionsOpen ? ' is-active' : ''}`}
+                  className={`agent-chat-mobile-chrome-btn${sessionsOpen ? ' is-active' : ''}`}
                   onClick={() => setSessionsOpen((o) => !o)}
                   aria-expanded={sessionsOpen}
-                  aria-controls="kb-qa-sessions-drawer"
+                  aria-controls="agent-chat-sessions-drawer"
                   aria-label={t('chat.chatsAria')}
                 >
                   <MessageSquare size={18} aria-hidden />
@@ -168,10 +168,10 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                 </button>
                 <button
                   type="button"
-                  className={`kb-qa-mobile-chrome-btn${filesOpen ? ' is-active' : ''}`}
+                  className={`agent-chat-mobile-chrome-btn${filesOpen ? ' is-active' : ''}`}
                   onClick={() => setFilesOpen((v) => !v)}
                   aria-expanded={filesOpen}
-                  aria-controls="kb-qa-files-rail"
+                  aria-controls="agent-chat-files-rail"
                   aria-label={t('chat.files')}
                 >
                   <FolderTree size={18} aria-hidden />
@@ -182,11 +182,11 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
           />
         ) : null}
 
-        <div className="kb-qa-shell-body" ref={shellBodyRef}>
+        <div className="agent-chat-shell-body" ref={shellBodyRef}>
           {isMobile ? (
             <div
-              id="kb-qa-sessions-drawer"
-              className={`kb-qa-sessions-drawer${sessionsOpen ? ' is-open' : ''}`}
+              id="agent-chat-sessions-drawer"
+              className={`agent-chat-sessions-drawer${sessionsOpen ? ' is-open' : ''}`}
               aria-hidden={!sessionsOpen}
             >
               {sidebar}
@@ -195,32 +195,32 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
             sidebar
           )}
 
-          <main className="kb-qa-main">
-            <div className="kb-qa-main-scroll" ref={chat.mainScrollRef}>
+          <main className="agent-chat-main">
+            <div className="agent-chat-main-scroll" ref={chat.mainScrollRef}>
               {chat.chatMessages.length === 0 && !chat.sending ? (
-                <div className="kb-qa-hero">
-                  <div className="kb-qa-hero-mark" aria-hidden>
+                <div className="agent-chat-hero">
+                  <div className="agent-chat-hero-mark" aria-hidden>
                     <Sparkles size={28} strokeWidth={1.75} />
                   </div>
-                  <h1 className="kb-qa-hero-title">{t('chat.heroTitle', { name: kb.name })}</h1>
-                  <p className="kb-qa-hero-sub">{t('chat.heroSubtitle')}</p>
+                  <h1 className="agent-chat-hero-title">{t('chat.heroTitle', { name: kb.name })}</h1>
+                  <p className="agent-chat-hero-sub">{t('chat.heroSubtitle')}</p>
                 </div>
               ) : null}
 
               {chat.chatMessages.length > 0 ? (
-                <div className="kb-qa-thread kb-qa-messages kb-qa-messages--fullpage">
+                <div className="agent-chat-thread agent-chat-messages agent-chat-messages--fullpage">
                   {chat.chatMessages.map((msg, i) => {
                     const isLast = i === chat.chatMessages.length - 1;
                     return (
                       <div
                         key={msg.id ?? `msg-fp-${i}`}
-                        className={`kb-qa-msg kb-qa-msg-${msg.role}`}
+                        className={`agent-chat-msg agent-chat-msg-${msg.role}`}
                       >
-                        <span className="kb-qa-msg-label">
+                        <span className="agent-chat-msg-label">
                           {msg.role === 'user' ? t('chat.labelYou') : t('chat.labelAssistant')}
                         </span>
                         {msg.role === 'assistant' && msg.streamParts && msg.streamParts.length > 0 ? (
-                          <div className="kb-qa-assistant-stream">
+                          <div className="agent-chat-assistant-stream">
                             <AgentAssistantStreamBody
                               streamParts={msg.streamParts}
                               fallbackText={msg.content}
@@ -231,15 +231,15 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                           !(msg.streamParts && msg.streamParts.length) &&
                           chat.sending &&
                           isLast ? (
-                          <div className="kb-qa-msg-bubble kb-qa-msg-bubble--assistant kb-qa-typing">
+                          <div className="agent-chat-msg-bubble agent-chat-msg-bubble--assistant agent-chat-typing">
                             {t('chat.thinking')}
                           </div>
                         ) : (
                           <div
                             className={
                               msg.role === 'user'
-                                ? 'kb-qa-msg-bubble kb-qa-msg-bubble--user'
-                                : 'kb-qa-msg-bubble kb-qa-msg-bubble--assistant'
+                                ? 'agent-chat-msg-bubble agent-chat-msg-bubble--user'
+                                : 'agent-chat-msg-bubble agent-chat-msg-bubble--assistant'
                             }
                           >
                             <AgentMessageBody
@@ -264,11 +264,11 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                             const rk = msg.replyKey ?? `legacy-${i}`;
                             const sourcesOpen = sourcesPanel?.replyKey === rk;
                             return (
-                              <div className="kb-qa-msg-actions">
+                              <div className="agent-chat-msg-actions">
                                 {warnings.length > 0 ? (
                                   /* What the agent could not source. Shown, not hidden: the reader decides
                                      whether to trust the numbers, and the source asked to be told. */
-                                  <ul className="kb-qa-grounding-warning" role="status">
+                                  <ul className="agent-chat-grounding-warning" role="status">
                                     {warnings.map((w) => (
                                       <li key={w}>{w}</li>
                                     ))}
@@ -290,11 +290,11 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                                   />
                                 ) : null}
                                 {showFeedback ? (
-                                  <div className="kb-qa-msg-feedback">
+                                  <div className="agent-chat-msg-feedback">
                                     <button
                                       type="button"
-                                      className={`kb-qa-feedback-btn kb-qa-feedback-btn--up${
-                                        feedback === 'up' ? ' kb-qa-feedback-btn--active' : ''
+                                      className={`agent-chat-feedback-btn agent-chat-feedback-btn--up${
+                                        feedback === 'up' ? ' agent-chat-feedback-btn--active' : ''
                                       }`}
                                       aria-label={t('chat.feedbackUpAria')}
                                       aria-pressed={feedback === 'up'}
@@ -304,8 +304,8 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                                     </button>
                                     <button
                                       type="button"
-                                      className={`kb-qa-feedback-btn kb-qa-feedback-btn--down${
-                                        feedback === 'down' ? ' kb-qa-feedback-btn--active' : ''
+                                      className={`agent-chat-feedback-btn agent-chat-feedback-btn--down${
+                                        feedback === 'down' ? ' agent-chat-feedback-btn--active' : ''
                                       }`}
                                       aria-label={t('chat.feedbackDownAria')}
                                       aria-pressed={feedback === 'down'}
@@ -316,7 +316,7 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                                     {feedback === 'up' && question ? (
                                       <button
                                         type="button"
-                                        className="kb-qa-sources-action-btn"
+                                        className="agent-chat-sources-action-btn"
                                         aria-label={t('chat.saveAsFaqAria')}
                                         onClick={() => openFaqFromAnswer(question, assistantText)}
                                       >
@@ -335,10 +335,10 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
               ) : null}
             </div>
 
-            <div className="kb-qa-composer-outer">
-              <form className="kb-qa-composer" onSubmit={chat.handleAsk}>
+            <div className="agent-chat-composer-outer">
+              <form className="agent-chat-composer" onSubmit={chat.handleAsk}>
                 <textarea
-                  className="kb-qa-composer-input"
+                  className="agent-chat-composer-input"
                   placeholder={t('chat.placeholder')}
                   value={chat.draft}
                   onChange={(e) => chat.setDraft(e.target.value)}
@@ -355,14 +355,14 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                 />
                 <button
                   type="submit"
-                  className="kb-qa-composer-send"
+                  className="agent-chat-composer-send"
                   disabled={chat.sending || !chat.draft.trim() || !chat.conversationReady}
                   aria-label={t('chat.sendAria')}
                 >
                   <ArrowUp size={18} strokeWidth={2.25} aria-hidden />
                 </button>
               </form>
-              <p className="kb-qa-composer-hint">{t('chat.composerHint')}</p>
+              <p className="agent-chat-composer-hint">{t('chat.composerHint')}</p>
             </div>
           </main>
 

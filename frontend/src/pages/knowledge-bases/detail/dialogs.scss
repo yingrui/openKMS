@@ -654,10 +654,6 @@
 }
 
 @include max-width(ds.$bp-md-min) {
-  .kb-qa-msg {
-    max-width: 95%;
-  }
-
   .kb-detail-content {
     padding: var(--space-3);
   }
@@ -713,10 +709,6 @@
     padding: var(--space-3) 0;
   }
 
-  .kb-qa-feedback-btn {
-    min-width: var(--tap-min);
-    min-height: var(--tap-min);
-  }
 }
 
 /* The Agent tab: policy sections, one concern each. */

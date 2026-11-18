@@ -4,11 +4,11 @@
 // The conversation screen: session rail, thread, composer, sources, files.
 //
 // It moved here with the surface — talking to an agent is a Workforce screen, not a knowledge-base tab.
-// The page root is `.kb-qa-page` (it used to be `.kb-detail--qa-fullpage`, a modifier of the knowledge
-// base page); the inner `.kb-qa-*` names are unchanged, so this is a move rather than a restyle.
+// The page root is `.agent-chat-page` (it used to be `.kb-detail--qa-fullpage`, a modifier of the knowledge
+// base page); the inner `.agent-chat-*` names are unchanged, so this is a move rather than a restyle.
 
 /* Q&A — full-page chat (DeepSeek-inspired: sidebar + main + composer) */
-.kb-qa-page {
+.agent-chat-page {
   overflow: hidden;
   min-height: 0;
   height: 100%;
@@ -26,14 +26,14 @@ body.openkms-agent-chat .app-content {
   min-height: 0;
 }
 
-body.openkms-agent-chat .kb-qa-page {
+body.openkms-agent-chat .agent-chat-page {
   flex: 1;
   min-height: 0;
   height: 100%;
   max-height: 100%;
 }
 
-.kb-qa-shell {
+.agent-chat-shell {
   flex: 1;
   min-height: 0;
   height: 100%;
@@ -45,12 +45,12 @@ body.openkms-agent-chat .kb-qa-page {
   border-radius: var(--radius-lg);
 }
 
-body.openkms-agent-chat .kb-qa-shell {
+body.openkms-agent-chat .agent-chat-shell {
   border: none;
   border-radius: 0;
 }
 
-.kb-qa-shell-body {
+.agent-chat-shell-body {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -59,7 +59,7 @@ body.openkms-agent-chat .kb-qa-shell {
   position: relative;
 }
 
-.kb-qa-main {
+.agent-chat-main {
   flex: 1;
   min-width: 0;
   /* Row flex item: without this, min-height:auto uses content height and the whole column grows past the shell */
@@ -70,7 +70,7 @@ body.openkms-agent-chat .kb-qa-shell {
   background: var(--color-bg);
 }
 
-.kb-qa-main-scroll {
+.agent-chat-main-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -79,7 +79,7 @@ body.openkms-agent-chat .kb-qa-shell {
   align-items: stretch;
 }
 
-.kb-qa-hero {
+.agent-chat-hero {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -90,7 +90,7 @@ body.openkms-agent-chat .kb-qa-shell {
   color: var(--color-text-secondary);
 }
 
-.kb-qa-hero-mark {
+.agent-chat-hero-mark {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -103,7 +103,7 @@ body.openkms-agent-chat .kb-qa-shell {
   color: var(--color-accent);
 }
 
-.kb-qa-hero-title {
+.agent-chat-hero-title {
   margin: 0 0 calc(var(--space-2) + var(--space-1) / 2);
   font-size: 1.375rem;
   font-weight: 600;
@@ -113,7 +113,7 @@ body.openkms-agent-chat .kb-qa-shell {
   line-height: 1.25;
 }
 
-.kb-qa-hero-sub {
+.agent-chat-hero-sub {
   margin: 0;
   font-size: var(--text-base);
   line-height: 1.5;
@@ -121,36 +121,36 @@ body.openkms-agent-chat .kb-qa-shell {
   color: var(--color-text-muted);
 }
 
-.kb-qa-thread {
+.agent-chat-thread {
   width: 100%;
   max-width: 760px;
   margin: 0 auto;
   box-sizing: border-box;
 }
 
-.kb-qa-page .kb-qa-thread {
+.agent-chat-page .agent-chat-thread {
   max-width: min(1120px, calc(100% - var(--space-8)));
 }
 
-.kb-qa-thread .kb-qa-msg {
+.agent-chat-thread .agent-chat-msg {
   max-width: 92%;
 }
 
-.kb-qa-page .kb-qa-thread .kb-qa-msg-assistant {
+.agent-chat-page .agent-chat-thread .agent-chat-msg-assistant {
   max-width: min(96%, 900px);
 }
 
-.kb-qa-composer-outer {
+.agent-chat-composer-outer {
   flex-shrink: 0;
   padding: var(--space-3) var(--space-4) var(--space-5);
   background: linear-gradient(to top, var(--color-bg) 70%, transparent);
 }
 
-.kb-qa-page .kb-qa-composer-outer {
+.agent-chat-page .agent-chat-composer-outer {
   padding: var(--space-2) var(--space-3) var(--space-3);
 }
 
-.kb-qa-composer {
+.agent-chat-composer {
   /* A composer, not a full-bleed bar: input and send share one row, width capped like the thread. */
   display: flex;
   align-items: flex-end;
@@ -164,15 +164,15 @@ body.openkms-agent-chat .kb-qa-shell {
   box-shadow: var(--shadow-md);
 }
 
-.kb-qa-page .kb-qa-composer {
+.agent-chat-page .agent-chat-composer {
   max-width: min(820px, calc(100% - var(--space-8)));
 }
 
-[data-theme='dark'] .kb-qa-composer {
+[data-theme='dark'] .agent-chat-composer {
   box-shadow: var(--shadow-elevated);
 }
 
-.kb-qa-composer-input {
+.agent-chat-composer-input {
   display: block;
   flex: 1;
   min-width: 0;
@@ -191,15 +191,15 @@ body.openkms-agent-chat .kb-qa-shell {
   outline: none;
 }
 
-.kb-qa-composer-input::placeholder {
+.agent-chat-composer-input::placeholder {
   color: var(--color-text-muted);
 }
 
-.kb-qa-composer-input:disabled {
+.agent-chat-composer-input:disabled {
   opacity: 0.6;
 }
 
-.kb-qa-composer-hint {
+.agent-chat-composer-hint {
   max-width: min(820px, calc(100% - var(--space-8)));
   margin: var(--space-2) auto 0;
   font-size: var(--text-xs);
@@ -207,7 +207,7 @@ body.openkms-agent-chat .kb-qa-shell {
   text-align: center;
 }
 
-.kb-qa-composer-send {
+.agent-chat-composer-send {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -223,18 +223,18 @@ body.openkms-agent-chat .kb-qa-shell {
   transition: opacity 0.15s, transform 0.12s;
 }
 
-.kb-qa-composer-send:hover:not(:disabled) {
+.agent-chat-composer-send:hover:not(:disabled) {
   opacity: 0.92;
   transform: scale(1.02);
 }
 
-.kb-qa-composer-send:disabled {
+.agent-chat-composer-send:disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }
 
-/* Full-page: single scroll surface is .kb-qa-main-scroll — do not nest a second scroller here */
-.kb-qa-page .kb-qa-messages--fullpage {
+/* Full-page: single scroll surface is .agent-chat-main-scroll — do not nest a second scroller here */
+.agent-chat-page .agent-chat-messages--fullpage {
   flex: 0 0 auto;
   flex-grow: 0;
   min-height: 0;
@@ -246,22 +246,22 @@ body.openkms-agent-chat .kb-qa-shell {
 
 @include max-width(ds.$bp-md-min) {
   /* Phone: chat-primary + full-width sessions panel (mirrors Agents workspace). */
-  .kb-qa-page--mobile {
-    .kb-qa-shell {
+  .agent-chat-page--mobile {
+    .agent-chat-shell {
       display: flex;
       flex-direction: column;
       min-height: 0;
       flex: 1;
     }
 
-    .kb-qa-shell-body {
+    .agent-chat-shell-body {
       position: relative;
       flex: 1;
       min-height: 0;
       flex-direction: column;
     }
 
-    .kb-qa-main {
+    .agent-chat-main {
       flex: 1;
       min-height: 0;
       width: 100%;
@@ -269,7 +269,7 @@ body.openkms-agent-chat .kb-qa-shell {
 
     /* Phone: the files rail covers the chat, as the project's sheet does — the head's collapse
        button is the way back, and the toolbar's Files button reopens it. */
-    .kb-qa-files-rail {
+    .agent-chat-files-rail {
       position: absolute;
       inset: 0;
       z-index: var(--z-modal);
@@ -278,7 +278,7 @@ body.openkms-agent-chat .kb-qa-shell {
       background: var(--color-bg);
     }
 
-    .kb-qa-sources-drawer {
+    .agent-chat-sources-drawer {
       position: absolute;
       inset: 0;
       z-index: 2;
@@ -290,7 +290,7 @@ body.openkms-agent-chat .kb-qa-shell {
     }
   }
 
-  .kb-qa-mobile-toolbar {
+  .agent-chat-mobile-toolbar {
     flex-shrink: 0;
     border-bottom: 1px solid var(--color-border);
     background: var(--color-bg-elevated);
@@ -298,8 +298,8 @@ body.openkms-agent-chat .kb-qa-shell {
     margin: 0;
   }
 
-  .kb-qa-mobile-back,
-  .kb-qa-mobile-chrome-btn {
+  .agent-chat-mobile-back,
+  .agent-chat-mobile-chrome-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -326,7 +326,7 @@ body.openkms-agent-chat .kb-qa-shell {
     }
   }
 
-  .kb-qa-mobile-title {
+  .agent-chat-mobile-title {
     flex: 1;
     min-width: 0;
     font-size: var(--text-sm);
@@ -336,7 +336,7 @@ body.openkms-agent-chat .kb-qa-shell {
     white-space: nowrap;
   }
 
-  .kb-qa-sessions-drawer {
+  .agent-chat-sessions-drawer {
     position: absolute;
     inset: 0;
     z-index: var(--z-modal);
@@ -352,7 +352,7 @@ body.openkms-agent-chat .kb-qa-shell {
       pointer-events: auto;
     }
 
-    .kb-qa-sessions {
+    .agent-chat-sessions {
       width: 100%;
       min-width: 0;
       height: 100%;
@@ -361,14 +361,14 @@ body.openkms-agent-chat .kb-qa-shell {
     }
   }
 
-  .kb-qa-composer-send {
+  .agent-chat-composer-send {
     min-width: var(--tap-min);
     min-height: var(--tap-min);
   }
 }
 
 /* QA Chat (message bubbles & sources — shared) */
-.kb-qa-messages {
+.agent-chat-messages {
   flex: 1;
   overflow-y: auto;
   padding: var(--space-4);
@@ -377,7 +377,7 @@ body.openkms-agent-chat .kb-qa-shell {
   gap: var(--space-3);
 }
 
-.kb-qa-msg {
+.agent-chat-msg {
   max-width: 80%;
   min-width: 0;
   display: flex;
@@ -388,27 +388,27 @@ body.openkms-agent-chat .kb-qa-shell {
 /* Chat alignment: an assistant turn reads like a message block, a user turn hugs its text
    and sits on the right. Without this the column drop stretches every bubble to the thread
    width, so a one-line question renders as a full-width accent bar. */
-.kb-qa-msg-user {
+.agent-chat-msg-user {
   align-self: flex-end;
   align-items: flex-end;
 }
 
-.kb-qa-msg-assistant {
+.agent-chat-msg-assistant {
   align-self: flex-start;
   align-items: flex-start;
 }
 
-.kb-qa-msg-user .kb-qa-msg-bubble--user {
+.agent-chat-msg-user .agent-chat-msg-bubble--user {
   width: fit-content;
   max-width: 100%;
 }
 
-.kb-qa-msg-assistant .kb-qa-msg-bubble--assistant {
+.agent-chat-msg-assistant .agent-chat-msg-bubble--assistant {
   width: fit-content;
   max-width: 100%;
 }
 
-.kb-qa-msg-label {
+.agent-chat-msg-label {
   font-size: var(--text-xs);
   font-weight: 500;
   color: var(--color-text-muted);
@@ -416,44 +416,44 @@ body.openkms-agent-chat .kb-qa-shell {
 
 /* Every bubble is one of the two variants; what they share is the bubble itself — the box, its padding and
    its width limit. Each variant then only sets colour and which corner is "open". */
-.kb-qa-msg-bubble {
+.agent-chat-msg-bubble {
   padding: var(--padding-compact-y) var(--padding-compact-x);
   max-width: 100%;
   min-width: 0;
 }
 
-.kb-qa-msg-bubble--user {
+.agent-chat-msg-bubble--user {
   background: var(--color-accent);
   color: var(--color-on-accent);
   border-radius: var(--radius-md) var(--radius-md) var(--space-1) var(--radius-md);
 }
 
-.kb-qa-msg-bubble--user .agents-md {
+.agent-chat-msg-bubble--user .agents-md {
   color: inherit;
 }
 
-.kb-qa-msg-bubble--user .agents-md__a {
+.agent-chat-msg-bubble--user .agents-md__a {
   color: inherit;
   text-decoration: underline;
 }
 
-.kb-qa-msg-bubble--assistant {
+.agent-chat-msg-bubble--assistant {
   background: var(--color-bg-muted);
   border-radius: var(--radius-md) var(--radius-md) var(--radius-md) var(--space-1);
   padding: var(--padding-compact-y) var(--padding-compact-x);
   max-width: 100%;
 }
 
-.kb-qa-assistant-stream {
+.agent-chat-assistant-stream {
   max-width: 100%;
 }
 
 /* KB Q&A: keep tool rows compact and avoid full-thread-width “huge bars” */
-.kb-qa-assistant-stream .agents-stream__assistant {
+.agent-chat-assistant-stream .agents-stream__assistant {
   gap: calc(var(--space-1) + var(--space-1) / 4);
 }
 
-.kb-qa-assistant-stream .agents-stream__tool-pill {
+.agent-chat-assistant-stream .agents-stream__tool-pill {
   align-self: flex-start;
   max-width: min(100%, 42rem);
   padding: var(--gap-compact) var(--gap-compact);
@@ -461,22 +461,22 @@ body.openkms-agent-chat .kb-qa-shell {
   font-size: 0.65rem;
 }
 
-.kb-qa-assistant-stream .agents-stream__tool-pill-name {
+.agent-chat-assistant-stream .agents-stream__tool-pill-name {
   font-size: 0.65rem;
 }
 
-.kb-qa-typing {
+.agent-chat-typing {
   color: var(--color-text-muted);
   font-style: italic;
 }
 
-.kb-qa-sources {
+.agent-chat-sources {
   margin-top: var(--space-3);
   padding-top: var(--space-3);
   border-top: 1px solid var(--color-border);
 }
 
-.kb-qa-msg-actions {
+.agent-chat-msg-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -484,13 +484,13 @@ body.openkms-agent-chat .kb-qa-shell {
   margin-top: var(--space-3);
 }
 
-.kb-qa-msg-feedback {
+.agent-chat-msg-feedback {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
 }
 
-.kb-qa-feedback-btn {
+.agent-chat-feedback-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -504,25 +504,25 @@ body.openkms-agent-chat .kb-qa-shell {
   cursor: pointer;
 }
 
-.kb-qa-feedback-btn:hover {
+.agent-chat-feedback-btn:hover {
   background: var(--color-bg-elevated);
   color: var(--color-text);
   border-color: var(--color-accent);
 }
 
-.kb-qa-feedback-btn--active.kb-qa-feedback-btn--up {
+.agent-chat-feedback-btn--active.agent-chat-feedback-btn--up {
   color: var(--color-success);
   border-color: var(--color-success);
   background: color-mix(in srgb, var(--color-success) 12%, var(--color-bg-muted));
 }
 
-.kb-qa-feedback-btn--active.kb-qa-feedback-btn--down {
+.agent-chat-feedback-btn--active.agent-chat-feedback-btn--down {
   color: var(--color-danger);
   border-color: var(--color-danger);
   background: color-mix(in srgb, var(--color-danger) 12%, var(--color-bg-muted));
 }
 
-.kb-qa-sources-action-btn {
+.agent-chat-sources-action-btn {
   font: inherit;
   font-size: var(--text-xs);
   font-weight: 500;
@@ -534,13 +534,13 @@ body.openkms-agent-chat .kb-qa-shell {
   cursor: pointer;
 }
 
-.kb-qa-sources-action-btn:hover {
+.agent-chat-sources-action-btn:hover {
   background: var(--color-bg-elevated);
   color: var(--color-text);
   border-color: var(--color-accent);
 }
 
-.kb-qa-source-chip {
+.agent-chat-source-chip {
   display: inline-flex;
   flex-wrap: nowrap;
   align-items: center;
@@ -557,45 +557,45 @@ body.openkms-agent-chat .kb-qa-shell {
   box-shadow: var(--shadow-sm);
 }
 
-.kb-qa-source-chip:hover {
+.agent-chat-source-chip:hover {
   border-color: var(--color-accent);
 }
 
-.kb-qa-source-chip--chunk {
+.agent-chat-source-chip--chunk {
   border-left: 2px solid var(--color-accent);
   padding-left: 7px;
   border-radius: var(--radius-sm);
 }
 
-.kb-qa-source-chip--faq {
+.agent-chat-source-chip--faq {
   border-left: 2px solid var(--color-warning);
   padding-left: 7px;
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--color-warning) 8%, var(--color-bg-elevated));
 }
 
-.kb-qa-source-chip--section {
+.agent-chat-source-chip--section {
   border-left: 2px solid var(--color-success);
   padding-left: 7px;
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--color-success) 8%, var(--color-bg-elevated));
 }
 
-.kb-qa-source-chip--ontology {
+.agent-chat-source-chip--ontology {
   border-left: 2px solid var(--color-ontology-source);
   padding-left: 7px;
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--color-ontology-source) 10%, var(--color-bg-elevated));
 }
 
-.kb-qa-source-chip--metric {
+.agent-chat-source-chip--metric {
   border-left: 2px solid var(--color-info-fg);
   padding-left: 7px;
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--color-info-fg) 10%, var(--color-bg-elevated));
 }
 
-.kb-qa-sources-pill {
+.agent-chat-sources-pill {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -627,7 +627,7 @@ body.openkms-agent-chat .kb-qa-shell {
   }
 }
 
-.kb-qa-sources-pill__label {
+.agent-chat-sources-pill__label {
   flex-shrink: 0;
   font-size: var(--text-xs);
   font-weight: 700;
@@ -636,7 +636,7 @@ body.openkms-agent-chat .kb-qa-shell {
   color: var(--color-text-secondary);
 }
 
-.kb-qa-sources-pill__summary {
+.agent-chat-sources-pill__summary {
   min-width: 0;
   font-size: var(--text-sm);
   color: var(--color-text);
@@ -646,7 +646,7 @@ body.openkms-agent-chat .kb-qa-shell {
 }
 
 /* Docked sources rail (pushes chat; not a modal). */
-.kb-qa-sources-drawer {
+.agent-chat-sources-drawer {
   flex: 0 0 min(380px, 36vw);
   width: min(380px, 36vw);
   min-width: 280px;
@@ -660,7 +660,7 @@ body.openkms-agent-chat .kb-qa-shell {
 }
 
 /* Same row height as the files rail head beside it, so the two borders are one line. */
-.kb-qa-sources-drawer__head {
+.agent-chat-sources-drawer__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -671,7 +671,7 @@ body.openkms-agent-chat .kb-qa-shell {
   border-bottom: 1px solid var(--color-border);
 }
 
-.kb-qa-sources-drawer__title {
+.agent-chat-sources-drawer__title {
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
@@ -684,12 +684,12 @@ body.openkms-agent-chat .kb-qa-shell {
   }
 }
 
-.kb-qa-sources-drawer__count {
+.agent-chat-sources-drawer__count {
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
 
-.kb-qa-sources-drawer__close {
+.agent-chat-sources-drawer__close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -715,7 +715,7 @@ body.openkms-agent-chat .kb-qa-shell {
   }
 }
 
-.kb-qa-sources-drawer__body {
+.agent-chat-sources-drawer__body {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
@@ -725,13 +725,13 @@ body.openkms-agent-chat .kb-qa-shell {
   gap: var(--space-5);
 }
 
-.kb-qa-sources-drawer__section {
+.agent-chat-sources-drawer__section {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
 
-.kb-qa-sources-drawer__section-title {
+.agent-chat-sources-drawer__section-title {
   margin: 0;
   font-size: var(--text-xs);
   font-weight: 700;
@@ -740,18 +740,18 @@ body.openkms-agent-chat .kb-qa-shell {
   color: var(--color-text-secondary);
 }
 
-.kb-qa-sources-drawer__cards {
+.agent-chat-sources-drawer__cards {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
 
-.kb-qa-sources-drawer__ref {
+.agent-chat-sources-drawer__ref {
   position: relative;
   padding-right: calc(var(--space-3) + 1.5rem);
 }
 
-.kb-qa-sources-drawer__index {
+.agent-chat-sources-drawer__index {
   position: absolute;
   top: var(--space-3);
   right: var(--space-3);
@@ -760,7 +760,7 @@ body.openkms-agent-chat .kb-qa-shell {
   color: var(--color-text-muted);
 }
 
-.kb-qa-data-card {
+.agent-chat-data-card {
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   border-left: 4px solid var(--color-info-fg);
@@ -775,14 +775,14 @@ body.openkms-agent-chat .kb-qa-shell {
   gap: var(--space-2);
 }
 
-.kb-qa-data-card__head {
+.agent-chat-data-card__head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-2);
 }
 
-.kb-qa-data-card__mode {
+.agent-chat-data-card__mode {
   font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -790,18 +790,18 @@ body.openkms-agent-chat .kb-qa-shell {
   color: var(--color-info-fg);
 }
 
-.kb-qa-data-card__title {
+.agent-chat-data-card__title {
   font-size: var(--text-md);
   font-weight: 600;
   color: var(--color-text);
 }
 
-.kb-qa-data-card__meta {
+.agent-chat-data-card__meta {
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
 }
 
-.kb-qa-data-card__link {
+.agent-chat-data-card__link {
   margin-left: auto;
   font-size: var(--text-xs);
   font-weight: 600;
@@ -813,21 +813,21 @@ body.openkms-agent-chat .kb-qa-shell {
   }
 }
 
-.kb-qa-data-card__fallback {
+.agent-chat-data-card__fallback {
   margin: 0;
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
   white-space: pre-wrap;
 }
 
-.kb-qa-data-table-host {
+.agent-chat-data-table-host {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-bg);
   max-height: 16rem;
 }
 
-.kb-qa-data-table {
+.agent-chat-data-table {
   width: 100%;
   border-collapse: collapse;
   font-size: var(--text-xs);
@@ -855,19 +855,19 @@ body.openkms-agent-chat .kb-qa-shell {
   }
 }
 
-.kb-qa-data-table__empty {
+.agent-chat-data-table__empty {
   color: var(--color-text-secondary);
   font-style: italic;
 }
 
-.kb-qa-data-sql-block {
+.agent-chat-data-sql-block {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-2);
 }
 
-.kb-qa-data-sql {
+.agent-chat-data-sql {
   margin: 0;
   width: 100%;
   box-sizing: border-box;
@@ -884,7 +884,7 @@ body.openkms-agent-chat .kb-qa-shell {
   overflow-y: auto;
 }
 
-.kb-qa-source-card {
+.agent-chat-source-card {
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border-strong);
   background: var(--color-bg-elevated);
@@ -893,11 +893,11 @@ body.openkms-agent-chat .kb-qa-shell {
   border-left: 4px solid var(--color-accent);
 }
 
-.kb-qa-source-card--static {
+.agent-chat-source-card--static {
   padding: var(--space-2) calc(var(--space-2) + var(--space-1) / 2) 8px 12px;
 }
 
-.kb-qa-source-card__head {
+.agent-chat-source-card__head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -906,14 +906,14 @@ body.openkms-agent-chat .kb-qa-shell {
   margin-bottom: var(--gap-compact);
 }
 
-.kb-qa-source-card__kind {
+.agent-chat-source-card__kind {
   font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--color-text-secondary);
 }
 
-.kb-qa-source-card__score {
+.agent-chat-source-card__score {
   font-size: var(--text-xs);
   font-weight: 600;
   color: var(--color-accent);
@@ -922,29 +922,29 @@ body.openkms-agent-chat .kb-qa-shell {
   border-radius: var(--radius-pill);
 }
 
-.kb-qa-source-card__title {
+.agent-chat-source-card__title {
   font-size: var(--text-md);
   font-weight: 600;
   color: var(--color-text);
   line-height: 1.35;
 }
 
-.kb-qa-source-card__title-text {
+.agent-chat-source-card__title-text {
   color: var(--color-text);
 }
 
-.kb-qa-source-card__link {
+.agent-chat-source-card__link {
   color: var(--color-accent);
   text-decoration: none;
   font-weight: 600;
 }
 
-.kb-qa-source-card__link:hover {
+.agent-chat-source-card__link:hover {
   color: var(--color-accent-hover);
   text-decoration: underline;
 }
 
-.kb-qa-source-card__preview {
+.agent-chat-source-card__preview {
   margin: 10px 0 0;
   font-size: var(--text-sm);
   line-height: 1.45;
@@ -954,11 +954,11 @@ body.openkms-agent-chat .kb-qa-shell {
 }
 
 /* Kind accents */
-.kb-qa-source-card--chunk {
+.agent-chat-source-card--chunk {
   border-left-color: var(--color-accent);
 }
 
-.kb-qa-source-card--faq {
+.agent-chat-source-card--faq {
   border-left-color: var(--color-warning);
   background: linear-gradient(
     135deg,
@@ -967,7 +967,7 @@ body.openkms-agent-chat .kb-qa-shell {
   );
 }
 
-.kb-qa-source-card--section {
+.agent-chat-source-card--section {
   border-left-color: var(--color-success);
   background: linear-gradient(
     135deg,
@@ -976,7 +976,7 @@ body.openkms-agent-chat .kb-qa-shell {
   );
 }
 
-.kb-qa-source-card--ontology {
+.agent-chat-source-card--ontology {
   border-left-color: var(--color-ontology-source);
   background: linear-gradient(
     135deg,
@@ -985,11 +985,11 @@ body.openkms-agent-chat .kb-qa-shell {
   );
 }
 
-.kb-qa-source-card--ontology .kb-qa-source-card__kind {
+.agent-chat-source-card--ontology .agent-chat-source-card__kind {
   color: var(--color-ontology-fg);
 }
 
-.kb-qa-source-card--metric {
+.agent-chat-source-card--metric {
   border-left-color: var(--color-info-fg);
   background: linear-gradient(
     135deg,
@@ -998,11 +998,11 @@ body.openkms-agent-chat .kb-qa-shell {
   );
 }
 
-.kb-qa-source-card--metric .kb-qa-source-card__kind {
+.agent-chat-source-card--metric .agent-chat-source-card__kind {
   color: var(--color-info-fg);
 }
 
-[data-theme="dark"] .kb-qa-source-card--ontology {
+[data-theme="dark"] .agent-chat-source-card--ontology {
   border-left-color: var(--color-ontology-source-soft);
   background: linear-gradient(
     135deg,
@@ -1011,11 +1011,11 @@ body.openkms-agent-chat .kb-qa-shell {
   );
 }
 
-[data-theme="dark"] .kb-qa-source-card--ontology .kb-qa-source-card__kind {
+[data-theme="dark"] .agent-chat-source-card--ontology .agent-chat-source-card__kind {
   color: var(--color-ontology-fg-muted);
 }
 
-[data-theme="dark"] .kb-qa-source-card--faq {
+[data-theme="dark"] .agent-chat-source-card--faq {
   background: linear-gradient(
     135deg,
     color-mix(in srgb, var(--color-warning) 18%, var(--color-bg-elevated)),
@@ -1023,7 +1023,7 @@ body.openkms-agent-chat .kb-qa-shell {
   );
 }
 
-[data-theme="dark"] .kb-qa-source-card--section {
+[data-theme="dark"] .agent-chat-source-card--section {
   background: linear-gradient(
     135deg,
     color-mix(in srgb, var(--color-success) 18%, var(--color-bg-elevated)),
@@ -1031,7 +1031,7 @@ body.openkms-agent-chat .kb-qa-shell {
   );
 }
 
-.kb-qa-grounding-warning {
+.agent-chat-grounding-warning {
   flex-basis: 100%;
   margin: 0 0 var(--space-2);
   padding: var(--space-2) var(--space-3);
@@ -1043,7 +1043,7 @@ body.openkms-agent-chat .kb-qa-shell {
   list-style: none;
 }
 
-.kb-qa-source-card__usage {
+.agent-chat-source-card__usage {
   font-size: var(--font-size-xs);
   padding: 0 var(--space-2);
   border-radius: 999px;

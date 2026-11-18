@@ -89,20 +89,20 @@ export function ChatSessionSidebar({
   };
 
   return (
-    <aside className="kb-qa-sessions" aria-label={t('chat.chatsAria')}>
-      <div className="kb-qa-sessions-head">
+    <aside className="agent-chat-sessions" aria-label={t('chat.chatsAria')}>
+      <div className="agent-chat-sessions-head">
         {!hideBackLink ? (
-          <button type="button" className="kb-qa-sessions-back" onClick={onBack}>
+          <button type="button" className="agent-chat-sessions-back" onClick={onBack}>
             <ArrowLeft size={14} />
             {t('backToAgent')}
           </button>
         ) : null}
-        <div className="kb-qa-sessions-context-block">
-          <div className="kb-qa-sessions-context-line">
-            <div className="kb-qa-sessions-context-title">{kbName}</div>
+        <div className="agent-chat-sessions-context-block">
+          <div className="agent-chat-sessions-context-line">
+            <div className="agent-chat-sessions-context-title">{kbName}</div>
             <button
               type="button"
-              className="kb-qa-sessions-settings"
+              className="agent-chat-sessions-settings"
               title={t('chatSettings')}
               aria-label={t('chatSettings')}
               onClick={onOpenSettings}
@@ -110,11 +110,11 @@ export function ChatSessionSidebar({
               <Settings size={16} strokeWidth={1.75} />
             </button>
           </div>
-          <div className="kb-qa-sessions-sub">{t('chatTitle')}</div>
+          <div className="agent-chat-sessions-sub">{t('chatTitle')}</div>
         </div>
         <button
           type="button"
-          className="kb-qa-sessions-new"
+          className="agent-chat-sessions-new"
           onClick={() => {
             onNewChat();
             onSessionActivate?.();
@@ -125,25 +125,25 @@ export function ChatSessionSidebar({
           {t('chat.newChat')}
         </button>
       </div>
-      <div className="kb-qa-sessions-scroll">
+      <div className="agent-chat-sessions-scroll">
         {loading ? (
-          <div className="kb-qa-sessions-loading" role="status">
-            <Loader2 size={20} className="kb-qa-sessions-spinner" aria-hidden />
+          <div className="agent-chat-sessions-loading" role="status">
+            <Loader2 size={20} className="agent-chat-sessions-spinner" aria-hidden />
             <span>{t('chat.chatsLoading')}</span>
           </div>
         ) : sorted.length === 0 ? (
-          <p className="kb-qa-sessions-empty">{t('chat.noChatsYet')}</p>
+          <p className="agent-chat-sessions-empty">{t('chat.noChatsYet')}</p>
         ) : (
           sorted.map((c) => (
             <div
               key={c.id}
-              className={`kb-qa-session-row${activeId === c.id ? ' kb-qa-session-row--active' : ''}`}
+              className={`agent-chat-session-row${activeId === c.id ? ' agent-chat-session-row--active' : ''}`}
             >
               {renamingId === c.id ? (
                 <input
                   ref={renameInputRef}
                   type="text"
-                  className="kb-qa-session-rename"
+                  className="agent-chat-session-rename"
                   value={renameValue}
                   maxLength={512}
                   aria-label={t('chat.sessionRename')}
@@ -162,7 +162,7 @@ export function ChatSessionSidebar({
               ) : (
                 <button
                   type="button"
-                  className="kb-qa-session-item"
+                  className="agent-chat-session-item"
                   onClick={() => {
                     onSelectSession(c.id);
                     onSessionActivate?.();
@@ -172,10 +172,10 @@ export function ChatSessionSidebar({
                 </button>
               )}
               {renamingId !== c.id ? (
-                <div className="kb-qa-session-actions" ref={menuOpenId === c.id ? menuRef : undefined}>
+                <div className="agent-chat-session-actions" ref={menuOpenId === c.id ? menuRef : undefined}>
                   <button
                     type="button"
-                    className="kb-qa-session-more"
+                    className="agent-chat-session-more"
                     aria-label={t('chat.sessionActions')}
                     aria-expanded={menuOpenId === c.id}
                     aria-haspopup="menu"
@@ -188,11 +188,11 @@ export function ChatSessionSidebar({
                     <MoreHorizontal size={15} />
                   </button>
                   {menuOpenId === c.id ? (
-                    <div className="kb-qa-session-menu" role="menu">
+                    <div className="agent-chat-session-menu" role="menu">
                       <button
                         type="button"
                         role="menuitem"
-                        className="kb-qa-session-menu-item"
+                        className="agent-chat-session-menu-item"
                         onClick={() => startRename(c)}
                       >
                         <Pencil size={14} />
@@ -201,7 +201,7 @@ export function ChatSessionSidebar({
                       <button
                         type="button"
                         role="menuitem"
-                        className="kb-qa-session-menu-item kb-qa-session-menu-item--danger"
+                        className="agent-chat-session-menu-item agent-chat-session-menu-item--danger"
                         onClick={() => {
                           setMenuOpenId(null);
                           void onDelete(c.id);

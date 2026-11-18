@@ -1,0 +1,39 @@
+@use '../../../styles/design-system/mixins' as *;
+@use '../../../styles/design-system/tokens' as ds;
+
+// The retrieval trace under a hit. Its own sheet because two screens render it — the knowledge base's
+// search tab and the conversation's sources — so it cannot live in either page's stylesheet.
+
+/* The retrieval trace under a hit — read by the search tab and by the conversation's sources. */
+.agent-chat-retrieval {
+  margin-top: calc(var(--space-2) + var(--space-1) / 2);
+  padding: var(--space-2) calc(var(--space-2) + var(--space-1) / 2);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+.agent-chat-retrieval__title {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--gap-compact);
+}
+
+.agent-chat-retrieval__dl {
+  margin: 0;
+}
+
+.agent-chat-retrieval__row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 40%) 1fr;
+  gap: var(--gap-compact) calc(var(--space-2) + var(--space-1) / 2);
+  font-size: var(--text-xs);
+  margin-bottom: var(--space-1);
+}
+
+.agent-chat-retrieval__row:last-child {
+  margin-bottom: 0;
+}
