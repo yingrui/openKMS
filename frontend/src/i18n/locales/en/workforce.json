@@ -110,20 +110,6 @@
   "copyCurl": "Copy command",
   "chatTitle": "Chat",
   "chatOpen": "Talk to this agent",
-  "chatSource": "Knowledge source",
-  "chatNew": "New conversation",
-  "chatUntitled": "Untitled conversation",
-  "chatEmptyThreads": "No conversations yet.",
-  "chatPlaceholder": "Ask something this service can answer…",
-  "chatSend": "Send",
-  "chatThinking": "Thinking…",
-  "chatFailed": "The agent could not answer.",
-  "chatNewFailed": "Could not start a conversation.",
-  "chatDelete": "Delete conversation",
-  "chatDeleteConfirm": "Delete \"{{name}}\"? Its messages go with it.",
-  "chatDeleteFailed": "Could not delete the conversation.",
-  "chatSources": "Sources",
-  "chatSourcesCount": "{{count}} sources",
-  "chatIntroTitle": "Ask this service",
-  "chatIntroBody": "Answers come from {{source}}, with the documents they came from attached."
+  "chatPickSourceTitle": "Choose a knowledge source",
+  "chatPickSourceLead": "A conversation stays with one source. Pick the one to talk to {{name}} about."
 }

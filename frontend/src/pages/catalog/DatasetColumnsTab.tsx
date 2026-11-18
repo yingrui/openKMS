@@ -99,7 +99,7 @@ export function DatasetColumnsTab() {
   }, [metadata]);
 
   const TIME_PRESETS: { value: string; labelKey: string }[] = [
-    { value: '', labelKey: 'datasets.timeRoleAuto' },
+    { value: '', labelKey: 'datasets.timeRoleNone' },
     { value: '%Y-%m-%d', labelKey: 'datasets.timeRoleDay' },
     { value: '%G-W%V', labelKey: 'datasets.timeRoleWeek' },
     { value: '%Y-%m', labelKey: 'datasets.timeRoleMonth' },
@@ -223,11 +223,23 @@ export function DatasetColumnsTab() {
                                 }
                                 disabled={savingCol === col.column_name}
                               >
-                                {TIME_PRESETS.map((preset) => (
-                                  <option key={preset.value} value={preset.value}>
-                                    {t(preset.labelKey)}
-                                  </option>
-                                ))}
+                                {TIME_PRESETS.map((preset) =>
+                                  preset.value ? (
+                                    <option key={preset.value} value={preset.value}>
+                                      {t(preset.labelKey)}
+                                    </option>
+                                  ) : (
+                                    /* An empty format means two different things: a temporal column is a time
+                                       dimension by type, and every other column simply is not one. */
+                                    <option key={preset.value} value={preset.value}>
+                                      {timeRoleByColumn.get(col.column_name)?.isTime
+                                        ? t('datasets.timeRoleByType', {
+                                            kind: timeRoleByColumn.get(col.column_name)?.periodKind ?? '',
+                                          })
+                                        : t('datasets.timeRoleNone')}
+                                    </option>
+                                  ),
+                                )}
                                 {timeFormatOf(col.column_name) &&
                                 !TIME_PRESETS.some(
                                   (p) => p.value === timeFormatOf(col.column_name),
@@ -237,15 +249,6 @@ export function DatasetColumnsTab() {
                                   </option>
                                 ) : null}
                               </select>
-                              {timeRoleByColumn.get(col.column_name)?.isTime ? (
-                                <span className="dataset-columns__time-role-note">
-                                  {timeRoleByColumn.get(col.column_name)?.periodKind
-                                    ? t('datasets.timeRoleYesPeriod', {
-                                        kind: timeRoleByColumn.get(col.column_name)?.periodKind,
-                                      })
-                                    : t('datasets.timeRoleYes')}
-                                </span>
-                              ) : null}
                               {overriddenIn(col.column_name).length > 0 ? (
                                 <span className="dataset-columns__time-role-note">
                                   {t('datasets.timeRoleOverriddenIn', {

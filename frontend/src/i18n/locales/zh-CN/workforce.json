@@ -110,20 +110,6 @@
   "copyCurl": "复制命令",
   "chatTitle": "对话",
   "chatOpen": "与数字员工交流",
-  "chatSource": "知识源",
-  "chatNew": "新对话",
-  "chatUntitled": "未命名对话",
-  "chatEmptyThreads": "还没有对话。",
-  "chatPlaceholder": "问它一个它能回答的问题…",
-  "chatSend": "发送",
-  "chatThinking": "思考中…",
-  "chatFailed": "数字员工没能回答。",
-  "chatNewFailed": "新建对话失败。",
-  "chatDelete": "删除对话",
-  "chatDeleteConfirm": "删除「{{name}}」？其中的消息也会一并删除。",
-  "chatDeleteFailed": "删除对话失败。",
-  "chatSources": "来源",
-  "chatSourcesCount": "{{count}} 个来源",
-  "chatIntroTitle": "开始提问",
-  "chatIntroBody": "答案来自 {{source}}，并附上所依据的文档。"
+  "chatPickSourceTitle": "选择知识源",
+  "chatPickSourceLead": "一次对话只属于一个知识源。选择要与「{{name}}」讨论的来源。"
 }

@@ -941,11 +941,7 @@
     "cardOneToZeroOrOne": "{{left}} 1 → 0..1 {{right}}",
     "cardOneToZeroOrOneHint": "One {{left}} row matches at most one {{right}} row; the save checks {{left}} is unique, and the referenced row may be missing",
     "colTimeRole": "Time dimension",
-    "timeRoleYes": "yes",
-    "timeRoleYesPeriod": "yes ({{kind}})",
-    "timeRoleNo": "no",
     "timeRoleUnused": "not modelled",
-    "timeRoleAuto": "By datatype",
     "timeRoleDay": "Day (%Y-%m-%d)",
     "timeRoleWeek": "Week (%G-W%V)",
     "timeRoleMonth": "Month (%Y-%m)",
@@ -954,7 +950,9 @@
     "timeRoleCustom": "Custom format",
     "timeRoleFormatHint": "How the value is written; the calendar is derived from it: %V is a week, %m a month, %Y a year.",
     "timeRoleOverridden": " (off in this model)",
-    "timeRoleOverriddenIn": "not a time dimension in {{models}}"
+    "timeRoleOverriddenIn": "not a time dimension in {{models}}",
+    "timeRoleNone": "Not a time dimension",
+    "timeRoleByType": "From the datatype: {{kind}}"
   },
   "groups": {
     "title": "Groups",
