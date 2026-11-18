@@ -1,15 +1,12 @@
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
-  BookOpen,
   ChevronRight,
   HelpCircle,
   Search as SearchIcon,
   Send,
-  FileStack,
   Layers,
   Plus,
-  Eye,
   Trash2,
   Sparkles,
   MessageSquare,
@@ -34,6 +31,8 @@ import {
 import { KbAgentSettings } from './KbAgentSettings';
 import { TAB_ICONS, TAB_ORDER } from './KnowledgeBaseDetail.types';
 import { useKnowledgeBaseDetail } from './useKnowledgeBaseDetail';
+import { DocumentsTab } from './detail/tabs/DocumentsTab';
+import { WikiSpacesTab } from './detail/tabs/WikiSpacesTab';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import { PanelToolbar } from '../../styles/design-system';
 import {
@@ -182,214 +181,30 @@ export function KnowledgeBaseDetail() {
       <div className="kb-detail-content">
         {/* ===== DOCUMENTS TAB ===== */}
         {activeTab === 'documents' && (
-          <section className="kb-section">
-            <PanelToolbar
-              className="kb-section-header"
-              leading={<span>{t('detail.documentsTitle', { count: docTotal })}</span>}
-              actions={
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  onClick={openDocPicker}
-                  aria-label={t('detail.addDocument')}
-                >
-                  <Plus size={16} aria-hidden />
-                  <span className="ds-compact-label">{t('detail.addDocument')}</span>
-                </button>
-              }
-            />
-            {docTotal === 0 ? (
-              <p className="kb-empty-text">{t('detail.emptyDocuments')}</p>
-            ) : (
-              <>
-              <div className="ds-table-wrap">
-                <table className="kb-table">
-                  <thead>
-                    <tr>
-                      <th>{t('detail.colName')}</th>
-                      <th>{t('detail.colType')}</th>
-                      <th>{t('detail.colStatus')}</th>
-                      <th className="kb-table-actions">{t('detail.actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {docs.map((doc) => (
-                      <tr key={doc.id}>
-                        <td>
-                          <div className="kb-table-name">
-                            <FileStack size={18} />
-                            <Link to={`/documents/view/${doc.document_id}`}>{doc.document_name || doc.document_id}</Link>
-                          </div>
-                        </td>
-                        <td>{doc.document_file_type}</td>
-                        <td>{doc.document_status}</td>
-                        <td className="kb-table-actions">
-                          <div className="kb-table-btns">
-                            <Link to={`/documents/view/${doc.document_id}`} title={t('detail.view')} aria-label={t('detail.view')}>
-                              <Eye size={16} />
-                            </Link>
-                            <button type="button" title={t('detail.remove')} aria-label={t('detail.remove')} onClick={() => handleRemoveDocument(doc.document_id)}>
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {docTotal > 0 && (
-                <div className="kb-pagination">
-                  <div className="kb-pagination-info">
-                    <span>
-                      {t('detail.paginationRange', {
-                        start: docTotal === 0 ? 0 : docPage * docPageSize + 1,
-                        end: Math.min((docPage + 1) * docPageSize, docTotal),
-                        total: docTotal,
-                      })}
-                    </span>
-                    <label>
-                      <span>{t('detail.pageSize')}</span>
-                      <select
-                        value={docPageSize}
-                        onChange={(e) => {
-                          setDocPageSize(Number(e.target.value));
-                          setDocPage(0);
-                        }}
-                        className="ds-control"
-                      >
-                        {[25, 50, 100, 200].map((n) => (
-                          <option key={n} value={n}>{n}</option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  {Math.ceil(docTotal / docPageSize) > 1 && (
-                    <div className="kb-pagination-btns">
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setDocPage(0)}
-                        disabled={docPage === 0}
-                        title={t('detail.firstPage')}
-                      >
-                        «
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setDocPage((p) => Math.max(0, p - 1))}
-                        disabled={docPage === 0}
-                      >
-                        {t('detail.previous')}
-                      </button>
-                      <span className="kb-pagination-nums">
-                        {t('detail.pageOf', {
-                          current: docPage + 1,
-                          total: Math.ceil(docTotal / docPageSize) || 1,
-                        })}
-                      </span>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setDocPage((p) => Math.min(Math.ceil(docTotal / docPageSize) - 1, p + 1))}
-                        disabled={docPage >= Math.ceil(docTotal / docPageSize) - 1}
-                      >
-                        {t('detail.next')}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setDocPage(Math.ceil(docTotal / docPageSize) - 1)}
-                        disabled={docPage >= Math.ceil(docTotal / docPageSize) - 1}
-                        title={t('detail.lastPage')}
-                      >
-                        »
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-              </>
-            )}
-          </section>
+          <DocumentsTab
+            t={t}
+            docs={docs}
+            docTotal={docTotal}
+            docPage={docPage}
+            docPageSize={docPageSize}
+            onPageChange={setDocPage}
+            onPageSizeChange={setDocPageSize}
+            onAdd={openDocPicker}
+            onRemove={handleRemoveDocument}
+          />
         )}
 
         {/* ===== WIKI SPACES TAB ===== */}
         {activeTab === 'wiki_spaces' && (
-          <section className="kb-section">
-            <PanelToolbar
-              className="kb-section-header"
-              leading={<span>{t('detail.wikiSpacesTitle')}</span>}
-              actions={
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  onClick={() => void openWikiSpacePicker()}
-                  aria-label={t('detail.addWikiSpace')}
-                >
-                  <Plus size={16} aria-hidden />
-                  <span className="ds-compact-label">{t('detail.addWikiSpace')}</span>
-                </button>
-              }
-            />
-            <p className="kb-section-desc kb-wiki-index-hint">{t('detail.wikiIndexHint')}</p>
-            {kbWikiSpaces.length === 0 ? (
-              <p className="kb-empty-text">{t('detail.emptyWikiSpaces')}</p>
-            ) : (
-              <div className="ds-table-wrap">
-                <table className="kb-table">
-                  <thead>
-                    <tr>
-                      <th>{t('detail.colWikiSpace')}</th>
-                      <th className="kb-table-actions">{t('detail.actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {kbWikiSpaces.map((ws) => (
-                      <tr key={ws.id}>
-                        <td>
-                          <div className="kb-table-name">
-                            <BookOpen size={18} />
-                            <Link to={`/wikis/${ws.wiki_space_id}/pages/graph`}>{ws.wiki_space_name || ws.wiki_space_id}</Link>
-                          </div>
-                        </td>
-                        <td className="kb-table-actions">
-                          <div className="kb-table-btns">
-                            <button
-                              type="button"
-                              title={t('detail.indexWikiSpace')}
-                              aria-label={t('detail.indexWikiSpace')}
-                              disabled={wikiSpaceBusyId === ws.wiki_space_id || !kb?.embedding_model_id}
-                              onClick={() => void handleIndexWikiSpace(ws.wiki_space_id)}
-                            >
-                              {wikiSpaceBusyId === ws.wiki_space_id ? (
-                                <Loader2 size={16} className="kb-spinner-inline" aria-hidden />
-                              ) : (
-                                <RefreshCw size={16} aria-hidden />
-                              )}
-                            </button>
-                            <Link to={`/wikis/${ws.wiki_space_id}/pages/graph`} title={t('detail.view')} aria-label={t('detail.view')}>
-                              <Eye size={16} />
-                            </Link>
-                            <button
-                              type="button"
-                              title={t('detail.remove')}
-                              aria-label={t('detail.remove')}
-                              disabled={wikiSpaceBusyId === ws.wiki_space_id}
-                              onClick={() => void handleRemoveWikiSpaceFromKb(ws.wiki_space_id)}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
+          <WikiSpacesTab
+            t={t}
+            spaces={kbWikiSpaces}
+            hasEmbeddingModel={Boolean(kb.embedding_model_id)}
+            busyId={wikiSpaceBusyId}
+            onAdd={() => void openWikiSpacePicker()}
+            onIndex={(id) => void handleIndexWikiSpace(id)}
+            onRemove={(id) => void handleRemoveWikiSpaceFromKb(id)}
+          />
         )}
 
         {/* ===== DATA SCOPE TAB ===== */}
