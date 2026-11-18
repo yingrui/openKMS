@@ -42,7 +42,7 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
   const shellBodyRef = useRef<HTMLDivElement>(null);
 
   /* A conversation takes the whole viewport, as the knowledge-base Q&A did: the rail is the only chrome. */
-  useImmersiveView('openkms-kb-qa-fullpage', true);
+  useImmersiveView('openkms-agent-chat', true);
 
   // Leaving the mobile layout closes the sessions drawer (during render, so no stale second pass).
   if (!isMobile && sessionsOpen) setSessionsOpen(false);

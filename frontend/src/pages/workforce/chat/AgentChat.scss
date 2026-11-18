@@ -17,7 +17,7 @@
 /* The conversation owns the viewport while it is open: the immersive class hides the header, and this
    finishes the chain — the chat is not a knowledge-base route any more, so it cannot rely on that page's
    compact content wrapper. */
-body.openkms-kb-qa-fullpage .app-content {
+body.openkms-agent-chat .app-content {
   padding: 0;
   overflow: hidden;
   display: flex;
@@ -26,7 +26,7 @@ body.openkms-kb-qa-fullpage .app-content {
   min-height: 0;
 }
 
-body.openkms-kb-qa-fullpage .kb-qa-page {
+body.openkms-agent-chat .kb-qa-page {
   flex: 1;
   min-height: 0;
   height: 100%;
@@ -45,7 +45,7 @@ body.openkms-kb-qa-fullpage .kb-qa-page {
   border-radius: var(--radius-lg);
 }
 
-body.openkms-kb-qa-fullpage .kb-qa-shell {
+body.openkms-agent-chat .kb-qa-shell {
   border: none;
   border-radius: 0;
 }

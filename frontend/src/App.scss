@@ -372,44 +372,17 @@ body:has(.app-content--function-editor-workspace) .app-main {
   min-height: 0;
 }
 
-/* app-layout-exception: KB Q&A full-page — no outer padding; scroll inside chat column */
-.app-content--compact:has(.kb-detail--qa-fullpage) {
-  padding: 0;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  /* Keep scroll inside KB Q&A main column so the composer stays pinned to the viewport */
-  overflow: hidden;
-}
-
-/* kb-detail may sit under ContentCommentsShell — match both direct and nested. */
-.app-content--compact:has(.kb-detail--qa-fullpage) .kb-detail.kb-detail--qa-fullpage {
-  flex: 1;
-  min-height: 0;
-  height: auto;
-}
-
-.app-content--compact:has(.kb-detail--qa-fullpage) .content-comments-shell,
-.app-content--compact:has(.kb-detail--qa-fullpage) .content-comments-shell__main {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* Immersive KB Q&A: reclaim header row for conversation (exit via sidebar back) */
-body.openkms-kb-qa-fullpage .header {
+/* Immersive agent conversation: reclaim the header row (exit via the session rail's back link) */
+body.openkms-agent-chat .header {
   display: none;
 }
 
-body.openkms-kb-qa-fullpage .app-content--compact:has(.kb-qa-page) .kb-qa-page {
+body.openkms-agent-chat:has(.kb-qa-page) .kb-qa-page {
   min-height: 0;
 }
 
 /* Same layout as :has() block above, but keyed off body — does not depend on :has() support */
-body.openkms-kb-qa-fullpage .app-content.app-content--compact {
+body.openkms-agent-chat .app-content {
   padding: 0;
   overflow: hidden;
   display: flex;
@@ -418,9 +391,9 @@ body.openkms-kb-qa-fullpage .app-content.app-content--compact {
   min-height: 0;
 }
 
-/* Fill the main column; override generic compact kb-detail height (still subtracts header even when hidden) */
-body.openkms-kb-qa-fullpage .app-content--compact .content-comments-shell,
-body.openkms-kb-qa-fullpage .app-content--compact .content-comments-shell__main {
+/* Fill the main column; the header row is hidden, so nothing may subtract it. */
+body.openkms-agent-chat .app-content .content-comments-shell,
+body.openkms-agent-chat .app-content .content-comments-shell__main {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -430,38 +403,38 @@ body.openkms-kb-qa-fullpage .app-content--compact .content-comments-shell__main 
   max-height: 100%;
 }
 
-body.openkms-kb-qa-fullpage .app-content--compact .kb-qa-page {
+body.openkms-agent-chat .app-content .kb-qa-page {
   flex: 1;
   min-height: 0;
   height: 100%;
   max-height: 100%;
 }
 
-body.openkms-kb-qa-fullpage {
+body.openkms-agent-chat {
   height: 100vh;
   max-height: 100dvh;
   overflow: hidden;
 }
 
-body.openkms-kb-qa-fullpage #root {
+body.openkms-agent-chat #root {
   height: 100%;
   min-height: 0;
   overflow: hidden;
 }
 
-body.openkms-kb-qa-fullpage .app-layout {
+body.openkms-agent-chat .app-layout {
   height: 100%;
   min-height: 0;
   overflow: hidden;
 }
 
-body.openkms-kb-qa-fullpage .app-shell-body {
+body.openkms-agent-chat .app-shell-body {
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
-body.openkms-kb-qa-fullpage .app-main {
+body.openkms-agent-chat .app-main {
   min-height: 0;
   overflow: hidden;
 }
@@ -557,10 +530,6 @@ body.openkms-agents-fullpage .agents-workspace {
     .app-content--with-function-editor-rail
   ) {
     padding: var(--app-page-padding-y) var(--app-page-padding-x);
-  }
-
-  .app-content--compact:has(.kb-detail--qa-fullpage) {
-    padding: 0;
   }
 
   .app-content--compact .wiki-page-editor-outer {
