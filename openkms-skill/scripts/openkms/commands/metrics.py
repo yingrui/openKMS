@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from typing import Any
 
 from .._confirm import add_write_flags, confirm_or_abort
@@ -26,7 +27,7 @@ def cmd_add(ns: argparse.Namespace) -> None:
         "name": ns.name,
         "semantic_model_id": ns.semantic_model_id,
         "base_dataset_id": ns.base_dataset_id,
-        "type": ns.type,
+        "additivity": ns.additivity,
         "expression": {"dialects": {"ANSI_SQL": ns.expression}},
     }
     if ns.datatype:
@@ -35,6 +36,10 @@ def cmd_add(ns: argparse.Namespace) -> None:
         body["business_definition"] = ns.definition
     if ns.joins:
         body["joins"] = [j.strip() for j in ns.joins.split(",") if j.strip()]
+    if ns.time_dimension:
+        body["time_dimension"] = ns.time_dimension
+    if ns.filters:
+        body["filters"] = json.loads(ns.filters)
     if ns.ai_instructions:
         body["ai_context"] = {"instructions": ns.ai_instructions}
     confirm_or_abort("add metric", "POST", "/api/metrics", body, ns.yes, ns.dry_run)
@@ -82,9 +87,20 @@ def add_subparser(sub) -> None:
     ma.add_argument("--base-dataset-id", required=True)
     ma.add_argument("--expression", required=True, help='aggregate SQL fragment, e.g. "SUM(amount)"')
     ma.add_argument(
-        "--type",
-        default="simple",
-        choices=("simple", "ratio", "derived", "cumulative", "conversion"),
+        "--additivity",
+        default="additive",
+        choices=("additive", "non_additive"),
+        help="may this number be summed across groups? a ratio/rate/price is non_additive",
+    )
+    ma.add_argument(
+        "--time-dimension",
+        default=None,
+        help="the model field that carries the period (e.g. cycle); the metric is then filtered by it",
+    )
+    ma.add_argument(
+        "--filters",
+        default=None,
+        help='JSON array of {column, op, value} that scopes the metric, e.g. \'[{"column":"channel","op":"==","value":"线上"}]\'',
     )
     ma.add_argument(
         "--datatype",

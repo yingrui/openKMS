@@ -203,8 +203,14 @@ def cmd_delete(ns: argparse.Namespace) -> None:
 
 def cmd_column_description(ns: argparse.Namespace) -> None:
     path = f"/api/datasets/{ns.id}/columns/{ns.column}"
-    body = {"description": ns.description or None}
-    confirm_or_abort("set column description", "PUT", path, body, ns.yes, ns.dry_run)
+    body: dict[str, Any] = {}
+    if ns.description is not None:
+        body["description"] = ns.description or None
+    if ns.time_format is not None:
+        body["time_format"] = ns.time_format or None
+    if not body:
+        raise SystemExit("Pass --description and/or --time-format.")
+    confirm_or_abort("set column annotation", "PUT", path, body, ns.yes, ns.dry_run)
     with client() as s:
         r = s.put(path, json=body)
     r.raise_for_status()
@@ -258,6 +264,7 @@ def cmd_joins_add(ns: argparse.Namespace) -> None:
         "from_columns": from_cols,
         "to_columns": to_cols,
         "required": bool(ns.required),
+        "from_unique": bool(ns.from_unique),
     }
     if ns.name:
         body["name"] = ns.name
@@ -700,10 +707,16 @@ def add_subparser(sub) -> None:
     add_write_flags(dl)
     dl.set_defaults(fn=cmd_delete)
 
-    cd = sp.add_parser("column-description", help="Set a column's description (PUT …/columns/{col})")
+    cd = sp.add_parser("column-description", help="Set a column's description and/or time period (PUT …/columns/{col})")
     cd.add_argument("--id", required=True)
     cd.add_argument("--column", required=True)
     cd.add_argument("--description", default=None)
+    cd.add_argument(
+        "--time-format",
+        dest="time_format",
+        default=None,
+        help='the value\'s format when the column holds periods, e.g. "%G-W%V" for a week; the calendar is derived from it',
+    )
     add_write_flags(cd)
     cd.set_defaults(fn=cmd_column_description)
 
@@ -728,6 +741,11 @@ def add_subparser(sub) -> None:
         "--required",
         action="store_true",
         help="require a matching row (INNER); default keeps rows without a match (LEFT)",
+    )
+    jla.add_argument(
+        "--from-unique",
+        action="store_true",
+        help="the FK side is unique too (1 → 1); makes the relationship traversable backwards",
     )
     jla.add_argument("--columns", required=True, help='FK=key pairs, e.g. "ts_code=ts_code"')
     jla.add_argument("--name", default=None)

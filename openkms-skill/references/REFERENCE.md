@@ -233,11 +233,11 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets create` *(write)* | POST | `/api/datasets` | Register existing table. |
 | `datasets update` *(write)* | PUT | `/api/datasets/{id}` | **Partial** update. Body from any of `--display-name`, `--description`, `--domain`, `--tags` (csv), `--business-definition`, `--sensitivity public\|internal\|confidential\|restricted\|""`, `--primary-key` (csv), `--unique-keys` (`"a,b;c"`), `--editable true|false`, `--ai-instructions`, `--ai-synonyms`, `--ai-examples`. |
 | `datasets delete` *(write)* | DELETE | `/api/datasets/{id}` | Removes the catalog entry, not the table. |
-| `datasets column-description` *(write)* | PUT | `/api/datasets/{id}/columns/{column}` | Body `{description}` — set a physical column's description. |
+| `datasets column-description` *(write)* | PUT | `/api/datasets/{id}/columns/{column}` | Body from `--description` and/or `--time-format` — set a physical column's description and its **time period** format. `--time-format "%G-W%V"` marks a text column as a week; the calendar is **derived** from the format (smallest unit wins: `%V`→week, `%m`→month, `%Y`→year). Passing only one field leaves the other unchanged.
 | `datasets profile` | GET | `/api/datasets/{id}/profile` | Computed column profile (row count, null/distinct/min/max). |
 | `datasets schema-history` | GET | `/api/datasets/{id}/schema-history` | Captured schema snapshots (newest first). |
 | `datasets joins list` | GET | `/api/dataset-joins` | Optional `?dataset_id=`. |
-| `datasets joins add` *(write)* | POST | `/api/dataset-joins` | Body `{from_dataset_id, to_dataset_id, from_columns:[…], to_columns:[…], required}`. `from` = many side (FK holder), `to` = one side (referenced key); `required=true` → INNER (only matched rows), default `false` → LEFT. Composite keys: aligned `from_columns`/`to_columns` arrays. |
+| `datasets joins add` *(write)* | POST | `/api/dataset-joins` | Body `{from_dataset_id, to_dataset_id, from_columns:[…], to_columns:[…], required, from_unique}`. `from` = many side (FK holder), `to` = one side (referenced key); `required=true` → INNER (only matched rows), default `false` → LEFT. `from_unique=true` marks the FK side unique too (**1 → 1**), which makes the relationship traversable backwards. Composite keys: aligned `from_columns`/`to_columns` arrays. |
 | `datasets joins delete` *(write)* | DELETE | `/api/dataset-joins/{join_id}` | |
 | `datasets ingest` *(write)* | POST | `/api/dataset-ingests` → `…/preview` → `…/load` | Upload a file, parse it, load into a data-layer PostgreSQL table. |
 | `datasets file-create` *(write)* | POST | `/api/datasets` | Body `{kind:"file", display_name}` — a **file dataset**: immutable, numbered versions of files (parquet/csv/jsonl) in the platform bucket. No table, no joins. |
@@ -258,17 +258,28 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets quality runs` | GET | `/api/datasets/{id}/quality-rules/{rule_id}/runs` | A rule's run history, newest first. |
 | `datasets quality delete` *(write)* | DELETE | `/api/datasets/{id}/quality-rules/{rule_id}` | |
 | `metrics list` | GET | `/api/metrics` | Metrics; optional `?semantic_model_id=` / `?base_dataset_id=`. |
-| `metrics add` *(write)* | POST | `/api/metrics` | Body `{name, semantic_model_id, base_dataset_id, type, expression:{dialects:{ANSI_SQL}}, datatype?, joins?, ai_context?}`. `expression` is an aggregate SQL fragment (Ossie); the base dataset must be in the model's scope. |
+| `metrics add` *(write)* | POST | `/api/metrics` | Body `{name, semantic_model_id, base_dataset_id, additivity, expression:{dialects:{ANSI_SQL}}, datatype?, filters?, joins?, time_dimension?, ai_context?}`. `additivity ∈ additive\|non_additive` (a ratio/rate/price is `non_additive`); `expression` is an aggregate SQL fragment (Ossie); the base dataset must be in the model's scope; `time_dimension` names the model field that carries the period. |
 | `metrics compute` | GET | `/api/metrics/{metric_id}/compute` | Runs the metric **read-only** (statement timeout + row cap); records a run. |
 | `metrics runs` | GET | `/api/metrics/{metric_id}/runs` | Recent executions (audit). |
 | `metrics delete` *(write)* | DELETE | `/api/metrics/{metric_id}` | |
+| `rules list` | GET | `/api/metric-rules` | Reconciliation rules; optional `?metric_id=`. |
+| `rules get` | GET | `/api/metric-rules/{rule_id}` | One rule, with `run_params` described (what 运行 will ask for). |
+| `rules add` *(write)* | POST | `/api/metric-rules` | Body `{name, metric_id, condition\|identities, severity?, conclusion?, suggestion?, owner?, rule_id?, status?, group_by?, run_params?}`. Exactly one of `condition` (threshold) / `identities` (指标勾稽) — see [rules-authoring.md](rules-authoring.md). |
+| `rules update` *(write)* | PATCH | `/api/metric-rules/{rule_id}` | Partial; `--new-rule-id` renames the slug. Every accepted change bumps `version`. |
+| `rules delete` *(write)* | DELETE | `/api/metric-rules/{rule_id}` | Deletes its alerts too (FK cascade). |
+| `rules evaluate` | POST | `/api/metric-rules/{rule_id}/evaluate` | Body `{dry_run, values}` — run one rule for a period/scope; `--simulate` computes verdicts without publishing. |
+| `rules evaluate-all` | POST | `/api/metric-rules/evaluate` | Body `{metric_id?, values}` — every active rule, or one metric's. |
+| `rules events` | GET | `/api/metric-rules/{rule_id}/events` | A rule's alerts (`?status=`, `?limit=`, `?offset=`). |
+| `events list` | GET | `/api/metric-events` | Alerts, newest first (`?metric_id=`, `?rule_id=`, `?status=open\|dismissed\|resolved`, `?severity=P0\|P1\|P2`, `?open_only=true`). |
+| `events summary` | GET | `/api/metric-events/summary` | Open/total alerts per metric — one call for a list page's badges. |
+| `events patch` *(write)* | PATCH | `/api/metric-events/{event_id}` | Body `{status?, assignee?, note?}` — resolve / dismiss / reopen / assign an alert. |
 | `semantic-models get` | GET | `/api/semantic-models/{id}` | One model's scope (datasets) + `ai_context` — the full record, not the list summary. |
 | `semantic-models list` | GET | `/api/semantic-models` | Named semantic models (scope = dataset ids). |
 | `semantic-models add` *(write)* | POST | `/api/semantic-models` | Body `{name, dataset_ids, description?}`. |
 | `semantic-models export` | GET | `/api/semantic-models/{id}/export` | Ossie document for one model (`?format=json|yaml`). |
 | `semantic-models import` *(write)* | POST | `/api/semantic-models/import` | Upsert a model (+ metrics/queries) from an Ossie document. |
 | `semantic-models fields list` | GET | `/api/semantic-models/{id}/fields` | Model-scoped fields (column ref / expression + role). |
-| `semantic-models fields add` *(write)* | POST | `/api/semantic-models/{id}/fields` | Body `{dataset_id, name, column_name?\|expression?, datatype?, label?, description?, dimension?, ai_context?}`. `dimension` is the **time role only**: `{"is_time": true}` (omit to follow `datatype`); no `type`/`granularity`/`entity`. |
+| `semantic-models fields add` *(write)* | POST | `/api/semantic-models/{id}/fields` | Body `{dataset_id, name, column_name?\|expression?, datatype?, label?, description?, dimension?, ai_context?}`. `dimension` is an **override only**: `{"is_time": false}` keeps a temporal column off this model's time axis; omit it to follow the column. The time role itself lives on the **column** (`datasets column-description --time-format`), not here. |
 | `semantic-models fields delete` *(write)* | DELETE | `/api/semantic-models/{id}/fields/{field_id}` | |
 | `semantic-models query` | POST | `/api/semantic-models/{id}/query` | Body `{metric, group_by:[{field, granularity?}], filters:[{field, op, value}], order_by:[{field, direction}], limit?}` — one ad-hoc question of a model (read-only, capped, audited); returns `{sql, columns, rows, row_count, capped, duration_ms}`. Failures carry `{code, message, kind}`. |
 | `stories list` | GET | `/api/stories` | Data Insights **stories**: a document of **findings**, each with its own source — see [stories.md](stories.md). |

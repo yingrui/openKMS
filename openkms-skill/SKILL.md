@@ -4,15 +4,14 @@ description: >-
   Operates an openKMS deployment via personal API key using bundled scripts/cli.py only
   (no ad-hoc curl/HTTP). Covers search, documents/articles/wiki/KB, glossaries, knowledge-map,
   evaluations, data-sources/datasets/connectors/jobs, ontology (objects/links/functions/actions),
-  Chamber apps, and Kubernetes (apply, register-app, dev-sync, logs).
-  Open references/functions-authoring.md for Function --source-code-file;
+  metric rules (指标勾稽) and alerts, Chamber apps, and Kubernetes (apply, register-app, dev-sync,
+  logs). Open references/functions-authoring.md for Function --source-code-file;
   references/actions-authoring.md for ontology action-types; references/app-builder.md for Chamber app
   registration/patching; references/kubernetes.md for kubernetes apply/delete/dev-sync;
   references/datasets-authoring.md for dataset setup (register/upload, columns, keys, AI context,
-  relationships, quality); references/stories.md for Data Insights stories and their findings;
-  references/research-report.md for research reports (see assets/report-examples/).
-  Use when agents must read or push openKMS content without the web UI. Only config.yml may be edited
-  for credentials when the user asks.
+  relationships, quality); references/rules-authoring.md for metric rules
+  (condition/identities/run-params/alerts). Use when agents must read or push openKMS content
+  without the web UI. Only config.yml may be edited for credentials when the user asks.
 ---
 
 # openKMS skill
@@ -38,6 +37,7 @@ Match the task, then open **one** guide. Skip rows that do not apply.
 | **Author** Function source (`--source-code-file` / validate / publish) | [references/functions-authoring.md](references/functions-authoring.md) |
 | **Author** Action types (create / update / delete / execute) | [references/actions-authoring.md](references/actions-authoring.md) |
 | **Author/set up** datasets (register, upload, keys, `ai_context`, relationships, quality) | [references/datasets-authoring.md](references/datasets-authoring.md) |
+| **Author** metric rules / 指标勾稽 (thresholds, identities, run params, alerts) | [references/rules-authoring.md](references/rules-authoring.md) |
 | **Publish a file dataset** (training slice: create → upload → publish → select rows) | [references/datasets-authoring.md](references/datasets-authoring.md#file-datasets-training-sets-and-other-immutable-artifacts) |
 | **Author / re-run** a Data Insights story (findings, each over its own dataset or model) | [references/stories.md](references/stories.md) |
 | Data sources / connectors / jobs / Chamber list / Kubernetes browse | [references/commands-ops.md](references/commands-ops.md) |

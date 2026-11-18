@@ -73,6 +73,21 @@ python scripts/cli.py datasets column-description \
 `datasets schema-history --id DS_ID` shows over time. Column descriptions are **physical** facts; a
 model's field may override its own description for one model without touching this.
 
+### Time role (time_format)
+
+A text column can hold periods: `2026-W47` is a week whatever model reads it. That fact lives on the
+**column**, not on the model — set it once, every model reads it:
+
+```bash
+python scripts/cli.py datasets column-description \
+  --id DS_ID --column cycle --time-format "%G-W%V" --yes
+```
+
+The calendar is **derived** from the format, never declared beside it — the smallest unit wins:
+`%V`→week, `%m`→month, `%Y`→year, `%Y-Q%n`→quarter, `%Y-%m-%d`→day. No recognisable unit → `custom`.
+A `Date`/`DateTime` column is a time dimension by type; `time_format` is for the String columns that
+otherwise cannot say "week".
+
 ## 3. Make it usable (the part agents actually need)
 
 ```bash
@@ -115,6 +130,10 @@ python scripts/cli.py datasets joins delete --join-id JOIN_ID --yes
 `--from-id` is the **many** side (it holds the FK), `--to-id` the **one** side (the referenced key).
 `--required` renders INNER (only matched rows); omit it for LEFT. Composite keys: `--columns
 "a=x,b=y"` (aligned pairs). The target columns must be the target dataset's primary/key columns.
+
+`--from-unique` marks the FK side unique too — a **1 → 1** relationship, checked, not assumed: the
+source side must be a declared key or prove unique from its profile. A 1:1 relationship is the only
+kind traversable **backwards** (one → many reverse); a plain many → one is not.
 
 ## 5. Quality rules
 
