@@ -17,6 +17,7 @@ import type { ConnectorSyncDateRange } from './connectorSyncUtils';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import '../../styles/settings-page.scss';
 import '../ontology/ontology-admin.scss';
+import './connectors.scss';
 
 export function ConnectorDetailPage() {
   const { id } = useParams<{ id: string }>();

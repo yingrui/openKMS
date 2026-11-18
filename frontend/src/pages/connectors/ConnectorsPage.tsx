@@ -25,6 +25,7 @@ import {
 } from './connectorFormUtils';
 import { Dialog, ListPage } from '../../styles/design-system';
 import '../ontology/ontology-admin.scss';
+import './connectors.scss';
 
 export function ConnectorsPage() {
   const navigate = useNavigate();
