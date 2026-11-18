@@ -7,6 +7,7 @@ import type { ApiModelResponse } from '../../../../data/modelsApi';
 import { RESOURCE_TYPES } from '../../../../data/resourceAclApi';
 import { ResourceSharePanel } from '../../../../components/ResourceSharePanel';
 import { KbAgentSettings } from '../../../knowledge-bases/KbAgentSettings';
+import './SettingsTab.scss';
 
 type SettingsSubTab = { id: 'general' | 'agent' | 'sharing'; label: string; icon: LucideIcon };
 

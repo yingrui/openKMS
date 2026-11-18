@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Filter, Search as SearchIcon, Send } from 'l
 import type { SearchResult } from '../../../../data/knowledgeBasesApi';
 import type { KbSearchRetrievalDiff } from '../../KnowledgeBaseDetail.types';
 import { KbRetrievalProvenancePanel } from '../../../workforce/chat';
+import './SearchTab.scss';
 
 export type KbSearchType = 'all' | 'chunks' | 'faqs';
 
