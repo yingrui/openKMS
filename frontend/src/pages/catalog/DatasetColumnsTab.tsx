@@ -267,7 +267,11 @@ export function DatasetColumnsTab() {
                             </div>
                           </td>
                           <td>{s ? fmt(s.null_count) : t('datasets.dash')}</td>
-                          <td>{s ? fmt(s.distinct_count) : t('datasets.dash')}</td>
+                          <td title={s?.distinct_estimated ? t('datasets.distinctEstimated') : undefined}>
+                            {s
+                              ? `${s.distinct_estimated ? '≈ ' : ''}${fmt(s.distinct_count)}`
+                              : t('datasets.dash')}
+                          </td>
                           <td>{s ? fmt(s.min) : t('datasets.dash')}</td>
                           <td>{s ? fmt(s.max) : t('datasets.dash')}</td>
                         </tr>

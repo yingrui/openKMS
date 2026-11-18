@@ -945,7 +945,8 @@
     "timeRoleOverridden": "（本模型已关闭）",
     "timeRoleOverriddenIn": "{{models}} 中不作为时间维度",
     "timeRoleNone": "不是时间维度",
-    "timeRoleByType": "按类型：{{kind}}"
+    "timeRoleByType": "按类型：{{kind}}",
+    "distinctEstimated": "估算值：大表按采样统计，不是精确计数"
   },
   "groups": {
     "title": "分组",

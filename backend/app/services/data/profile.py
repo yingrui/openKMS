@@ -21,8 +21,26 @@ class ProfileError(ValueError):
     """Raised when a dataset cannot be profiled; surfaced as HTTP 400."""
 
 
+#: Above this many rows, `COUNT(DISTINCT ...)` costs more than the answer is worth for a page display: it is a
+#: full sort per column (45 s per column on 66 M rows). The planner's own sample-based estimate is exact enough
+#: for reading, and is marked as an estimate so nothing treats it as a uniqueness proof.
+EXACT_DISTINCT_MAX_ROWS = 5_000_000
+
+#: Types PostgreSQL cannot compare for equality — `COUNT(DISTINCT json)` raises, and that error aborts the
+#: whole statement.
+NO_EQUALITY = {"json", "jsonb"}
+
+#: Types with no meaningful order (`MIN(uuid)` is not a function on every server version).
+NO_ORDER = {"json", "jsonb", "uuid", "bytea", "point"}
+
+
 async def compute_profile(db: AsyncSession, dataset: Dataset) -> tuple[int, list[dict[str, Any]]]:
-    """Scan the backing table and return (row_count, per-column stats)."""
+    """Scan the backing table and return (row_count, per-column stats).
+
+    One pass over the table answers everything a scan can answer. The expensive question — how many distinct
+    values — is asked of the planner's statistics on large tables, and exactly only where the table is small
+    enough for the answer to be worth a sort.
+    """
     ds = await db.get(DataSource, dataset.data_source_id)
     if not ds or ds.kind != "postgresql":
         raise ProfileError("Profiling is only supported for PostgreSQL datasets.")
@@ -32,52 +50,118 @@ async def compute_profile(db: AsyncSession, dataset: Dataset) -> tuple[int, list
     quoted = f'"{schema}"."{table}"'
 
     def scan() -> tuple[int, list[dict[str, Any]]]:
-        stats: list[dict[str, Any]] = []
         engine = pg_engine_for_datasource(ds)
         try:
             with engine.connect() as conn:
-                total = int(conn.execute(text(f"SELECT COUNT(*) FROM {quoted}")).scalar() or 0)
-                cols = conn.execute(
-                    text(
-                        "SELECT column_name FROM information_schema.columns "
-                        "WHERE table_schema = :s AND table_name = :t ORDER BY ordinal_position"
-                    ),
-                    {"s": schema, "t": table},
-                ).fetchall()
-                for (col,) in cols:
-                    name = str(col)
-                    if not is_valid_identifier(name):
-                        continue
-                    entry: dict[str, Any] = {"column": name, "null_count": None,
-                                             "distinct_count": None, "min": None, "max": None}
-                    # Three questions, three degrees of "any type can answer this", so each is asked on its
-                    # own inside a savepoint: a type that cannot answer one of them must not cost the others,
-                    # and a failed statement must not abort the connection's transaction for every later
-                    # column (`MIN(uuid)` and `COUNT(DISTINCT json)` both do exactly that).
-                    def ask(sql: str) -> dict[str, Any]:
-                        with conn.begin_nested():
-                            return dict(conn.execute(text(sql)).mappings().first() or {})
-
-                    non_null = ask(f'SELECT COUNT("{name}") AS nn FROM {quoted}')["nn"]
-                    entry["null_count"] = total - int(non_null or 0)
-                    try:
-                        entry["distinct_count"] = int(
-                            ask(f'SELECT COUNT(DISTINCT "{name}") AS nd FROM {quoted}')["nd"] or 0
-                        )
-                    except (SQLAlchemyError, ValueError, TypeError):  # no equality for this type (json)
-                        pass
-                    try:
-                        ranged = ask(f'SELECT MIN("{name}") AS mn, MAX("{name}") AS mx FROM {quoted}')
-                        entry["min"] = serialize_cell_value(ranged.get("mn"))
-                        entry["max"] = serialize_cell_value(ranged.get("mx"))
-                    except (SQLAlchemyError, ValueError, TypeError):  # no ordering for this type (uuid)
-                        pass
-                    stats.append(entry)
+                columns = [
+                    (str(name), str(udt or ""))
+                    for name, udt in conn.execute(
+                        text(
+                            "SELECT column_name, udt_name FROM information_schema.columns "
+                            "WHERE table_schema = :s AND table_name = :t ORDER BY ordinal_position"
+                        ),
+                        {"s": schema, "t": table},
+                    ).fetchall()
+                ]
+                columns = [(name, udt) for name, udt in columns if is_valid_identifier(name)]
+                total, stats = _scan_one_pass(conn, quoted, columns)
+                _add_distinct(conn, quoted, schema, table, columns, total, stats)
                 return total, stats
         finally:
             engine.dispose()
 
     return await asyncio.to_thread(scan)
+
+
+def _scan_one_pass(conn, quoted: str, columns: list[tuple[str, str]]):
+    """Row count, null counts and value ranges in a single statement (one table scan, not one per column)."""
+    parts = ["COUNT(*) AS c_total"]
+    for i, (name, udt) in enumerate(columns):
+        parts.append(f'COUNT("{name}") AS c_nn_{i}')
+        if udt.lower() not in NO_ORDER:
+            parts.append(f'MIN("{name}") AS c_mn_{i}, MAX("{name}") AS c_mx_{i}')
+    try:
+        with conn.begin_nested():
+            row = dict(conn.execute(text(f"SELECT {', '.join(parts)} FROM {quoted}")).mappings().first() or {})
+    except (SQLAlchemyError, ValueError, TypeError):
+        # An aggregate this server does not support for some type took the whole statement down: fall back to
+        # asking per column, each in its own savepoint, so one unanswerable question stays local.
+        row = _scan_per_column(conn, quoted, columns)
+    total = int(row.get("c_total") or 0)
+    stats: list[dict[str, Any]] = []
+    for i, (name, _udt) in enumerate(columns):
+        stats.append(
+            {
+                "column": name,
+                "null_count": total - int(row.get(f"c_nn_{i}") or 0),
+                "distinct_count": None,
+                "min": serialize_cell_value(row.get(f"c_mn_{i}")),
+                "max": serialize_cell_value(row.get(f"c_mx_{i}")),
+                "distinct_estimated": False,
+            }
+        )
+    return total, stats
+
+
+def _scan_per_column(conn, quoted: str, columns: list[tuple[str, str]]) -> dict[str, Any]:
+    row: dict[str, Any] = {"c_total": 0}
+    with conn.begin_nested():
+        row["c_total"] = conn.execute(text(f"SELECT COUNT(*) AS n FROM {quoted}")).scalar() or 0
+    for i, (name, _udt) in enumerate(columns):
+        for sql, keys in (
+            (f'SELECT COUNT("{name}") AS nn FROM {quoted}', ("c_nn_",)),
+            (f'SELECT MIN("{name}") AS mn, MAX("{name}") AS mx FROM {quoted}', ("c_mn_", "c_mx_")),
+        ):
+            try:
+                with conn.begin_nested():
+                    got = dict(conn.execute(text(sql)).mappings().first() or {})
+            except (SQLAlchemyError, ValueError, TypeError):
+                continue
+            for key, value in zip(keys, got.values(), strict=False):
+                row[f"{key}{i}"] = value
+    return row
+
+
+def _add_distinct(conn, quoted: str, schema: str, table: str, columns, total: int, stats) -> None:
+    """The distinct count: exact on a small table, the planner's estimate on a large one."""
+    wanted = [(i, name) for i, (name, udt) in enumerate(columns) if udt.lower() not in NO_EQUALITY]
+    if not wanted:
+        return
+    if total <= EXACT_DISTINCT_MAX_ROWS:
+        parts = [f'COUNT(DISTINCT "{name}") AS d_{i}' for i, name in wanted]
+        try:
+            with conn.begin_nested():
+                row = dict(conn.execute(text(f"SELECT {', '.join(parts)} FROM {quoted}")).mappings().first() or {})
+        except (SQLAlchemyError, ValueError, TypeError):
+            row = {}
+        for i, _name in wanted:
+            if f"d_{i}" in row:
+                stats[i]["distinct_count"] = int(row[f"d_{i}"] or 0)
+        return
+
+    # Large table: `pg_stats` already holds a sample-based answer, written by the last ANALYZE.
+    try:
+        with conn.begin_nested():
+            estimates = {
+                str(name): value
+                for name, value in conn.execute(
+                    text(
+                        "SELECT attname, n_distinct FROM pg_stats "
+                        "WHERE schemaname = :s AND tablename = :t"
+                    ),
+                    {"s": schema, "t": table},
+                ).fetchall()
+            }
+    except SQLAlchemyError:
+        return
+    for i, name in wanted:
+        value = estimates.get(name)
+        if value is None:
+            continue
+        # A negative `n_distinct` is a fraction of the row count (a column with many distinct values).
+        count = abs(float(value)) * total if float(value) < 0 else float(value)
+        stats[i]["distinct_count"] = int(round(count))
+        stats[i]["distinct_estimated"] = True
 
 
 async def store_profile(

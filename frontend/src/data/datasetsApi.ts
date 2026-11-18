@@ -309,6 +309,8 @@ export interface DatasetProfileColumn {
   column: string;
   null_count: number | null;
   distinct_count: number | null;
+  /** True when the count came from the planner's sample (a large table) rather than an exact sort. */
+  distinct_estimated?: boolean;
   min: unknown;
   max: unknown;
 }

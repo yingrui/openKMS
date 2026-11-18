@@ -130,6 +130,11 @@ async def _require_unique_target(db: AsyncSession, target: Dataset, to_columns: 
         (entry for entry in (profile.column_stats or []) if entry.get("column") == column),
         None,
     )
+    if stats and stats.get("distinct_estimated"):
+        raise JoinValidationError(
+            f"'{_target_label(target)}.{column}' only has an estimated distinct count (the table is large); "
+            "uniqueness cannot be confirmed from a sample."
+        )
     if not stats or stats.get("distinct_count") is None or profile.row_count is None:
         raise JoinValidationError(
             f"'{_target_label(target)}.{column}' has no statistics yet — refresh the dataset's statistics first."

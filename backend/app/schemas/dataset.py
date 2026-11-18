@@ -230,6 +230,8 @@ class DatasetProfileColumn(BaseModel):
     column: str
     null_count: int | None = None
     distinct_count: int | None = None
+    #: True when the count came from the planner's sample (a large table) rather than an exact sort.
+    distinct_estimated: bool = False
     min: Any | None = None
     max: Any | None = None
 
