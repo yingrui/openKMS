@@ -15,11 +15,15 @@ import {
   type DatasetProfileResponse,
 } from '../../data/datasetsApi';
 import { EntityViewHeader, EntityViewPanel } from '../shared/EntityViewShell';
+import { useDatasetDetail } from './useDatasetDetail';
 
 /** Dataset columns (physical) — with a maintained description and profile stats. */
 export function DatasetColumnsTab() {
   const { t } = useTranslation('ontology');
   const { id: datasetId = '' } = useParams();
+  /* Statistics are a scan of a live table. A file dataset's columns come from the version it stored, so there
+     is nothing to scan and no reason to offer a button that can only fail. */
+  const canProfile = useDatasetDetail().dataset.kind === 'table';
 
   const [metadata, setMetadata] = useState<ColumnMetadata[]>([]);
   const [profile, setProfile] = useState<DatasetProfileResponse | null>(null);
@@ -36,7 +40,7 @@ export function DatasetColumnsTab() {
     try {
       const [cols, prof, fields] = await Promise.all([
         fetchDatasetMetadata(datasetId),
-        fetchDatasetProfile(datasetId).catch(() => null),
+        canProfile ? fetchDatasetProfile(datasetId).catch(() => null) : Promise.resolve(null),
         fetchDatasetModelFields(datasetId).catch(() => []),
       ]);
       setMetadata(cols);
@@ -50,7 +54,7 @@ export function DatasetColumnsTab() {
     } finally {
       setLoading(false);
     }
-  }, [datasetId, t]);
+  }, [datasetId, t, canProfile]);
 
   useEffect(() => {
     void load();
@@ -140,22 +144,26 @@ export function DatasetColumnsTab() {
         <div className="dataset-detail-data">
           <div className="dataset-columns__toolbar">
             <span>
-              {profile?.computed_at
-                ? [
-                    t('datasets.profileRows', { count: profile.row_count ?? 0 }),
-                    t('datasets.profileComputedAt', { time: profile.computed_at }),
-                  ].join(' · ')
-                : t('datasets.profileEmpty')}
+              {!canProfile
+                ? null
+                : profile?.computed_at
+                  ? [
+                      t('datasets.profileRows', { count: profile.row_count ?? 0 }),
+                      t('datasets.profileComputedAt', { time: profile.computed_at }),
+                    ].join(' · ')
+                  : t('datasets.profileEmpty')}
             </span>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => void refreshProfile()}
-              disabled={profiling}
-            >
-              {profiling ? <Loader2 size={14} className="ds-loading__spinner" aria-hidden /> : null}
-              {t('datasets.refreshProfile')}
-            </button>
+            {canProfile ? (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => void refreshProfile()}
+                disabled={profiling}
+              >
+                {profiling ? <Loader2 size={14} className="ds-loading__spinner" aria-hidden /> : null}
+                {t('datasets.refreshProfile')}
+              </button>
+            ) : null}
           </div>
           {loading ? (
             <div className="ds-loading">
