@@ -9,7 +9,7 @@ src/pages/auth/Signup.tsx 3
 src/pages/catalog/DatasetDetailDataTab.tsx 1
 src/pages/console/permissions/ConsoleAccessGroups.tsx 1
 src/pages/glossaries/GlossaryDetail.tsx 1
-src/pages/knowledge-bases/KnowledgeBaseDetail.tsx 1
+src/pages/knowledge-bases/detail/tabs/SearchTab.tsx 1
 src/pages/ontology/ObjectExplorer.tsx 1
 src/pages/ontology/OntologySchemaGraph.tsx 1
 src/styles/design-system/Pagination.tsx 1

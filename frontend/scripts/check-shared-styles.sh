@@ -138,8 +138,7 @@ done < <(rg -n --no-heading 'background:\s*rgba\(\s*0\s*,\s*0\s*,\s*0' src --glo
 # Soft limit 700 lines across the whole frontend source, including hooks, API clients
 # and graph models. Allowlist is known debt — shrink it, do not grow it.
 PAGE_LINE_LIMIT=700
-PAGE_SIZE_ALLOW='src/pages/knowledge-bases/KnowledgeBaseDetail.tsx
-src/pages/knowledge-bases/useKnowledgeBaseDetail.ts
+PAGE_SIZE_ALLOW='src/pages/knowledge-bases/useKnowledgeBaseDetail.ts
 src/pages/knowledge-map/KnowledgeMap.tsx
 src/pages/documents/DocumentDetail.infoPanel.tsx
 src/pages/documents/useDocumentDetail.tsx

@@ -1,13 +1,8 @@
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
-  ChevronRight,
-  Search as SearchIcon,
-  Send,
   MessageSquare,
   Loader2,
-  Filter,
-  ChevronDown,
   RefreshCw,
 } from 'lucide-react';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
@@ -27,12 +22,10 @@ import { WikiSpacesTab } from './detail/tabs/WikiSpacesTab';
 import { DataScopeTab } from './detail/tabs/DataScopeTab';
 import { FaqsTab } from './detail/tabs/FaqsTab';
 import { ChunksTab } from './detail/tabs/ChunksTab';
+import { SearchTab } from './detail/tabs/SearchTab';
 import { metadataArrayFlags } from './detail/faqMetadata';
 import type { FAQResponse } from '../../data/knowledgeBasesApi';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
-import {
-  KbRetrievalProvenancePanel,
-} from '../workforce/chat';
 import './KnowledgeBaseDetail.scss';
 import '../workforce/chat/KbQaChat.scss';
 
@@ -278,208 +271,39 @@ export function KnowledgeBaseDetail() {
 
         {/* ===== SEARCH TAB ===== */}
         {activeTab === 'search' && (
-          <section className="kb-section kb-search-section">
-            <h2>{t('detail.searchTitle')}</h2>
-            <p className="kb-section-desc">
-              {t('detail.searchDesc')}
-            </p>
-            <div className="kb-search-type-tabs">
-              {(['all', 'chunks', 'faqs'] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  className={`kb-search-type-tab${searchType === type ? ' active' : ''}`}
-                  onClick={() => setSearchType(type)}
-                  aria-pressed={searchType === type}
-                >
-                  {type === 'all' ? t('detail.searchTypeAll') : type === 'chunks' ? t('detail.searchTypeChunks') : t('detail.searchTypeFaqs')}
-                </button>
-              ))}
-            </div>
-            <form className="kb-search-form" onSubmit={handleSearch}>
-              <SearchIcon size={20} />
-              <input
-                type="search"
-                aria-label={t('detail.searchAria')}
-                placeholder={t('detail.searchPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="kb-search-input"
-              />
-              <button
-                type="submit"
-                className="kb-search-submit"
-                disabled={searching}
-                aria-label={searching ? t('detail.searching') : t('detail.search')}
-              >
-                <Send size={18} aria-hidden />
-                <span className="ds-compact-label">{searching ? t('detail.searching') : t('detail.search')}</span>
-              </button>
-            </form>
-
-            <div className="kb-search-options-wrap">
-              <button
-                type="button"
-                className="kb-search-options-toggle"
-                onClick={() => setSearchOptionsExpanded((o) => !o)}
-                aria-expanded={searchOptionsExpanded}
-              >
-                {searchOptionsExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                <Filter size={16} aria-hidden />
-                <span>{t('detail.searchOptionsToggle')}</span>
-                {(Object.values(searchLabelFilters).some(Boolean) ||
-                  Object.values(searchMetadataFilters).some(Boolean) ||
-                  searchForceDense ||
-                  searchTopK !== 10) && (
-                  <span className="kb-search-options-badge">{t('detail.filtersActive')}</span>
-                )}
-              </button>
-              {searchOptionsExpanded ? (
-                <div className="kb-search-options-panel">
-                  <div className="kb-search-options-block">
-                    <div className="kb-search-options-block-title">{t('detail.searchOptionsRankingTitle')}</div>
-                    <div className="kb-search-options-row">
-                      <label className="kb-search-advanced-field">
-                        <span>{t('detail.searchTopKLabel')}</span>
-                        <input
-                          type="number"
-                          min={1}
-                          max={50}
-                          value={searchTopK}
-                          onChange={(e) => {
-                            const n = Number(e.target.value);
-                            setSearchTopK(Number.isFinite(n) ? Math.min(50, Math.max(1, Math.trunc(n))) : 10);
-                          }}
-                          className="ds-control"
-                        />
-                      </label>
-                      <label className="kb-search-advanced-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={searchForceDense}
-                          onChange={(e) => setSearchForceDense(e.target.checked)}
-                        />
-                        <span>{t('detail.searchForceDense')}</span>
-                      </label>
-                    </div>
-                    <p className="kb-search-advanced-hint">{t('detail.searchAdvancedHint')}</p>
-                  </div>
-
-                  {kb?.metadata_keys?.length ? (
-                    <>
-                      <hr className="kb-search-options-sep" />
-                      <div className="kb-search-options-block">
-                        <div className="kb-search-options-block-title">{t('detail.metadataLabel')}</div>
-                        <p className="kb-search-filters-hint">{t('detail.filtersHint')}</p>
-                        <div className="kb-search-filters-group">
-                          {kb.metadata_keys.map((key) => (
-                            <div key={key} className="kb-search-filter-row">
-                              <label htmlFor={`search-meta-${key}`}>{key}</label>
-                              <input
-                                id={`search-meta-${key}`}
-                                type="text"
-                                placeholder={t('detail.placeholderMetaExample')}
-                                value={searchMetadataFilters[key] ?? ''}
-                                onChange={(e) => setSearchMetadataFilters((prev) => ({ ...prev, [key]: e.target.value }))}
-                                className="ds-control"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <hr className="kb-search-options-sep" />
-                      <p className="kb-search-options-empty-hint">{t('detail.metadataKeysEmptyHint')}</p>
-                    </>
-                  )}
-                </div>
-              ) : null}
-            </div>
-
-            {hasSearched && searchResults.length > 0 && (
-              <div className="kb-search-results-panel">
-                <h3>{t('detail.resultsTitle', { count: searchResults.length })}</h3>
-                {searchRetrievalDiff &&
-                (searchRetrievalDiff.added.length > 0 ||
-                  searchRetrievalDiff.removed.length > 0 ||
-                  searchRetrievalDiff.moved.length > 0) ? (
-                  <div className="kb-search-diff-panel" role="region" aria-label={t('detail.searchDiffAria')}>
-                    <h4 className="kb-search-diff-title">{t('detail.searchDiffTitle')}</h4>
-                    {searchRetrievalDiff.added.length > 0 ? (
-                      <p className="kb-search-diff-line">
-                        <strong>{t('detail.searchDiffAdded')}</strong> {searchRetrievalDiff.added.length}
-                      </p>
-                    ) : null}
-                    {searchRetrievalDiff.removed.length > 0 ? (
-                      <p className="kb-search-diff-line">
-                        <strong>{t('detail.searchDiffRemoved')}</strong> {searchRetrievalDiff.removed.length}
-                      </p>
-                    ) : null}
-                    {searchRetrievalDiff.moved.length > 0 ? (
-                      <ul className="kb-search-diff-moves">
-                        {searchRetrievalDiff.moved.slice(0, 20).map((m) => (
-                          <li key={m.id}>
-                            {t('detail.searchDiffMoved', {
-                              id: m.id.length > 24 ? `${m.id.slice(0, 20)}…` : m.id,
-                              from: m.from + 1,
-                              to: m.to + 1,
-                            })}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </div>
-                ) : null}
-                <ul className="kb-search-results-list">
-                  {searchResults.map((r) => (
-                    <li key={r.id} className="kb-search-result-item">
-                      <span className="kb-search-result-source">
-                        [{r.source_type}]
-                        {r.source_type === 'chunk' && r.wiki_page_id && r.wiki_space_id && (
-                          <span className="kb-search-result-kind"> {t('detail.searchHitWiki')} </span>
-                        )}{' '}
-                        {r.wiki_page_id && r.wiki_space_id ? (
-                          <Link to={`/wikis/${r.wiki_space_id}/pages/${r.wiki_page_id}`}>
-                            {r.source_name || r.wiki_page_id}
-                          </Link>
-                        ) : r.document_id ? (
-                          <Link to={`/documents/view/${r.document_id}`}>{r.source_name || r.document_id}</Link>
-                        ) : (
-                          <span>{r.source_name || r.document_id || t('detail.faqSourceFallback')}</span>
-                        )}
-                      </span>
-                      <p className="kb-search-result-excerpt">{r.content.slice(0, 300)}</p>
-                      <span className="kb-search-result-score">{t('detail.matchPercent', { pct: (r.score * 100).toFixed(0) })}</span>
-                      <KbRetrievalProvenancePanel s={r} t={t} />
-                      {r.source_type === 'chunk' ? (
-                        <div className="kb-search-result-chunk-actions">
-                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void openChunkViewFromId(r.id)}>
-                            {t('detail.chunkView')}
-                          </button>
-                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void openChunkEditFromId(r.id)}>
-                            {t('detail.chunkEdit')}
-                          </button>
-                        </div>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {hasSearched && searchResults.length === 0 && (
-              <p className="kb-empty-text">{t('detail.noSearchResults')}</p>
-            )}
-
-            {!hasSearched && (
-              <div className="kb-search-empty">
-                <SearchIcon size={48} strokeWidth={1} />
-                <p>{t('detail.searchEmptyPrompt')}</p>
-              </div>
-            )}
-          </section>
+          <SearchTab
+            t={t}
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
+            searchType={searchType}
+            onSearchTypeChange={setSearchType}
+            onSubmit={handleSearch}
+            searching={searching}
+            results={searchResults}
+            hasSearched={hasSearched}
+            optionsOpen={searchOptionsExpanded}
+            onToggleOptions={() => setSearchOptionsExpanded((o) => !o)}
+            activeFilterCount={
+              [
+                Object.values(searchLabelFilters).some(Boolean),
+                Object.values(searchMetadataFilters).some(Boolean),
+                searchForceDense,
+                searchTopK !== 10,
+              ].filter(Boolean).length
+            }
+            topK={searchTopK}
+            onTopKChange={setSearchTopK}
+            forceDense={searchForceDense}
+            onForceDenseChange={setSearchForceDense}
+            metadataKeys={kb.metadata_keys}
+            metadataFilters={searchMetadataFilters}
+            onMetadataFilterChange={(key, value) =>
+              setSearchMetadataFilters((prev) => ({ ...prev, [key]: value }))
+            }
+            retrievalDiff={searchRetrievalDiff}
+            onChunkView={(id) => void openChunkViewFromId(id)}
+            onChunkEdit={(id) => void openChunkEditFromId(id)}
+          />
         )}
 
         {/* ===== SETTINGS TAB ===== */}
