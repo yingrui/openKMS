@@ -491,7 +491,9 @@
     "erOneOnly": "有且仅有一条",
     "erZeroOrOne": "零或一条",
     "erLegendHint": "外键侧的\"多\"由数据集结构决定；目标侧的 1 与 0..1 在关系表单的「要求匹配到行」里配置。",
-    "dimensionFromColumn": "时间周期由数据集列的「时间周期」决定（格式已说明粒度），这里不再单独设置。"
+    "dimensionFromColumn": "时间周期由数据集列的「时间周期」决定（格式已说明粒度），这里不再单独设置。",
+    "sortDesc": "降序",
+    "sortAsc": "升序"
   },
   "datasets": {
     "title": "数据集",

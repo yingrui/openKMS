@@ -17,7 +17,9 @@ This checks the files where the namespace is knowable:
 - the namespace(s) come from `useTranslation('ns')` / `useTranslation(['a','b'])` in the
   same file; with no call, `defaultNS` (`common`) applies;
 - a `t('ns:key')` prefix wins;
-- files whose `t` arrives from a hook/props cannot be resolved statically and are skipped;
+- a file whose `t` arrives from a hook/props cannot have its namespace resolved, so its literal keys are
+  checked against **every** namespace: a key that exists in none of them is a key nobody added, and the
+  reader sees it raw (that is how `dataModel.sortDesc` reached the playground);
 - plural keys pass when the base key, `<key>_one/_other/_plural/_zero` or the base key
   object exists.
 
@@ -95,7 +97,9 @@ def offenders() -> list[str]:
         source = path.read_text(errors="ignore")
         nss = namespaces_in(source)
         if nss is None:
-            continue
+            # `t` came from a hook or a prop: the namespace is unknowable, but "this key exists nowhere"
+            # is still a fact worth failing on.
+            nss = "any"
         for match in T_CALL.finditer(source):
             raw = match.group(1)
             ns, key = (raw.split(":", 1) + [None])[:2] if ":" in raw else (None, raw)

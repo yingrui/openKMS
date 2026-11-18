@@ -496,7 +496,9 @@
     "erOneOnly": "one and only one",
     "erZeroOrOne": "zero or one",
     "erLegendHint": "The many side is structural (a foreign key); the target side’s 1 vs 0..1 is the form’s \"require a match\" option.",
-    "dimensionFromColumn": "The period comes from the dataset column’s time period (its format already names the granularity); it is not set here."
+    "dimensionFromColumn": "The period comes from the dataset column’s time period (its format already names the granularity); it is not set here.",
+    "sortDesc": "Descending",
+    "sortAsc": "Ascending"
   },
   "datasets": {
     "title": "Datasets",
