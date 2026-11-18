@@ -5,8 +5,6 @@ import {
   Loader2,
   RefreshCw,
 } from 'lucide-react';
-import { ResourceSharePanel } from '../../components/ResourceSharePanel';
-import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import {
   KbChunkDialog,
   KbDocPickerDialog,
@@ -14,7 +12,6 @@ import {
   KbGenerateFaqDialog,
   KbWikiSpacePickerDialog,
 } from './KnowledgeBaseDetail.dialogs';
-import { KbAgentSettings } from './KbAgentSettings';
 import { TAB_ICONS, TAB_ORDER } from './KnowledgeBaseDetail.types';
 import { useKnowledgeBaseDetail } from './useKnowledgeBaseDetail';
 import { DocumentsTab } from './detail/tabs/DocumentsTab';
@@ -23,6 +20,7 @@ import { DataScopeTab } from './detail/tabs/DataScopeTab';
 import { FaqsTab } from './detail/tabs/FaqsTab';
 import { ChunksTab } from './detail/tabs/ChunksTab';
 import { SearchTab } from './detail/tabs/SearchTab';
+import { SettingsTab } from './detail/tabs/SettingsTab';
 import { metadataArrayFlags } from './detail/faqMetadata';
 import type { FAQResponse } from '../../data/knowledgeBasesApi';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
@@ -32,7 +30,7 @@ import '../workforce/chat/KbQaChat.scss';
 export function KnowledgeBaseDetail() {
   const {
     loadKb,
-    kbId,   channels, t, kb,  activeTab, setActiveTab, loading, docs, docTotal, docPage, setDocPage, docPageSize, setDocPageSize,
+    channels, t, kb,  activeTab, setActiveTab, loading, docs, docTotal, docPage, setDocPage, docPageSize, setDocPageSize,
       genDocs,  showDocPicker,  pickerSearch,
      pickerResults,  pickerLoading, pickerSelected, 
     pickerSelectedChannel,  pickerChannelExpanded, 
@@ -307,163 +305,33 @@ export function KnowledgeBaseDetail() {
         )}
 
         {/* ===== SETTINGS TAB ===== */}
-        {activeTab === 'settings' && (
-          <section className="kb-section">
-            <h2 id="kb-settings-heading" className="kb-settings-page-title">
-              {t('detail.settingsTitle')}
-            </h2>
-
-            <div className="kb-settings-subtabs" role="tablist" aria-label={t('detail.settingsTitle')}>
-              {settingsSubTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={settingsSubTab === tab.id}
-                  className={`kb-settings-subtab ${settingsSubTab === tab.id ? 'active' : ''}`}
-                  onClick={() => setSettingsSubTab(tab.id)}
-                >
-                  <tab.icon size={16} aria-hidden />
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="kb-settings-subtab-panel" role="tabpanel">
-              {settingsSubTab === 'sharing' && kbId ? (
-                <ResourceSharePanel
-                  resourceType={RESOURCE_TYPES.knowledgeBase}
-                  resourceId={kbId}
-                  title={t('detail.sharingTitle')}
-                />
-              ) : null}
-
-              {settingsSubTab === 'agent' && kb ? (
-                <KbAgentSettings kb={kb} onSaved={loadKb} />
-              ) : null}
-
-              {settingsSubTab === 'general' ? (
-                <>
-            <div className="kb-settings-header-row">
-              <p className="kb-settings-general-lead">{t('detail.settingsGeneralLead')}</p>
-              <button
-                type="button"
-                className="btn btn-primary kb-settings-header-save"
-                disabled={settingsSaving}
-                onClick={handleSaveSettings}
-              >
-                {settingsSaving ? t('detail.savingSettings') : t('detail.saveSettings')}
-              </button>
-            </div>
-
-            <div className="kb-settings-form">
-              <div className="kb-settings-layout">
-                <div className="kb-settings-col">
-                  <label>
-                    <span>{t('detail.embeddingModel')}</span>
-                    <select value={settingsEmbeddingModelId} onChange={(e) => setSettingsEmbeddingModelId(e.target.value)} className="ds-control">
-                      <option value="">{t('detail.modelNone')}</option>
-                      {embeddingModels.map((m) => (
-                        <option key={m.id} value={m.id}>{m.name} ({m.model_name})</option>
-                      ))}
-                    </select>
-                    <small>{t('detail.embeddingHelp')}</small>
-                  </label>
-
-                  <fieldset className="kb-settings-fieldset">
-                    <legend>{t('detail.chunkingFieldset')}</legend>
-                    <label>
-                      <span>{t('detail.strategy')}</span>
-                      <select value={settingsChunkStrategy} onChange={(e) => setSettingsChunkStrategy(e.target.value)} className="ds-control">
-                        <option value="fixed_size">{t('detail.strategyFixedSize')}</option>
-                        <option value="markdown_header">{t('detail.strategyMarkdownHeader')}</option>
-                        <option value="paragraph">{t('detail.strategyParagraph')}</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>{t('detail.chunkSize')}</span>
-                      <input
-                        type="number"
-                        min={100}
-                        max={10000}
-                        value={settingsChunkSize}
-                        onChange={(e) => setSettingsChunkSize(Number(e.target.value))}
-                        className="ds-control"
-                      />
-                    </label>
-                    <label>
-                      <span>{t('detail.chunkOverlap')}</span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={1000}
-                        value={settingsChunkOverlap}
-                        onChange={(e) => setSettingsChunkOverlap(Number(e.target.value))}
-                        className="ds-control"
-                      />
-                    </label>
-                  </fieldset>
-                </div>
-
-                <div className="kb-settings-col kb-settings-col-text">
-                  <label>
-                    <span>{t('detail.faqGenPrompt')}</span>
-                    <textarea
-                      className="ds-control"
-                      placeholder={t('detail.faqGenPromptPlaceholder')}
-                      value={settingsFaqPrompt}
-                      onChange={(e) => setSettingsFaqPrompt(e.target.value)}
-                      rows={6}
-                    />
-                    <small>{t('detail.faqGenPromptHelp')}</small>
-                  </label>
-
-                  <label>
-                    <span>{t('detail.metadataKeys')}</span>
-                    <input
-                      type="text"
-                      placeholder={t('detail.metadataKeysPlaceholder')}
-                      value={settingsMetadataKeys}
-                      onChange={(e) => setSettingsMetadataKeys(e.target.value)}
-                      className="ds-control"
-                    />
-                    <small>{t('detail.metadataKeysHelp')}</small>
-                  </label>
-                </div>
-              </div>
-
-              <fieldset className="kb-settings-fieldset kb-settings-index-fieldset">
-                <legend>{t('detail.indexJobTitle')}</legend>
-                <div className="kb-settings-index-actions">
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    disabled={indexJobSubmitting || !kb?.embedding_model_id}
-                    onClick={() => void enqueueIndexJob()}
-                  >
-                    {indexJobSubmitting ? (
-                      <>
-                        <Loader2 size={14} className="kb-spinner-inline" />
-                        {t('detail.indexJobButtonRunning')}
-                      </>
-                    ) : (
-                      t('detail.indexJobButton')
-                    )}
-                  </button>
-                  <Link to="/job-runs" className="kb-settings-index-jobs-link">
-                    {t('detail.indexJobViewJobs')}
-                  </Link>
-                </div>
-                <small className="kb-settings-index-help">{t('detail.indexJobHelp')}</small>
-                {!kb?.embedding_model_id ? (
-                  <small className="kb-settings-index-warn">{t('detail.indexJobRequiresEmbedding')}</small>
-                ) : null}
-              </fieldset>
-            </div>
-                </>
-              ) : null}
-            </div>
-          </section>
+        {activeTab === 'settings' && kb && (
+          <SettingsTab
+            t={t}
+            kbId={kb.id}
+            kb={kb}
+            subTabs={settingsSubTabs}
+            subTab={settingsSubTab ?? 'general'}
+            onSubTabChange={setSettingsSubTab}
+            embeddingModels={embeddingModels}
+            embeddingModelId={settingsEmbeddingModelId}
+            onEmbeddingModelIdChange={setSettingsEmbeddingModelId}
+            chunkStrategy={settingsChunkStrategy}
+            onChunkStrategyChange={setSettingsChunkStrategy}
+            chunkSize={settingsChunkSize}
+            onChunkSizeChange={setSettingsChunkSize}
+            chunkOverlap={settingsChunkOverlap}
+            onChunkOverlapChange={setSettingsChunkOverlap}
+            faqPrompt={settingsFaqPrompt}
+            onFaqPromptChange={setSettingsFaqPrompt}
+            metadataKeys={settingsMetadataKeys}
+            onMetadataKeysChange={setSettingsMetadataKeys}
+            saving={settingsSaving}
+            onSave={() => void handleSaveSettings()}
+            indexJobSubmitting={indexJobSubmitting}
+            onEnqueueIndex={() => void enqueueIndexJob()}
+            onKbReload={loadKb}
+          />
         )}
       </div>
 

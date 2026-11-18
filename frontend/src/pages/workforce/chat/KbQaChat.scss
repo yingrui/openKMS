@@ -1031,3 +1031,27 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   );
 }
 
+.kb-qa-grounding-warning {
+  flex-basis: 100%;
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--color-warning, #d97706);
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  list-style: none;
+}
+
+.kb-qa-source-card__usage {
+  font-size: var(--font-size-xs);
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+
+  &--used {
+    border-color: var(--color-accent, #2563eb);
+    color: var(--color-accent, #2563eb);
+  }
+}
