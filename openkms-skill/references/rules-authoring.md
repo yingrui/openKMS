@@ -2,9 +2,9 @@
 
 Part of [agentskills.io](https://agentskills.io/specification) **`references/`**.
 
-**Read this before** `rules add|update|evaluate|evaluate-all` and `events patch`.
+**Read this before** `metric-rules add|update|evaluate|evaluate-all` and `metric-events patch`.
 
-A rule watches **one metric** and states what must hold. Running it yields **pass / fail / unknown** for a period and scope; a failure that carries advice opens an **alert**. Rules live under `/api/metric-rules`, alerts under `/api/metric-events`. The CLI splits them the same way: `rules …` and `events …`.
+A rule watches **one metric** and states what must hold. Running it yields **pass / fail / unknown** for a period and scope; a failure that carries advice opens an **alert**. Rules live under `/api/metric-rules`, alerts under `/api/metric-events`. The CLI splits them the same way, under the API's own names: `metric-rules …` and `metric-events …`.
 
 Do **not** invent a condition shape by probing the API. Exactly one of `condition` / `identities` is required; both are JSON on the CLI.
 
@@ -38,7 +38,7 @@ One comparison, or a list of comparisons that must **all** hold:
 `filters` uses the data layer's own filter vocabulary (`{field|column, op, value}`), so a rule can be scoped to one scenario without a second filter language.
 
 ```bash
-python scripts/cli.py rules add \
+python scripts/cli.py metric-rules add \
   --name "缺货 SKU 数在阈值内" --metric-id METRIC_ID \
   --condition '{"left":{"metric":"METRIC_ID"},"op":"<","right":{"value":5}}' \
   --conclusion "缺货 SKU 数越界" --suggestion "检查今日分货" --yes
@@ -67,7 +67,7 @@ Two kinds, because the arithmetic of "agree" differs:
 Two identities cannot explain the same target metric (their residuals would overwrite each other in the alert) — merge them.
 
 ```bash
-python scripts/cli.py rules add \
+python scripts/cli.py metric-rules add \
   --name "分货额度 = 方案累计额度" --metric-id TARGET_METRIC_ID \
   --identities '[{"target":{"metric":"TARGET_METRIC_ID"},"members":[{"metric":"DETAIL_METRIC_ID","weight":-1}],"tolerance":{"abs":1}}]' \
   --yes
@@ -91,23 +91,23 @@ A rule may declare **run parameters** (`--run-params`) — the values a run must
 
 `--group-by FIELD` states the dimension the rule is checked per (e.g. `scenario_id`): one verdict per group, not one per run.
 
-The "运行" button asks for exactly what `rules get` reports as `run_params` — do not guess keys.
+The "运行" button asks for exactly what `metric-rules get` reports as `run_params` — do not guess keys.
 
 ## Evaluate
 
 ```bash
 # One rule, for a period and scope (--simulate = compute verdicts, publish no alerts)
-python scripts/cli.py rules evaluate --rule-id RULE_ID \
+python scripts/cli.py metric-rules evaluate --rule-id RULE_ID \
   --values '{"cycle":"2026-W46","scenario":["S1"]}' --simulate
 
 # Every active rule, or one metric's
-python scripts/cli.py rules evaluate-all --metric-id METRIC_ID \
+python scripts/cli.py metric-rules evaluate-all --metric-id METRIC_ID \
   --values '{"cycle":"2026-W46"}'
 ```
 
 A verdict is `pass` / `fail` / `unknown`. `unknown` is **not** a failure — it means the rule could not be computed (missing source, uncomputable operand) and publishes nothing. `--simulate` still reports what *would* have published.
 
-## Alerts (`events …`)
+## Alerts (`metric-events …`)
 
 A failure that carries advice opens an alert; it records the rule, the revision that fired, the period and scope, the evidence (each identity's residual), and the suggested action. State machine:
 
@@ -118,10 +118,10 @@ A failure that carries advice opens an alert; it records the rule, the revision 
 | `resolved` | acted on |
 
 ```bash
-python scripts/cli.py events list --open-only
-python scripts/cli.py events summary            # open/total per metric
-python scripts/cli.py events patch --event-id EVENT_ID --status resolved --assignee alice --yes
-python scripts/cli.py rules events --rule-id RULE_ID
+python scripts/cli.py metric-events list --open-only
+python scripts/cli.py metric-events summary            # open/total per metric
+python scripts/cli.py metric-events patch --event-id EVENT_ID --status resolved --assignee alice --yes
+python scripts/cli.py metric-rules events --rule-id RULE_ID
 ```
 
 **`version` is the rule's revision, not an event count.** Every accepted edit bumps it; the alert records which revision fired. Deleting a rule deletes its alerts (FK cascade) — they have no meaning without it.
@@ -132,5 +132,5 @@ A rule watches one metric, so list them via the metric they watch, not by scanni
 
 ```bash
 python scripts/cli.py metrics list                    # find the metric id
-python scripts/cli.py rules list --metric-id METRIC_ID
+python scripts/cli.py metric-rules list --metric-id METRIC_ID
 ```

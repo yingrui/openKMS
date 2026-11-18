@@ -192,9 +192,9 @@ def cmd_events_patch(ns: argparse.Namespace) -> None:
 # --- registration -------------------------------------------------------------------------------
 
 
-def add_rules_subparser(sub) -> None:
-    p = sub.add_parser("rules", help="Reconciliation rules (指标勾稽): thresholds, identities, runs, alerts")
-    sp = p.add_subparsers(dest="rules_cmd", required=True)
+def add_metric_rules_subparser(sub) -> None:
+    p = sub.add_parser("metric-rules", help="Reconciliation rules (指标勾稽): thresholds, identities, runs, alerts")
+    sp = p.add_subparsers(dest="metric_rules_cmd", required=True)
 
     rl = sp.add_parser("list", help="List rules")
     rl.add_argument("--metric-id", default=None, help="narrow to the rule's watched metric")
@@ -270,9 +270,9 @@ def add_rules_subparser(sub) -> None:
     ree.set_defaults(fn=cmd_rule_events)
 
 
-def add_events_subparser(sub) -> None:
-    p = sub.add_parser("events", help="Reconciliation alerts (metric-events)")
-    sp = p.add_subparsers(dest="events_cmd", required=True)
+def add_metric_events_subparser(sub) -> None:
+    p = sub.add_parser("metric-events", help="Reconciliation alerts (metric-events)")
+    sp = p.add_subparsers(dest="metric_events_cmd", required=True)
 
     el = sp.add_parser("list", help="Alerts, newest first")
     el.add_argument("--metric-id", default=None)

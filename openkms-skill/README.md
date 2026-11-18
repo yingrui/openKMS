@@ -30,8 +30,8 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `datasets` | `list`, `get`, `rows`, `metadata`, `profile`, `schema-history`, `joins list`, `quality list` | `create`, `update`, `column-description` (description + time period), `joins add/delete` (1:1 via `--from-unique`), `quality add/update/run/delete`, `ingest`, `file-create` + versions |
 | `metrics` | `list`, `compute`, `runs` | `add` (additivity, filters, time dimension), `delete` |
 | `semantic-models` | `get`, `list`, `export`, `fields list`, `query` | `add`, `import`, `delete`, `fields add/delete` |
-| `rules` | `list`, `get`, `evaluate`, `evaluate-all`, `events` | `add`, `update`, `delete` — reconciliation (指标勾稽): threshold or identity |
-| `events` | `list`, `summary` | `patch` (resolve / dismiss / reopen / assign) |
+| `metric-rules` | `list`, `get`, `evaluate`, `evaluate-all`, `events` | `add`, `update`, `delete` — reconciliation (指标勾稽): threshold or identity |
+| `metric-events` | `list`, `summary` | `patch` (resolve / dismiss / reopen / assign) |
 | `connectors` | `kinds`, `list`, `get` | create/update, sync, provision-dataset, probe, search |
 | `jobs` | `list`, `get` | `retry` |
 | `comments` | `list` | create/reply/update/delete |

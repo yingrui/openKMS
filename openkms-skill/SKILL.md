@@ -4,7 +4,7 @@ description: >-
   Operates an openKMS deployment via personal API key using bundled scripts/cli.py only
   (no ad-hoc curl/HTTP). Covers search, documents/articles/wiki/KB, glossaries, knowledge-map,
   evaluations, data-sources/datasets/connectors/jobs, ontology (objects/links/functions/actions),
-  metric rules (指标勾稽) and alerts, Chamber apps, and Kubernetes (apply, register-app, dev-sync,
+  metric rules (指标勾稽) and their alerts, Chamber apps, and Kubernetes (apply, register-app, dev-sync,
   logs). Open references/functions-authoring.md for Function --source-code-file;
   references/actions-authoring.md for ontology action-types; references/app-builder.md for Chamber app
   registration/patching; references/kubernetes.md for kubernetes apply/delete/dev-sync;

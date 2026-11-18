@@ -262,17 +262,17 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `metrics compute` | GET | `/api/metrics/{metric_id}/compute` | Runs the metric **read-only** (statement timeout + row cap); records a run. |
 | `metrics runs` | GET | `/api/metrics/{metric_id}/runs` | Recent executions (audit). |
 | `metrics delete` *(write)* | DELETE | `/api/metrics/{metric_id}` | |
-| `rules list` | GET | `/api/metric-rules` | Reconciliation rules; optional `?metric_id=`. |
-| `rules get` | GET | `/api/metric-rules/{rule_id}` | One rule, with `run_params` described (what 运行 will ask for). |
-| `rules add` *(write)* | POST | `/api/metric-rules` | Body `{name, metric_id, condition\|identities, severity?, conclusion?, suggestion?, owner?, rule_id?, status?, group_by?, run_params?}`. Exactly one of `condition` (threshold) / `identities` (指标勾稽) — see [rules-authoring.md](rules-authoring.md). |
-| `rules update` *(write)* | PATCH | `/api/metric-rules/{rule_id}` | Partial; `--new-rule-id` renames the slug. Every accepted change bumps `version`. |
-| `rules delete` *(write)* | DELETE | `/api/metric-rules/{rule_id}` | Deletes its alerts too (FK cascade). |
-| `rules evaluate` | POST | `/api/metric-rules/{rule_id}/evaluate` | Body `{dry_run, values}` — run one rule for a period/scope; `--simulate` computes verdicts without publishing. |
-| `rules evaluate-all` | POST | `/api/metric-rules/evaluate` | Body `{metric_id?, values}` — every active rule, or one metric's. |
-| `rules events` | GET | `/api/metric-rules/{rule_id}/events` | A rule's alerts (`?status=`, `?limit=`, `?offset=`). |
-| `events list` | GET | `/api/metric-events` | Alerts, newest first (`?metric_id=`, `?rule_id=`, `?status=open\|dismissed\|resolved`, `?severity=P0\|P1\|P2`, `?open_only=true`). |
-| `events summary` | GET | `/api/metric-events/summary` | Open/total alerts per metric — one call for a list page's badges. |
-| `events patch` *(write)* | PATCH | `/api/metric-events/{event_id}` | Body `{status?, assignee?, note?}` — resolve / dismiss / reopen / assign an alert. |
+| `metric-rules list` | GET | `/api/metric-rules` | Reconciliation rules; optional `?metric_id=`. |
+| `metric-rules get` | GET | `/api/metric-rules/{rule_id}` | One rule, with `run_params` described (what 运行 will ask for). |
+| `metric-rules add` *(write)* | POST | `/api/metric-rules` | Body `{name, metric_id, condition\|identities, severity?, conclusion?, suggestion?, owner?, rule_id?, status?, group_by?, run_params?}`. Exactly one of `condition` (threshold) / `identities` (指标勾稽) — see [rules-authoring.md](rules-authoring.md). |
+| `metric-rules update` *(write)* | PATCH | `/api/metric-rules/{rule_id}` | Partial; `--new-rule-id` renames the slug. Every accepted change bumps `version`. |
+| `metric-rules delete` *(write)* | DELETE | `/api/metric-rules/{rule_id}` | Deletes its alerts too (FK cascade). |
+| `metric-rules evaluate` | POST | `/api/metric-rules/{rule_id}/evaluate` | Body `{dry_run, values}` — run one rule for a period/scope; `--simulate` computes verdicts without publishing. |
+| `metric-rules evaluate-all` | POST | `/api/metric-rules/evaluate` | Body `{metric_id?, values}` — every active rule, or one metric's. |
+| `metric-rules events` | GET | `/api/metric-rules/{rule_id}/events` | A rule's alerts (`?status=`, `?limit=`, `?offset=`). |
+| `metric-events list` | GET | `/api/metric-events` | Alerts, newest first (`?metric_id=`, `?rule_id=`, `?status=open\|dismissed\|resolved`, `?severity=P0\|P1\|P2`, `?open_only=true`). |
+| `metric-events summary` | GET | `/api/metric-events/summary` | Open/total alerts per metric — one call for a list page's badges. |
+| `metric-events patch` *(write)* | PATCH | `/api/metric-events/{event_id}` | Body `{status?, assignee?, note?}` — resolve / dismiss / reopen / assign an alert. |
 | `semantic-models get` | GET | `/api/semantic-models/{id}` | One model's scope (datasets) + `ai_context` — the full record, not the list summary. |
 | `semantic-models list` | GET | `/api/semantic-models` | Named semantic models (scope = dataset ids). |
 | `semantic-models add` *(write)* | POST | `/api/semantic-models` | Body `{name, dataset_ids, description?}`. |
