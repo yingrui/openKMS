@@ -5,10 +5,12 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchDatasetMetadata,
+  fetchDatasetModelFields,
   fetchDatasetProfile,
   refreshDatasetProfile,
   updateColumnDescription,
   type ColumnMetadata,
+  type DatasetModelFieldResponse,
   type DatasetProfileResponse,
 } from '../../data/datasetsApi';
 import { EntityViewHeader, EntityViewPanel } from '../shared/EntityViewShell';
@@ -20,6 +22,8 @@ export function DatasetColumnsTab() {
 
   const [metadata, setMetadata] = useState<ColumnMetadata[]>([]);
   const [profile, setProfile] = useState<DatasetProfileResponse | null>(null);
+  /* A column's time role lives on the model's field, not on the column, so it is read from the models. */
+  const [modelFields, setModelFields] = useState<DatasetModelFieldResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [profiling, setProfiling] = useState(false);
   const [descriptions, setDescriptions] = useState<Record<string, string>>({});
@@ -29,12 +33,14 @@ export function DatasetColumnsTab() {
     if (!datasetId) return;
     setLoading(true);
     try {
-      const [cols, prof] = await Promise.all([
+      const [cols, prof, fields] = await Promise.all([
         fetchDatasetMetadata(datasetId),
         fetchDatasetProfile(datasetId).catch(() => null),
+        fetchDatasetModelFields(datasetId).catch(() => []),
       ]);
       setMetadata(cols);
       setProfile(prof);
+      setModelFields(fields);
       setDescriptions(
         Object.fromEntries(cols.map((c) => [c.column_name, c.description ?? ''])),
       );
@@ -83,6 +89,27 @@ export function DatasetColumnsTab() {
     () => new Map((profile?.column_stats ?? []).map((s) => [s.column, s])),
     [profile],
   );
+  const timeRoleByColumn = useMemo(() => {
+    const map = new Map<string, { isTime: boolean; periodKind: string | null }>();
+    for (const field of modelFields) {
+      const current = map.get(field.column_name);
+      /* `is_time: null` follows the datatype; a model that says false does not erase one that says true. */
+      const isTime = field.is_time === true || (field.is_time === null && field.period_kind !== null);
+      if (!current) map.set(field.column_name, { isTime, periodKind: field.period_kind });
+      else if (isTime) map.set(field.column_name, { isTime: true, periodKind: field.period_kind ?? current.periodKind });
+    }
+    return map;
+  }, [modelFields]);
+
+  const timeRoleLabel = (column: string) => {
+    const role = timeRoleByColumn.get(column);
+    if (!role) return t('datasets.timeRoleUnused');
+    if (!role.isTime) return t('datasets.timeRoleNo');
+    return role.periodKind
+      ? t('datasets.timeRoleYesPeriod', { kind: role.periodKind })
+      : t('datasets.timeRoleYes');
+  };
+
   const fmt = (v: unknown) => (v === null || v === undefined ? t('datasets.dash') : String(v));
 
   return (
@@ -124,6 +151,7 @@ export function DatasetColumnsTab() {
                     <th>{t('datasets.colNullable')}</th>
                     <th>{t('datasets.colPosition')}</th>
                     <th>{t('datasets.colDescription')}</th>
+                    <th>{t('datasets.colTimeRole')}</th>
                     <th>{t('datasets.colNulls')}</th>
                     <th>{t('datasets.colDistinct')}</th>
                     <th>{t('datasets.colMin')}</th>
@@ -133,7 +161,7 @@ export function DatasetColumnsTab() {
                 <tbody>
                   {metadata.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="ds-table-empty">
+                      <td colSpan={10} className="ds-table-empty">
                         {t('datasets.emptyColumns')}
                       </td>
                     </tr>
@@ -164,6 +192,7 @@ export function DatasetColumnsTab() {
                               onBlur={() => void saveDescription(col)}
                             />
                           </td>
+                          <td>{timeRoleLabel(col.column_name)}</td>
                           <td>{s ? fmt(s.null_count) : t('datasets.dash')}</td>
                           <td>{s ? fmt(s.distinct_count) : t('datasets.dash')}</td>
                           <td>{s ? fmt(s.min) : t('datasets.dash')}</td>

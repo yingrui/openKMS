@@ -259,6 +259,20 @@ export async function applyDatasetRows(
   });
 }
 
+export interface DatasetModelFieldResponse {
+  model_id: string;
+  model_name: string;
+  field_name: string;
+  column_name: string;
+  datatype: string | null;
+  is_time: boolean | null;
+  period_kind: string | null;
+}
+
+export async function fetchDatasetModelFields(id: string): Promise<DatasetModelFieldResponse[]> {
+  return request<DatasetModelFieldResponse[]>(`/api/datasets/${id}/model-fields`);
+}
+
 export async function fetchDatasetMetadata(id: string): Promise<ColumnMetadata[]> {
   return request<ColumnMetadata[]>(`/api/datasets/${id}/metadata`);
 }

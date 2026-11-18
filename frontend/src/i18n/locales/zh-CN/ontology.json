@@ -929,7 +929,12 @@
     "cardShortNToZeroOrOne": "N → 0..1",
     "cardOneToOneShort": "1 → 1",
     "cardOneToZeroOrOne": "{{left}} 1 → 0..1 {{right}}",
-    "cardOneToZeroOrOneHint": "一条 {{left}} 记录最多对应一条 {{right}} 记录；保存时校验 {{left}} 侧字段唯一，被引用记录可以为空"
+    "cardOneToZeroOrOneHint": "一条 {{left}} 记录最多对应一条 {{right}} 记录；保存时校验 {{left}} 侧字段唯一，被引用记录可以为空",
+    "colTimeRole": "时间维度",
+    "timeRoleYes": "是",
+    "timeRoleYesPeriod": "是（{{kind}}）",
+    "timeRoleNo": "否",
+    "timeRoleUnused": "未建模"
   },
   "groups": {
     "title": "分组",

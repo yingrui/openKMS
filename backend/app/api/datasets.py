@@ -28,6 +28,8 @@ from app.services.ontology.property_types import (
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.dataset_profile import DatasetProfile
+from app.models.semantic_model import SemanticModel
+from app.models.semantic_model_field import SemanticModelField
 from app.services.data.dataset_rows import query_dataset_rows, query_dataset_summary
 from app.services.data.file_datasets import create_file_dataset
 from app.services.data.query import QueryError
@@ -645,6 +647,42 @@ async def refresh_dataset_profile(
         column_stats=row.column_stats or [],
         computed_at=row.computed_at,
     )
+
+
+@router.get(
+    "/{dataset_id}/model-fields",
+    dependencies=[Depends(require_any_permission(*_DATASET_VIEW))],
+)
+async def list_dataset_model_fields(
+    dataset_id: str,
+    dataset: Dataset = Depends(get_dataset_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    """How this dataset's columns appear as fields in semantic models.
+
+    A column's time role is a *field* property, so the columns page cannot answer "is this a time
+    dimension?" from the column metadata alone — it has to ask the models that use the dataset.
+    """
+    rows = (
+        await db.execute(
+            select(SemanticModelField, SemanticModel)
+            .join(SemanticModel, SemanticModel.id == SemanticModelField.semantic_model_id)
+            .where(SemanticModelField.dataset_id == dataset.id)
+            .order_by(SemanticModel.name, SemanticModelField.name)
+        )
+    ).all()
+    return [
+        {
+            "model_id": model.id,
+            "model_name": model.name,
+            "field_name": field.name,
+            "column_name": field.column_name,
+            "datatype": field.datatype,
+            "is_time": (field.dimension or {}).get("is_time"),
+            "period_kind": (field.dimension or {}).get("period_kind"),
+        }
+        for field, model in rows
+    ]
 
 
 @router.get(
