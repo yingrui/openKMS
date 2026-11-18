@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
-  MessageSquare,
   Loader2,
   RefreshCw,
 } from 'lucide-react';
@@ -158,17 +157,6 @@ export function KnowledgeBaseDetail() {
               <span className="ds-compact-label">{t('detail.indexJobHeader')}</span>
             </button>
           ) : null}
-        {kb.qa_available && kb.default_agent_id ? (
-          /* The conversation is a workforce screen; this is only the way in from the corpus it answers about. */
-          <Link
-            className="btn btn-primary btn-sm kb-detail-header-qa-btn"
-            to={`/workforce/${kb.default_agent_id}/chat?kb=${encodeURIComponent(kb.id)}`}
-            aria-label={t('detail.qaOpenChat')}
-          >
-            <MessageSquare size={18} aria-hidden />
-            <span className="ds-compact-label">{t('detail.qaOpenChat')}</span>
-          </Link>
-        ) : null}
         </div>
       </header>
 

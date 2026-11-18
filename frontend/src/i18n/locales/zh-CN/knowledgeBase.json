@@ -142,7 +142,6 @@
         "rerank": "重排"
       }
     },
-    "qaOpenChat": "问答",
     "agentScopeTitle": "Agent 数据范围",
     "agentScopeHelp": "限定本知识库问答 Agent 可使用的 Catalog 语义模型与本体分组；不参与检索索引。",
     "agentScopeSemanticModels": "语义模型",

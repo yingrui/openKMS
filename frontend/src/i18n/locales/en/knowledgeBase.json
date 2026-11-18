@@ -142,7 +142,6 @@
         "rerank": "Rerank"
       }
     },
-    "qaOpenChat": "Q&A",
     "agentScopeTitle": "Agent data scope",
     "agentScopeHelp": "Limits which Catalog semantic models and ontology groups the QA agent may use for this knowledge base. Not used for search indexing.",
     "agentScopeSemanticModels": "Semantic models",

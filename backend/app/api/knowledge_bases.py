@@ -27,7 +27,7 @@ from app.services.content.knowledge_bases.knowledge_base_read import (
     list_knowledge_bases_page,
 )
 from app.services.workforce.agent_config import agent_config_payload
-from app.services.workforce.read import default_agent_for_kb, default_agents_by_kb
+from app.services.workforce.read import default_agent_for_kb
 from app.services.content.knowledge_bases.kb_scope import require_knowledge_base_manage
 from app.services.content.wiki.wiki_page_scope import require_wiki_page_by_id_read
 from app.services.content.wiki.wiki_scope import load_wiki_space_scoped
@@ -130,7 +130,7 @@ async def create_knowledge_base(
     # agent with the knowledge base so there is never a second copy of the same runtime configuration.
     from app.api.workforce import ensure_default_agent
 
-    agent = await ensure_default_agent(
+    await ensure_default_agent(
         db,
         kb=kb,
         owner_sub=sub if isinstance(sub, str) else "",
@@ -139,7 +139,7 @@ async def create_knowledge_base(
     await db.commit()
     await db.refresh(kb)
     stats = await kb_stats(db, kb.id)
-    return kb_to_response(kb, stats, agent.id)
+    return kb_to_response(kb, stats)
 
 
 @router.get("/{kb_id}", response_model=KnowledgeBaseResponse)
@@ -148,8 +148,7 @@ async def get_knowledge_base(
     db: AsyncSession = Depends(get_db),
 ):
     stats = await kb_stats(db, kb.id)
-    agents_by_kb = await default_agents_by_kb(db, [kb.id])
-    return kb_to_response(kb, stats, agents_by_kb.get(kb.id))
+    return kb_to_response(kb, stats)
 
 
 @router.put("/{kb_id}", response_model=KnowledgeBaseResponse)
@@ -175,9 +174,7 @@ async def update_knowledge_base(
             agent.agent_config = agent_config_payload(kb.agent_config)
             await db.flush()
     stats = await kb_stats(db, kb.id)
-    if agent is None:
-        agent = await default_agent_for_kb(db, kb.id)
-    return kb_to_response(kb, stats, agent.id if agent is not None else None)
+    return kb_to_response(kb, stats)
 
 
 @router.post("/{kb_id}/index-job", response_model=JobResponse, status_code=201)

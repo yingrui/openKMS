@@ -47,8 +47,6 @@ export interface KnowledgeBaseResponse {
   chunk_config?: Record<string, unknown> | null;
   faq_prompt?: string | null;
   metadata_keys?: string[] | null;
-  /** The workforce agent this knowledge base's own Q&A resolves (created with it). */
-  default_agent_id?: string | null;
   /** Whether asking can work at all: a per-KB agent URL, or the deployment default. */
   qa_available?: boolean;
   document_count: number;
