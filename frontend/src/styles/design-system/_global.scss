@@ -146,11 +146,12 @@ textarea {
 }
 
 .btn-link.danger {
-  color: #b91c1c;
+  color: var(--color-danger);
 }
 
 .btn-link.danger:hover {
-  color: #991b1b;
+  /* A shade darker than the token, so hover reads on both themes without a second one. */
+  color: var(--color-danger-hover);
 }
 
 /* Utility */

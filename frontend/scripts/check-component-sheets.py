@@ -46,7 +46,10 @@ def _resolve(base: Path, spec: str) -> Path | None:
     target = (base.parent / spec).resolve()
     candidates = [
         target,
-        target.with_suffix(".scss") if target.suffix != ".scss" else target,
+        # Append, do not `with_suffix`: a Sass spec may contain a dot of its own
+        # (`document-detail.print` names a file, and `with_suffix` would resolve it to
+        # `document-detail.scss` — an edge that looks satisfied and loads the wrong sheet).
+        target.parent / f"{target.name}.scss",
         target.parent / f"_{target.name}.scss",
         target / "_index.scss",
         target / "index.scss",

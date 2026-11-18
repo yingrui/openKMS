@@ -52,6 +52,7 @@
   --color-success: #059669;
   --color-error: #dc2626;
   --color-danger: var(--color-error);
+  --color-danger-hover: color-mix(in srgb, var(--color-error) 84%, #000);
 
   /* Report series colours (charts, rankings): a set of *distinguishable* hues, themed rather than
    hard-coded in a component — dark mode lifts them, and a caller may retheme without touching TS. */

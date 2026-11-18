@@ -1,0 +1,676 @@
+// The printed page. A different medium with its own rules: paper colours, one column, no chrome, no
+// interaction. It lives apart from the screen sheet for two reasons — it is a third of it, and its
+// `!important`s are structural (they exist to beat the app shell), which reads as a smell beside rules
+// that do not need them.
+
+@use 'design-system/mixins' as *;
+@use 'design-system/tokens' as ds;
+
+@media print {
+  @page {
+    margin: 14mm 12mm;
+  }
+
+  html,
+  body,
+  #root,
+  .app-layout,
+  .app-main,
+  .app-content,
+  .document-detail {
+    background: var(--print-paper-bg) !important;
+    color: var(--print-ink) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .sidebar,
+  .app-main > header,
+  .document-detail-back,
+  .document-detail-info,
+  .document-detail-images,
+  .document-detail-panel-header,
+  .document-detail-pageindex,
+  .document-detail-pageindex-dialog-overlay,
+  .document-detail-block-back,
+  .document-detail-markdown-actions,
+  .document-detail-markdown-edit,
+  .article-detail-danger-zone,
+  .document-detail-lineage-panel {
+    display: none !important;
+  }
+
+  .app-content {
+    padding: 0 !important;
+  }
+
+  .document-detail-split,
+  .article-detail-markdown-split.document-detail-split {
+    display: block !important;
+    grid-template-columns: 1fr !important;
+    min-height: 0 !important;
+    gap: 0 !important;
+  }
+
+  .document-detail-panel,
+  .document-detail-panel.document-detail-markdown,
+  .article-detail-page .document-detail-panel.document-detail-markdown {
+    display: block !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  .document-detail-markdown-body,
+  .article-detail-page .document-detail-markdown-body,
+  .article-detail-page .document-detail-markdown-body.article-detail-markdown-body--edit {
+    display: block !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    min-height: 0 !important;
+    height: auto !important;
+    flex: none !important;
+  }
+
+  .document-detail-print-header {
+    display: block !important;
+    margin: 0 0 var(--space-5);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--print-border-muted);
+  }
+
+  .document-detail-markdown-body,
+  .document-detail-markdown-body * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .document-detail-markdown-body a {
+    color: inherit !important;
+    text-decoration: underline;
+  }
+
+  .document-detail-markdown-body pre,
+  .document-detail-markdown-body blockquote,
+  .document-detail-markdown-body table,
+  .document-detail-markdown-body img,
+  .document-detail-markdown-body figure {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+
+  .document-detail-markdown-body pre {
+    white-space: pre-wrap;
+    overflow: visible !important;
+    border: 1px solid var(--print-border-muted);
+    background: var(--print-surface-muted) !important;
+  }
+
+  .document-detail-markdown-body table {
+    width: 100%;
+  }
+}
+
+.document-detail-muted {
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+}
+
+.document-detail-process-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-compact);
+  margin-left: var(--padding-compact-y);
+  padding: calc(var(--space-1) + var(--space-1) / 4) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.document-detail-process-wrap {
+  display: inline-flex;
+  cursor: not-allowed;
+}
+
+.document-detail-process-btn:hover:not(:disabled) {
+  background: var(--color-bg-muted);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+.document-detail-process-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  background: var(--color-bg-muted);
+}
+
+.document-detail-force-reparse {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-compact);
+  margin-left: var(--space-3);
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.document-detail-force-reparse input {
+  cursor: pointer;
+}
+
+.document-detail-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-compact);
+  margin-left: var(--padding-compact-y);
+  padding: calc(var(--space-1) + var(--space-1) / 4) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.document-detail-reset-btn:hover:not(:disabled) {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+.document-detail-reset-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.doc-detail-spinner {
+  animation: doc-detail-spin 1s linear infinite;
+}
+
+@keyframes doc-detail-spin {
+  to { transform: rotate(360deg); }
+}
+
+.doc-status {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.document-detail-lineage {
+  margin-top: 4px;
+}
+
+.document-detail-lineage-header {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  width: 100%;
+  margin: 0;
+  padding: 8px 4px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+}
+
+.document-detail-lineage-header:hover {
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  color: var(--color-accent);
+}
+
+.document-detail-lineage-header span {
+  flex: 1;
+}
+
+.document-detail-lineage-hint {
+  margin: 0 0 8px 0;
+  font-size: var(--text-md);
+  padding-left: 2px;
+}
+
+.document-detail-lineage-panel {
+  margin-top: var(--space-2);
+}
+
+.document-detail-metadata-lineage-divider {
+  margin: 20px 0 12px 0;
+}
+
+.document-detail-lineage--in-metadata {
+  margin-top: 0;
+}
+
+.document-detail-lineage-intro {
+  margin: 0 0 calc(var(--space-3) + var(--space-1) / 2) 0;
+  font-size: var(--text-md);
+  line-height: 1.45;
+  max-width: 52ch;
+}
+
+.document-detail-lineage-lifecycle-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  padding: var(--space-3) calc(var(--space-3) + var(--space-1) / 2) 14px;
+  margin-bottom: 18px;
+}
+
+.document-detail-lineage-lifecycle-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.document-detail-lineage-lifecycle-toolbar-label {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.document-detail-lineage-lifecycle-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.document-detail-lineage-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+}
+
+.document-detail-lineage-field {
+  min-width: 0;
+}
+
+.document-detail-lineage-field--full {
+  grid-column: 1 / -1;
+}
+
+.document-detail-lineage-field-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.document-detail-lineage-field-value {
+  font-size: var(--text-md);
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.document-detail-lineage-pill {
+  display: inline-block;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+}
+
+.document-detail-lineage-pill--on {
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-success) 35%, var(--color-border));
+  color: var(--color-text);
+}
+
+.document-detail-lineage-pill--off {
+  background: color-mix(in srgb, var(--color-text-muted) 10%, transparent);
+  color: var(--color-text-secondary);
+}
+
+.document-detail-lineage-series-id {
+  display: block;
+  width: 100%;
+  font-size: var(--text-sm);
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-bg) 92%, var(--color-border));
+  border: 1px solid var(--color-border);
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.document-detail-lineage-input {
+  width: 100%;
+  max-width: 100%;
+}
+
+.document-detail-lineage-rel-block {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  padding: var(--space-3) calc(var(--space-3) + var(--space-1) / 2) 14px;
+}
+
+.document-detail-lineage-section-title {
+  margin: 0 0 12px 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.document-detail-lineage-empty {
+  margin: 0;
+  padding: 12px 10px;
+  font-size: var(--text-md);
+  text-align: center;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-bg) 70%, transparent);
+}
+
+@include max-width(ds.$bp-phone-max) {
+  .document-detail-lineage-field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .document-detail-lineage-field--full {
+    grid-column: 1;
+  }
+}
+
+.document-detail-lineage-tables {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+@include max-width(ds.$bp-sm-min) {
+  .document-detail-lineage-tables {
+    grid-template-columns: 1fr;
+  }
+}
+
+.document-detail-lineage-dir {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+.document-detail-lineage-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-md);
+}
+
+.document-detail-lineage-table th,
+.document-detail-lineage-table td {
+  border: 1px solid var(--color-border);
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.document-detail-lineage-table th {
+  background: color-mix(in srgb, var(--color-bg-elevated) 88%, var(--color-border));
+}
+
+.document-detail-lineage-rm {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.document-detail-lineage-rm:hover {
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+}
+
+.document-detail-lineage-add {
+  margin-top: var(--space-2);
+}
+
+.document-detail-lineage-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: 6px;
+}
+
+.document-detail-lineage-add-row .document-detail-info-input {
+  flex: 1 1 140px;
+  min-width: 120px;
+}
+
+/* Spreadsheet (.xlsx) preview */
+.document-detail-spreadsheet {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  min-height: 120px;
+}
+
+.document-detail-spreadsheet-error {
+  margin: 0;
+  padding: var(--padding-compact-y) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  color: var(--color-error);
+  font-size: var(--text-md);
+}
+
+.document-detail-spreadsheet-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-compact);
+}
+
+.document-detail-spreadsheet-tab {
+  padding: var(--gap-compact) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.document-detail-spreadsheet-tab--active {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.document-detail-spreadsheet-note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.document-detail-spreadsheet-scroll {
+  overflow: auto;
+  max-height: min(70vh, 640px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+.document-detail-spreadsheet-table {
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.document-detail-spreadsheet-table td {
+  border: 1px solid var(--color-border);
+  padding: var(--gap-compact) calc(var(--space-2) + var(--space-1) / 2);
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.document-detail-spreadsheet-table tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--color-bg-elevated) 55%, transparent);
+}
+
+/* Mind map (.xmind) preview */
+.document-detail-mindmap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 120px;
+}
+
+.document-detail-mindmap-sheets {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.document-detail-mindmap-sheet-name {
+  font-weight: 600;
+}
+
+.document-detail-mindmap-sheet-meta {
+  margin-left: 8px;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+.document-detail-mindmap-attachments h3 {
+  margin: 0 0 8px;
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.document-detail-mindmap-attachments ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: var(--text-md);
+}
+
+.document-detail-mindmap-attachments li {
+  margin-bottom: 4px;
+}
+
+.document-detail-mindmap-attachments code {
+  font-size: var(--text-sm);
+}
+
+.document-detail-info-name-row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.document-detail-info-name-row-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--space-1) + 2px);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.document-detail-info-name-row-btn:hover:not(:disabled) {
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
+.document-detail-info-name-row-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.document-detail-info-name-row-progress {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent);
+}
+
+/* Version preview dialog: a heading per part, the markdown body, then the metadata as JSON. Six classes
+   were written by the modal and defined nowhere, so the parts ran together and the JSON had no surface. */
+.document-detail-version-preview-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.document-detail-version-preview-sub {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.document-detail-version-preview-md {
+  font-size: var(--text-base);
+  line-height: 1.6;
+}
+
+.document-detail-version-preview-json {
+  margin: 0;
+  padding: var(--space-3);
+  max-height: 20rem;
+  overflow: auto;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-sm);
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* Restore dialog: a checkbox row and the optional checkpoint fields it reveals. */
+.document-detail-versions-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  cursor: pointer;
+}
+
+/* Loading skeleton for the split view: same columns as the real one, no height jump when it swaps. */
+.document-detail-loading-split {
+  min-height: 60vh;
+}
