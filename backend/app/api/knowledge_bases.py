@@ -26,8 +26,6 @@ from app.services.content.knowledge_bases.knowledge_base_read import (
     kb_to_response,
     list_knowledge_bases_page,
 )
-from app.services.workforce.agent_config import agent_config_payload
-from app.services.workforce.read import default_agent_for_kb
 from app.services.content.knowledge_bases.kb_scope import require_knowledge_base_manage
 from app.services.content.wiki.wiki_page_scope import require_wiki_page_by_id_read
 from app.services.content.wiki.wiki_scope import load_wiki_space_scoped
@@ -163,16 +161,6 @@ async def update_knowledge_base(
         setattr(kb, field, value)
     await db.flush()
     await db.refresh(kb)
-    # The Agent tab still speaks this API. Mirror the runtime half onto the knowledge base's default
-    # agent so the two surfaces cannot drift; `retrieval` is the knowledge base's own (see
-    # `services/workforce/agent_config.py`). Removed when the tab moves to the agent.
-    agent = None
-    if "agent_config" in update_data or "agent_skills" in update_data:
-        agent = await default_agent_for_kb(db, kb.id)
-        if agent is not None:
-            agent.agent_skills = kb.agent_skills
-            agent.agent_config = agent_config_payload(kb.agent_config)
-            await db.flush()
     stats = await kb_stats(db, kb.id)
     return kb_to_response(kb, stats)
 

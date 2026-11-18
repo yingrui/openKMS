@@ -1,5 +1,5 @@
 import type { KbAgentConfig } from '../../data/knowledgeBasesApi';
-import { mergeAgentConfig } from '../knowledge-bases/KbAgentSettings.utils';
+import { mergeAgentConfig } from './agentConfigMerge';
 
 /**
  * The form's own shape: strings for numeric inputs, so a half-typed number is not silently coerced.

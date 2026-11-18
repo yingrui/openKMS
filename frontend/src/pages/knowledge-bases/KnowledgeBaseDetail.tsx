@@ -28,7 +28,6 @@ import './detail/dialogs.scss';
 
 export function KnowledgeBaseDetail() {
   const {
-    loadKb,
     channels, t, kb,  activeTab, setActiveTab, loading, docs, docTotal, docPage, setDocPage, docPageSize, setDocPageSize,
       genDocs,  showDocPicker,  pickerSearch,
      pickerResults,  pickerLoading, pickerSelected, 
@@ -55,6 +54,7 @@ export function KnowledgeBaseDetail() {
     searchForceDense, setSearchForceDense, searchRetrievalDiff,  settingsEmbeddingModelId, setSettingsEmbeddingModelId, settingsFaqPrompt, setSettingsFaqPrompt,
     settingsChunkStrategy, setSettingsChunkStrategy, settingsChunkSize, setSettingsChunkSize,
     settingsChunkOverlap, setSettingsChunkOverlap, settingsMetadataKeys, setSettingsMetadataKeys,
+    retrievalTopK, setRetrievalTopK, retrievalRerank, setRetrievalRerank,
     embeddingModels, llmModels, settingsSaving,  settingsSubTab, setSettingsSubTab,
     indexJobSubmitting,  settingsSubTabs,   
         enqueueIndexJob, 
@@ -314,11 +314,14 @@ export function KnowledgeBaseDetail() {
             onFaqPromptChange={setSettingsFaqPrompt}
             metadataKeys={settingsMetadataKeys}
             onMetadataKeysChange={setSettingsMetadataKeys}
+            retrievalTopK={retrievalTopK}
+            onRetrievalTopKChange={setRetrievalTopK}
+            retrievalRerank={retrievalRerank}
+            onRetrievalRerankChange={setRetrievalRerank}
             saving={settingsSaving}
             onSave={() => void handleSaveSettings()}
             indexJobSubmitting={indexJobSubmitting}
             onEnqueueIndex={() => void enqueueIndexJob()}
-            onKbReload={loadKb}
           />
         )}
       </div>

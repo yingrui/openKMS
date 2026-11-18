@@ -1,10 +1,11 @@
 import type { KbAgentConfig } from '../../data/knowledgeBasesApi';
 
 /**
- * A partial edit applied to what the KB already has.
+ * A partial edit applied to the config that is already stored.
  *
- * The API replaces `agent_config` wholesale and the form renders only some of its keys, so sending the form's object on its
+ * The API replaces `agent_config` wholesale and a form renders only some of its keys, so sending the form's object on its
  * own silently cleared the rest — enabling code execution in one place and switching it off by pressing Save in another.
+ * Both callers need this: the agent's behaviour form, and the knowledge base's retrieval field.
  * One level of merge is enough: every key of the config is a group of scalars, and a group this form does not render
  * (`observability`) survives untouched.
  *

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeAgentConfig } from './KbAgentSettings.utils';
+import { mergeAgentConfig } from './agentConfigMerge';
 
 /**
  * The Agent tab renders a subset of `agent_config`; saving must not clear what it does not draw. This is the regression test

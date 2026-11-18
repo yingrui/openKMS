@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState, type MutableRefObject } from 'react';
 import type { TFunction } from 'i18next';
 import type { NavigateFunction } from 'react-router-dom';
-import { Bot, Settings, Users } from 'lucide-react';
+import { Settings, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   enqueueKnowledgeBaseIndexJob,
@@ -10,6 +10,7 @@ import {
 } from '../../../../data/knowledgeBasesApi';
 import { fetchAllModels, type ApiModelResponse } from '../../../../data/modelsApi';
 import type { SettingsSubTabId } from '../../KnowledgeBaseDetail.types';
+import { mergeAgentConfig } from '../../../workforce/agentConfigMerge';
 
 /**
  * The settings tab: the embedding and chunking choices, the FAQ prompt, the metadata keys, the index run.
@@ -48,6 +49,9 @@ export function useKbSettings({
   const [settingsChunkSize, setSettingsChunkSize] = useState(8000);
   const [settingsChunkOverlap, setSettingsChunkOverlap] = useState(50);
   const [settingsMetadataKeys, setSettingsMetadataKeys] = useState('');
+  /* Retrieval depth is a property of the corpus, so its editor is here and not on the agent. */
+  const [retrievalTopK, setRetrievalTopK] = useState('5');
+  const [retrievalRerank, setRetrievalRerank] = useState<boolean | null>(null);
   const [embeddingModels, setEmbeddingModels] = useState<ApiModelResponse[]>([]);
   const [llmModels, setLlmModels] = useState<ApiModelResponse[]>([]);
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -64,13 +68,15 @@ export function useKbSettings({
     setSettingsChunkOverlap((cc.chunk_overlap as number) || 50);
     setSettingsFaqPrompt(row.faq_prompt || '');
     setSettingsMetadataKeys(Array.isArray(row.metadata_keys) ? row.metadata_keys.join(', ') : '');
+    const retrieval = (row.agent_config as { retrieval?: { top_k?: number; rerank?: boolean | null } })?.retrieval;
+    setRetrievalTopK(String(retrieval?.top_k ?? 5));
+    setRetrievalRerank(retrieval?.rerank ?? null);
   };
 
   const settingsSubTabs = useMemo(
     () =>
       [
         { id: 'general' as const, label: t('detail.settingsTabGeneral'), icon: Settings },
-        { id: 'agent' as const, label: t('detail.settingsTabAgent'), icon: Bot },
         { id: 'sharing' as const, label: t('detail.settingsTabSharing'), icon: Users },
       ],
     [t],
@@ -110,6 +116,7 @@ export function useKbSettings({
     if (!kbId) return;
     setSettingsSaving(true);
     try {
+      const parsedTopK = Number.parseInt(retrievalTopK, 10);
       const metadataKeys = settingsMetadataKeys
         .split(',')
         .map((s) => s.trim())
@@ -123,6 +130,14 @@ export function useKbSettings({
         },
         faq_prompt: settingsFaqPrompt.trim() || null,
         metadata_keys: metadataKeys.length > 0 ? metadataKeys : null,
+        // Only retrieval is this form's key; the rest of the config is merged in unchanged, so a legacy
+        // row keeps whatever it still carries.
+        agent_config: mergeAgentConfig(kb?.agent_config ?? null, {
+          retrieval: {
+            top_k: parsedTopK,
+            rerank: retrievalRerank,
+          },
+        }),
       });
       toast.success(t('detail.toastSettingsSaved'));
       loadKb();
@@ -147,6 +162,10 @@ export function useKbSettings({
     setSettingsChunkOverlap,
     settingsMetadataKeys,
     setSettingsMetadataKeys,
+    retrievalTopK,
+    setRetrievalTopK,
+    retrievalRerank,
+    setRetrievalRerank,
     settingsSaving,
     settingsSubTab,
     setSettingsSubTab,

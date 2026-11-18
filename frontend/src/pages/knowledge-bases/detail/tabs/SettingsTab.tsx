@@ -6,7 +6,6 @@ import type { KnowledgeBaseResponse } from '../../../../data/knowledgeBasesApi';
 import type { ApiModelResponse } from '../../../../data/modelsApi';
 import { RESOURCE_TYPES } from '../../../../data/resourceAclApi';
 import { ResourceSharePanel } from '../../../../components/ResourceSharePanel';
-import { KbAgentSettings } from '../../../knowledge-bases/KbAgentSettings';
 import './SettingsTab.scss';
 
 type SettingsSubTab = { id: 'general' | 'agent' | 'sharing'; label: string; icon: LucideIcon };
@@ -15,9 +14,9 @@ type SettingsSubTab = { id: 'general' | 'agent' | 'sharing'; label: string; icon
  * The knowledge base's own settings: how it is embedded and chunked, the prompt used to generate FAQs, its
  * metadata keys, and the index run.
  *
- * Three sub-tabs, because they answer three different questions — what this base *is* (general), what the
- * agent answering from it may do (agent, which is the workforce agent's half), and who may read it
- * (sharing). Keeping them as one form with sections is what made "which Save button saves what" a question.
+ * Two sub-tabs: what this base *is* (general — embedding, chunking, retrieval depth, the FAQ prompt,
+ * metadata keys) and who may read it (sharing). How an agent answers is not here any more: that is the
+ * workforce agent's own screen, and one editor per field is what keeps the two from disagreeing.
  *
  * The form is a plain controlled form: no local draft, because the page already holds the draft and Save
  * writes it — a second copy inside the tab is how two screens end up disagreeing.
@@ -42,11 +41,14 @@ export function SettingsTab({
   onFaqPromptChange,
   metadataKeys,
   onMetadataKeysChange,
+  retrievalTopK,
+  onRetrievalTopKChange,
+  retrievalRerank,
+  onRetrievalRerankChange,
   saving,
   onSave,
   indexJobSubmitting,
   onEnqueueIndex,
-  onKbReload,
 }: {
   t: TFunction;
   kbId: string;
@@ -67,11 +69,15 @@ export function SettingsTab({
   onFaqPromptChange: (value: string) => void;
   metadataKeys: string;
   onMetadataKeysChange: (value: string) => void;
+  /** How deep the retriever goes: a property of the corpus, so it stays on the knowledge base. */
+  retrievalTopK: string;
+  onRetrievalTopKChange: (value: string) => void;
+  retrievalRerank: boolean | null;
+  onRetrievalRerankChange: (value: boolean | null) => void;
   saving: boolean;
   onSave: () => void;
   indexJobSubmitting: boolean;
   onEnqueueIndex: () => void;
-  onKbReload: () => void;
 }) {
   return (
     <section className="kb-section">
@@ -103,8 +109,6 @@ export function SettingsTab({
             title={t('detail.sharingTitle')}
           />
         ) : null}
-
-        {subTab === 'agent' ? <KbAgentSettings kb={kb} onSaved={onKbReload} /> : null}
 
         {subTab === 'general' ? (
           <>
@@ -175,6 +179,39 @@ export function SettingsTab({
                         onChange={(e) => onChunkOverlapChange(Number(e.target.value))}
                         className="ds-control"
                       />
+                    </label>
+                  </fieldset>
+
+                  <fieldset className="kb-settings-fieldset">
+                    <legend>{t('detail.retrievalFieldset')}</legend>
+                    <label>
+                      <span>{t('detail.retrievalTopK')}</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={retrievalTopK}
+                        onChange={(e) => onRetrievalTopKChange(e.target.value)}
+                        className="ds-control"
+                      />
+                      <small>{t('detail.retrievalTopKHelp')}</small>
+                    </label>
+                    <label>
+                      <span>{t('detail.retrievalRerank')}</span>
+                      <select
+                        value={retrievalRerank === null ? 'default' : retrievalRerank ? 'on' : 'off'}
+                        onChange={(e) =>
+                          onRetrievalRerankChange(
+                            e.target.value === 'default' ? null : e.target.value === 'on'
+                          )
+                        }
+                        className="ds-control"
+                      >
+                        <option value="default">{t('detail.retrievalRerankDefault')}</option>
+                        <option value="on">{t('detail.retrievalRerankOn')}</option>
+                        <option value="off">{t('detail.retrievalRerankOff')}</option>
+                      </select>
+                      <small>{t('detail.retrievalRerankHelp')}</small>
                     </label>
                   </fieldset>
                 </div>

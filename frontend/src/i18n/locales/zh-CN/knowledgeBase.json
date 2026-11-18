@@ -301,7 +301,6 @@
     "placeholderQuestion": "问题",
     "placeholderAnswer": "回答",
     "create": "创建",
-    "settingsTabAgent": "Agent",
     "agentLead": "本知识库问答 Agent 的行为。每个字段的默认值都等于这些设置存在之前的行为。",
     "agentService": "Agent 服务",
     "agentServiceHint": "本知识库使用哪个问答 Agent。",
@@ -352,6 +351,14 @@
     "agentSkillWorkspaceHelp": "读写本会话目录中的文件。",
     "agentSaved": "Agent 设置已保存",
     "agentSaveFailed": "保存 Agent 设置失败",
-    "toastFaqCreateFailed": "创建常见问题失败"
+    "toastFaqCreateFailed": "创建常见问题失败",
+    "retrievalFieldset": "检索",
+    "retrievalTopK": "检索条数",
+    "retrievalTopKHelp": "回答前取回多少片段。研报型知识和短问答型知识需要的数字不一样。",
+    "retrievalRerank": "重排序",
+    "retrievalRerankDefault": "跟随部署配置",
+    "retrievalRerankOn": "总是重排",
+    "retrievalRerankOff": "不重排",
+    "retrievalRerankHelp": "重排序会用交叉编码器重新排列候选。除非这个知识库需要、且部署提供了重排端点，否则不要打开。"
   }
 }

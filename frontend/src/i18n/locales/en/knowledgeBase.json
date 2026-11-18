@@ -301,7 +301,6 @@
     "placeholderQuestion": "Question",
     "placeholderAnswer": "Answer",
     "create": "Create",
-    "settingsTabAgent": "Agent",
     "agentLead": "How this knowledge base's QA agent behaves. Every field defaults to the behaviour it had before any of this existed.",
     "agentService": "Agent service",
     "agentServiceHint": "The QA agent this knowledge base answers with.",
@@ -352,6 +351,14 @@
     "agentSkillWorkspaceHelp": "Read and write files in this conversation's directory.",
     "agentSaved": "Agent settings saved",
     "agentSaveFailed": "Could not save agent settings",
-    "toastFaqCreateFailed": "Could not create the FAQ"
+    "toastFaqCreateFailed": "Could not create the FAQ",
+    "retrievalFieldset": "Retrieval",
+    "retrievalTopK": "Results to retrieve",
+    "retrievalTopKHelp": "How many chunks the agent pulls before answering. A dense report and a short FAQ base want different numbers.",
+    "retrievalRerank": "Rerank",
+    "retrievalRerankDefault": "Whatever the deployment does",
+    "retrievalRerankOn": "Always rerank",
+    "retrievalRerankOff": "Never rerank",
+    "retrievalRerankHelp": "Reranking reorders the candidates with a cross-encoder. Off unless this base needs it and the deployment has a rerank endpoint."
   }
 }
