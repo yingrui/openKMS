@@ -20,7 +20,7 @@ bases, because an agent is a published view of them.
 | Chat | ✅ | `/workforce/:agentId/chat[/:conversationId]?kb=…` — the conversation screen (`pages/workforce/chat/`): session rail, thread, composer, sources, files. A thread belongs to **one knowledge source** (citations must come from one corpus); an agent with several sources asks which one first. The thread store is unchanged (`surface=knowledge_base`), so history written by the knowledge base's old Q&A is here as it was. The entry is the agent's own **Talk to this agent** button, or `/workforce` → the agent; a knowledge base does not link here — it is the corpus, not a way in. |
 | Service endpoint | ✅ | `POST /api/workforce/agents/{id}/ask` with `{"kb_id", "question"}`, `conversation_history`, optional `session_id`. Forwards to the qa-agent's `/knowledge-bases/{kb_id}/ask` |
 | Audit | ✅ | Recorded by the HTTP audit middleware: `actor_sub` is the owner, `actor_name` is the **agent**, `auth_mode` is `wfks`, and the agent id is the resource id |
-| Default agent per knowledge base | ✅ | Creating a knowledge base creates its default agent; migration `wf1agents` seeded one for every existing knowledge base. The knowledge base's own Q&A resolves that agent (`default_agent_id` on `GET /api/knowledge-bases/{id}`) |
+| Default agent per knowledge base | ✅ | Creating a knowledge base creates its default agent; migration `wf1agents` seeded one for every existing knowledge base, and `wf3agentdesc` cleared the corpus blurb those copies inherited — an agent's description says who it answers for, not what is known. The knowledge base's own Q&A resolves that agent |
 
 ## What lives where
 

@@ -644,7 +644,10 @@ async def ensure_default_agent(
 ) -> WorkforceAgent:
     """Create (or find) the agent a knowledge base's own Q&A resolves.
 
-    Seeded from the knowledge base so the behaviour it already had is the agent's starting point.
+    The behaviour is seeded from the knowledge base so the answers it already gave are the agent's starting
+    point. The **description is not**: a corpus's blurb says what is known, and copying it here made every
+    default agent read like a document collection rather than a service. It starts empty, for someone to say
+    who this employee answers and for whom.
     """
     existing = await default_agent_for_kb(db, kb.id)
     if existing is not None:
@@ -652,7 +655,7 @@ async def ensure_default_agent(
     agent = WorkforceAgent(
         id=str(uuid.uuid4()),
         name=kb.name,
-        description=kb.description,
+        description=None,
         owner_sub=owner_sub,
         owner_name=owner_name,
         status=AGENT_STATUS_ACTIVE,
