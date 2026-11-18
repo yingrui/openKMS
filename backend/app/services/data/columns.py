@@ -117,12 +117,12 @@ async def pg_columns(db: AsyncSession, dataset: Dataset) -> list[dict[str, Any]]
     return out
 
 
-async def description_map(db: AsyncSession, dataset_id: str) -> dict[str, str]:
-    """column_name → description (only the ones with a stored description)."""
+async def annotation_map(db: AsyncSession, dataset_id: str) -> dict[str, DatasetColumn]:
+    """column_name → its stored annotation row (description, time_format)."""
     rows = (
         await db.execute(select(DatasetColumn).where(DatasetColumn.dataset_id == dataset_id))
     ).scalars().all()
-    return {r.column_name: r.description for r in rows if r.description}
+    return {r.column_name: r for r in rows}
 
 
 async def set_annotation(

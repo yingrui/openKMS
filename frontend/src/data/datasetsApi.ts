@@ -132,6 +132,11 @@ export interface ColumnMetadata {
   is_nullable: boolean;
   ordinal_position: number;
   description: string | null;
+  /** The value's format when the column holds periods (`%G-W%V`). The calendar is derived from it. */
+  time_format: string | null;
+  /** Derived from the column itself — datatype or `time_format`. A model's override does not change it. */
+  is_time: boolean;
+  period_kind: string | null;
 }
 
 export async function updateColumnAnnotation(

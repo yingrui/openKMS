@@ -108,6 +108,11 @@ class ColumnMetadata(BaseModel):
     is_nullable: bool = False
     ordinal_position: int = 0
     description: str | None = None
+    #: The value's format when the column holds periods (`%G-W%V`); the calendar is derived from it.
+    time_format: str | None = None
+    #: Derived from the column alone — `datatype` or `time_format`. A model's override does not change it.
+    is_time: bool = False
+    period_kind: str | None = None
 
 
 class ColumnDescriptionUpdate(BaseModel):

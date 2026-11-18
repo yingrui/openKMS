@@ -37,7 +37,7 @@ from app.services.data.query import QueryError
 from app.services.data.row_filters import RowFilterError
 from app.services.data.columns import (
     ColumnError,
-    description_map,
+    annotation_map,
     invalidate_columns,
     set_annotation,
 )
@@ -448,18 +448,27 @@ async def get_dataset_metadata(
 
     try:
         rows = await asyncio.to_thread(read_columns)
-        descriptions = await description_map(db, dataset.id)
+        annotations = await annotation_map(db, dataset.id)
         out: list[ColumnMetadata] = []
         for r in rows:
             source_type = normalize_postgresql_column_type(str(r[1]), str(r[2] or ""))
+            ontology_type = map_source_type_to_ontology(ds.kind, source_type)
+            time_format = getattr(annotations.get(str(r[0])), "time_format", None)
+            # The column's own role, with no model in the picture: a model can only opt out later.
+            is_time, period_kind = resolve_time_role(
+                datatype=ontology_type, time_format=time_format
+            )
             out.append(
                 ColumnMetadata(
                     column_name=r[0],
                     data_type=source_type,
-                    ontology_type=map_source_type_to_ontology(ds.kind, source_type),
+                    ontology_type=ontology_type,
                     is_nullable=r[3] == "YES",
                     ordinal_position=r[4],
-                    description=descriptions.get(str(r[0])),
+                    description=getattr(annotations.get(str(r[0])), "description", None),
+                    time_format=time_format,
+                    is_time=is_time,
+                    period_kind=period_kind if is_time else None,
                 )
             )
         try:

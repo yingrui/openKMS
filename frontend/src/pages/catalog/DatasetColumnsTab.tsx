@@ -23,7 +23,7 @@ export function DatasetColumnsTab() {
 
   const [metadata, setMetadata] = useState<ColumnMetadata[]>([]);
   const [profile, setProfile] = useState<DatasetProfileResponse | null>(null);
-  /* A column's time role lives on the model's field, not on the column, so it is read from the models. */
+  /* The time role is the column's own fact; a model's field only ever opts out, so it is read separately. */
   const [modelFields, setModelFields] = useState<DatasetModelFieldResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [profiling, setProfiling] = useState(false);
@@ -92,15 +92,11 @@ export function DatasetColumnsTab() {
   );
   const timeRoleByColumn = useMemo(() => {
     const map = new Map<string, { isTime: boolean; periodKind: string | null }>();
-    for (const field of modelFields) {
-      const current = map.get(field.column_name);
-      /* `is_time: null` follows the datatype; a model that says false does not erase one that says true. */
-      const isTime = field.is_time === true || (field.is_time === null && field.period_kind !== null);
-      if (!current) map.set(field.column_name, { isTime, periodKind: field.period_kind });
-      else if (isTime) map.set(field.column_name, { isTime: true, periodKind: field.period_kind ?? current.periodKind });
+    for (const col of metadata) {
+      map.set(col.column_name, { isTime: col.is_time, periodKind: col.period_kind });
     }
     return map;
-  }, [modelFields]);
+  }, [metadata]);
 
   const TIME_PRESETS: { value: string; labelKey: string }[] = [
     { value: '', labelKey: 'datasets.timeRoleAuto' },
@@ -116,8 +112,7 @@ export function DatasetColumnsTab() {
     setSavingCol(column);
     try {
       await updateColumnAnnotation(datasetId, column, { time_format: timeFormat });
-      const fields = await fetchDatasetModelFields(datasetId);
-      setModelFields(fields);
+      setMetadata(await fetchDatasetMetadata(datasetId));
       toast.success(t('datasets.columnSaved'));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.columnSaveFailed'));
@@ -127,7 +122,7 @@ export function DatasetColumnsTab() {
   };
 
   const timeFormatOf = (column: string) =>
-    modelFields.find((f) => f.column_name === column)?.time_format ?? null;
+    metadata.find((c) => c.column_name === column)?.time_format ?? null;
 
   /* A model may keep a temporal column out of its time axis; that is a statement about the model, so it is
      shown next to the column's own role rather than hidden. */
