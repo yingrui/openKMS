@@ -48,25 +48,31 @@ async def compute_profile(db: AsyncSession, dataset: Dataset) -> tuple[int, list
                     name = str(col)
                     if not is_valid_identifier(name):
                         continue
-                    entry: dict[str, Any] = {"column": name}
-                    try:
-                        row = conn.execute(
-                            text(
-                                f'SELECT COUNT("{name}") AS nn, COUNT(DISTINCT "{name}") AS nd, '
-                                f'MIN("{name}") AS mn, MAX("{name}") AS mx FROM {quoted}'
-                            )
-                        ).mappings().first()
-                        non_null = int((row or {}).get("nn") or 0)
-                        entry.update(
-                            {
-                                "null_count": total - non_null,
-                                "distinct_count": int((row or {}).get("nd") or 0),
-                                "min": serialize_cell_value((row or {}).get("mn")),
-                                "max": serialize_cell_value((row or {}).get("mx")),
-                            }
+                    entry: dict[str, Any] = {"column": name, "null_count": None,
+                                             "distinct_count": None, "min": None, "max": None}
+                    # Counts are defined for every type, so they are asked for on their own: a value range
+                    # that cannot be computed must not cost the counts as well.
+                    counted = conn.execute(
+                        text(
+                            f'SELECT COUNT("{name}") AS nn, COUNT(DISTINCT "{name}") AS nd FROM {quoted}'
                         )
-                    except (SQLAlchemyError, ValueError, TypeError):  # MIN/MAX unsupported for some types
-                        entry.update({"null_count": None, "distinct_count": None, "min": None, "max": None})
+                    ).mappings().first()
+                    entry["null_count"] = total - int((counted or {}).get("nn") or 0)
+                    entry["distinct_count"] = int((counted or {}).get("nd") or 0)
+                    # `MIN(uuid)` has no such function, and the failure aborts the connection's transaction —
+                    # so every later column used to come back empty too. A savepoint keeps the damage local,
+                    # which is also what makes "no range for this type" a per-column fact instead of a guess.
+                    try:
+                        with conn.begin_nested():
+                            row = conn.execute(
+                                text(
+                                    f'SELECT MIN("{name}") AS mn, MAX("{name}") AS mx FROM {quoted}'
+                                )
+                            ).mappings().first()
+                            entry["min"] = serialize_cell_value((row or {}).get("mn"))
+                            entry["max"] = serialize_cell_value((row or {}).get("mx"))
+                    except (SQLAlchemyError, ValueError, TypeError):  # no ordering for this type
+                        pass
                     stats.append(entry)
                 return total, stats
         finally:
