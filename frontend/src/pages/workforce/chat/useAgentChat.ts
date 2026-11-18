@@ -50,31 +50,31 @@ export function useAgentChat({
   const kbIdRef = useRef(kbId);
   kbIdRef.current = kbId;
 
-  const [qaInput, setQaInput] = useState('');
+  const [draft, setDraft] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [qaFeedback, setQaFeedback] = useState<Record<string, ChatFeedbackVote>>({});
-  const [qaLoading, setQaLoading] = useState(false);
+  const [feedback, setFeedback] = useState<Record<string, ChatFeedbackVote>>({});
+  const [sending, setSending] = useState(false);
   const qaStreamAbortRef = useRef<AbortController | null>(null);
 
   /** Langfuse session id for the turns of this open chat (opaque UUID). */
   const qaTraceSessionRef = useRef<string | null>(null);
   /** The same id as state, because the files rail reads it during render. */
-  const [qaSessionId, setQaSessionId] = useState<string | null>(null);
+  const [workspaceSessionId, setWorkspaceSessionId] = useState<string | null>(null);
   const beginQaTraceSession = useCallback(() => {
     const id = crypto.randomUUID();
     qaTraceSessionRef.current = id;
-    setQaSessionId(id);
+    setWorkspaceSessionId(id);
   }, []);
   const clearQaTraceSession = useCallback(() => {
     qaTraceSessionRef.current = null;
-    setQaSessionId(null);
+    setWorkspaceSessionId(null);
   }, []);
 
-  const [kbQaConvId, setKbQaConvId] = useState<string | null>(null);
-  const [kbQaConversations, setKbQaConversations] = useState<AgentConversationResponse[]>([]);
-  const [kbQaConvsLoading, setKbQaConvsLoading] = useState(false);
-  const [kbQaConvReady, setKbQaConvReady] = useState(false);
-  const kbQaMainScrollRef = useRef<HTMLDivElement | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<AgentConversationResponse[]>([]);
+  const [conversationsLoading, setConversationsLoading] = useState(false);
+  const [conversationReady, setConversationReady] = useState(false);
+  const mainScrollRef = useRef<HTMLDivElement | null>(null);
 
   const chatPath = useCallback(
     (id?: string | null) =>
@@ -83,10 +83,10 @@ export function useAgentChat({
   );
 
   useLayoutEffect(() => {
-    const scroller = kbQaMainScrollRef.current;
+    const scroller = mainScrollRef.current;
     if (!scroller) return;
     scroller.scrollTop = scroller.scrollHeight;
-  }, [chatMessages, qaLoading]);
+  }, [chatMessages, sending]);
 
   useEffect(() => {
     beginQaTraceSession();
@@ -96,7 +96,7 @@ export function useAgentChat({
     async (id: string) => {
       const msgs = await listAllKbAgentMessages(kbId, id);
       setChatMessages(kbAgentItemsToChatMessages(msgs));
-      setQaFeedback({});
+      setFeedback({});
     },
     [kbId]
   );
@@ -105,18 +105,18 @@ export function useAgentChat({
     if (!kbId) return;
     let cancelled = false;
     (async () => {
-      setKbQaConvReady(false);
-      setKbQaConvsLoading(true);
+      setConversationReady(false);
+      setConversationsLoading(true);
       try {
         const items = await listKbAgentConversations(kbId);
         if (cancelled) return;
-        setKbQaConversations(items);
+        setConversations(items);
         const routeValid =
           conversationId && items.some((x) => x.id === conversationId) ? conversationId : null;
         const stored = getStoredKbQaConversationId(kbId);
         const validStored = stored && items.some((x) => x.id === stored) ? stored : null;
         const nextId = routeValid || validStored || items[0]?.id || null;
-        setKbQaConvId(nextId);
+        setActiveConversationId(nextId);
         if (nextId) {
           setStoredKbQaConversationId(kbId, nextId);
           if (nextId !== conversationId) {
@@ -139,8 +139,8 @@ export function useAgentChat({
         if (!cancelled) toast.error(t('chat.toastLoadConversationsFailed'));
       } finally {
         if (!cancelled) {
-          setKbQaConvsLoading(false);
-          setKbQaConvReady(true);
+          setConversationsLoading(false);
+          setConversationReady(true);
         }
       }
     })();
@@ -150,8 +150,8 @@ export function useAgentChat({
   }, [kbId, conversationId, navigate, t, loadMessagesForConversation, chatPath]);
 
   const onSelectConversation = async (id: string) => {
-    if (!id || id === kbQaConvId) return;
-    setKbQaConvId(id);
+    if (!id || id === activeConversationId) return;
+    setActiveConversationId(id);
     setStoredKbQaConversationId(kbId, id);
     navigate(chatPath(id));
     try {
@@ -164,11 +164,11 @@ export function useAgentChat({
   const onNewChat = async () => {
     try {
       const c = await createKbAgentConversation(kbId);
-      setKbQaConvId(c.id);
+      setActiveConversationId(c.id);
       setStoredKbQaConversationId(kbId, c.id);
-      setKbQaConversations((prev) => [c, ...prev.filter((x) => x.id !== c.id)]);
+      setConversations((prev) => [c, ...prev.filter((x) => x.id !== c.id)]);
       setChatMessages([]);
-      setQaFeedback({});
+      setFeedback({});
       navigate(chatPath(c.id));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('chat.toastNewChatFailed'));
@@ -178,21 +178,21 @@ export function useAgentChat({
   const onRenameChat = async (id: string, title: string) => {
     try {
       const updated = await patchKbAgentConversation(kbId, id, { title });
-      setKbQaConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
+      setConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('chat.toastRenameChatFailed'));
     }
   };
 
   const onDeleteChat = async (id: string) => {
-    const deletingActive = kbQaConvId === id;
+    const deletingActive = activeConversationId === id;
     try {
       await deleteKbAgentConversation(kbId, id);
       const items = await listKbAgentConversations(kbId);
-      setKbQaConversations(items);
+      setConversations(items);
       if (!deletingActive) return;
       const next = items[0]?.id || null;
-      setKbQaConvId(next);
+      setActiveConversationId(next);
       if (next) {
         setStoredKbQaConversationId(kbId, next);
         navigate(chatPath(next), { replace: true });
@@ -208,7 +208,7 @@ export function useAgentChat({
   };
 
   const setFeedbackVote = (key: string, vote: ChatFeedbackVote) => {
-    setQaFeedback((prev) => {
+    setFeedback((prev) => {
       if (prev[key] === vote) {
         const next = { ...prev };
         delete next[key];
@@ -222,15 +222,15 @@ export function useAgentChat({
 
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!qaInput.trim() || !kbQaConvReady) return;
+    if (!draft.trim() || !conversationReady) return;
     const startedKb = kbId;
-    const userText = qaInput.trim();
+    const userText = draft.trim();
 
     qaStreamAbortRef.current?.abort();
     const ac = new AbortController();
     qaStreamAbortRef.current = ac;
 
-    setQaInput('');
+    setDraft('');
     const tempUserId = chatLineId();
     const asstStreamId = chatLineId();
     let streamPersistedUserId: string | null = null;
@@ -240,15 +240,15 @@ export function useAgentChat({
       { id: tempUserId, role: 'user', content: userText },
       { id: asstStreamId, role: 'assistant', content: '', streamParts: [], replyKey: asstStreamId },
     ]);
-    setQaLoading(true);
+    setSending(true);
     try {
-      let convId = kbQaConvId;
+      let convId = activeConversationId;
       if (!convId) {
         const c = await createKbAgentConversation(kbId);
         if (startedKb !== kbIdRef.current) return;
         convId = c.id;
-        setKbQaConvId(c.id);
-        setKbQaConversations((prev) => [c, ...prev.filter((x) => x.id !== c.id)]);
+        setActiveConversationId(c.id);
+        setConversations((prev) => [c, ...prev.filter((x) => x.id !== c.id)]);
         setStoredKbQaConversationId(kbId, c.id);
         navigate(chatPath(c.id), { replace: true });
       }
@@ -352,7 +352,7 @@ export function useAgentChat({
         { signal: ac.signal, session_id: qaTraceSessionRef.current ?? undefined }
       );
       if (startedKb === kbIdRef.current) {
-        void listKbAgentConversations(kbId).then((list) => setKbQaConversations(list));
+        void listKbAgentConversations(kbId).then((list) => setConversations(list));
       }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
@@ -363,28 +363,28 @@ export function useAgentChat({
       const msg = `${t('chat.errorPrefix')} ${
         err instanceof Error ? err.message : t('detail.toastAnswerFailed')
       }`;
-      setQaInput(userText);
+      setDraft(userText);
       setChatMessages((prev) => prev.filter(stripIds));
       toast.error(msg);
     } finally {
-      setQaLoading(false);
+      setSending(false);
       if (qaStreamAbortRef.current === ac) qaStreamAbortRef.current = null;
     }
   };
 
   return {
     chatMessages,
-    qaInput,
-    setQaInput,
-    qaFeedback,
-    qaLoading,
-    qaSessionId,
+    draft,
+    setDraft,
+    feedback,
+    sending,
+    workspaceSessionId,
     clearQaTraceSession,
-    kbQaConvId,
-    kbQaConversations,
-    kbQaConvsLoading,
-    kbQaConvReady,
-    kbQaMainScrollRef,
+    activeConversationId,
+    conversations,
+    conversationsLoading,
+    conversationReady,
+    mainScrollRef,
     handleAsk,
     onSelectConversation,
     onNewChat,

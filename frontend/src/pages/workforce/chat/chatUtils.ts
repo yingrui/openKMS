@@ -102,7 +102,7 @@ function chatSourceChipModifierClass(sourceType: string | null | undefined): str
   return 'kb-qa-source-chip--chunk';
 }
 
-function kbQaChipTitle(s: SearchResult, maxLen = 26): string {
+function chipTitle(s: SearchResult, maxLen = 26): string {
   const raw =
     (s.source_name && s.source_name.trim()) ||
     (s.wiki_page_id ? String(s.wiki_page_id) : '') ||
@@ -132,7 +132,7 @@ export {
   chatTruncatePreview,
   chatShowRetrievalScore,
   chatSourceChipModifierClass,
-  kbQaChipTitle,
+  chipTitle,
   chatExpandedPreviewMaxLen,
 };
 

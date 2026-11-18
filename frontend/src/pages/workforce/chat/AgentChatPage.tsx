@@ -109,10 +109,10 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
   const sidebar = (
     <ChatSessionSidebar
       kbName={kb.name}
-      conversations={chat.kbQaConversations}
-      activeId={chat.kbQaConvId}
-      loading={chat.kbQaConvsLoading}
-      disabled={chat.qaLoading}
+      conversations={chat.conversations}
+      activeId={chat.activeConversationId}
+      loading={chat.conversationsLoading}
+      disabled={chat.sending}
       hideBackLink={isMobile}
       onSessionActivate={isMobile ? () => setSessionsOpen(false) : undefined}
       onBack={goToAgent}
@@ -196,8 +196,8 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
           )}
 
           <main className="kb-qa-main">
-            <div className="kb-qa-main-scroll" ref={chat.kbQaMainScrollRef}>
-              {chat.chatMessages.length === 0 && !chat.qaLoading ? (
+            <div className="kb-qa-main-scroll" ref={chat.mainScrollRef}>
+              {chat.chatMessages.length === 0 && !chat.sending ? (
                 <div className="kb-qa-hero">
                   <div className="kb-qa-hero-mark" aria-hidden>
                     <Sparkles size={28} strokeWidth={1.75} />
@@ -229,7 +229,7 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                         ) : msg.role === 'assistant' &&
                           !msg.content &&
                           !(msg.streamParts && msg.streamParts.length) &&
-                          chat.qaLoading &&
+                          chat.sending &&
                           isLast ? (
                           <div className="kb-qa-msg-bubble kb-qa-msg-bubble--assistant kb-qa-typing">
                             {t('chat.thinking')}
@@ -249,7 +249,7 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                           </div>
                         )}
                         {msg.role === 'assistant' &&
-                          !(chat.qaLoading && isLast) &&
+                          !(chat.sending && isLast) &&
                           (() => {
                             const assistantText = chat.assistantText(msg);
                             const { evidence, references } = splitQaSources(msg.sources ?? []);
@@ -258,7 +258,7 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                             const warnings = msg.warnings ?? [];
                             if (!hasSources && !showFeedback && warnings.length === 0) return null;
                             const feedbackKey = chatFeedbackKey(msg, i);
-                            const feedback = chat.qaFeedback[feedbackKey];
+                            const feedback = chat.feedback[feedbackKey];
                             const prev = chat.chatMessages[i - 1];
                             const question = prev?.role === 'user' ? prev.content.trim() : '';
                             const rk = msg.replyKey ?? `legacy-${i}`;
@@ -340,15 +340,15 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                 <textarea
                   className="kb-qa-composer-input"
                   placeholder={t('chat.placeholder')}
-                  value={chat.qaInput}
-                  onChange={(e) => chat.setQaInput(e.target.value)}
+                  value={chat.draft}
+                  onChange={(e) => chat.setDraft(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
                     }
                   }}
-                  disabled={chat.qaLoading || !chat.kbQaConvReady}
+                  disabled={chat.sending || !chat.conversationReady}
                   rows={1}
                   autoComplete="off"
                   aria-label={t('chat.placeholder')}
@@ -356,7 +356,7 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                 <button
                   type="submit"
                   className="kb-qa-composer-send"
-                  disabled={chat.qaLoading || !chat.qaInput.trim() || !chat.kbQaConvReady}
+                  disabled={chat.sending || !chat.draft.trim() || !chat.conversationReady}
                   aria-label={t('chat.sendAria')}
                 >
                   <ArrowUp size={18} strokeWidth={2.25} aria-hidden />
@@ -369,7 +369,7 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
           {/* The conversation's files, as the project agent has them: a rail on the right that can be hidden. */}
           <ChatFilesRail
             kbId={kb.id}
-            sessionId={chat.qaSessionId}
+            sessionId={chat.workspaceSessionId}
             open={filesOpen}
             onOpen={() => setFilesOpen(true)}
             onCollapse={() => setFilesOpen(false)}
