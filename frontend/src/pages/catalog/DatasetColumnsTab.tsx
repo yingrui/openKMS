@@ -129,6 +129,13 @@ export function DatasetColumnsTab() {
   const timeFormatOf = (column: string) =>
     modelFields.find((f) => f.column_name === column)?.time_format ?? null;
 
+  /* A model may keep a temporal column out of its time axis; that is a statement about the model, so it is
+     shown next to the column's own role rather than hidden. */
+  const overriddenIn = (column: string) =>
+    modelFields
+      .filter((f) => f.column_name === column && f.overridden)
+      .map((f) => f.model_name);
+
   const fmt = (v: unknown) => (v === null || v === undefined ? t('datasets.dash') : String(v));
 
   return (
@@ -242,6 +249,13 @@ export function DatasetColumnsTab() {
                                         kind: timeRoleByColumn.get(col.column_name)?.periodKind,
                                       })
                                     : t('datasets.timeRoleYes')}
+                                </span>
+                              ) : null}
+                              {overriddenIn(col.column_name).length > 0 ? (
+                                <span className="dataset-columns__time-role-note">
+                                  {t('datasets.timeRoleOverriddenIn', {
+                                    models: overriddenIn(col.column_name).join(' · '),
+                                  })}
                                 </span>
                               ) : null}
                             </div>
