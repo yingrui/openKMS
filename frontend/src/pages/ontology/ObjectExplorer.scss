@@ -373,7 +373,7 @@
 }
 
 .object-explorer-query-panel[hidden] {
-  display: none !important;
+  display: none;
 }
 
 .object-explorer-cypher-wrap {
@@ -701,9 +701,9 @@
 .object-explorer-graph-fullscreen {
   position: fixed;
   inset: 0;
-  width: 100vw !important;
-  height: 100vh !important;
-  min-height: 0 !important;
+  width: 100vw;
+  height: 100vh;
+  min-height: 0;
   z-index: var(--z-dropdown);
   border-radius: 0;
 }
@@ -813,5 +813,5 @@
 }
 
 [data-theme='dark'] .object-explorer-graph canvas {
-  background: var(--color-bg) !important;
+  background: var(--color-bg);
 }

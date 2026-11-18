@@ -271,6 +271,8 @@
 }
 
 @include max-width(ds.$km-layout-max) {
+  /* The split's `grid-template-columns` is an inline style (editor | gutter | preview), so overriding the
+     layout here cannot be done with specificity. */
   .article-detail-markdown-edit-layout--split {
     display: flex !important;
     flex-direction: column !important;
