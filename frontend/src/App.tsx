@@ -472,6 +472,8 @@ function App() {
           <Route path="knowledge-bases" element={<KnowledgeBaseList />} />
           <Route path="knowledge-bases/:id" element={<KnowledgeBaseDetail />} />
           <Route path="workforce" element={<WorkforceList />} />
+          <Route path="workforce/:agentId/chat" element={<WorkforceChat />} />
+          <Route path="workforce/:agentId/chat/:conversationId" element={<WorkforceChat />} />
           <Route path="agents" element={<FeatureGate feature="agents"><ProjectList /></FeatureGate>} />
           <Route path="agents/skills/:skillId/settings" element={<FeatureGate feature="agents"><AgentSkillSettings /></FeatureGate>} />
           <Route path="agents/skills" element={<FeatureGate feature="agents"><AgentSkillsPage /></FeatureGate>} />
@@ -518,8 +520,6 @@ function App() {
               <Route path="settings" element={<ModelSettingsTab />} />
             </Route>
             <Route path="workforce/:agentId" element={<WorkforceDetail />} />
-            <Route path="workforce/:agentId/chat" element={<WorkforceChat />} />
-            <Route path="workforce/:agentId/chat/:conversationId" element={<WorkforceChat />} />
             <Route path="data-rules/new" element={<RuleNewPage />} />
             <Route path="data-rules/:ruleId" element={<RuleDetailPage />}>
               <Route index element={<RuleOverviewTab />} />
