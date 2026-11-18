@@ -22,8 +22,7 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `wiki-spaces` | `list`, `get`, documents list | `create`, `update`, `semantic-index`, documents link/unlink |
 | `document-channels` / `article-channels` | `list` | `create`, `update` (article: review fields) |
 | `pipelines` | `list` | — |
-| `kb` | `list`, `get`, `search`, `ask`, wiki-spaces list | `index`, wiki-spaces link/unlink/reindex |
-| `kb-faq` | `list` | `create`, `polish` |
+| `knowledge-bases` | `list`, `get`, `search`, `ask`, wiki-spaces list, `faqs list` | `index`, wiki-spaces link/unlink/reindex, `faqs create`/`polish` |
 | `glossaries` | list/get/export/terms | CRUD, import, suggest |
 | `knowledge-map` | nodes tree, resource-links list | nodes CRUD, resource-links put/delete |
 | `data-sources` | `list`, `get` | `create`, `test` |
@@ -43,9 +42,10 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `ontology action-types` | list/get/logs | create, update, delete, execute |
 | `ontology groups` | list/get | create, update |
 | `evaluations` / `evaluation-runs` | list/get/compare | create/update/run/items |
+| `chamber` | `list`, `get` | `create`, `patch`, `publish`, `delete` (hosted Kubernetes Services) |
 | `kubernetes` | clusters list/get, namespaces, deployments, pods, services, logs | `apply`, `delete` (allowlisted kinds; kubeconfig never downloaded) |
 
-> **Mutation safety.** Every **write** subcommand (channels, `documents upload`, **`documents lifecycle patch`**, **`documents relationships create|delete`**, `articles create`/`from-url`, **`articles relationships create|delete`**, `wiki put-page`, **`wiki files delete`**, `wiki-spaces documents link|unlink`, **`kb index`**, **`kb wiki-spaces reindex`**, KB FAQ, **`glossaries`** and **`glossaries terms`**, **`knowledge-map`** nodes and resource-links, evaluation `create`/`update`/`run` and **`evaluations items` add/update/delete**, and ontology objects/links) uses the same gate: `--yes`/`-y`, `--dry-run`, interactive `Proceed?`, or **exit 2 on non-TTY without `--yes`** so agents opt in deliberately.
+> **Mutation safety.** Every **write** subcommand (channels, `documents upload`, **`documents lifecycle patch`**, **`documents relationships create|delete`**, `articles create`/`from-url`, **`articles relationships create|delete`**, `wiki put-page`, **`wiki files delete`**, `wiki-spaces documents link|unlink`, **`knowledge-bases index`**, **`knowledge-bases wiki-spaces reindex`**, **`knowledge-bases faqs`**, **`glossaries`** and **`glossaries terms`**, **`knowledge-map`** nodes and resource-links, evaluation `create`/`update`/`run` and **`evaluations items` add/update/delete**, and ontology objects/links) uses the same gate: `--yes`/`-y`, `--dry-run`, interactive `Proceed?`, or **exit 2 on non-TTY without `--yes`** so agents opt in deliberately.
 
 ## Quick examples
 
@@ -75,10 +75,10 @@ python scripts/cli.py articles markdown \
 `kb search` returns raw chunks + FAQ matches with confidence scores. `kb ask` proxies to the QA agent and returns a grounded answer with citations.
 
 ```bash
-python scripts/cli.py kb search \
+python scripts/cli.py knowledge-bases search \
   --id <kb_id> --q "甲状腺结节核保" --limit 5
 
-python scripts/cli.py kb ask \
+python scripts/cli.py knowledge-bases ask \
   --id <kb_id> --question "重疾险等待期一般是多久？"
 ```
 

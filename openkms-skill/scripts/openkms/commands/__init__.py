@@ -19,8 +19,7 @@ from . import (
     stories,
     glossaries,
     jobs,
-    kb,
-    kb_faq,
+    kb,  # registers `knowledge-bases`, with `faqs` nested inside
     knowledge_map,
     kubernetes,
     media,
@@ -51,7 +50,6 @@ def register(sub: _SubParsersAction) -> None:
     wiki_spaces.add_subparser(sub)
     wiki.add_subparser(sub)
     kb.add_subparser(sub)
-    kb_faq.add_subparser(sub)
     glossaries.add_subparser(sub)
     knowledge_map.add_subparser(sub)
     data_sources.add_subparser(sub)

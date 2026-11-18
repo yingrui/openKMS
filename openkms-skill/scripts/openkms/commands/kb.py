@@ -218,8 +218,8 @@ def cmd_index(ns: argparse.Namespace) -> None:
 
 
 def add_subparser(sub) -> None:
-    p = sub.add_parser("kb", help="Knowledge bases")
-    sp = p.add_subparsers(dest="kb_cmd", required=True)
+    p = sub.add_parser("knowledge-bases", help="Knowledge bases (GET /api/knowledge-bases)")
+    sp = p.add_subparsers(dest="knowledge_bases_cmd", required=True)
 
     sp.add_parser("list", help="List KBs (GET /api/knowledge-bases)").set_defaults(fn=cmd_list)
 
@@ -333,3 +333,8 @@ def add_subparser(sub) -> None:
     ogd.add_argument("--ontology-group-id", required=True)
     add_write_flags(ogd)
     ogd.set_defaults(fn=cmd_ontology_groups_delete)
+
+    # FAQs are a sub-resource of a knowledge base in the API, so they are a sub-group here too.
+    from . import kb_faq as _kb_faq
+
+    _kb_faq.add_faqs_subparser(sp)

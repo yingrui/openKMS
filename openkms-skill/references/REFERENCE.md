@@ -104,22 +104,22 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 
 | CLI | Method | Path | Notes |
 |---|---|---|---|
-| `kb create` *(write)* | POST | `/api/knowledge-bases` | Body `{name, description?, embedding_model_id?}`; optional `--wiki-space-ids-json` / `--semantic-model-ids-json` / `--ontology-group-ids-json` link each id afterwards. An embedding model is required before `kb index` runs. |
-| `kb delete` *(write)* | DELETE | `/api/knowledge-bases/{id}` | 204. |
-| `kb semantic-models add` *(write)* | POST | `/api/knowledge-bases/{id}/semantic-models` | Body `{semantic_model_id}`. `list` / `delete` mirror it. |
-| `kb ontology-groups add` *(write)* | POST | `/api/knowledge-bases/{id}/ontology-groups` | Body `{ontology_group_id}`. `list` / `delete` mirror it. |
-| `kb list` | GET | `/api/knowledge-bases` | |
-| `kb get` | GET | `/api/knowledge-bases/{id}` | Includes counts (documents, wiki spaces, chunks, FAQs) + embedding status. |
-| `kb search` | POST | `/api/knowledge-bases/{id}/search` | Body `{query, limit?}`. Returns ranked chunk + FAQ matches; chunk hits from wiki pages include `wiki_page_id` / `wiki_space_id`. |
-| `kb ask` | POST | `/api/knowledge-bases/{id}/ask` | Body `{question}`. Proxies to the QA agent — returns a grounded answer with source citations. Slower than `kb search` (LLM in the loop). |
-| `kb index` *(write)* | POST | `/api/knowledge-bases/{id}/index-job` | Queue full KB reindex (documents + all linked wiki spaces + FAQ embeddings). Returns `JobResponse`; requires `embedding_model_id` on the KB. |
-| `kb wiki-spaces list` | GET | `/api/knowledge-bases/{kb_id}/wiki-spaces` | Wiki spaces linked for KB indexing. |
-| `kb wiki-spaces link` *(write)* | POST | `/api/knowledge-bases/{kb_id}/wiki-spaces` | Body `{wiki_space_id}`. |
-| `kb wiki-spaces unlink` *(write)* | DELETE | `/api/knowledge-bases/{kb_id}/wiki-spaces/{wiki_space_id}` | Drops wiki chunks for that space. |
-| `kb wiki-spaces reindex` *(write)* | POST | `/api/knowledge-bases/{kb_id}/wiki-spaces/{wiki_space_id}/index-job` | Re-index pages from one linked wiki space. Returns `JobResponse` — poll with `jobs get`. |
-| `kb-faq list` | GET | `/api/knowledge-bases/{id}/faqs` | Paginated. |
-| `kb-faq create` | POST | `/api/knowledge-bases/{id}/faqs` | Body `{question, answer}`. |
-| `kb-faq polish` *(write)* | POST | `/api/knowledge-bases/{id}/faqs/polish` | Preview polish; body `{question, answer}`. |
+| `knowledge-bases create` *(write)* | POST | `/api/knowledge-bases` | Body `{name, description?, embedding_model_id?}`; optional `--wiki-space-ids-json` / `--semantic-model-ids-json` / `--ontology-group-ids-json` link each id afterwards. An embedding model is required before `kb index` runs. |
+| `knowledge-bases delete` *(write)* | DELETE | `/api/knowledge-bases/{id}` | 204. |
+| `knowledge-bases semantic-models add` *(write)* | POST | `/api/knowledge-bases/{id}/semantic-models` | Body `{semantic_model_id}`. `list` / `delete` mirror it. |
+| `knowledge-bases ontology-groups add` *(write)* | POST | `/api/knowledge-bases/{id}/ontology-groups` | Body `{ontology_group_id}`. `list` / `delete` mirror it. |
+| `knowledge-bases list` | GET | `/api/knowledge-bases` | |
+| `knowledge-bases get` | GET | `/api/knowledge-bases/{id}` | Includes counts (documents, wiki spaces, chunks, FAQs) + embedding status. |
+| `knowledge-bases search` | POST | `/api/knowledge-bases/{id}/search` | Body `{query, limit?}`. Returns ranked chunk + FAQ matches; chunk hits from wiki pages include `wiki_page_id` / `wiki_space_id`. |
+| `knowledge-bases ask` | POST | `/api/knowledge-bases/{id}/ask` | Body `{question}`. Proxies to the QA agent — returns a grounded answer with source citations. Slower than `kb search` (LLM in the loop). |
+| `knowledge-bases index` *(write)* | POST | `/api/knowledge-bases/{id}/index-job` | Queue full KB reindex (documents + all linked wiki spaces + FAQ embeddings). Returns `JobResponse`; requires `embedding_model_id` on the KB. |
+| `knowledge-bases wiki-spaces list` | GET | `/api/knowledge-bases/{kb_id}/wiki-spaces` | Wiki spaces linked for KB indexing. |
+| `knowledge-bases wiki-spaces link` *(write)* | POST | `/api/knowledge-bases/{kb_id}/wiki-spaces` | Body `{wiki_space_id}`. |
+| `knowledge-bases wiki-spaces unlink` *(write)* | DELETE | `/api/knowledge-bases/{kb_id}/wiki-spaces/{wiki_space_id}` | Drops wiki chunks for that space. |
+| `knowledge-bases wiki-spaces reindex` *(write)* | POST | `/api/knowledge-bases/{kb_id}/wiki-spaces/{wiki_space_id}/index-job` | Re-index pages from one linked wiki space. Returns `JobResponse` — poll with `jobs get`. |
+| `knowledge-bases faqs list` | GET | `/api/knowledge-bases/{id}/faqs` | Paginated. |
+| `knowledge-bases faqs create` | POST | `/api/knowledge-bases/{id}/faqs` | Body `{question, answer}`. |
+| `knowledge-bases faqs polish` *(write)* | POST | `/api/knowledge-bases/{id}/faqs/polish` | Preview polish; body `{question, answer}`. |
 
 ### Glossaries
 
@@ -352,16 +352,16 @@ Requires **`knowledge_map:read`** (tree, link list) and **`knowledge_map:write`*
 | `evaluation-runs get` | GET | `/api/evaluations/{evaluation_id}/runs/{run_id}` | Full run with per-item results. |
 | `evaluation-runs compare` | GET | `/api/evaluations/{evaluation_id}/runs/compare?run_a=&run_b=` | Returns per-metric diffs between two runs. |
 
-### Chamber apps — apps
+### Chamber apps — chamber
 
 | CLI | Method | Path | Notes |
 |---|---|---|---|
-| `apps list` | GET | `/api/chamber/apps` | Chamber apps only. |
-| `apps get` | GET | `/api/chamber/apps/{id}` | Published run doc. |
-| `apps create` *(write)* | POST | `/api/chamber/apps` | Requires `bindings.k8s`; publishes immediately. Prefer `kubernetes register-app`. |
-| `apps patch` *(write)* | PATCH | `/api/chamber/apps/{id}` | Metadata / `bindings.k8s`. |
-| `apps publish` *(write)* | POST | `/api/chamber/apps/{id}/publish` | New bindings snapshot. |
-| `apps delete` *(write)* | DELETE | `/api/chamber/apps/{id}` | |
+| `chamber list` | GET | `/api/chamber/apps` | Chamber apps only. |
+| `chamber get` | GET | `/api/chamber/apps/{id}` | Published run doc. |
+| `chamber create` *(write)* | POST | `/api/chamber/apps` | Requires `bindings.k8s`; publishes immediately. Prefer `kubernetes register-app`. |
+| `chamber patch` *(write)* | PATCH | `/api/chamber/apps/{id}` | Metadata / `bindings.k8s`. |
+| `chamber publish` *(write)* | POST | `/api/chamber/apps/{id}/publish` | New bindings snapshot. |
+| `chamber delete` *(write)* | DELETE | `/api/chamber/apps/{id}` | |
 
 ### Kubernetes (`console:kubernetes`)
 
@@ -401,4 +401,4 @@ HTTP <status>
 - **422** — pydantic validation error; check argument shapes.
 - **502** — upstream LLM or Neo4j failure (mostly seen on `ontology *` and `kb ask`).
 
-For authoritative tables and extra routes this skill does not wrap (Console admin, feature toggles, schedules hub, Project Agent chat), see the **openKMS monorepo** file `docs/features/api-reference.md` (not present in `~/.claude/skills` / Agents zip installs — use this REFERENCE + `apps --help` / group `--help` instead).
+For authoritative tables and extra routes this skill does not wrap (Console admin, feature toggles, schedules hub, Project Agent chat), see the **openKMS monorepo** file `docs/features/api-reference.md` (not present in `~/.claude/skills` / Agents zip installs — use this REFERENCE + `chamber --help` / group `--help` instead).

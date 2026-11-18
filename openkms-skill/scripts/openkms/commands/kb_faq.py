@@ -40,8 +40,9 @@ def cmd_polish(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
-def add_subparser(sub) -> None:
-    p = sub.add_parser("kb-faq", help="Knowledge base FAQs")
+def add_faqs_subparser(sub) -> None:
+    """Register `faqs …` under the `knowledge-bases` group — the API nests them the same way."""
+    p = sub.add_parser("faqs", help="Knowledge base FAQs (nested under /api/knowledge-bases/{id}/faqs)")
     sp = p.add_subparsers(dest="fq_cmd", required=True)
 
     c = sp.add_parser("create", help="Create FAQ pair")

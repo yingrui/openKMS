@@ -13,8 +13,8 @@ python scripts/cli.py documents markdown --id <doc_id> --out ./case.md
 **B. Ask the KB a question (grounded with citations).**
 
 ```bash
-python scripts/cli.py kb list
-python scripts/cli.py kb ask --id <kb_id> --question "既往症的判定标准是什么？"
+python scripts/cli.py knowledge-bases list
+python scripts/cli.py knowledge-bases ask --id <kb_id> --question "既往症的判定标准是什么？"
 ```
 
 **C. NL question against the ontology graph.**
@@ -35,8 +35,8 @@ python scripts/cli.py articles list --channel-id <ch_id> --limit 200 \
 **E. After wiki page edits, refresh KB search for one linked space.**
 
 ```bash
-python scripts/cli.py kb wiki-spaces list --kb-id <kb_id>
-python scripts/cli.py kb wiki-spaces reindex --kb-id <kb_id> --space-id <space_id> --yes
+python scripts/cli.py knowledge-bases wiki-spaces list --kb-id <kb_id>
+python scripts/cli.py knowledge-bases wiki-spaces reindex --kb-id <kb_id> --space-id <space_id> --yes
 # → JobResponse with "id"; poll jobs get
 ```
 
@@ -87,7 +87,7 @@ python scripts/cli.py kubernetes register-app \
   --name "Web" --api-name webApp --yes
 ```
 
-or `apps create` with `--bindings-json` containing `k8s`.
+or `chamber create` with `--bindings-json` containing `k8s`.
 
 **I. Research / data-analysis report → local Reveal.js + Plotly HTML.**
 

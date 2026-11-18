@@ -5,7 +5,7 @@ Chamber apps are **hosted Kubernetes Services** (`template_id=module`). There is
 ## Prefer
 
 1. `kubernetes register-app --cluster-id … --namespace … --service … --port … --name … --api-name … --yes`
-2. Or `apps create --name … --api-name … --bindings-json '{"k8s":{"cluster_id":"…","namespace":"…","service":"…","port":80}}' --yes`
+2. Or `chamber create --name … --api-name … --bindings-json '{"k8s":{"cluster_id":"…","namespace":"…","service":"…","port":80}}' --yes`
 
 Needs **`console:kubernetes`** + **`ontology:write`**.
 
@@ -13,12 +13,12 @@ Needs **`console:kubernetes`** + **`ontology:write`**.
 
 | Command | Purpose |
 |---------|---------|
-| `apps list` | List Chamber apps |
-| `apps get <id>` | Published run document |
-| `apps create …` | Register (requires `bindings.k8s`) |
-| `apps patch <id> …` | Name / description / `bindings.k8s` |
-| `apps publish <id>` | New version snapshot |
-| `apps delete <id>` | Remove registry entry |
+| `chamber list` | List Chamber apps |
+| `chamber get <id>` | Published run document |
+| `chamber create …` | Register (requires `bindings.k8s`) |
+| `chamber patch <id> …` | Name / description / `bindings.k8s` |
+| `chamber publish <id>` | New version snapshot |
+| `chamber delete <id>` | Remove registry entry |
 
 ## Do not
 

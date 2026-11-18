@@ -93,7 +93,7 @@ def cmd_delete(ns: argparse.Namespace) -> None:
 
 
 def add_subparser(sub: _SubParsersAction) -> None:
-    p = sub.add_parser("apps", help="Chamber apps (hosted Kubernetes Services)")
+    p = sub.add_parser("chamber", help="Chamber apps (hosted Kubernetes Services)")
     sp = p.add_subparsers(dest="apps_cmd", required=True)
 
     ls = sp.add_parser("list", help="List apps (GET /api/chamber/apps)")
