@@ -28,6 +28,7 @@ from app.services.ontology.property_types import (
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.dataset_profile import DatasetProfile
+from app.models.dataset_column import DatasetColumn
 from app.models.semantic_model import SemanticModel
 from app.models.semantic_model_field import SemanticModelField
 from app.services.data.dataset_rows import query_dataset_rows, query_dataset_summary
@@ -38,8 +39,9 @@ from app.services.data.columns import (
     ColumnError,
     description_map,
     invalidate_columns,
-    set_description,
+    set_annotation,
 )
+from app.services.data.time_role import resolve_time_role
 from app.services.data.profile import (
     ProfileError,
     compute_profile,
@@ -481,21 +483,37 @@ async def update_column_description(
     dataset: Dataset = Depends(get_dataset_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
-    """Set a physical column's description (maintained by engineers / agents)."""
+    """Set a physical column's annotations: its description and the format its value reads as time.
+
+    `time_format` is what says a text column holds periods (`%G-W%V` → week); the calendar granularity is
+    derived from it, never stored beside it.
+    """
     p = request.state.openkms_jwt_payload
     uname = p.get("preferred_username") or p.get("name")
+    provided = body.model_dump(exclude_unset=True)
     try:
-        await set_description(
+        await set_annotation(
             db,
             dataset,
             column_name,
-            body.description,
+            description=body.description,
+            time_format=body.time_format,
+            update_description="description" in provided,
+            update_time_format="time_format" in provided,
             sub=p.get("sub") if isinstance(p.get("sub"), str) else None,
             uname=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
         )
     except ColumnError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"column_name": column_name, "description": body.description}
+    is_time, kind = resolve_time_role(
+        datatype=None, time_format=body.time_format, field_dimension=None
+    )
+    return {
+        "column_name": column_name,
+        "description": body.description,
+        "time_format": body.time_format,
+        "period_kind": kind if is_time else None,
+    }
 
 
 @router.get(
@@ -663,6 +681,12 @@ async def list_dataset_model_fields(
     A column's time role is a *field* property, so the columns page cannot answer "is this a time
     dimension?" from the column metadata alone — it has to ask the models that use the dataset.
     """
+    annotations = {
+        row.column_name: row
+        for row in (
+            await db.execute(select(DatasetColumn).where(DatasetColumn.dataset_id == dataset.id))
+        ).scalars().all()
+    }
     rows = (
         await db.execute(
             select(SemanticModelField, SemanticModel)
@@ -671,18 +695,29 @@ async def list_dataset_model_fields(
             .order_by(SemanticModel.name, SemanticModelField.name)
         )
     ).all()
-    return [
-        {
-            "model_id": model.id,
-            "model_name": model.name,
-            "field_name": field.name,
-            "column_name": field.column_name,
-            "datatype": field.datatype,
-            "is_time": (field.dimension or {}).get("is_time"),
-            "period_kind": (field.dimension or {}).get("period_kind"),
-        }
-        for field, model in rows
-    ]
+    out = []
+    for field, model in rows:
+        annotation = annotations.get(field.column_name or "")
+        time_format = annotation.time_format if annotation else None
+        is_time, kind = resolve_time_role(
+            datatype=field.datatype,
+            time_format=time_format,
+            field_dimension=field.dimension,
+        )
+        out.append(
+            {
+                "model_id": model.id,
+                "model_name": model.name,
+                "field_name": field.name,
+                "column_name": field.column_name,
+                "datatype": field.datatype,
+                "time_format": time_format,
+                "is_time": is_time,
+                "period_kind": kind if is_time else None,
+                "overridden": (field.dimension or {}).get("is_time") is False,
+            }
+        )
+    return out
 
 
 @router.get(

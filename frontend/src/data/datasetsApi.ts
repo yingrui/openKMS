@@ -134,6 +134,23 @@ export interface ColumnMetadata {
   description: string | null;
 }
 
+export async function updateColumnAnnotation(
+  id: string,
+  columnName: string,
+  patch: { description?: string | null; time_format?: string | null },
+): Promise<{
+  column_name: string;
+  description: string | null;
+  time_format: string | null;
+  period_kind: string | null;
+}> {
+  return request(`/api/datasets/${id}/columns/${encodeURIComponent(columnName)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+}
+
 export async function updateColumnDescription(
   id: string,
   columnName: string,
@@ -265,8 +282,10 @@ export interface DatasetModelFieldResponse {
   field_name: string;
   column_name: string;
   datatype: string | null;
-  is_time: boolean | null;
+  is_time: boolean;
   period_kind: string | null;
+  time_format: string | null;
+  overridden: boolean;
 }
 
 export async function fetchDatasetModelFields(id: string): Promise<DatasetModelFieldResponse[]> {

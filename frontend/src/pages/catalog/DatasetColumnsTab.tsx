@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import {
   fetchDatasetMetadata,
   fetchDatasetModelFields,
+  updateColumnAnnotation,
   fetchDatasetProfile,
   refreshDatasetProfile,
   updateColumnDescription,
@@ -101,14 +102,32 @@ export function DatasetColumnsTab() {
     return map;
   }, [modelFields]);
 
-  const timeRoleLabel = (column: string) => {
-    const role = timeRoleByColumn.get(column);
-    if (!role) return t('datasets.timeRoleUnused');
-    if (!role.isTime) return t('datasets.timeRoleNo');
-    return role.periodKind
-      ? t('datasets.timeRoleYesPeriod', { kind: role.periodKind })
-      : t('datasets.timeRoleYes');
+  const TIME_PRESETS: { value: string; labelKey: string }[] = [
+    { value: '', labelKey: 'datasets.timeRoleAuto' },
+    { value: '%Y-%m-%d', labelKey: 'datasets.timeRoleDay' },
+    { value: '%G-W%V', labelKey: 'datasets.timeRoleWeek' },
+    { value: '%Y-%m', labelKey: 'datasets.timeRoleMonth' },
+    { value: '%Y-Q%n', labelKey: 'datasets.timeRoleQuarter' },
+    { value: '%Y', labelKey: 'datasets.timeRoleYear' },
+  ];
+
+  /* The time role is the column's own fact (`time_format`): set it here, once, for every model that reads it. */
+  const saveTimeFormat = async (column: string, timeFormat: string | null) => {
+    setSavingCol(column);
+    try {
+      await updateColumnAnnotation(datasetId, column, { time_format: timeFormat });
+      const fields = await fetchDatasetModelFields(datasetId);
+      setModelFields(fields);
+      toast.success(t('datasets.columnSaved'));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('datasets.columnSaveFailed'));
+    } finally {
+      setSavingCol(null);
+    }
   };
+
+  const timeFormatOf = (column: string) =>
+    modelFields.find((f) => f.column_name === column)?.time_format ?? null;
 
   const fmt = (v: unknown) => (v === null || v === undefined ? t('datasets.dash') : String(v));
 
@@ -192,7 +211,41 @@ export function DatasetColumnsTab() {
                               onBlur={() => void saveDescription(col)}
                             />
                           </td>
-                          <td>{timeRoleLabel(col.column_name)}</td>
+                          <td>
+                            <div className="dataset-columns__time-role">
+                              <select
+                                className="ds-control"
+                                value={timeFormatOf(col.column_name) ?? ''}
+                                onChange={(e) =>
+                                  void saveTimeFormat(col.column_name, e.target.value || null)
+                                }
+                                disabled={savingCol === col.column_name}
+                              >
+                                {TIME_PRESETS.map((preset) => (
+                                  <option key={preset.value} value={preset.value}>
+                                    {t(preset.labelKey)}
+                                  </option>
+                                ))}
+                                {timeFormatOf(col.column_name) &&
+                                !TIME_PRESETS.some(
+                                  (p) => p.value === timeFormatOf(col.column_name),
+                                ) ? (
+                                  <option value={timeFormatOf(col.column_name) ?? ''}>
+                                    {timeFormatOf(col.column_name)}
+                                  </option>
+                                ) : null}
+                              </select>
+                              {timeRoleByColumn.get(col.column_name)?.isTime ? (
+                                <span className="dataset-columns__time-role-note">
+                                  {timeRoleByColumn.get(col.column_name)?.periodKind
+                                    ? t('datasets.timeRoleYesPeriod', {
+                                        kind: timeRoleByColumn.get(col.column_name)?.periodKind,
+                                      })
+                                    : t('datasets.timeRoleYes')}
+                                </span>
+                              ) : null}
+                            </div>
+                          </td>
                           <td>{s ? fmt(s.null_count) : t('datasets.dash')}</td>
                           <td>{s ? fmt(s.distinct_count) : t('datasets.dash')}</td>
                           <td>{s ? fmt(s.min) : t('datasets.dash')}</td>

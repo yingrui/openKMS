@@ -490,7 +490,8 @@
     "erMany": "零或多",
     "erOneOnly": "有且仅有一条",
     "erZeroOrOne": "零或一条",
-    "erLegendHint": "外键侧的\"多\"由数据集结构决定；目标侧的 1 与 0..1 在关系表单的「要求匹配到行」里配置。"
+    "erLegendHint": "外键侧的\"多\"由数据集结构决定；目标侧的 1 与 0..1 在关系表单的「要求匹配到行」里配置。",
+    "dimensionFromColumn": "时间周期由数据集列的「时间周期」决定（格式已说明粒度），这里不再单独设置。"
   },
   "datasets": {
     "title": "数据集",
@@ -930,11 +931,20 @@
     "cardOneToOneShort": "1 → 1",
     "cardOneToZeroOrOne": "{{left}} 1 → 0..1 {{right}}",
     "cardOneToZeroOrOneHint": "一条 {{left}} 记录最多对应一条 {{right}} 记录；保存时校验 {{left}} 侧字段唯一，被引用记录可以为空",
-    "colTimeRole": "时间维度",
+    "colTimeRole": "时间周期",
     "timeRoleYes": "是",
     "timeRoleYesPeriod": "是（{{kind}}）",
     "timeRoleNo": "否",
-    "timeRoleUnused": "未建模"
+    "timeRoleUnused": "未建模",
+    "timeRoleAuto": "按数据类型",
+    "timeRoleDay": "日（%Y-%m-%d）",
+    "timeRoleWeek": "周（%G-W%V）",
+    "timeRoleMonth": "月（%Y-%m）",
+    "timeRoleQuarter": "季度（%Y-Q%n）",
+    "timeRoleYear": "年（%Y）",
+    "timeRoleCustom": "自定义格式",
+    "timeRoleFormatHint": "值的写法，粒度由它推导：%V 是周、%m 是月、%Y 是年。",
+    "timeRoleOverridden": "（本模型已关闭）"
   },
   "groups": {
     "title": "分组",

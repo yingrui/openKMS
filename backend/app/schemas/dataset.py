@@ -111,7 +111,10 @@ class ColumnMetadata(BaseModel):
 
 
 class ColumnDescriptionUpdate(BaseModel):
+    """Either annotation may be written; a field that is absent is left as it is."""
+
     description: str | None = None
+    time_format: str | None = None
 
 
 class DatasetRowFilter(BaseModel):

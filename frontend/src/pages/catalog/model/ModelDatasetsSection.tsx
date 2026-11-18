@@ -25,7 +25,6 @@ import {
 } from '../../../styles/design-system/index';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { fieldCoverage } from '../fieldCoverage';
-import { ModelFieldPeriodFields } from './ModelFieldPeriodFields';
 import { fieldTimeLabel } from './fieldTimeLabel';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 import { datasetLabel } from '../datasetLabel';
@@ -70,8 +69,6 @@ export function ModelDatasetsSection() {
   const [description, setDescription] = useState('');
   const [dimensionMode, setDimensionMode] = useState<'auto' | 'time' | 'regular'>('auto');
   /** The calendar a time dimension holds — a period is an instance of it. */
-  const [periodKind, setPeriodKind] = useState<'day' | 'week' | 'month' | 'quarter' | 'year' | 'custom'>('day');
-  const [periodFormat, setPeriodFormat] = useState('');
   const [ai, setAi] = useState<AiContext>({ instructions: '', synonyms: '', examples: '' });
   const [submitting, setSubmitting] = useState(false);
 
@@ -211,8 +208,6 @@ export function ModelDatasetsSection() {
     setLabel('');
     setDescription('');
     setDimensionMode('auto');
-    setPeriodKind('day');
-    setPeriodFormat('');
     setAi({ instructions: '', synonyms: '', examples: '' });
   };
 
@@ -233,8 +228,6 @@ export function ModelDatasetsSection() {
           : 'regular'
         : 'auto',
     );
-    setPeriodKind((f.dimension?.period_kind as typeof periodKind) ?? 'day');
-    setPeriodFormat((f.dimension?.period_format as string) ?? '');
     setAi({
       instructions: String((f.ai_context?.instructions as string) ?? ''),
       synonyms: ((f.ai_context?.synonyms as string[]) ?? []).join(', '),
@@ -278,13 +271,7 @@ export function ModelDatasetsSection() {
           ? null
           : dimensionMode === 'regular'
             ? { is_time: false }
-            : {
-                is_time: true,
-                period_kind: periodKind,
-                ...(periodKind === 'custom' && periodFormat.trim()
-                  ? { period_format: periodFormat.trim() }
-                  : {}),
-              },
+            : { is_time: true },
       ai_context: hasAi ? { instructions: ai.instructions.trim(), synonyms, examples } : null,
     };
     setSubmitting(true);
@@ -659,14 +646,7 @@ export function ModelDatasetsSection() {
             </select>
           </FormField>
           {dimensionMode === 'time' ? (
-            <ModelFieldPeriodFields
-              kind={periodKind}
-              format={periodFormat}
-              onChange={(next) => {
-                if (next.kind) setPeriodKind(next.kind);
-                if (next.format !== undefined) setPeriodFormat(next.format);
-              }}
-            />
+            <p className="page-subtitle">{t('dataModel.dimensionFromColumn')}</p>
           ) : null}
           <FormField label={t('datasets.aiInstructions')}>
             <textarea

@@ -495,7 +495,8 @@
     "erMany": "zero or many",
     "erOneOnly": "one and only one",
     "erZeroOrOne": "zero or one",
-    "erLegendHint": "The many side is structural (a foreign key); the target side’s 1 vs 0..1 is the form’s \"require a match\" option."
+    "erLegendHint": "The many side is structural (a foreign key); the target side’s 1 vs 0..1 is the form’s \"require a match\" option.",
+    "dimensionFromColumn": "The period comes from the dataset column’s time period (its format already names the granularity); it is not set here."
   },
   "datasets": {
     "title": "Datasets",
@@ -937,11 +938,20 @@
     "cardOneToOneShort": "1 → 1",
     "cardOneToZeroOrOne": "{{left}} 1 → 0..1 {{right}}",
     "cardOneToZeroOrOneHint": "One {{left}} row matches at most one {{right}} row; the save checks {{left}} is unique, and the referenced row may be missing",
-    "colTimeRole": "Time dimension",
+    "colTimeRole": "Time period",
     "timeRoleYes": "yes",
     "timeRoleYesPeriod": "yes ({{kind}})",
     "timeRoleNo": "no",
-    "timeRoleUnused": "not modelled"
+    "timeRoleUnused": "not modelled",
+    "timeRoleAuto": "By datatype",
+    "timeRoleDay": "Day (%Y-%m-%d)",
+    "timeRoleWeek": "Week (%G-W%V)",
+    "timeRoleMonth": "Month (%Y-%m)",
+    "timeRoleQuarter": "Quarter (%Y-Q%n)",
+    "timeRoleYear": "Year (%Y)",
+    "timeRoleCustom": "Custom format",
+    "timeRoleFormatHint": "How the value is written; the calendar is derived from it: %V is a week, %m a month, %Y a year.",
+    "timeRoleOverridden": " (off in this model)"
   },
   "groups": {
     "title": "Groups",

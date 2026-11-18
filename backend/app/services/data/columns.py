@@ -125,12 +125,15 @@ async def description_map(db: AsyncSession, dataset_id: str) -> dict[str, str]:
     return {r.column_name: r.description for r in rows if r.description}
 
 
-async def set_description(
+async def set_annotation(
     db: AsyncSession,
     dataset: Dataset,
     column_name: str,
-    description: str | None,
     *,
+    description: str | None = None,
+    time_format: str | None = None,
+    update_description: bool = False,
+    update_time_format: bool = False,
     sub: str | None = None,
     uname: str | None = None,
 ) -> None:
@@ -147,14 +150,18 @@ async def set_description(
         )
     ).scalars().first()
     if row:
-        row.description = description
+        if update_description:
+            row.description = description
+        if update_time_format:
+            row.time_format = time_format
     else:
         db.add(
             DatasetColumn(
                 id=str(uuid.uuid4()),
                 dataset_id=dataset.id,
                 column_name=column_name,
-                description=description,
+                description=description if update_description else None,
+                time_format=time_format if update_time_format else None,
                 created_by=sub,
                 created_by_name=uname,
             )
