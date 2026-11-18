@@ -36,7 +36,7 @@
       "settings": "设置"
     },
     "dataScopeTitle": "数据范围",
-    "dataScopeHint": "限定本知识库问答 Agent 可使用的 Catalog 语义模型与本体分组；不参与检索索引。",
+    "dataScopeHint": "在此知识库上作答的数字员工可查阅的 Catalog 语义模型与本体分组；不参与检索索引。",
     "expandTree": "展开",
     "collapseTree": "收起",
     "documentsTitle": "文档（{{count}}）",
@@ -142,7 +142,6 @@
       }
     },
     "agentScopeTitle": "Agent 数据范围",
-    "agentScopeHelp": "限定本知识库问答 Agent 可使用的 Catalog 语义模型与本体分组；不参与检索索引。",
     "agentScopeSemanticModels": "语义模型",
     "agentScopeOntologyGroups": "本体分组",
     "agentScopeAddSemanticModel": "关联语义模型…",

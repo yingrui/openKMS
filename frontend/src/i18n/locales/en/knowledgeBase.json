@@ -36,7 +36,7 @@
       "settings": "Settings"
     },
     "dataScopeTitle": "Data scope",
-    "dataScopeHint": "Catalog semantic models and ontology groups the QA agent may use for this knowledge base. Not used for search indexing.",
+    "dataScopeHint": "Catalog semantic models and ontology groups the workforce agent may consult when answering from this knowledge base. Not used for search indexing.",
     "expandTree": "Expand",
     "collapseTree": "Collapse",
     "documentsTitle": "Documents ({{count}})",
@@ -142,7 +142,6 @@
       }
     },
     "agentScopeTitle": "Agent data scope",
-    "agentScopeHelp": "Limits which Catalog semantic models and ontology groups the QA agent may use for this knowledge base. Not used for search indexing.",
     "agentScopeSemanticModels": "Semantic models",
     "agentScopeOntologyGroups": "Ontology groups",
     "agentScopeAddSemanticModel": "Link a semantic model…",
