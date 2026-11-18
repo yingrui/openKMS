@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { EntityViewHeader, EntityViewLoading, EntityViewPanel, EntityViewShell } from './EntityViewShell';
@@ -38,21 +38,32 @@ describe('EntityViewShell', () => {
     expect(screen.getByText('Daily basic')).toBeInTheDocument();
   });
 
-  it('scrolls the pane when a section item is clicked', () => {
-    /* jsdom has no layout and no `scrollIntoView`; stub it and assert the pane was asked to move —
-       because the first version of this link looked right and scrolled nothing (the scrolling box is
-       the pane, and the finding sections had no id to find). */
+  it('scrolls the pane, and never the document, when a section item is clicked', () => {
+    /* Two failures in a row on this link, so both halves are pinned.
+       First it scrolled nothing (the scrolling box is the pane). Then it used `scrollIntoView`, which
+       scrolls *every* scrollable ancestor — `body { overflow: hidden }` does not stop a programmatic
+       scroll, so the document moved, the pinned shell was pushed out of the viewport, and the top of the
+       page could not be reached again. jsdom has no layout, so the assertion is on *what* was asked to
+       move. */
+    const intoView: string[] = [];
     const scrolled: string[] = [];
-    const original = Element.prototype.scrollIntoView;
+    const originalIntoView = Element.prototype.scrollIntoView;
+    const originalScrollTo = HTMLElement.prototype.scrollTo;
     Element.prototype.scrollIntoView = function scrollIntoViewStub() {
-      scrolled.push(this.id);
+      intoView.push(this.id);
     };
+    HTMLElement.prototype.scrollTo = function scrollToStub(this: HTMLElement) {
+      scrolled.push(this.className);
+    } as typeof HTMLElement.prototype.scrollTo;
     try {
       renderShell([{ sectionId: 'finding-0', label: '按月' }]);
       fireEvent.click(screen.getByRole('link', { name: /按月/ }));
-      expect(scrolled).toEqual(['finding-0']);
+      expect(scrolled).toEqual(['entity-view__main']);
+      expect(intoView).toEqual([]);
+      expect(document.documentElement.scrollTop).toBe(0);
     } finally {
-      Element.prototype.scrollIntoView = original;
+      Element.prototype.scrollIntoView = originalIntoView;
+      HTMLElement.prototype.scrollTo = originalScrollTo;
     }
   });
 
@@ -90,29 +101,41 @@ describe('EntityViewShell', () => {
 });
 
 describe('EntityViewShell — the rail follows the reader', () => {
-  it('marks the section the reader is in, and announces it', () => {
-    /* jsdom has no IntersectionObserver: stub one that findings the first section as being read, which
-       is what the browser would do a moment after the page settles. */
-    const observers: Array<(entries: unknown[]) => void> = [];
+  /** jsdom has no IntersectionObserver and no layout: a stub reports every section as being read. */
+  function stubObserver() {
+    const original = window.IntersectionObserver;
     class ObserverStub {
+      private readonly callback: (entries: unknown[]) => void;
       constructor(callback: (entries: unknown[]) => void) {
-        observers.push(callback);
+        this.callback = callback;
       }
       observe(element: Element) {
-        observers.at(-1)?.([{ target: element, isIntersecting: true }]);
+        this.callback([{ target: element, isIntersecting: true }]);
       }
       disconnect() {}
       unobserve() {}
     }
-    const original = window.IntersectionObserver;
     window.IntersectionObserver = ObserverStub as unknown as typeof IntersectionObserver;
+    return () => {
+      window.IntersectionObserver = original;
+    };
+  }
+
+  it('marks the section the reader is in, and announces it', async () => {
+    const restore = stubObserver();
     try {
       renderShell([{ sectionId: 'finding-0', label: '按月' }]);
       const item = screen.getByRole('link', { name: /按月/ });
-      expect(item.className).toContain('entity-view__nav-item--active');
+      // At the top of the page the header is what is being read, so nothing is highlighted yet.
+      expect(item.className).not.toContain('entity-view__nav-item--active');
+
+      const pane = document.querySelector('.entity-view__main') as HTMLElement;
+      pane.scrollTop = 120;
+      fireEvent.scroll(pane);
+      await waitFor(() => expect(item.className).toContain('entity-view__nav-item--active'));
       expect(item).toHaveAttribute('aria-current', 'true');
     } finally {
-      window.IntersectionObserver = original;
+      restore();
     }
   });
 });

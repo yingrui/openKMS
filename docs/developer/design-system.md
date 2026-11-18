@@ -115,6 +115,28 @@ Do not fight that rule by wrapping the strip in a div: a strip that no longer to
 shape that reads as broken. If a page's header is a real header (Save on the right) and the sections are not siblings of
 one form, make the section a `navItems` entry in the shell's rail instead — that is what Catalog does with Sharing.
 
+**Section navigation moves the pane, and the rail follows a line.** A `sectionId` item scrolls
+`.entity-view__main` — never `scrollIntoView`, which walks every scrollable ancestor and (with the shell
+pinned at `100dvh`) pushed the document up by hundreds of pixels, taking the header and the rail with it;
+`overflow: hidden` on `body` does not stop a programmatic scroll. The highlight follows the thin strip under
+the pane's top edge — not the top 40%, where a short section and the start of the next one both counted and
+clicking "Knowledge" lit "Data and ontology". Two ends are special: at the very top nothing is highlighted
+(the header is what is being read), and at the very end the last section is (a short last section never
+reaches the top edge). The rule is `pickActiveSection` in `hooks/useActiveSection.ts`, recomputed on scroll
+as well as on intersection change, because both end cases keep the same sections intersecting.
+
+**A panel's `onChanged` must not unmount the panel.** When a section asks its page to re-read the entity
+after a change, that re-read has to be *silent* (`load(true)` — no `loading` flag). Flipping the page into its
+loading state replaces the whole subtree, and anything the section was holding — a just-minted token, a
+half-typed field — goes with it. This is how a credential dialog showed a token that had already been thrown
+away.
+
+**On phone the rail moves above the content.** `EntityViewShell`'s sidebar is a fixed 220px column on
+desktop; at `$bp-md-min` and below it becomes a horizontal, scrollable strip of `navItems` and `.entity-view__main`
+takes the full width. A fixed rail beside a 390px viewport left the content ~170px wide, which wrapped every
+heading and button one character per line — that is a shell rule, not a page rule, so it lives in
+`styles/entity-view.scss` and every shell page gets it.
+
 **A tab strip and its panel are one card.** `EntityViewShell` puts page children in `.account-stack`
 (`gap: var(--space-5)`). Render `.settings-page-tabs` and `.settings-page-form` as siblings there and
 the ancestor's gap opens a 25px hole between the two halves of the card — no page rule can cancel a

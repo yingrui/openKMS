@@ -3,13 +3,18 @@ import { useEffect, useRef, useState } from 'react';
 /**
  * Which section of a long page the reader is in — for a table of contents that follows along.
  *
- * The rule is pure (`pickActive`), and the subtle half is *which end* to take: the sections are tall,
- * so several sit inside the reading zone (the top ~40% of the pane) at once, and the reader is in the
- * **last** of them — the one scrolled furthest into. Taking the first (which this did) leaves the
- * highlight parked on the opening section for most of the page, which reads as "it never moves".
+ * Two rules, both learned from the same complaint ("the menu is on the wrong item"):
  *
- * When nothing is in the zone (between two sections, or past the last one) the previous one stays: a
- * highlight that blinks off mid-scroll is worse than one that lags a moment.
+ * 1. **The zone is a line, not a band.** It used to be the top 40% of the pane, and because a short
+ *    section plus the *start* of the next one both fit in 40%, clicking "Knowledge" highlighted "Data and
+ *    ontology" — the following section was already inside the zone. The zone is now the thin strip under
+ *    the pane's top edge: the section the reader is actually looking at.
+ * 2. **The last section needs the bottom of the pane.** Scrolled to the end, a short final section never
+ *    reaches the top edge, so nothing would ever light it up — clicking it left the highlight on its
+ *    neighbour. At the end of the scroll, the last section is the one being read.
+ *
+ * When nothing is in the zone (between two sections) the previous one stays: a highlight that blinks off
+ * mid-scroll is worse than one that lags a moment.
  */
 
 /** Ids cannot contain it, so it is a safe way to carry a list through a primitive dependency. */
@@ -23,6 +28,31 @@ export function pickActive(
 ): string | null {
   const inZone = order.filter((id) => intersecting.includes(id));
   return inZone.length > 0 ? inZone[inZone.length - 1] : previous;
+}
+
+/**
+ * `pickActive`, plus the two places the intersection zone cannot speak for itself:
+ *
+ * * **at the end** — a short final section never reaches the top edge, so it would never light up;
+ * * **at the start** — the page opens on its header, where no section is being read yet, and keeping the
+ *   previous highlight there leaves the menu pointing at something the reader left behind.
+ */
+export function pickActiveSection({
+  intersecting,
+  order,
+  previous,
+  scrollTop,
+  atEnd,
+}: {
+  intersecting: string[];
+  order: string[];
+  previous: string | null;
+  scrollTop: number;
+  atEnd: boolean;
+}): string | null {
+  if (atEnd && order.length > 0) return order[order.length - 1];
+  if (scrollTop <= 2) return null;
+  return pickActive(intersecting, order, previous);
 }
 
 /**
@@ -51,7 +81,29 @@ export function useActiveSection(ids: string[]): {
       .filter((element): element is HTMLElement => element !== null);
     if (elements.length === 0) return;
 
+    const root = document.querySelector<HTMLElement>('.entity-view__main');
     const inside = new Set<string>();
+
+    /* Recomputed from the observer *and* from scrolling. The observer alone is not enough: it reports
+       changes, and the two cases this rule exists for (the very top, the very end) end with the same
+       sections intersecting as before — no change, no callback, a highlight left on the neighbour. */
+    const recompute = () => {
+      const atEnd = root
+        ? root.scrollHeight > root.clientHeight + 4 &&
+          root.scrollTop + root.clientHeight >= root.scrollHeight - 8
+        : false;
+      const next = pickActiveSection({
+        intersecting: [...inside],
+        order: current,
+        previous: previous.current,
+        scrollTop: root ? root.scrollTop : 0,
+        atEnd,
+      });
+      if (next === previous.current) return;
+      previous.current = next;
+      setActive(next);
+    };
+
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -59,19 +111,33 @@ export function useActiveSection(ids: string[]): {
           if (entry.isIntersecting) inside.add(id);
           else inside.delete(id);
         }
-        const next = pickActive([...inside], current, previous.current);
-        previous.current = next;
-        setActive(next);
+        recompute();
       },
       {
-        // Only the top of the pane counts as "being read"; the rest is still approaching.
-        root: document.querySelector('.entity-view__main'),
-        rootMargin: '0px 0px -60% 0px',
+        // Only the strip just under the pane's top edge counts as "being read"; the rest is still
+        // approaching. A wider band lit the *next* section as soon as a short one was scrolled to.
+        root,
+        rootMargin: '0px 0px -92% 0px',
         threshold: 0,
       },
     );
     elements.forEach((element) => observer.observe(element));
-    return () => observer.disconnect();
+
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        recompute();
+      });
+    };
+    root?.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      observer.disconnect();
+      root?.removeEventListener('scroll', onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, [key]);
 
   return {

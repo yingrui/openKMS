@@ -1,3 +1,6 @@
+@use './design-system/tokens' as ds;
+@use './design-system/mixins' as mix;
+
 // app-layout-exception: entity detail fills ontology pane; scroll inside __main only
 .app-page-pane:has(> .entity-view) {
   display: flex;
@@ -190,6 +193,57 @@ body:has(.app-page-pane > .entity-view) .app-main {
   min-height: 0;
   overflow-y: auto;
   padding: 0 0 var(--space-8) var(--space-6);
+}
+
+/*
+ * Phone: the rail goes above the content.
+ *
+ * A 220px fixed rail beside a 390px viewport left the content ~170px wide — every heading and button
+ * wrapped one character per line. The rail becomes a horizontally scrolling strip (the same navigation,
+ * read along the top), and the pane keeps owning the scroll so the height chain is unchanged.
+ */
+@include mix.max-width(ds.$bp-md-min) {
+  .entity-view {
+    flex-direction: column;
+  }
+
+  .entity-view__sidebar {
+    width: 100%;
+    flex-shrink: 0;
+    align-self: auto;
+    padding: 0 0 var(--space-3);
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .entity-view__nav {
+    flex-direction: row;
+    gap: var(--space-2);
+    overflow-x: auto;
+    padding-bottom: var(--space-1);
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .entity-view__nav-item {
+    width: auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    border-left: none;
+    border-bottom: 2px solid transparent;
+  }
+
+  .entity-view__nav-item--active {
+    border-left-color: transparent;
+    border-bottom-color: var(--color-accent);
+  }
+
+  .entity-view__main {
+    padding: 0 0 var(--space-6);
+  }
 }
 
 /* Fill the ontology pane; keep readability on forms via .entity-view__form max-width. */

@@ -157,6 +157,28 @@ export function EntityViewField({
   );
 }
 
+/*: The pane is the scroll container, and `overflow: hidden` on `body` is not a promise: a scroll request
+ * still reaches the document element. `scrollIntoView` walks *every* ancestor, so a section far down the
+ * page also shifted the pinned shell up by hundreds of pixels — the header and the rail went off-screen and
+ * could not be scrolled back. Move the one container that owns the scroll, and keep the document at zero. */
+const SECTION_SCROLL_MARGIN = 16;
+
+function scrollPaneTo(target: HTMLElement): void {
+  const pane = target.closest<HTMLElement>('.entity-view__main');
+  if (!pane) {
+    target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    return;
+  }
+  const doc = target.ownerDocument;
+  if (doc.scrollingElement) doc.scrollingElement.scrollTop = 0;
+  const top =
+    target.getBoundingClientRect().top -
+    pane.getBoundingClientRect().top +
+    pane.scrollTop -
+    SECTION_SCROLL_MARGIN;
+  pane.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+}
+
 export function EntityViewShell({
   backTo,
   backLabel,
@@ -218,7 +240,7 @@ export function EntityViewShell({
                     if (!target) return;
                     event.preventDefault();
                     markActive(item.sectionId ?? '');
-                    target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                    scrollPaneTo(target);
                   }}
                 >
                   {item.label}
