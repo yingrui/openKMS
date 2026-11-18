@@ -499,6 +499,7 @@ async def update_rule(rule_id: str, body: RulePatch, db: AsyncSession = Depends(
         await _validate_run_params(db, rule.metric_id, body.run_params, effective_group)
         stored = body.run_params.model_dump()
         changed = changed or stored != (rule.run_params or {})
+        rule.run_params = stored
     if body.group_by is not None or "group_by" in body.model_fields_set:
         metric = await _metric_or_400(db, rule.metric_id)
         await _validate_group_by(db, metric, body.group_by)
