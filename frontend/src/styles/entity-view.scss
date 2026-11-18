@@ -528,6 +528,22 @@ body:has(.app-page-pane > .entity-view) .app-main {
 
 /* A row of secondary actions inside an entity panel. */
 /* Dataset scope editor: only the selected datasets are listed, the rest via a picker. */
+/* One dataset inside the model's Datasets view: catalog facts + its fields. */
+/* A frozen identifier is read, not edited — show it as code rather than as a field. */
+.entity-view__code {
+  align-self: flex-start;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--text-sm);
+  cursor: help;
+}
+
+/* Dataset scope editors, shared by two Catalog routes (the model's Datasets tab and its Data resources
+   section). They live with the shell because that is the sheet every entity page already loads — the
+   alternative is the same rule imported from four components, which is how one of them ends up unstyled. */
 .model-scope-edit {
   list-style: none;
   margin: 0;
@@ -559,36 +575,4 @@ body:has(.app-page-pane > .entity-view) .app-main {
     width: auto;
     min-width: 0;
   }
-}
-
-/* One dataset inside the model's Datasets view: catalog facts + its fields. */
-.model-dataset__facts {
-  margin-bottom: var(--space-4);
-}
-
-.model-dataset__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
-}
-
-.model-dataset__head-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-/* A frozen identifier is read, not edited — show it as code rather than as a field. */
-.entity-view__code {
-  align-self: flex-start;
-  padding: 2px var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-elevated);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: var(--text-sm);
-  cursor: help;
 }

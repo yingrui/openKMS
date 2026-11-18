@@ -14,6 +14,7 @@ import { FormField } from '../../../styles/design-system/index';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 import { datasetLabel } from '../datasetLabel';
+import './ModelDetail.scss';
 
 type AiContext = { instructions: string; synonyms: string; examples: string };
 

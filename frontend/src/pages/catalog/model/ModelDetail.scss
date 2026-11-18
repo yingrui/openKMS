@@ -1,0 +1,57 @@
+// The model detail's dataset scope and its per-dataset sections.
+//
+// These classes were split across two sheets that this page does not load — the scope editor and dataset
+// head lived in the shared `entity-view.scss`, and the coverage block in `dataset-detail.scss`, which only
+// the *dataset* page's chunk loads. So the coverage box (the reason the tab exists) rendered unstyled here,
+// and the others were only styled because the entity shell happened to pull a global sheet in. They are now
+// beside the components that render them.
+
+@use '../../../styles/design-system/mixins' as *;
+@use '../../../styles/design-system/tokens' as ds;
+
+.model-dataset__facts {
+  margin-bottom: var(--space-4);
+}
+
+.model-dataset__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.model-dataset__head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.model-dataset__coverage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+}
+
+.model-dataset__coverage-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.model-dataset__coverage-names {
+  color: var(--color-text);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-xs);
+}

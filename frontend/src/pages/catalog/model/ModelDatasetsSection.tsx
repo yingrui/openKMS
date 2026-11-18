@@ -28,6 +28,7 @@ import { fieldCoverage } from '../fieldCoverage';
 import { fieldTimeLabel } from './fieldTimeLabel';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 import { datasetLabel } from '../datasetLabel';
+import './ModelDetail.scss';
 
 const PAGE_SIZE = 25;
 

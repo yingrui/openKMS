@@ -139,7 +139,7 @@ export const APP_MODULES: AppModule[] = [
     id: 'workforce',
     kind: 'suite_app',
     layer: 'application',
-    order: 15,
+    order: 85,
     homePath: '/workforce',
     icon: Users,
     labelKey: 'workforce',
