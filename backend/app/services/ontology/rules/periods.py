@@ -18,6 +18,8 @@ that names the expected format rather than an empty result.
 """
 from __future__ import annotations
 
+from app.services.data.time_role import resolve_time_role
+
 import re
 from datetime import date, timedelta
 
@@ -44,16 +46,38 @@ DAY = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
 DATE_DATATYPES = {"date", "datetime", "datetimetz", "timestamp", "timestamptz"}
 
 
+#: The formats the retired `period_kind` values imply, so existing rows keep working without a rewrite.
+_FORMAT_FOR_KIND = {
+    "day": "%Y-%m-%d",
+    "week": "%G-W%V",
+    "month": "%Y-%m",
+    "quarter": "%Y-Q%q",
+    "half": "%Y-H",
+    "year": "%Y",
+}
+
+
 class PeriodError(ValueError):
     """The label is not a period of this calendar."""
 
 
 def kind_of_dimension(dimension: dict | None, datatype: str | None) -> str:
-    """The calendar a time dimension holds: declared, else inferred from the datatype, else a key."""
+    """The calendar a time dimension holds, derived from its value's format.
+
+    The format is the only source: `period_kind` used to be stored beside it, and the two could disagree. A
+    field that predates `time_format` is read through its old `period_kind` once, by turning it into the format
+    it implies.
+    """
     declared = (dimension or {}).get("period_kind")
-    if isinstance(declared, str) and declared in PERIOD_KINDS:
+    time_format = (dimension or {}).get("time_format") or _FORMAT_FOR_KIND.get(str(declared or ""))
+    is_time, kind = resolve_time_role(
+        datatype=datatype, time_format=time_format, field_dimension=dimension
+    )
+    if not is_time:
+        return "custom"
+    if isinstance(declared, str) and declared in PERIOD_KINDS and not (dimension or {}).get("time_format"):
         return declared
-    return "day" if (datatype or "").strip().lower() in DATE_DATATYPES else "custom"
+    return kind
 
 
 def parse_period(label: str, kind: str = "week") -> tuple[str, str]:
