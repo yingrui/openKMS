@@ -14,6 +14,19 @@
   height: 100%;
 }
 
+/* The rail that holds the conversation's files. Same surface as the project's files panel — it is the same
+   object beside the same kind of chat — and the chrome it shares with it (head, chip, resize handle) lives in
+   `styles/files-rail.scss`. */
+.agent-chat-files-rail {
+  flex-shrink: 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+}
+
 /* The conversation owns the viewport while it is open: the immersive class hides the header, and this
    finishes the chain — the chat is not a knowledge-base route any more, so it cannot rely on that page's
    compact content wrapper. */
