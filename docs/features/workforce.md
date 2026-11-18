@@ -10,7 +10,7 @@ bases, because an agent is a published view of them.
 | Feature | Status | Description |
 |---------|--------|-------------|
 | SPA i18n | ✅ | List + detail use the **`workforce`** namespace (`frontend/src/i18n/locales/{en,zh-CN}/workforce.json`); app name and tagline live in **`layout`** |
-| Agent management | ✅ | CRUD via `/api/workforce/agents`; list is a table (name, sources, skills, credentials), detail is an `EntityViewShell` page with the sections below. **Archive**, not delete — bindings and the audit trail keep pointing at a row that exists |
+| Agent management | ✅ | CRUD via `/api/workforce/agents`; list offers **Cards / List** (the knowledge base pair: cards for a handful at a glance, the table for name, sources, skills, credentials, with the choice stored in localStorage), detail is an `EntityViewShell` page with the sections below. **Archive**, not delete — bindings and the audit trail keep pointing at a row that exists |
 | Ownership | ✅ | An agent is visible to its creator and to admins, and to nobody else. `owner_sub` is the ceiling on what it may read; there is no sharing surface yet |
 | Knowledge sources | ✅ | `workforce_agent_kbs` — 1..n knowledge bases. Binding requires the **creator** to be able to read that knowledge base (the agent is their delegation, so it can never look at something they cannot) |
 | Data scope | ✅ | `workforce_agent_semantic_models` / `workforce_agent_ontology_groups` — the Catalog models and ontology groups the agent may consult. Recorded per agent; the runtime still resolves the **knowledge source's** scope (see "Not in this version") |
