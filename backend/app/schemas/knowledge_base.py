@@ -47,8 +47,6 @@ class KnowledgeBaseResponse(BaseModel):
     chunk_config: dict[str, Any] | None = None
     faq_prompt: str | None = None
     metadata_keys: list[str] | None = None
-    #: Whether asking can work at all: a per-KB `agent_url`, or the deployment default (`OPENKMS_QA_AGENT_URL`).
-    qa_available: bool = False
     document_count: int = 0
     wiki_space_count: int = 0
     faq_count: int = 0

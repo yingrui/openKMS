@@ -14,7 +14,6 @@ from app.models.knowledge_base import KnowledgeBase
 from app.schemas.knowledge_base import KnowledgeBaseListResponse, KnowledgeBaseResponse
 from app.services.identity.acl.resource_acl_constants import RT_KNOWLEDGE_BASE
 from app.services.identity.acl.resource_list_acl import readable_id_filter
-from app.services.content.knowledge_bases.qa_agent_proxy import resolve_agent_url
 
 
 async def kb_stats_batch(db: AsyncSession, kb_ids: list[str]) -> dict[str, dict[str, int]]:
@@ -62,7 +61,6 @@ def kb_to_response(kb: KnowledgeBase, stats: dict[str, int]) -> KnowledgeBaseRes
         chunk_config=kb.chunk_config,
         faq_prompt=kb.faq_prompt,
         metadata_keys=kb.metadata_keys,
-        qa_available=resolve_agent_url(kb) is not None,
         created_at=kb.created_at,
         updated_at=kb.updated_at,
         **stats,

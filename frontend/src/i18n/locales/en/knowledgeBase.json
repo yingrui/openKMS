@@ -1,6 +1,6 @@
 {
   "title": "Knowledge Bases",
-  "subtitle": "Create knowledge bases, add documents, generate FAQs, and enable RAG Q&A per KB.",
+  "subtitle": "Create knowledge bases, link documents and wiki spaces, generate FAQs, and search them.",
   "newKb": "New Knowledge Base",
   "empty": "No knowledge bases yet. Create one to get started.",
   "toastLoadFailed": "Failed to load knowledge bases",
@@ -16,7 +16,6 @@
   "metaWikiSpaces": "{{count}} wiki",
   "metaFaqs": "{{count}} FAQs",
   "metaChunks": "{{count}} chunks",
-  "ragBadge": "Q&A",
   "listColStats": "Contents",
   "detail": {
     "loading": "Loading…",

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { Database, Plus, MessageCircle, Trash2, Pencil } from "lucide-react";
+import { Database, Plus, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import {
   fetchKnowledgeBases,
@@ -252,12 +252,6 @@ export function KnowledgeBaseList() {
                 </span>
                 <span>{t("metaFaqs", { count: kb.faq_count })}</span>
                 <span>{t("metaChunks", { count: kb.chunk_count })}</span>
-                {kb.qa_available ? (
-                  <span className="kb-rag-badge">
-                    <MessageCircle size={14} />
-                    {t("ragBadge")}
-                  </span>
-                ) : null}
               </div>
             </Link>
           ))}
@@ -286,11 +280,6 @@ export function KnowledgeBaseList() {
                       >
                         {kb.name}
                       </Link>
-                      {kb.qa_available ? (
-                        <span className="kb-list-rag-pill">
-                          {t("ragBadge")}
-                        </span>
-                      ) : null}
                     </td>
                     <td>{kb.description || ts("shared.noDescription")}</td>
                     <td className="kb-list-stats">
