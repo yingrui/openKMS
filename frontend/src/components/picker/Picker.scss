@@ -1,0 +1,187 @@
+@use '../../styles/design-system/mixins' as *;
+@use '../../styles/design-system/tokens' as ds;
+
+// A dialog body that hosts a picker reaches the dialog's edges: the rail draws its own border, and the
+// footer owns the padding at the bottom.
+.ds-dialog__body:has(> .picker) {
+  padding: 0;
+}
+
+.picker {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.picker__rail {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--color-border);
+  padding: var(--space-4) 0;
+}
+
+.picker__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4);
+}
+
+/* The scrolling list. */
+.picker__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.picker__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  text-align: left;
+  color: var(--color-text);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.picker__row:hover:not(.is-disabled) {
+  background: var(--color-bg-muted);
+}
+
+.picker__row.is-selected {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+}
+
+.picker__row.is-disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+.picker__row-leading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
+.picker__check {
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+}
+
+.picker__row.is-selected .picker__check {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.picker__row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.picker__row-name {
+  font-size: var(--text-base);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker__row-meta {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.picker__row-trailing {
+  flex-shrink: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.picker__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  flex: 1;
+  min-height: 8rem;
+  padding: var(--space-6) 0;
+  font-size: var(--text-base);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.picker__state p {
+  margin: 0;
+}
+
+.picker__spinner {
+  animation: picker-spin 0.8s linear infinite;
+}
+
+@keyframes picker-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.picker__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.picker__pagination-range {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.picker__pagination-btns {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Phone: the rail goes on top and keeps a short scroll of its own. */
+@include max-width(ds.$bp-md-min) {
+  .picker {
+    flex-direction: column;
+  }
+
+  .picker__rail {
+    width: 100%;
+    max-height: 28vh;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-3) 0;
+  }
+}

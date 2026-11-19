@@ -1,11 +1,18 @@
-import { Check, ChevronLeft, ChevronRight, FileText, Loader2, Plus } from 'lucide-react';
+import { Check, Loader2, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ChannelNode } from '../../data/channelsApi';
 import type { DocumentListItemResponse } from '../../data/documentsApi';
 import type { WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import type { KBWikiSpaceResponse } from '../../data/knowledgeBasesApi';
 import { DocPickerChannelTree } from './KnowledgeBaseDetail.docPickerTree';
-import { Dialog, SearchField } from '../../styles/design-system';
+import { SearchField } from '../../styles/design-system';
+import {
+  PickerDialog,
+  PickerList,
+  PickerPagination,
+  PickerRow,
+  PickerState,
+} from '../../components/picker/PickerDialog';
 
 export interface KbDocPickerDialogProps {
   show: boolean;
@@ -62,13 +69,11 @@ export function KbDocPickerDialog({
   if (!show) return null;
 
   return (
-    <Dialog
+    <PickerDialog
       open={show}
       onClose={onClose}
       closeDisabled={pickerAdding}
       title={t('detail.docPickerTitle')}
-      closeAriaLabel={t('detail.closeAria')}
-      size="lg"
       footer={
         <>
           <span className="kb-doc-picker-count">
@@ -76,7 +81,7 @@ export function KbDocPickerDialog({
               ? t('detail.pickerSelected', { count: pickerSelected.size })
               : t('detail.pickerNoneSelected')}
           </span>
-          <div className="kb-doc-picker-actions">
+          <div className="openkms-flex-row-gap">
             <button
               type="button"
               className="btn btn-secondary"
@@ -93,12 +98,12 @@ export function KbDocPickerDialog({
             >
               {pickerAdding ? (
                 <>
-                  <Loader2 size={18} className="kb-doc-picker-spinner" />
+                  <Loader2 size={16} className="spin" aria-hidden />
                   <span>{t('detail.adding')}</span>
                 </>
               ) : (
                 <>
-                  <Plus size={18} />
+                  <Plus size={16} aria-hidden />
                   <span>
                     {pickerSelected.size > 0
                       ? t('detail.addButtonWithCount', { count: pickerSelected.size })
@@ -110,122 +115,83 @@ export function KbDocPickerDialog({
           </div>
         </>
       }
-    >
-      <div className="kb-doc-picker-body">
-          <aside className="kb-doc-picker-sidebar">
-            <span className="kb-doc-picker-sidebar-label">{t('detail.channels')}</span>
-            <ul className="kb-doc-picker-channel-tree">
-              {channels.length === 0 ? (
-                <li className="kb-doc-picker-channel-empty">{t('detail.noChannels')}</li>
-              ) : (
-                <>
-                  {channels.map((ch) => (
-                    <DocPickerChannelTree
-                      key={ch.id}
-                      node={ch}
-                      selectedId={pickerSelectedChannel}
-                      expanded={pickerChannelExpanded}
-                      onSelect={onPickerChannelSelect}
-                      onToggle={onPickerChannelToggle}
-                      depth={0}
-                    />
-                  ))}
-                </>
-              )}
-            </ul>
-          </aside>
-          <div className="kb-doc-picker-main">
-            <SearchField
-              value={pickerSearch}
-              onChange={onPickerSearch}
-              label={t('detail.searchDocsPlaceholder')}
-              className="kb-doc-picker-search"
-              disabled={!pickerSelectedChannel}
-              autoFocus
-            />
-            <div className="kb-doc-picker-list">
-              {!pickerSelectedChannel ? (
-                <div className="kb-doc-picker-empty">
-                  <p>{t('detail.selectChannelFirst')}</p>
-                </div>
-              ) : pickerLoading ? (
-                <div className="kb-doc-picker-loading">
-                  <Loader2 size={24} className="kb-doc-picker-spinner" />
-                  <span>{t('detail.loadingDocs')}</span>
-                </div>
-              ) : pickerResults.length === 0 ? (
-                <div className="kb-doc-picker-empty">
-                  <p>{t('detail.noDocsFound')}</p>
-                </div>
-              ) : (
-                pickerResults.map((doc) => {
-                  const added = alreadyAddedIds.has(doc.id);
-                  const selected = pickerSelected.has(doc.id);
-                  return (
-                    <div
-                      key={doc.id}
-                      className={`kb-doc-picker-item${selected ? ' selected' : ''}${added ? ' already-added' : ''}`}
-                      onClick={() => !added && onTogglePickerDoc(doc.id)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => e.key === 'Enter' && !added && onTogglePickerDoc(doc.id)}
-                    >
-                      <div className="kb-doc-picker-item-check">
-                        {added ? (
-                          <Check size={16} />
-                        ) : selected ? (
-                          <Check size={16} />
-                        ) : (
-                          <div className="kb-doc-picker-item-checkbox" />
-                        )}
-                      </div>
-                      <FileText size={18} className="kb-doc-picker-item-icon" />
-                      <div className="kb-doc-picker-item-info">
-                        <span className="kb-doc-picker-item-name">{doc.name}</span>
-                        <span className="kb-doc-picker-item-meta">
-                          {doc.file_type} · {doc.status || 'completed'}
-                        </span>
-                      </div>
-                      {added && <span className="kb-doc-picker-item-badge">{t('detail.addedBadge')}</span>}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-            {pickerSelectedChannel && pickerTotal > 0 && (
-              <div className="kb-doc-picker-pagination">
-                <span className="kb-doc-picker-pagination-info">
-                  {t('detail.pickerPageRange', {
-                    start: pickerPage * pickerPageSize + 1,
-                    end: Math.min((pickerPage + 1) * pickerPageSize, pickerTotal),
-                    total: pickerTotal,
-                  })}
-                </span>
-                <div className="kb-doc-picker-pagination-btns">
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => onPickerPageChange((p) => Math.max(0, p - 1))}
-                    disabled={!pickerCanPrev}
-                    aria-label={t('detail.pickerAriaPrevPage')}
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => onPickerPageChange((p) => Math.min(pickerTotalPages - 1, p + 1))}
-                    disabled={!pickerCanNext}
-                    aria-label={t('detail.pickerAriaNextPage')}
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
+      rail={
+        <>
+          <span className="kb-doc-picker-sidebar-label">{t('detail.channels')}</span>
+          <ul className="kb-doc-picker-channel-tree">
+            {channels.length === 0 ? (
+              <li className="kb-doc-picker-channel-empty">{t('detail.noChannels')}</li>
+            ) : (
+              channels.map((ch) => (
+                <DocPickerChannelTree
+                  key={ch.id}
+                  node={ch}
+                  selectedId={pickerSelectedChannel}
+                  expanded={pickerChannelExpanded}
+                  onSelect={onPickerChannelSelect}
+                  onToggle={onPickerChannelToggle}
+                  depth={0}
+                />
+              ))
             )}
-          </div>
-        </div>
-    </Dialog>
+          </ul>
+        </>
+      }
+    >
+      <SearchField
+        value={pickerSearch}
+        onChange={onPickerSearch}
+        label={t('detail.searchDocsPlaceholder')}
+        disabled={!pickerSelectedChannel}
+        autoFocus
+      />
+      {!pickerSelectedChannel ? (
+        <PickerState>{t('detail.selectChannelFirst')}</PickerState>
+      ) : pickerLoading ? (
+        <PickerState loading>{t('detail.loadingDocs')}</PickerState>
+      ) : pickerResults.length === 0 ? (
+        <PickerState>{t('detail.noDocsFound')}</PickerState>
+      ) : (
+        <>
+          <PickerList>
+            {pickerResults.map((doc) => {
+              const added = alreadyAddedIds.has(doc.id);
+              const selected = pickerSelected.has(doc.id);
+              return (
+                <li key={doc.id}>
+                  <PickerRow
+                    name={doc.name}
+                    meta={`${doc.file_type} · ${doc.status || 'completed'}`}
+                    leading={
+                      added || selected ? <Check size={16} aria-hidden /> : <span className="picker__check" />
+                    }
+                    trailing={added ? t('detail.addedBadge') : undefined}
+                    selected={selected}
+                    disabled={added}
+                    onClick={added ? undefined : () => onTogglePickerDoc(doc.id)}
+                  />
+                </li>
+              );
+            })}
+          </PickerList>
+          {pickerTotal > 0 ? (
+            <PickerPagination
+              range={t('detail.pickerPageRange', {
+                start: pickerPage * pickerPageSize + 1,
+                end: Math.min((pickerPage + 1) * pickerPageSize, pickerTotal),
+                total: pickerTotal,
+              })}
+              prevLabel={t('detail.pickerAriaPrevPage')}
+              nextLabel={t('detail.pickerAriaNextPage')}
+              canPrev={pickerCanPrev}
+              canNext={pickerCanNext}
+              onPrev={() => onPickerPageChange((p) => Math.max(0, p - 1))}
+              onNext={() => onPickerPageChange((p) => Math.min(pickerTotalPages - 1, p + 1))}
+            />
+          ) : null}
+        </>
+      )}
+    </PickerDialog>
   );
 }
 
@@ -254,23 +220,24 @@ export function KbWikiSpacePickerDialog({
   const unlinkedItems = wikiSpacePickerItems.filter((w) => !kbWikiSpaces.some((k) => k.wiki_space_id === w.id));
 
   return (
-    <Dialog
+    <PickerDialog
       open={show}
       onClose={onClose}
       closeDisabled={Boolean(wikiSpaceBusyId)}
       title={t('detail.wikiPickerTitle')}
-      closeAriaLabel={t('detail.closeAria')}
       size="md"
     >
-      <div className="kb-doc-picker-body">
-        {wikiSpacePickerLoading ? (
-          <p className="kb-empty-text">{t('detail.loading')}</p>
-        ) : (
-          <>
-            <ul className="kb-wiki-picker-list">
-              {unlinkedItems.map((w) => (
-                <li key={w.id} className="kb-wiki-picker-row">
-                  <span className="kb-wiki-picker-name">{w.name}</span>
+      {wikiSpacePickerLoading ? (
+        <PickerState loading>{t('detail.loading')}</PickerState>
+      ) : unlinkedItems.length === 0 ? (
+        <PickerState>{t('detail.wikiPickerEmpty')}</PickerState>
+      ) : (
+        <PickerList>
+          {unlinkedItems.map((w) => (
+            <li key={w.id}>
+              <PickerRow
+                name={w.name}
+                trailing={
                   <button
                     type="button"
                     className="btn btn-primary btn-sm"
@@ -278,19 +245,18 @@ export function KbWikiSpacePickerDialog({
                     onClick={() => onAddWikiSpaceToKb(w.id)}
                   >
                     {wikiSpaceBusyId === w.id ? (
-                      <Loader2 size={16} className="kb-doc-picker-spinner" />
+                      <Loader2 size={14} className="spin" aria-hidden />
                     ) : (
-                      <Plus size={16} />
+                      <Plus size={14} aria-hidden />
                     )}
                     <span>{t('detail.linkWikiSpace')}</span>
                   </button>
-                </li>
-              ))}
-            </ul>
-            {unlinkedItems.length === 0 && <p className="kb-empty-text">{t('detail.wikiPickerEmpty')}</p>}
-          </>
-        )}
-      </div>
-    </Dialog>
+                }
+              />
+            </li>
+          ))}
+        </PickerList>
+      )}
+    </PickerDialog>
   );
 }

@@ -1,6 +1,7 @@
-import { Check, FileText, Loader2, Sparkles, Trash2 } from 'lucide-react';
+import { Check, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Dialog } from '../../styles/design-system';
+import { PickerList, PickerRow, PickerState } from '../../components/picker/PickerDialog';
 import type { ApiModelResponse } from '../../data/modelsApi';
 import type {
   FAQGenerateResult,
@@ -211,7 +212,7 @@ export function KbGenerateFaqDialog({
                     : t('detail.genFooterNoDocs'))
                 : t('detail.genFooterSaveCount', { count: genPreviewFaqs.length })}
             </span>
-            <div className="kb-doc-picker-actions">
+            <div className="openkms-flex-row-gap">
               {genStep === 'config' ? (
                 <>
                   <button
@@ -230,7 +231,7 @@ export function KbGenerateFaqDialog({
                   >
                     {generating ? (
                       <>
-                        <Loader2 size={18} className="kb-doc-picker-spinner" />
+                        <Loader2 size={18} className="spin" />
                         <span>{t('detail.generating')}</span>
                       </>
                     ) : (
@@ -259,7 +260,7 @@ export function KbGenerateFaqDialog({
                   >
                     {genSaving ? (
                       <>
-                        <Loader2 size={18} className="kb-doc-picker-spinner" />
+                        <Loader2 size={18} className="spin" />
                         <span>{t('detail.saving')}</span>
                       </>
                     ) : (
@@ -275,7 +276,7 @@ export function KbGenerateFaqDialog({
         </>
       }
     >
-          <p className="kb-doc-picker-hint">
+          <p className="ds-field__hint">
             {genStep === 'config'
               ? generating && genProgress
                 ? t('detail.genHintProgress', {
@@ -332,49 +333,37 @@ export function KbGenerateFaqDialog({
                 </button>
               </div>
 
-              <div className="kb-doc-picker-list">
-                {genDocs.length === 0 ? (
-                  <div className="kb-doc-picker-empty">
-                    <p>{t('detail.genNoDocs')}</p>
-                  </div>
-                ) : (
-                  genDocs.map((doc) => {
+              {genDocs.length === 0 ? (
+                <PickerState>{t('detail.genNoDocs')}</PickerState>
+              ) : (
+                <PickerList>
+                  {genDocs.map((doc) => {
                     const selected = genSelectedDocs.has(doc.document_id);
                     return (
-                      <div
-                        key={doc.document_id}
-                        className={`kb-doc-picker-item${selected ? ' selected' : ''}`}
-                        onClick={() => onToggleGenDoc(doc.document_id)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => e.key === 'Enter' && onToggleGenDoc(doc.document_id)}
-                      >
-                        <div className="kb-doc-picker-item-check">
-                          {selected ? (
-                            <Check size={16} />
-                          ) : (
-                            <div className="kb-doc-picker-item-checkbox" />
-                          )}
-                        </div>
-                        <FileText size={18} className="kb-doc-picker-item-icon" />
-                        <div className="kb-doc-picker-item-info">
-                          <span className="kb-doc-picker-item-name">{doc.document_name || doc.document_id}</span>
-                          <span className="kb-doc-picker-item-meta">
-                            {doc.document_file_type} · {doc.document_status || 'completed'}
-                          </span>
-                        </div>
-                      </div>
+                      <li key={doc.document_id}>
+                        <PickerRow
+                          name={doc.document_name || doc.document_id}
+                          meta={`${doc.document_file_type} · ${doc.document_status || 'completed'}`}
+                          leading={
+                            selected ? (
+                              <Check size={16} aria-hidden />
+                            ) : (
+                              <span className="picker__check" />
+                            )
+                          }
+                          selected={selected}
+                          onClick={() => onToggleGenDoc(doc.document_id)}
+                        />
+                      </li>
                     );
-                  })
-                )}
-              </div>
+                  })}
+                </PickerList>
+              )}
             </>
           ) : (
             <div className="kb-gen-review-list">
               {genPreviewFaqs.length === 0 ? (
-                <div className="kb-doc-picker-empty">
-                  <p>{t('detail.genNoPreview')}</p>
-                </div>
+                <PickerState>{t('detail.genNoPreview')}</PickerState>
               ) : (
                 genPreviewFaqs.map((faq, idx) => (
                   <div key={idx} className="kb-gen-review-item">

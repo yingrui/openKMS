@@ -6,12 +6,6 @@
  * shared `.ds-table` inside `.ds-table-wrap--flush`. What is left is the content of those tables.
  */
 
-.kb-empty-text {
-  color: var(--color-text-muted);
-  font-size: var(--text-base);
-  padding: var(--space-5) 0;
-}
-
 /* The row's subject: an icon and the name it links to. */
 .kb-table-name {
   display: flex;
