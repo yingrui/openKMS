@@ -98,3 +98,24 @@ differs: the Playground addresses declared **fields**, the Data tab addresses **
 2. **Progressive disclosure** — catalog → detail → action; a list never shows what only a detail needs.
 3. **The picture is the primary artifact** — the ER map is drawn, not tabulated.
 4. **The empty state is the next action** — one button that does the obvious thing.
+
+## Costs and gotchas at scale
+
+Measured on `tushare.factor_values` (65.9M rows, 24 GB), which is the table that taught all of these.
+
+- **A wide `except` around several SQL statements hides which one failed.** `MIN(uuid)` and
+  `COUNT(DISTINCT jsonb)` (or `COUNT(DISTINCT json)`) are Postgres errors, and an error **aborts the
+  transaction**, so the next statement fails too — the symptom is "every column's statistics are empty".
+  The column profile therefore runs each question in its own savepoint (count / distinct / range), and a
+  failing one costs only itself.
+- **Column profile is not free**: single-column `COUNT(*)` **14.2 s**, `COUNT(DISTINCT)` **45.5 s**,
+  `MIN/MAX` **0 s** (indexed); one scan collecting all counts and ranges **16.3 s**; distinct across every
+  column **128 s**. Past ~5M rows distinct counts come from `pg_stats.n_distinct` and are flagged
+  `distinct_estimated` — an estimate may never be used to prove uniqueness, and `validate_join` refuses it.
+- **`SELECT count(*)` is not part of a page.** Counting 65.9M rows took 13.9 s — past the 10 s browse
+  timeout — so `POST /api/datasets/{id}/rows/query` reports the total in three states: `exact`,
+  `estimated` (`pg_class.reltuples`, ~0.5 ms) and `unknown` (`total: null`). A big table's grid must never
+  pay for a number nobody needs.
+- **An unindexed sort is a full sort**: `ORDER BY trade_date` needs an index whose leading column is
+  `trade_date`; `(factor_id, trade_date)` does not help an ORDER BY on the second column.
+

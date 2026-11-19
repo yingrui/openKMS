@@ -57,6 +57,17 @@ Standalone / first-time deps: `pip install -r requirements.txt` once in the skil
 
 `scripts/openkms/config.py` prefers these env vars over `config.yml`.
 
+## Command names
+
+A top-level group is named after the `/api` prefix it calls (`kb` → `knowledge-bases`, `apps` → `chamber`,
+`rules` → `metric-rules`; sub-resources stay under their parent, so runs are `evaluations runs` and FAQs are
+`knowledge-bases faqs`). Two guards hold that: `openkms-skill/tests/test_cli_api_naming.py` (every group
+declares its prefix and its module really calls it) and `backend/tests/test_skill_reference_routes.py`
+(every route in `REFERENCE.md` exists in `app.openapi()`).
+
+Path parameters are the **internal id**; a response's own `rule_id` may be a slug. `metric-rules get --id`
+takes the id, `--new-rule-id` renames.
+
 ## Use
 
 ```bash
