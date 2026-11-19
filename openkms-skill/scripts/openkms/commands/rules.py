@@ -39,7 +39,7 @@ def cmd_list(ns: argparse.Namespace) -> None:
 
 def cmd_get(ns: argparse.Namespace) -> None:
     with client() as s:
-        r = s.get(f"/api/metric-rules/{ns.rule_id}")
+        r = s.get(f"/api/metric-rules/{ns.id}")
     r.raise_for_status()
     print_json(r.json())
 
@@ -101,7 +101,7 @@ def cmd_update(ns: argparse.Namespace) -> None:
         body["run_params"] = _json_arg(ns.run_params, "run-params")
     if not body:
         raise SystemExit("Nothing to update — pass at least one field.")
-    path = f"/api/metric-rules/{ns.rule_id}"
+    path = f"/api/metric-rules/{ns.id}"
     confirm_or_abort("update rule", "PATCH", path, body, ns.yes, ns.dry_run)
     with client() as s:
         r = s.patch(path, json=body)
@@ -110,12 +110,12 @@ def cmd_update(ns: argparse.Namespace) -> None:
 
 
 def cmd_delete(ns: argparse.Namespace) -> None:
-    path = f"/api/metric-rules/{ns.rule_id}"
+    path = f"/api/metric-rules/{ns.id}"
     confirm_or_abort("delete rule", "DELETE", path, None, ns.yes, ns.dry_run)
     with client() as s:
         r = s.delete(path)
     r.raise_for_status()
-    print(f"deleted rule {ns.rule_id}")
+    print(f"deleted rule {ns.id}")
 
 
 def cmd_evaluate(ns: argparse.Namespace) -> None:
@@ -123,7 +123,7 @@ def cmd_evaluate(ns: argparse.Namespace) -> None:
     if ns.values is not None:
         body["values"] = _json_arg(ns.values, "values")
     with client() as s:
-        r = s.post(f"/api/metric-rules/{ns.rule_id}/evaluate", json=body)
+        r = s.post(f"/api/metric-rules/{ns.id}/evaluate", json=body)
     r.raise_for_status()
     print_json(r.json())
 
@@ -145,7 +145,7 @@ def cmd_rule_events(ns: argparse.Namespace) -> None:
     if ns.status:
         params["status"] = ns.status
     with client() as s:
-        r = s.get(f"/api/metric-rules/{ns.rule_id}/events", params=params)
+        r = s.get(f"/api/metric-rules/{ns.id}/events", params=params)
     r.raise_for_status()
     print_json(r.json())
 
@@ -201,7 +201,7 @@ def add_metric_rules_subparser(sub) -> None:
     rl.set_defaults(fn=cmd_list)
 
     rg = sp.add_parser("get", help="Get one rule")
-    rg.add_argument("--rule-id", required=True)
+    rg.add_argument("--id", required=True, help="the rule's id (not its slug)")
     rg.set_defaults(fn=cmd_get)
 
     ra = sp.add_parser("add", help="Add a rule")
@@ -229,7 +229,7 @@ def add_metric_rules_subparser(sub) -> None:
     ra.set_defaults(fn=cmd_add)
 
     ru = sp.add_parser("update", help="Update a rule (partial)")
-    ru.add_argument("--rule-id", required=True, help="the rule to update")
+    ru.add_argument("--id", required=True, help="the rule to update (its id, not its slug)")
     ru.add_argument("--new-rule-id", dest="new_rule_id", default=None, help="rename the slug")
     ru.add_argument("--name", default=None)
     ru.add_argument("--description", default=None)
@@ -247,12 +247,12 @@ def add_metric_rules_subparser(sub) -> None:
     ru.set_defaults(fn=cmd_update)
 
     rd = sp.add_parser("delete", help="Delete a rule (its alerts go with it)")
-    rd.add_argument("--rule-id", required=True)
+    rd.add_argument("--id", required=True, help="the rule's id (not its slug)")
     add_write_flags(rd)
     rd.set_defaults(fn=cmd_delete)
 
     re_ = sp.add_parser("evaluate", help="Run one rule for a period and scope")
-    re_.add_argument("--rule-id", required=True)
+    re_.add_argument("--id", required=True, help="the rule's id (not its slug)")
     re_.add_argument("--values", default=None, help='values for the rule\'s declared arguments, e.g. \'{"cycle":"2026-W46","scenario":["S1"]}\'')
     re_.add_argument("--simulate", action="store_true", help="dry run: compute verdicts, publish no alerts")
     re_.set_defaults(fn=cmd_evaluate)
@@ -263,7 +263,7 @@ def add_metric_rules_subparser(sub) -> None:
     rea.set_defaults(fn=cmd_evaluate_all)
 
     ree = sp.add_parser("events", help="A rule's alerts")
-    ree.add_argument("--rule-id", required=True)
+    ree.add_argument("--id", required=True, help="the rule's id (not its slug)")
     ree.add_argument("--status", default=None, choices=("open", "dismissed", "resolved"))
     ree.add_argument("--limit", type=int, default=50)
     ree.add_argument("--offset", type=int, default=0)

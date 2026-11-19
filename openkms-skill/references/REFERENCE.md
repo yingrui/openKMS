@@ -261,9 +261,9 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `metrics runs` | GET | `/api/metrics/{metric_id}/runs` | Recent executions (audit). |
 | `metrics delete` *(write)* | DELETE | `/api/metrics/{metric_id}` | |
 | `metric-rules list` | GET | `/api/metric-rules` | Reconciliation rules; optional `?metric_id=`. |
-| `metric-rules get` | GET | `/api/metric-rules/{rule_id}` | One rule, with `run_params` described (what 运行 will ask for). |
+| `metric-rules get` | GET | `/api/metric-rules/{rule_id}` | One rule, with `run_params` described (what 运行 will ask for). `--id` is the rule's **id**, not its slug. |
 | `metric-rules add` *(write)* | POST | `/api/metric-rules` | Body `{name, metric_id, condition\|identities, severity?, conclusion?, suggestion?, owner?, rule_id?, status?, group_by?, run_params?}`. Exactly one of `condition` (threshold) / `identities` (指标勾稽) — see [rules-authoring.md](rules-authoring.md). |
-| `metric-rules update` *(write)* | PATCH | `/api/metric-rules/{rule_id}` | Partial; `--new-rule-id` renames the slug. Every accepted change bumps `version`. |
+| `metric-rules update` *(write)* | PATCH | `/api/metric-rules/{rule_id}` | `--id` addresses the rule, `--new-rule-id` renames its slug; partial otherwise. Every accepted change bumps `version`. |
 | `metric-rules delete` *(write)* | DELETE | `/api/metric-rules/{rule_id}` | Deletes its alerts too (FK cascade). |
 | `metric-rules evaluate` | POST | `/api/metric-rules/{rule_id}/evaluate` | Body `{dry_run, values}` — run one rule for a period/scope; `--simulate` computes verdicts without publishing. |
 | `metric-rules evaluate-all` | POST | `/api/metric-rules/evaluate` | Body `{metric_id?, values}` — every active rule, or one metric's. |

@@ -97,7 +97,7 @@ The "运行" button asks for exactly what `metric-rules get` reports as `run_par
 
 ```bash
 # One rule, for a period and scope (--simulate = compute verdicts, publish no alerts)
-python scripts/cli.py metric-rules evaluate --rule-id RULE_ID \
+python scripts/cli.py metric-rules evaluate --id RULE_ID \
   --values '{"cycle":"2026-W46","scenario":["S1"]}' --simulate
 
 # Every active rule, or one metric's
@@ -121,7 +121,7 @@ A failure that carries advice opens an alert; it records the rule, the revision 
 python scripts/cli.py metric-events list --open-only
 python scripts/cli.py metric-events summary            # open/total per metric
 python scripts/cli.py metric-events patch --event-id EVENT_ID --status resolved --assignee alice --yes
-python scripts/cli.py metric-rules events --rule-id RULE_ID
+python scripts/cli.py metric-rules events --id RULE_ID
 ```
 
 **`version` is the rule's revision, not an event count.** Every accepted edit bumps it; the alert records which revision fired. Deleting a rule deletes its alerts (FK cascade) — they have no meaning without it.
