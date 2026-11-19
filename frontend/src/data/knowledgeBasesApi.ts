@@ -7,6 +7,8 @@ import type { JobResponse } from './jobsApi';
 
 /** Per-KB agent configuration. Every field defaults to today's behaviour; see docs/features/knowledge-base-qa-agent.md. */
 export interface KbAgentConfig {
+  /** Request parameters of the model call — not prompt text. */
+  generation?: { temperature?: number | null; thinking?: 'on' | 'off' | null };
   prompts?: { agents_md?: string | null };
   retrieval?: { top_k?: number; rerank?: boolean | null; min_score?: number | null };
   answer_policy?: {

@@ -203,7 +203,6 @@
   "profileLead": "What the service is called, who it answers, and what it is told.",
   "modelTitle": "Model",
   "modelLead": "Which model answers.",
-  "modelFixedHint": "Sampling and thinking depth are set by the deployment today; they will move here with the runtime that reads them.",
   "skillsTitle": "Skills",
   "skillsLead": "What the agent can do besides reading the corpus.",
   "toolsTitle": "Tools",
@@ -215,5 +214,13 @@
   "endpointLabel": "Endpoint",
   "endpointHint": "POST here with a credential from the list, naming one bound knowledge source.",
   "behaviorTitle": "Behavior",
-  "behaviorLead": "What counts as an acceptable answer, and how many steps it may take to get there."
+  "behaviorLead": "What counts as an acceptable answer, and how many steps it may take to get there.",
+  "temperature": "Temperature",
+  "temperatureHint": "How varied the wording is. Empty uses the deployment's value (0.3).",
+  "temperaturePlaceholder": "0.3",
+  "thinking": "Thinking",
+  "thinkingHint": "Some gateways expose a thinking budget; asking for it costs latency and tokens.",
+  "thinkingDefault": "Whatever the deployment does",
+  "thinkingOn": "Think before answering",
+  "thinkingOff": "Answer directly"
 }

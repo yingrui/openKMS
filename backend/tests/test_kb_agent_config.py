@@ -61,3 +61,30 @@ class TestSandbox:
     def test_it_cannot_name_a_container_any_more(self):
         with pytest.raises(ValidationError):
             parse_agent_config({"sandbox": {"image": "python:3.12"}})
+
+
+class TestGeneration:
+    """Two request parameters, not prompt text: they go to the model call, so a prompt cannot express them."""
+
+    def test_defaults_match_what_the_agent_sent_before(self):
+        generation = parse_agent_config(None).generation
+        assert generation.temperature is None
+        assert generation.thinking is None
+
+    def test_accepts_a_temperature_in_range(self):
+        cfg = parse_agent_config({"generation": {"temperature": 0.7}})
+        assert cfg.generation.temperature == 0.7
+
+    @pytest.mark.parametrize("value", [-0.1, 2.1])
+    def test_rejects_a_temperature_out_of_range(self, value):
+        with pytest.raises(ValidationError):
+            parse_agent_config({"generation": {"temperature": value}})
+
+    def test_thinking_is_an_enum(self):
+        assert parse_agent_config({"generation": {"thinking": "on"}}).generation.thinking == "on"
+        with pytest.raises(ValidationError):
+            parse_agent_config({"generation": {"thinking": "maybe"}})
+
+    def test_unknown_generation_keys_are_refused(self):
+        with pytest.raises(ValidationError):
+            parse_agent_config({"generation": {"top_p": 0.9}})

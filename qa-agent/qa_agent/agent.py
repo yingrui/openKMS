@@ -78,6 +78,10 @@ class AgentState(TypedDict):
     prompt_version: str | None
     #: Sandbox settings for this request (`sandbox.enabled` etc.); empty when the KB has not enabled code.
     sandbox: dict[str, Any]
+    #: Sampling temperature for this request (`generation.temperature`, default 0.3).
+    temperature: float
+    #: Ask gateways that expose it to think (`generation.thinking`); off unless asked.
+    enable_thinking: bool
 
 
 def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
@@ -175,8 +179,9 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
         base_url=base_url,
         api_key=llm_cfg.api_key,
         model_name=llm_cfg.model_name,
-        temperature=0.3,
+        temperature=float(state.get("temperature") or agent_config_module.DEFAULT_TEMPERATURE),
         streaming=True,
+        enable_thinking=bool(state.get("enable_thinking")),
     )
     skill_ids = normalize_skill_ids(state.get("agent_skills"))
     tools = get_all_skill_tools(skill_ids)
@@ -287,8 +292,9 @@ def finalize_node(state: dict[str, Any]) -> dict[str, Any]:
         base_url=llm_cfg.openai_v1_base_url,
         api_key=llm_cfg.api_key,
         model_name=llm_cfg.model_name,
-        temperature=0.3,
+        temperature=float(state.get("temperature") or agent_config_module.DEFAULT_TEMPERATURE),
         streaming=True,
+        enable_thinking=bool(state.get("enable_thinking")),
     )
     messages = build_messages_for_generate(
         context_prompt=_build_system_prompt(
@@ -377,6 +383,8 @@ def invoke_agent(
     retrieve_k = agent_config_module.top_k(agent_config)
     retrieve_mode = agent_config_module.retrieve_mode(agent_config)
     sandbox_settings = sandbox_runner.sandbox_config(agent_config)
+    temperature = agent_config_module.temperature(agent_config)
+    thinking = agent_config_module.enable_thinking(agent_config)
     h = set_request_access_token(access_token or "")
     h_kb = set_request_knowledge_base_id(knowledge_base_id or "")
     # The workspace key. Tools read it from the request context, so a tool call cannot address another conversation.
@@ -411,12 +419,11 @@ def invoke_agent(
                 "max_tool_rounds": agent_config_module.max_tool_rounds(agent_config),
                 "retrieve_mode": retrieve_mode,
                 "answer_policy": agent_config_module.answer_policy(agent_config),
-            "system_prompt": system_prompt,
-            "prompt_version": prompt_version,
-            "sandbox": sandbox_settings,
                 "system_prompt": system_prompt,
                 "prompt_version": prompt_version,
                 "sandbox": sandbox_settings,
+                "temperature": temperature,
+                "enable_thinking": thinking,
             },
             config=config,
         )
@@ -670,6 +677,11 @@ def _turn_state(
     retrieve_mode: str,
     agent_config: dict[str, Any] | None,
     ctx: list[Any],
+    sandbox_settings: dict[str, Any],
+    temperature: float,
+    enable_thinking: bool,
+    system_prompt: str | None,
+    prompt_version: str | None,
 ) -> dict[str, Any]:
     return {
         "knowledge_base_id": knowledge_base_id,
@@ -684,6 +696,11 @@ def _turn_state(
         "max_tool_rounds": agent_config_module.max_tool_rounds(agent_config),
         "retrieve_mode": retrieve_mode,
         "answer_policy": agent_config_module.answer_policy(agent_config),
+        "system_prompt": system_prompt,
+        "prompt_version": prompt_version,
+        "sandbox": sandbox_settings,
+        "temperature": temperature,
+        "enable_thinking": enable_thinking,
     }
 
 
@@ -705,6 +722,8 @@ async def astream_agent_ndjson(
     retrieve_k = agent_config_module.top_k(agent_config)
     retrieve_mode = agent_config_module.retrieve_mode(agent_config)
     sandbox_settings = sandbox_runner.sandbox_config(agent_config)
+    temperature = agent_config_module.temperature(agent_config)
+    thinking = agent_config_module.enable_thinking(agent_config)
     h = set_request_access_token(access_token or "")
     h_kb = set_request_knowledge_base_id(knowledge_base_id or "")
     # The workspace key. Tools read it from the request context, so a tool call cannot address another conversation.
@@ -739,6 +758,11 @@ async def astream_agent_ndjson(
             retrieve_mode=retrieve_mode,
             agent_config=agent_config,
             ctx=ctx,
+            sandbox_settings=sandbox_settings,
+            temperature=temperature,
+            enable_thinking=thinking,
+            system_prompt=system_prompt,
+            prompt_version=prompt_version,
         )
         agent = get_agent()
         stream_cb = get_langfuse_callback() if settings.langfuse_trace_streaming else None

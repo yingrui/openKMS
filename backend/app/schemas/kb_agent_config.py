@@ -45,6 +45,20 @@ class RetrievalConfig(BaseModel):
     min_score: float | None = Field(None, ge=0.0, le=1.0)
 
 
+class GenerationConfig(BaseModel):
+    """Parameters of the model call itself — not something a prompt can express.
+
+    `None` everywhere means "whatever the deployment does", which is also what these settings did before they
+    existed: the qa-agent sent `temperature=0.3` and asked gateways to skip thinking.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    temperature: float | None = Field(None, ge=0.0, le=2.0)
+    #: Some OpenAI-compatible gateways expose a thinking budget as `extra_body.enable_thinking`.
+    thinking: Literal["on", "off"] | None = None
+
+
 class AnswerPolicy(BaseModel):
     """What counts as an acceptable answer. Defaults are today's behaviour — the point is that they become *choosable*,
     and measurable, rather than implied."""
@@ -113,6 +127,7 @@ class AgentConfig(BaseModel):
     #: No `tools` key here on purpose: which skills are enabled is `knowledge_bases.agent_skills`, and it stays the single
     #: source. Two places to tick the same box is how a KB ends up with a skill one screen shows and the agent does not have.
     model_id: str | None = None
+    generation: GenerationConfig = GenerationConfig()
     prompts: PromptsConfig = PromptsConfig()
     retrieval: RetrievalConfig = RetrievalConfig()
     answer_policy: AnswerPolicy = AnswerPolicy()

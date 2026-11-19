@@ -203,7 +203,6 @@
   "profileLead": "这个服务叫什么、替谁回答、被交代了什么。",
   "modelTitle": "模型",
   "modelLead": "由哪个模型来回答。",
-  "modelFixedHint": "采样参数与思考深度目前由部署决定；等运行时读取它们之后再移到这里。",
   "skillsTitle": "能力",
   "skillsLead": "除了读语料之外，它还能做什么。",
   "toolsTitle": "工具",
@@ -215,5 +214,13 @@
   "endpointLabel": "端点",
   "endpointHint": "用列表中的凭证 POST 到这里，并指定一个已绑定的知识源。",
   "behaviorTitle": "行为",
-  "behaviorLead": "什么算可接受的回答，以及为了回答允许走多少步。"
+  "behaviorLead": "什么算可接受的回答，以及为了回答允许走多少步。",
+  "temperature": "温度",
+  "temperatureHint": "措辞的随机程度。留空使用部署值（0.3）。",
+  "temperaturePlaceholder": "0.3",
+  "thinking": "思考",
+  "thinkingHint": "部分网关提供思考预算；开启会增加延迟与 token 消耗。",
+  "thinkingDefault": "跟随部署配置",
+  "thinkingOn": "先思考再回答",
+  "thinkingOff": "直接回答"
 }

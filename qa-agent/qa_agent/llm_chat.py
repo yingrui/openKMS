@@ -54,8 +54,11 @@ class _ReasoningContentShimChatOpenAI(ChatOpenAI):
         return payload
 
 
-def qa_agent_chat_extra_body() -> dict[str, Any]:
-    """Merge optional JSON extra_body; always set ``enable_thinking`` false (wiki copilot behavior)."""
+def qa_agent_chat_extra_body(*, enable_thinking: bool = False) -> dict[str, Any]:
+    """Merge optional JSON extra_body; ``enable_thinking`` defaults to false (wiki copilot behavior).
+
+    A knowledge base or workforce agent may ask for it, which is why this is a parameter and not a constant.
+    """
     merged: dict[str, Any] = {}
     raw = (settings.llm_extra_body_json or "").strip()
     if raw:
@@ -65,7 +68,7 @@ def qa_agent_chat_extra_body() -> dict[str, Any]:
                 merged.update(obj)
         except (json.JSONDecodeError, TypeError):
             logger.warning("OPENKMS_LLM_EXTRA_BODY is not valid JSON; ignoring")
-    merged["enable_thinking"] = False
+    merged["enable_thinking"] = bool(enable_thinking)
     return merged
 
 
@@ -76,6 +79,7 @@ def make_qa_chat_openai(
     model_name: str,
     temperature: float,
     streaming: bool,
+    enable_thinking: bool = False,
 ) -> ChatOpenAI:
     common: dict[str, Any] = {
         "base_url": base_url,
@@ -83,7 +87,7 @@ def make_qa_chat_openai(
         "model": model_name,
         "temperature": temperature,
         "streaming": streaming,
-        "extra_body": qa_agent_chat_extra_body(),
+        "extra_body": qa_agent_chat_extra_body(enable_thinking=enable_thinking),
     }
     if use_llm_reasoning_content_shim(base_url):
         return _ReasoningContentShimChatOpenAI(**common)

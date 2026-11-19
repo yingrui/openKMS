@@ -11,6 +11,9 @@ import { mergeAgentConfig } from './agentConfigMerge';
 export interface BehaviourDraft {
   agentsMd: string;
   modelId: string;
+  /** Empty means "whatever the deployment does" — the field is a string so a half-typed number is not coerced. */
+  temperature: string;
+  thinking: 'default' | 'on' | 'off';
   unknownMeasure: 'try_anyway' | 'refuse';
   grounding: 'off' | 'mark' | 'enforce';
   schemaLookup: boolean;
@@ -25,6 +28,8 @@ export function draftFromConfig(cfg: KbAgentConfig | null | undefined): Behaviou
   return {
     agentsMd: c.prompts?.agents_md ?? '',
     modelId: c.model_id ?? '',
+    temperature: c.generation?.temperature != null ? String(c.generation.temperature) : '',
+    thinking: c.generation?.thinking ?? 'default',
     unknownMeasure: c.answer_policy?.unknown_measure ?? 'try_anyway',
     grounding: c.answer_policy?.require_grounded_numbers ?? 'off',
     schemaLookup: Boolean(c.answer_policy?.require_schema_lookup),
@@ -40,8 +45,14 @@ export function draftFromConfig(cfg: KbAgentConfig | null | undefined): Behaviou
 /** The part of the configuration this form owns. Anything absent is preserved from the agent. */
 export function draftToConfig(d: BehaviourDraft): Omit<KbAgentConfig, 'retrieval'> {
   const rounds = Number.parseInt(d.maxToolRounds, 10);
+  const temperature = Number.parseFloat(d.temperature);
   return {
     model_id: d.modelId.trim() || null,
+    generation: {
+      temperature:
+        Number.isFinite(temperature) ? Math.min(2, Math.max(0, temperature)) : null,
+      thinking: d.thinking === 'default' ? null : d.thinking,
+    },
     prompts: { agents_md: d.agentsMd.trim() ? d.agentsMd : null },
     answer_policy: {
       unknown_measure: d.unknownMeasure,
