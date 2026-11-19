@@ -52,3 +52,5 @@ third-party/Plaster004_1K-JPG
 third-party/Concrete048_1K-JPG
 third-party/Wood033_1K-JPG
 third-party/poly.pizza
+# Local agent memory (environment facts, not shared)
+MEMORY.md

@@ -1,6 +1,7 @@
 # openKMS — AGENTS.md
 
-Agent 工作指南（原 `.cursor/rules/` 合并版）。
+Agent 工作指南（原 `.cursor/rules/` 合并版）。  
+项目事实、环境细节和踩过的坑记在**本地 `MEMORY.md`**（不入库，已在 `.gitignore`）：规则在本文，事实在那里；学到新的就追加，问题修掉就删。
 
 ---
 
