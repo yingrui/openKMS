@@ -59,14 +59,6 @@ class RuleGroup(BaseModel):
     field: str = Field(min_length=1)
 
 
-class RuleRunPeriod(BaseModel):
-    """How this check uses the period: whose dimension to filter, or none, and how many periods back."""
-
-    source: str = Field(default="inherit", pattern="^(inherit|field|none)$")
-    field: str | None = None
-    offset: int = Field(default=0, ge=-24, le=0)
-
-
 class RuleArgument(BaseModel):
     """One declared run parameter.
 

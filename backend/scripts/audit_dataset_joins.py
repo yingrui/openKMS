@@ -13,14 +13,14 @@ import asyncio
 
 from sqlalchemy import select
 
-from app.db.session import session_scope
+from app.database import async_session_maker
 from app.models.dataset import Dataset
 from app.models.dataset_join import DatasetJoin
 from app.models.dataset_profile import DatasetProfile
 
 
 async def main() -> None:
-    async with session_scope() as db:
+    async with async_session_maker() as db:
         joins = (await db.execute(select(DatasetJoin))).scalars().all()
         targets = {
             d.id: d for d in (await db.execute(select(Dataset))).scalars().all()
