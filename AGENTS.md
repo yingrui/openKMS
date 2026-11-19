@@ -96,7 +96,9 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 
 - 改 `backend/app/models/` → `alembic revision --autogenerate` → review → `upgrade head`  
 - 改 **`permission_default_patterns.py`** → 另加 **refresh migration** 重刷 `security_permissions`（参考 `c3d4e5f6a7b8_*` / `j1k2l3m4n5o6_*`）；只改 Python 默认值**不会**更新已有库  
-- API 启动**不**建表；本地 `backend/dev.sh`（pgvector + Alembic）；Docker CMD 先 Alembic 再 uvicorn  
+- API 启动**不**建表；本地 `backend/dev.sh`（pgvector + Alembic）；Docker CMD 先 Alembic 再 uvicorn
+- **openKMS backend 一律由用户执行 `backend/dev.sh` 启动，agent 不要手工起 uvicorn**（手工起会跳过
+  pgvector/Alembic 检查，也会绕过 `--reload`）。需要重启时提醒用户执行，不要自己拉起或杀掉进程。  
 - 新 model 注册 `backend/alembic/env.py`；Procrastinate 表排除  
 
 > **维护：** 细则（refresh migration 模板、env 注册清单等）日后可迁至 `docs/`，本节改外链 + 要点即可。
