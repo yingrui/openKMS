@@ -80,3 +80,35 @@ class TestDatesAreNotQuantities:
     def test_a_real_count_of_the_same_shape_is_still_a_claim(self):
         result = traceable_numbers("共 1,007,340 行", [{"n": 1007340}])
         assert result["total"] == 1 and result["ratio"] == 1.0
+
+
+class TestVerifiedMeansChecked:
+    """"Not checked" is not "passed".
+
+    The old formula reported True whenever the policy was off, which told every caller an answer had been
+    verified when nothing had looked at it. Verified now means: the policy was enforced AND every number traced.
+    """
+
+    def test_policy_off_is_not_a_pass(self):
+        from qa_agent.evidence import ground, grounding_warnings
+
+        report = ground([], "答案 42")
+        report.policy = "off"
+        warnings = grounding_warnings(report, "off")
+        assert warnings == []
+        # Nothing was enforced, so nothing passed.
+        assert (report.policy == "enforce" and not warnings) is False
+
+    def test_enforce_with_untraced_numbers_fails(self):
+        from qa_agent.evidence import ground, grounding_warnings
+
+        report = ground([], "答案 42")
+        report.policy = "enforce"
+        warnings = grounding_warnings(report, "enforce")
+        assert warnings
+        assert (report.policy == "enforce" and not warnings) is False
+
+    def test_policy_is_reported_so_callers_can_tell_the_two_apart(self):
+        from qa_agent.schemas import GroundingReport
+
+        assert GroundingReport().policy == "off"

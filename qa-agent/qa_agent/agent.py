@@ -450,6 +450,7 @@ def invoke_agent(
         display = label_sources(display, answer)
         grounding = ground(display, answer)
         ground_mode = agent_config_module.require_grounded_numbers(agent_config)
+        grounding.policy = ground_mode
         warnings = grounding_warnings(grounding, ground_mode)
         msgs = list(result.get("messages") or [])
         logger.info(
@@ -467,7 +468,7 @@ def invoke_agent(
             "langfuse_trace_id": trace_id,
             "prompt_version": prompt_version,
             "warnings": warnings,
-            "verified": ground_mode != "enforce" or not warnings,
+            "verified": ground_mode == "enforce" and not warnings,
         }
     except GraphRecursionError:
         logger.error(
@@ -871,6 +872,7 @@ async def astream_agent_ndjson(
         sources_list = label_sources(sources_list, answer)
         grounding = ground(sources_list, answer)
         ground_mode = agent_config_module.require_grounded_numbers(agent_config)
+        grounding.policy = ground_mode
         warnings = grounding_warnings(grounding, ground_mode)
         logger.info(
             "astream_agent_ndjson done kb=%s elapsed=%.2fs graph_events=%d tool_starts=%d "
@@ -895,7 +897,7 @@ async def astream_agent_ndjson(
                 "langfuse_trace_id": current_trace_id(callback),
                 "prompt_version": prompt_version,
                 "warnings": warnings,
-                "verified": ground_mode != "enforce" or not warnings,
+                "verified": ground_mode == "enforce" and not warnings,
             }
         )
         if callback and hasattr(callback, "flush"):

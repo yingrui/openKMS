@@ -631,7 +631,9 @@ async def ask_agent(
         grounding=data.get("grounding"),
         langfuse_trace_id=data.get("langfuse_trace_id"),
         warnings=list(data.get("warnings") or []),
-        verified=bool(data.get("verified", True)),
+        # Fail closed: an upstream that says nothing about verification has not verified anything. "Not
+        # checked" is not "passed" — the qa-agent sends False unless the answer passed an enforced policy.
+        verified=data.get("verified") is True,
         prompt_version=data.get("prompt_version"),
     )
 

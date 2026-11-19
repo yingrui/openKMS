@@ -54,6 +54,9 @@ class GroundingReport(BaseModel):
     total: int = 0
     ratio: float = 1.0
     untraced: list[float] = []
+    #: The policy this answer was judged under. `off` and `mark` compute the ratio but act on nothing, so a
+    #: caller reading `verified=False` needs this to tell "not checked" from "checked and failed".
+    policy: str = "off"
 
 
 class AskResponse(BaseModel):
@@ -68,8 +71,9 @@ class AskResponse(BaseModel):
     prompt_version: str | None = None
     #: Unsourced numbers, when the KB asks to be told about them (`answer_policy.require_grounded_numbers`).
     warnings: list[str] = []
-    #: False when `enforce` is on and the answer contained numbers no cited source supports.
-    verified: bool = True
+    #: True only when the answer was checked and passed: `enforce` was on and every number traced. "Not
+    #: checked" is not "passed" — with the policy off this is False, and `grounding.policy` says why.
+    verified: bool = False
 
 
 class RetrieveRequest(BaseModel):

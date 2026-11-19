@@ -160,5 +160,7 @@ class WorkforceAskResponse(BaseModel):
     grounding: dict[str, Any] | None = None
     langfuse_trace_id: str | None = None
     warnings: list[str] = Field(default_factory=list)
-    verified: bool = True
+    #: True only when the answer was checked against an enforced grounding policy and passed. With the policy off
+    #: this is False, and `grounding["policy"]` distinguishes "not checked" from "checked and failed".
+    verified: bool = False
     prompt_version: str | None = None
