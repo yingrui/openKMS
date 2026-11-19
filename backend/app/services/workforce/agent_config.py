@@ -1,7 +1,7 @@
 """The two halves of an agent's runtime configuration.
 
 A workforce agent owns everything that makes an answer *this service's* answer: instructions, model,
-answer policy, orchestration, workspace, sandbox, observability. The knowledge source owns retrieval
+answer policy, orchestration, workspace, sandbox. The knowledge source owns retrieval
 depth (`top_k` / `rerank` / `min_score`), because how much to pull out of a corpus is a property of the
 corpus, not of the caller.
 
