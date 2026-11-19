@@ -152,19 +152,26 @@ Runtime: `backend/app/services/runtime/deep_agents/` + `POST /api/projects/…/m
 
 ### God modules (split when editing)
 
-| Module | ~Lines | Smell |
-|--------|--------|-------|
-| `api/knowledge_bases.py` | 950+ | CRUD, chunks, FAQs (search/ask in `knowledge_bases_search.py`) |
-| `api/wiki_spaces.py` | 950+ | Pages, files, import, semantic index |
-| `api/documents.py` | 1200+ | Upload, pipeline, metadata |
-| `api/project_conversations.py` | 740+ | Project agent CRUD, NDJSON stream, lessons, improvements |
-| `pages/knowledge-bases/KnowledgeBaseDetail.tsx` (549 — split into `detail/tabs/*`)| ~1600 | View shell + tab JSX; logic in `useKnowledgeBaseDetail.ts` (~1600) and `KnowledgeBaseDetail.*` helpers |
-| `pages/knowledge-bases/useKnowledgeBaseDetail.ts` | ~1600 | KB detail state/handlers — split tab panels into `KnowledgeBaseDetail.*Tab.tsx` when editing |
-| `data/knowledgeBasesApi.ts` | ~950 | KB CRUD, documents, scope, FAQs, chunks, search and QA stream — split by subresource when editing |
-| `graph/ontologySchemaGraphModel.ts` | ~720 | Graph build, layout, satellite placement and overlay — split by concern when editing |
+**The rule is "split when editing", not a batch refactor.** A long file is a smell, not a defect: split it when
+you next have to change it, one section at a time, with a screenshot for the visual ones. Acceptance is "independently
+readable / changeable / testable", not a line count — but the gate below keeps the number honest: `<700` lines, checked
+over `src/**/*.{ts,tsx}` (so `data/` and `graph/` cannot hide), with only these files exempt.
 
-The frontend long-file gate covers **`src/**/*.{ts,tsx}`**, including `data/` and `graph/`; entries above are the
-allowed debt and only shrink.
+| Module | Lines | Target structure (when you touch it) |
+|--------|-------|--------------------------------------|
+| `pages/documents/DocumentDetail.infoPanel.tsx` | 1032 | info / metadata / lifecycle / lineage / versions — one section per file + a hook each |
+| `pages/documents/useDocumentDetail.tsx` | 1016 | the same five sections' state, split with the panel |
+| `pages/knowledge-map/KnowledgeMap.tsx` | 1062 | tree / detail / linkForm / dialogs + `knowledgeMapTree.ts` + `useKnowledgeMap.ts` |
+| `pages/ontology/ObjectExplorer.tsx` | 1059 | query / filters / resultList / graph + `objectExplorerQuery.ts` + a hook |
+| `pages/ontology/LinkTypesPage.tsx` | 835 | list shell + form + index dialogs + `useLinkTypesPage.ts` + `linkTypesModel.ts` |
+| `pages/console/permissions/ConsoleAccessGroups.tsx` | 769 | sidebar / detail / dialogs + `useAccessGroups.ts` + `accessGroupsModel.ts` |
+| `data/knowledgeBasesApi.ts` | 878 | `data/knowledge-bases/{types,crud,documents,scope,faqs,chunks,search,qa,stream,index}.ts` |
+| `graph/ontologySchemaGraphModel.ts` | 717 | `graph/ontology-schema/{types,layout,build,overlay,colors,index}.ts` |
+
+**Done, and worth knowing it was done this way:** the knowledge base detail page was the one file big enough to split
+without waiting for a trigger. It went tab by tab — conversation out to `pages/workforce/chat/`, then the six tab
+components, then the six hooks, then the stylesheet along its own section comments. `KnowledgeBaseDetail.tsx` 1608 → 75,
+`useKnowledgeBaseDetail.ts` 1581 → 138, `KnowledgeBaseDetail.scss` 2888 → 405, and its two gate exemptions are gone.
 
 ### Optional query polish
 
