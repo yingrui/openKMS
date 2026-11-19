@@ -49,6 +49,9 @@ def ask_agent_body(
     prompt_version: str | None = None,
     agent_skills: list[str] | None = None,
     agent_config: dict[str, Any] | None = None,
+    agent_name: str | None = None,
+    agent_description: str | None = None,
+    installed_skills: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """The qa-agent request body.
 
@@ -76,6 +79,13 @@ def ask_agent_body(
         body["agent_config"] = config
     if session_id:
         body["session_id"] = session_id
+    # Identity opens the prompt, so it travels with the request rather than being decoration on a list row.
+    if agent_name:
+        body["agent_name"] = agent_name
+    if agent_description:
+        body["agent_description"] = agent_description
+    if installed_skills:
+        body["installed_skills"] = installed_skills
     return body
 
 

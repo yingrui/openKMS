@@ -371,3 +371,38 @@ class TestInstalledSkills:
         )
         assert "Installed skills:\n### openKMS\n# openKMS\nUse the CLI." in prompt
         assert prompt.index("Installed skills:") < prompt.index("Ontology")
+
+
+class TestIdentityIsInThePrompt:
+    """Name and description open the system prompt; they are what the service is, not a label on a list row."""
+
+    def test_name_and_description_lead(self):
+        from qa_agent.main import _prompt_preview_impl
+        from qa_agent.schemas import PromptPreviewRequest
+
+        out = _prompt_preview_impl(
+            "kb1",
+            PromptPreviewRequest(
+                agent_name="量化投研助手",
+                agent_description="回答 A 股因子与回测问题。",
+                agent_config={"prompts": {"system_prompt": "回答时引用数据来源。"}},
+            ),
+        )
+        assert out.system_prompt.startswith("You are 量化投研助手. 回答 A 股因子与回测问题。")
+        assert out.system_prompt.index("回答时引用数据来源。") > out.system_prompt.index("量化投研助手")
+
+    def test_description_alone_still_names_the_service(self):
+        from qa_agent.agent import _build_system_prompt
+
+        prompt = _build_system_prompt(context=[], skills=[], policy=None, agent_name="客服助手")
+        assert prompt.startswith("You are 客服助手.\n\n")
+
+    def test_no_identity_no_line(self):
+        from qa_agent.main import _prompt_preview_impl
+        from qa_agent.schemas import PromptPreviewRequest
+
+        from qa_agent.agent import DEFAULT_BASE_INSTRUCTION
+
+        out = _prompt_preview_impl("kb1", PromptPreviewRequest(agent_config={}))
+        # Without an identity the prompt opens with the built-in instruction, not an invented name.
+        assert out.system_prompt.startswith(DEFAULT_BASE_INSTRUCTION)

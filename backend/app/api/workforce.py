@@ -409,6 +409,8 @@ async def agent_prompt_preview(
         "agent_skills": agent_skills_for(kb, agent),
         "agent_config": runtime,
         "installed_skills": dict(agent.installed_skills or {}),
+        "agent_name": agent.name,
+        "agent_description": agent.description,
     }
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -779,6 +781,8 @@ async def ask_agent(
         system_prompt=base_instruction_for(runtime),
         # Skill packages installed on this agent; the qa-agent fetches their text with its own service credentials.
         installed_skills=dict(agent.installed_skills or {}),
+        agent_name=agent.name,
+        agent_description=agent.description,
     )
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:

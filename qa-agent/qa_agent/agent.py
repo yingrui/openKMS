@@ -92,6 +92,9 @@ class AgentState(TypedDict):
     agents_md: str | None
     #: Installed skill packages (resolved to their SKILL.md text) for the prompt's "Installed skills" section.
     installed_skill_packages: list[dict[str, Any]]
+    #: The service's identity, which opens the system prompt.
+    agent_name: str | None
+    agent_description: str | None
 
 
 def _llm_for(state: dict[str, Any]):
@@ -166,6 +169,8 @@ def _build_system_prompt(
     state_prompt: str | None = None,
     agents_md: str | None = None,
     installed_skills: list[dict[str, Any]] | None = None,
+    agent_name: str | None = None,
+    agent_description: str | None = None,
 ) -> str:
     def _source_ref(s: SourceItem) -> str:
         parts = []
@@ -187,6 +192,13 @@ def _build_system_prompt(
     # A KB's published prompt replaces the *base instruction* only: the skill descriptions, the policy rules and the
     # retrieved context are assembled here and cannot be talked away by a prompt edit.
     base = (state_prompt or "").strip() or DEFAULT_BASE_INSTRUCTION
+    # Identity first: the name and description are what this service *is*, and they are part of the prompt rather than
+    # decoration on a list row. An author who names an agent and describes it expects the model to know both.
+    identity = ""
+    name = (agent_name or "").strip()
+    if name:
+        described = (agent_description or "").strip()
+        identity = f"You are {name}." + (f" {described}" if described else "") + "\n\n"
     # AGENTS.md is agent memory, not a second prompt: `deepagents` reads it as a file and appends it to the system
     # message in a wrapper that says what it is (its `MemoryMiddleware` / `MEMORY_SYSTEM_PROMPT`). The wrapper matters —
     # file content can be stale or written by someone else, and it must not read like an instruction from the operator.
@@ -214,6 +226,7 @@ def _build_system_prompt(
             "with the user's current request, the request wins.\n\n"
         )
     return (
+        f"{identity}"
         f"{base}\n\n"
         f"{conventions}"
         f"{packages}"
@@ -266,6 +279,8 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
             state.get("system_prompt"),
             state.get("agents_md"),
             state.get("installed_skill_packages"),
+            state.get("agent_name"),
+            state.get("agent_description"),
         ),
         conversation_history=state["conversation_history"],
         question=state["question"],
@@ -375,6 +390,8 @@ def finalize_node(state: dict[str, Any]) -> dict[str, Any]:
             state.get("system_prompt"),
             state.get("agents_md"),
             state.get("installed_skill_packages"),
+            state.get("agent_name"),
+            state.get("agent_description"),
         ),
         conversation_history=state["conversation_history"],
         question=state["question"],
@@ -449,6 +466,8 @@ def invoke_agent(
     system_prompt: str | None = None,
     prompt_version: str | None = None,
     installed_skills: dict[str, str] | None = None,
+    agent_name: str | None = None,
+    agent_description: str | None = None,
 ) -> dict[str, Any]:
     """Invoke the agent and return answer + sources."""
     from .langfuse_client import build_langgraph_trace_config, current_trace_id
@@ -769,6 +788,8 @@ def _turn_state(
     system_prompt: str | None,
     prompt_version: str | None,
     installed_skill_packages: list[dict[str, Any]] | None = None,
+    agent_name: str | None = None,
+    agent_description: str | None = None,
 ) -> dict[str, Any]:
     return {
         "knowledge_base_id": knowledge_base_id,
@@ -793,6 +814,8 @@ def _turn_state(
         "model_id": agent_config_module.model_id(agent_config),
         "agents_md": agent_config_module.agents_md(agent_config),
         "installed_skill_packages": installed_skill_packages or [],
+        "agent_name": agent_name,
+        "agent_description": agent_description,
         "top_p": agent_config_module.top_p(agent_config),
         "max_tokens": agent_config_module.max_tokens(agent_config),
         "rerank": agent_config_module.rerank_override(agent_config),
@@ -810,6 +833,8 @@ async def astream_agent_ndjson(
     system_prompt: str | None = None,
     prompt_version: str | None = None,
     installed_skills: dict[str, str] | None = None,
+    agent_name: str | None = None,
+    agent_description: str | None = None,
 ) -> AsyncIterator[bytes]:
     """NDJSON stream: ``delta`` / ``tool_*`` events (wiki-copilot-compatible), then ``done`` or ``error``."""
     from .langfuse_client import build_langgraph_trace_config, current_trace_id, get_langfuse_callback
@@ -869,6 +894,8 @@ async def astream_agent_ndjson(
             system_prompt=system_prompt,
             prompt_version=prompt_version,
             installed_skill_packages=installed_skill_packages,
+            agent_name=agent_name,
+            agent_description=agent_description,
         )
         agent = get_agent()
         stream_cb = get_langfuse_callback() if settings.langfuse_trace_streaming else None

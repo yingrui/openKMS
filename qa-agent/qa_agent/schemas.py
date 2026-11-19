@@ -84,6 +84,8 @@ class PromptPreviewRequest(BaseModel):
     agent_skills: list[str] | None = None
     agent_config: dict[str, Any] | None = None
     installed_skills: dict[str, str] | None = None
+    agent_name: str | None = None
+    agent_description: str | None = None
 
 
 class PromptPreviewResponse(BaseModel):
