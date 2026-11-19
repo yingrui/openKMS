@@ -3,7 +3,7 @@
   "gallerySubtitle": "管理决策系统。",
   "loading": "加载中…",
   "emptyGallery": "还没有应用。",
-  "emptyGalleryHint": "可在「控制台 → Kubernetes」登记，或由 Agent 登记。",
+  "emptyGalleryHint": "可在「控制台 → Kubernetes」登记，或由智能体登记。",
   "goToKubernetes": "去登记应用",
   "stale": "过期",
   "backToGallery": "返回议事厅",

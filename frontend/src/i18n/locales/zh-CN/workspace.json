@@ -346,7 +346,7 @@
     "queryPlaceholder": "要问的问题",
     "expectedLabelForm": "期望答案",
     "expectedPlaceholder": "期望答案",
-    "expectedQueryEditHint": "期望查询由导入或脚本维护；此对话框只改主题与问题。",
+    "expectedQueryEditHint": "期望查询由导入或脚本维护；此弹窗只改主题与问题。",
     "cancel": "取消",
     "saving": "保存中…",
     "save": "保存",
@@ -389,7 +389,7 @@
       "model_metadata": "模型元数据",
       "expectation": "期望",
       "skill": "技能",
-      "agent": "Agent",
+      "agent": "智能体",
       "harness": "题集"
     },
     "adviceLabel": "建议",

@@ -843,7 +843,7 @@
     "filterDomain": "Domain",
     "filterTag": "Tag",
     "versions": "Versions",
-    "versionsHint": "Publishing records exactly which files a version contains, so a training set can be named by version — v2 always means the same data.",
+    "versionsHint": "Each publish records which files the version contains, so a version can be referenced directly — \"v2\" always means the same data.",
     "noVersions": "No versions yet.",
     "version": "Version",
     "versionStatus": "Status",

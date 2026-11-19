@@ -19,7 +19,7 @@
   },
   "wiki": {
     "title": "Wiki 空间",
-    "subtitle": "组织 Markdown Wiki 页面；可通过 openkms-cli 同步或在浏览器中编辑。",
+    "subtitle": "组织 Markdown Wiki 页面；可用命令行工具同步，或直接在浏览器中编辑。",
     "newSpace": "新建 Wiki 空间",
     "empty": "暂无 Wiki 空间，创建一个开始使用。",
     "toastLoadFailed": "无法加载 Wiki 空间",

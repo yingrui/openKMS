@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { updateWorkforceAgent } from '../../../data/workforceApi';
+import { fetchModels, type ApiModelResponse } from '../../../data/modelsApi';
 import { FormField } from '../../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { configFromDraft, draftFromConfig } from '../workforceConfigDraft';
+import { SAMPLING_PRESETS, applyPreset, matchPreset } from '../samplingPresets';
 import { useWorkforceDetail } from './workforceDetailContext';
 
 /**
@@ -21,12 +23,46 @@ import { useWorkforceDetail } from './workforceDetailContext';
  *
  * The hint carries the two things a chooser needs: what it buys (reasoning before the answer), what it costs (latency,
  * tokens), and the side effect the provider documents — while thinking is on, `temperature` is ignored.
+ *
+ * Temperature and top-p are described by what they change (how varied the wording is; how wide the candidate pool is)
+ * rather than by their statistical names: "nucleus sampling" is the correct term and tells a reader nothing they can
+ * act on. The hints also carry the practice — tune one, leave the other at its default.
+ *
+ * The model is a select over the registered chat models, not free text: the registry is what the backend can resolve
+ * credentials for, and a typo there produced an agent that answered with something else entirely. Empty means the
+ * deployment's default model.
  */
 export function WorkforceModelTab() {
   const { t } = useTranslation('workforce');
   const { agent, reload } = useWorkforceDetail();
   const [draft, setDraft] = useState(() => draftFromConfig(agent.agent_config));
   const [saving, setSaving] = useState(false);
+  const [models, setModels] = useState<ApiModelResponse[]>([]);
+
+  const loadModels = useCallback(async () => {
+    try {
+      const res = await fetchModels({ api_kind: 'chat-completions', limit: 200, offset: 0 });
+      setModels(res.items);
+    } catch {
+      // The select falls back to the current value; models are a convenience, not a precondition.
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadModels();
+  }, [loadModels]);
+
+  const preset = matchPreset(draft);
+  const setPreset = (id: (typeof SAMPLING_PRESETS)[number]['id']) => {
+    const chosen = SAMPLING_PRESETS.find((p) => p.id === id);
+    if (chosen) setDraft((current) => applyPreset(current, chosen));
+  };
+
+  // Group by provider so two models with the same vendor name stay distinguishable.
+  const modelsByProvider = models.reduce<Record<string, ApiModelResponse[]>>((acc, m) => {
+    (acc[m.provider_name] ??= []).push(m);
+    return acc;
+  }, {});
 
   const save = async () => {
     setSaving(true);
@@ -58,12 +94,42 @@ export function WorkforceModelTab() {
       <EntityViewPanel>
         <div className="entity-view__form">
           <FormField label={t('model')} hint={t('modelHint')}>
-            <input
+            <select
               className="ds-control"
               value={draft.modelId}
-              placeholder={t('modelPlaceholder')}
               onChange={(e) => setDraft({ ...draft, modelId: e.target.value })}
-            />
+            >
+              <option value="">{t('modelDefault')}</option>
+              {Object.entries(modelsByProvider).map(([provider, items]) => (
+                <optgroup key={provider} label={provider}>
+                  {items.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+              {/* A saved model that is no longer in the list stays visible, so saving does not silently drop it. */}
+              {draft.modelId && !models.some((m) => m.id === draft.modelId) ? (
+                <option value={draft.modelId}>{t('modelMissing')}</option>
+              ) : null}
+            </select>
+          </FormField>
+          {/* A row of starting points. It sets both fields, then leaves them editable — a preset is not a mode. */}
+          <FormField label={t('samplingPreset')} hint={t('samplingPresetHint')}>
+            <div className="workforce-segmented" role="group" aria-label={t('samplingPreset')}>
+              {SAMPLING_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`workforce-segmented__btn${preset === p.id ? ' active' : ''}`}
+                  aria-pressed={preset === p.id}
+                  onClick={() => setPreset(p.id)}
+                >
+                  {t(`samplingPreset_${p.id}`)}
+                </button>
+              ))}
+            </div>
           </FormField>
           <FormField label={t('temperature')} hint={t('temperatureHint')}>
             <input
@@ -101,7 +167,7 @@ export function WorkforceModelTab() {
               onChange={(e) => setDraft({ ...draft, maxTokens: e.target.value })}
             />
           </FormField>
-          <FormField label={t('thinkingMode')} hint={t('thinkingModeHint')}>
+          <FormField label={t('thinkingMode')}>
             <select
               className="ds-control"
               value={draft.thinking}
@@ -128,9 +194,8 @@ export function WorkforceModelTab() {
               }
             >
               <option value="">{t('reasoningEffortDefault')}</option>
-              <option value="minimal">{t('reasoningEffortMinimal')}</option>
+              {/* Stored values are the API's (`low | high | max`); the wording is the product's. */}
               <option value="low">{t('reasoningEffortLow')}</option>
-              <option value="medium">{t('reasoningEffortMedium')}</option>
               <option value="high">{t('reasoningEffortHigh')}</option>
               <option value="max">{t('reasoningEffortMax')}</option>
             </select>

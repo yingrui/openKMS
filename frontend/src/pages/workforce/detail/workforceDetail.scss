@@ -88,3 +88,48 @@
   font-size: var(--text-sm);
   word-break: break-all;
 }
+
+/* Segmented control for the sampling presets: one bordered group, equal-width segments, the active one filled.
+   Full width so it lines up with the form controls below it rather than floating as a row of small buttons. */
+.workforce-segmented {
+  display: flex;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-muted);
+  overflow: hidden;
+
+  &__btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: var(--padding-compact-y) var(--space-3);
+    border: 0;
+    border-right: 1px solid var(--color-border);
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+
+    &:last-child {
+      border-right: 0;
+    }
+
+    &:hover {
+      background: var(--color-bg-elevated);
+      color: var(--color-text);
+    }
+
+    &.active {
+      background: var(--color-accent-subtle);
+      color: var(--color-accent);
+      font-weight: var(--font-weight-medium);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring-width) solid var(--color-accent);
+      outline-offset: calc(var(--focus-ring-width) * -1);
+    }
+  }
+}

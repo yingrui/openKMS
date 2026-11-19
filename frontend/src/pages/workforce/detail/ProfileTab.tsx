@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Archive, Save } from 'lucide-react';
 import { toast } from 'sonner';
-import { archiveWorkforceAgent, updateWorkforceAgent } from '../../../data/workforceApi';
+import { deleteWorkforceAgent, updateWorkforceAgent } from '../../../data/workforceApi';
 import { useConfirm } from '../../../contexts/ConfirmContext';
 import { EntityViewField, EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { configFromDraft, draftFromConfig } from '../workforceConfigDraft';
@@ -62,7 +62,7 @@ export function WorkforceProfileTab() {
       return;
     }
     try {
-      await archiveWorkforceAgent(agent.id);
+      await deleteWorkforceAgent(agent.id);
       toast.success(t('deleted'));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('deleteFailed'));

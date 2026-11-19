@@ -170,7 +170,7 @@
       },
       "agents": {
         "name": "Agents",
-        "description": "Project workspaces with Deep Agents chat, files, git, and research tools."
+        "description": "Agent project workspaces with chat, files, git, and research tools."
       },
       "media": {
         "name": "Media library",

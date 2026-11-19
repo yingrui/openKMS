@@ -19,7 +19,7 @@
   },
   "wiki": {
     "title": "Wiki spaces",
-    "subtitle": "Organize markdown wiki pages; sync content from openkms-cli or edit in the browser.",
+    "subtitle": "Organise Markdown wiki pages; sync with the CLI or edit in the browser.",
     "newSpace": "New wiki space",
     "empty": "No wiki spaces yet. Create one to get started.",
     "toastLoadFailed": "Failed to load wiki spaces",

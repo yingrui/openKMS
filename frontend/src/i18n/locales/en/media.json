@@ -176,6 +176,7 @@
     "saving": "Saving…",
     "saved": "Settings saved",
     "saveFailed": "Save failed",
-    "invalidSchema": "Invalid metadata schema JSON"
+    "invalidSchema": "Invalid metadata schema JSON",
+    "sharingTitle": "Who can access this collection"
   }
 }

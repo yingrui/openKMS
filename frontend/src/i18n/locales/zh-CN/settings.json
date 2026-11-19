@@ -32,6 +32,16 @@
     "createKey": "无法创建密钥",
     "revokeKey": "无法吊销密钥",
     "localeSave": "无法保存界面语言",
-    "copy": "无法复制到剪贴板"
-  }
+    "copy": "无法复制到剪贴板",
+    "passwordChange": "无法修改密码"
+  },
+  "passwordTitle": "修改密码",
+  "passwordIntro": "更新你的账号密码。仅本地登录模式可用。",
+  "currentPassword": "当前密码",
+  "newPassword": "新密码",
+  "changePassword": "修改密码",
+  "changingPassword": "修改中…",
+  "passwordChanged": "密码已修改",
+  "cancel": "取消",
+  "close": "关闭"
 }

@@ -343,7 +343,7 @@ From **`frontend/`** — one command, the same one CI runs:
 
 ```bash
 npm run check   # typecheck → check:app-layout → check:app-modules → check:styles
-                # → check:lint (eslint ratchet) → vitest → build
+                # → check:copy (interface copy) → check:lint (eslint ratchet) → vitest → build
 ```
 
 | Gate | Covers |
@@ -351,6 +351,7 @@ npm run check   # typecheck → check:app-layout → check:app-modules → check
 | `check:app-layout` | single gutter source (`.app-content` / `.app-page-pane`) |
 | `check:app-modules` | the Suite app list/order lives in `APP_MODULES` |
 | `check:styles` | the rules in the table below |
+| `check:copy` | spoken particles and mistyped punctuation in Chinese interface copy (`scripts/check-i18n-tone.py`, self-tested). **Context-dependent terms are out of scope on purpose** — 网关, 端点 and 接口 are correct on the screens that face integrators and wrong on the ones that do not, and a blacklist would ban the right uses with the wrong ones; that call stays with review, per `AGENTS.md` |
 | `check:lint` | eslint, ratcheted: `scripts/eslint-baseline.txt` freezes the errors we have — a file that *gains* one fails. The baseline is **0**, and `eslint-disable` is **banned** (like `# noqa` in `backend/check.sh`): fix the finding instead. History — `react-hooks/refs` (108) came from view-models that return refs, because React's compiler flags **every** property read on an object containing a ref, so a hook's refs stay private (expose behaviour) and the view-model is destructured at the call site; `react-hooks/set-state-in-effect` (16) and `react-refresh/only-export-components` (19) are gone too (render-time state adjustment, and non-component exports moved to their own modules) |
 | `test` | vitest |
 

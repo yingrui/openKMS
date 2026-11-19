@@ -17,7 +17,8 @@
     "preview": "vite preview",
     "check:lint": "python3 scripts/check-eslint.py",
     "screenshot": "node scripts/screenshot.mjs",
-    "check": "npm run typecheck && npm run check:app-layout && npm run check:app-modules && npm run check:styles && npm run check:lint && npm run test && npm run build"
+    "check": "npm run typecheck && npm run check:app-layout && npm run check:app-modules && npm run check:styles && npm run check:copy && npm run check:lint && npm run test && npm run build",
+    "check:copy": "python3 scripts/check-i18n-tone.py --self-test && python3 scripts/check-i18n-tone.py"
   },
   "dependencies": {
     "@a2ui/react": "^0.10.2",

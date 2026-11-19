@@ -123,7 +123,7 @@ export async function updateWorkforceAgent(
   });
 }
 
-export async function archiveWorkforceAgent(agentId: string): Promise<void> {
+export async function deleteWorkforceAgent(agentId: string): Promise<void> {
   return request<void>(`/api/workforce/agents/${agentId}`, { method: 'DELETE' });
 }
 

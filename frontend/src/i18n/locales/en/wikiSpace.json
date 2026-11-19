@@ -17,7 +17,7 @@
   "sectionSemantic": "Semantic search settings",
   "sectionSemanticHint": "Pick the embedding model used to build vectors (or keep the global default). Meaning-based matching in the workspace sidebar only works after a successful index build; saving a page does not refresh vectors.",
   "semanticModelsLoading": "Loading embedding models…",
-  "semanticNoEmbedding": "No usable embedding model is configured yet (Models → Embedding → attach a provider with a base URL and set a default). Semantic options are disabled.",
+  "semanticNoEmbedding": "No embedding model is available yet. Choose one on the Models page and set it as default; semantic search options are disabled until then.",
   "semanticEmbeddingModelLabel": "Embedding model",
   "semanticEmbeddingDefaultOption": "Use global default ({{name}})",
   "semanticEmbeddingBadgeDefault": "default",

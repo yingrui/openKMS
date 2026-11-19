@@ -36,8 +36,8 @@
     "colLastSeen": "上次上报",
     "colLastSeenEmpty": "—",
     "role": {
-      "worker": "Worker",
-      "scheduler": "Scheduler"
+      "worker": "工作进程",
+      "scheduler": "调度器"
     },
     "dataSourcesHeading": "已登记数据源",
     "dataSourcesEmpty": "没有可检查的数据源，或需要 console:data_sources 权限才能在此测试连接。",
@@ -166,11 +166,11 @@
       },
       "connectors": {
         "name": "连接器",
-        "description": "外部数据集成：加密凭据与用于同步任务的数据集绑定。"
+        "description": "外部数据集成：加密凭证与用于同步任务的数据集绑定。"
       },
       "agents": {
         "name": "智能体",
-        "description": "项目工作区：Deep Agents 对话、文件、git 与检索工具。"
+        "description": "智能体项目工作区：对话、文件、git 与检索工具。"
       },
       "media": {
         "name": "媒体库",
@@ -365,7 +365,7 @@
     "toastNeo4jAllDeleted": "已清空 Neo4j 数据",
     "toastNeo4jDeleteAllFailed": "清空失败",
     "pageTitle": "数据源",
-    "subtitle": "管理 PostgreSQL 与 Neo4j 连接。凭据在服务端加密存储。",
+    "subtitle": "管理 PostgreSQL 与 Neo4j 连接。凭证在服务端加密存储。",
     "newDataSource": "新建数据源",
     "loading": "加载中…",
     "colName": "名称",
@@ -408,7 +408,8 @@
     "neo4jDeleteAllHeading": "清空 Neo4j 数据",
     "neo4jDeleteAllBody": "将删除此 Neo4j 库中的全部节点与关系？此操作不可撤销。",
     "deleting": "删除中…",
-    "confirmDeleteAll": "确认并全部删除"
+    "confirmDeleteAll": "确认并全部删除",
+    "fieldName": "名称"
   },
   "kubernetes": {
     "toastLoadFailed": "无法加载 Kubernetes 集群",
@@ -465,7 +466,7 @@
     "kubeconfigHint": "建议使用包含 token 或证书的 kubeconfig。若依赖客户端 exec 插件，服务端连通性测试可能失败。",
     "placeholderName": "例如：预发集群",
     "placeholderDescription": "可选说明",
-    "placeholderKubeconfigEdit": "仅在轮换凭据时粘贴新的 kubeconfig",
+    "placeholderKubeconfigEdit": "仅在轮换凭证时粘贴新的 kubeconfig",
     "placeholderKubeconfigNew": "粘贴完整的 kubeconfig YAML",
     "cancel": "取消",
     "saving": "保存中…",
@@ -509,7 +510,7 @@
     "toastRegisteredApp": "已登记到应用",
     "toastRegisterFailed": "无法登记应用",
     "secretsHeading": "Secrets",
-    "secretsHint": "仅 Opaque Secret。值只写不回显。由 Project 管理的 Secret 只能在「项目设置 → 部署」中修改。",
+    "secretsHint": "仅支持 Opaque Secret，值只写不回显。由智能体项目管理的 Secret 只能在「项目设置 → 部署」中修改。",
     "secretsEmpty": "此命名空间下没有 Opaque Secret。",
     "secretNew": "新建 Secret",
     "secretNewTitle": "新建 Secret",
@@ -584,11 +585,11 @@
     "toastUpdated": "连接器已更新",
     "toastCreated": "连接器已创建",
     "toastOperationFailed": "操作失败",
-    "deleteConfirm": "删除此连接器？已保存的凭据将一并删除。",
+    "deleteConfirm": "删除此连接器？已保存的凭证将一并删除。",
     "toastDeleted": "连接器已删除",
     "toastDeleteFailed": "删除失败",
     "pageTitle": "连接器",
-    "subtitle": "同步类连接器写入数据集；搜索工具类连接器为 Agent 提供按需网络搜索。",
+    "subtitle": "同步类连接器写入数据集；搜索类连接器为智能体提供按需网络搜索。",
     "newConnector": "新建连接器",
     "loading": "加载中…",
     "colName": "名称",
@@ -597,7 +598,7 @@
     "colSecrets": "密钥",
     "colEnabled": "启用",
     "colActions": "操作",
-    "empty": "尚无连接器。添加后可保存受支持集成的凭据。",
+    "empty": "尚无连接器。添加后可保存受支持集成的凭证。",
     "secretsNone": "—",
     "secretSet": "已配置",
     "secretUnset": "未配置",
@@ -619,7 +620,7 @@
     "sectionOutputSchema": "输出结构",
     "outputSchemaHint": "每次搜索响应的数据形状（类型元数据）。search_tool 连接器实例不配置 outputs。",
     "sectionTestSearch": "测试搜索",
-    "testSearchHint": "通过此连接器执行查询（与 Agent 的 web_search 工具相同路径）。",
+    "testSearchHint": "通过此连接器执行查询（与智能体的 web_search 工具相同路径）。",
     "testSearchPlaceholder": "搜索关键词…",
     "testSearchRun": "搜索",
     "testSearching": "搜索中…",
