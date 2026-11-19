@@ -241,6 +241,7 @@ nav:
       - OpenAI SDK params (vendored): research/agent-config/openai-sdk.md
       - Anthropic SDK params (vendored): research/agent-config/anthropic-sdk.md
       - Dify agent config (vendored): research/agent-config/dify.md
+      - Agent frameworks config surfaces (vendored): research/agent-config/frameworks.md
       - Deep Agents runtime (vendored): research/agent-config/deep-agents.md
       - pi harness compaction (vendored): research/agent-config/pi-harness.md
       - Apache Ossie core spec (vendored): research/ossie/spec.md

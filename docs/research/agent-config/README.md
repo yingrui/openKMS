@@ -11,6 +11,7 @@
 | [`openai-sdk.md`](openai-sdk.md) | PyPI `openai` **3.55.1** wheel | `Chat Completions` 与 `Responses` 的请求字段名、`reasoning_effort` 取值、工具联合类型 |
 | [`anthropic-sdk.md`](anthropic-sdk.md) | PyPI `anthropic` **2.10.0** wheel | `MessageCreateParams` 的全部字段、`thinking` 配置、`output_config` |
 | [`dify.md`](dify.md) | `docs.dify.ai/llms-full.txt` | 知识检索归属、生成参数模板、记忆窗口的原文段落 |
+| [`frameworks.md`](frameworks.md) | PyPI / npm 上的 9 个框架（OpenAI Agents 0.25.0、Google ADK 2.14.1、Microsoft Agent Framework 1.26.0、AutoGen 0.7.5、CrewAI 1.15.43、Haystack 3.5.0、Semantic Kernel 1.47.0、LangChain 1.5.2、Mastra 1.85.0） | 各自"创建一个 agent"接受的字段/签名，以及跨框架的 8 条观察 |
 | [`deep-agents.md`](deep-agents.md) | **已安装的** `deepagents` **0.7.21** + 本仓库调用点 | `create_deep_agent` 全参数、`MemoryMiddleware`、`SummarizationMiddleware`、`SubAgent`、我们传了/没传什么 |
 | [`pi-harness.md`](pi-harness.md) | 本机 `pi` **1.4.0** 自带文档 | 压缩阈值（`reserveTokens` / `keepRecentTokens` / 按模型覆盖）、摘要骨架、技能加载方式 |
 
