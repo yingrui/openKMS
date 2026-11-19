@@ -168,6 +168,13 @@ class WorkforceAskResponse(BaseModel):
     model: str | None = None
 
 
+class WorkforcePromptPreviewRequest(BaseModel):
+    """Texts to preview instead of the stored ones — the editor's current content, saved or not."""
+
+    system_prompt: str | None = None
+    agents_md: str | None = None
+
+
 class WorkforcePromptPreviewResponse(BaseModel):
     """What the model is given before a question arrives, as the qa-agent assembles it."""
 

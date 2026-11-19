@@ -37,6 +37,7 @@ from app.models.workforce_agent import (
 )
 from app.schemas.workforce import (
     WorkforceAvailableSkill,
+    WorkforcePromptPreviewRequest,
     WorkforceInstalledSkill,
     WorkforcePromptPreviewResponse,
     WorkforceSkillInstall,
@@ -361,11 +362,12 @@ async def uninstall_agent_skill(
     return await list_agent_skills(agent_id, request, db)
 
 
-@router.get("/agents/{agent_id}/prompt-preview", response_model=WorkforcePromptPreviewResponse)
+@router.post("/agents/{agent_id}/prompt-preview", response_model=WorkforcePromptPreviewResponse)
 async def agent_prompt_preview(
     agent_id: str,
     kb_id: str,
     request: Request,
+    body: WorkforcePromptPreviewRequest | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """The system prompt the model actually receives, plus the text that becomes AGENTS.md.
@@ -392,14 +394,25 @@ async def agent_prompt_preview(
     if not url:
         raise HTTPException(status_code=400, detail="No QA agent URL configured for this deployment")
 
-    body = {
+    runtime = runtime_config(kb, agent)
+    # Preview what is on screen, not what was last saved: an author editing a prompt expects the preview to follow the
+    # text they are typing, and asking them to save first to see the effect is the opposite of a preview.
+    if body is not None:
+        prompts = dict(runtime.get("prompts") or {})
+        if body.system_prompt is not None:
+            prompts["system_prompt"] = body.system_prompt or None
+        if body.agents_md is not None:
+            prompts["agents_md"] = body.agents_md or None
+        runtime["prompts"] = prompts
+
+    request_body = {
         "agent_skills": agent_skills_for(kb, agent),
-        "agent_config": runtime_config(kb, agent),
+        "agent_config": runtime,
         "installed_skills": dict(agent.installed_skills or {}),
     }
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(agent_kb_path(url, kb.id, "prompt-preview"), json=body)
+            resp = await client.post(agent_kb_path(url, kb.id, "prompt-preview"), json=request_body)
             resp.raise_for_status()
             data = resp.json()
     except httpx.HTTPStatusError as e:

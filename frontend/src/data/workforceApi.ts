@@ -221,13 +221,23 @@ export interface WorkforcePromptPreview {
   agents_md: string | null;
 }
 
-/** The assembled prompt, from the qa-agent that assembles it at answer time. */
+/**
+ * The assembled prompt, from the qa-agent that assembles it at answer time.
+ *
+ * The editor's current text is sent along, so the preview follows what is on screen rather than what was last saved.
+ */
 export async function fetchPromptPreview(
   agentId: string,
-  kbId: string
+  kbId: string,
+  draft: { systemPrompt: string; agentsMd: string }
 ): Promise<WorkforcePromptPreview> {
   return request<WorkforcePromptPreview>(
-    `/api/workforce/agents/${agentId}/prompt-preview?kb_id=${encodeURIComponent(kbId)}`
+    `/api/workforce/agents/${agentId}/prompt-preview?kb_id=${encodeURIComponent(kbId)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system_prompt: draft.systemPrompt, agents_md: draft.agentsMd }),
+    }
   );
 }
 

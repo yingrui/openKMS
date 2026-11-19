@@ -238,6 +238,8 @@ class TestPromptPreviewRoute:
                 return SimpleNamespace(scalars=lambda: SimpleNamespace(first=lambda: object()))
 
         sent: dict = {}
+        # The draft from the editor, not the stored config: an author expects the preview to follow the text.
+        body = SimpleNamespace(system_prompt="xxxx", agents_md="# 草稿约定")
 
         class FakeClient:
             def __init__(self, *a, **kw):
@@ -262,13 +264,17 @@ class TestPromptPreviewRoute:
         monkeypatch.setattr(workforce, "resolve_agent_url", lambda kb: "http://agent")
         monkeypatch.setattr(workforce.httpx, "AsyncClient", FakeClient)
 
-        out = asyncio.run(workforce.agent_prompt_preview("agent_1", "kb_1", SimpleNamespace(), FakeDB()))
+        out = asyncio.run(
+            workforce.agent_prompt_preview("agent_1", "kb_1", SimpleNamespace(), body, FakeDB())
+        )
 
         assert out.system_prompt == "SYSTEM"
         assert out.agents_md == "# rules"
         assert sent["url"].endswith("/knowledge-bases/kb_1/prompt-preview")
         # The qa-agent receives the same things the answer path sends: tools, runtime config, installed skills.
         assert set(sent["body"]) == {"agent_skills", "agent_config", "installed_skills"}
+        assert sent["body"]["agent_config"]["prompts"]["system_prompt"] == "xxxx"
+        assert sent["body"]["agent_config"]["prompts"]["agents_md"] == "# 草稿约定"
 
 
 async def _async(value):

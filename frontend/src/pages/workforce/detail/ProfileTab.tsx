@@ -67,6 +67,8 @@ export function WorkforceProfileTab() {
     }
   };
 
+  const invalidatePreview = () => setPreview(null);
+
   const togglePreview = async () => {
     if (!sourceId) return;
     const next = !previewVisible;
@@ -74,7 +76,12 @@ export function WorkforceProfileTab() {
     if (!next || preview) return;
     setPreviewError(null);
     try {
-      setPreview(await fetchPromptPreview(agent.id, sourceId));
+      setPreview(
+        await fetchPromptPreview(agent.id, sourceId, {
+          systemPrompt: instruction,
+          agentsMd,
+        })
+      );
     } catch (e: unknown) {
       setPreviewError(e instanceof Error ? e.message : t('previewFailed'));
     }
@@ -165,7 +172,10 @@ export function WorkforceProfileTab() {
             spellCheck={false}
             value={instruction}
             placeholder={t('instructionPlaceholder')}
-            onChange={(e) => setInstruction(e.target.value)}
+            onChange={(e) => {
+              setInstruction(e.target.value);
+              invalidatePreview();
+            }}
           />
           <div className="workforce-editor__meta">{counter(instruction)}</div>
         </div>
@@ -179,7 +189,10 @@ export function WorkforceProfileTab() {
             spellCheck={false}
             value={agentsMd}
             placeholder={t('agentsMdPlaceholder')}
-            onChange={(e) => setAgentsMd(e.target.value)}
+            onChange={(e) => {
+              setAgentsMd(e.target.value);
+              invalidatePreview();
+            }}
           />
           <div className="workforce-editor__meta">
             {counter(agentsMd)}
