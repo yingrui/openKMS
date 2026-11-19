@@ -1,11 +1,9 @@
 import { Navigate, Outlet, useLocation, useParams, useSearchParams } from 'react-router-dom';
-import { Loader2, RefreshCw } from 'lucide-react';
 import { KnowledgeBaseDialogs } from './detail/KnowledgeBaseDialogs';
 import { TAB_ORDER, TAB_PATHS, type TabId } from './KnowledgeBaseDetail.types';
 import { useKnowledgeBaseDetail } from './useKnowledgeBaseDetail';
 import { KnowledgeBaseDetailCtx } from './KnowledgeBaseDetailCtx';
-import { EntityViewLoading, EntityViewPanel, EntityViewShell } from '../shared/EntityViewShell';
-import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
+import { EntityViewLoading, EntityViewShell } from '../shared/EntityViewShell';
 import './KnowledgeBaseDetail.scss';
 import './detail/dialogs.scss';
 
@@ -57,44 +55,18 @@ export function KnowledgeBaseDetail() {
 
   return (
     <KnowledgeBaseDetailCtx.Provider value={d}>
-      {/* Inside the shell, not around it: `.entity-view` must be the pane's direct child or the pane
-          never fills the window and `.app-content` keeps its gutter on top of the pane's (two gutters). */}
       <EntityViewShell
         backTo="/knowledge-bases"
         backLabel={t('detail.backToList')}
         title={kb.name}
         meta={stats}
-        identityAction={
-          kb.embedding_model_id ? (
-            <button
-              type="button"
-              onClick={() => void d.enqueueIndexJob()}
-              disabled={d.indexJobSubmitting}
-              title={t('detail.indexJobHeaderTitle')}
-              aria-label={t('detail.indexJobHeader')}
-            >
-              {d.indexJobSubmitting ? (
-                <Loader2 size={14} className="kb-spinner-inline" aria-hidden />
-              ) : (
-                <RefreshCw size={14} aria-hidden />
-              )}
-              <span>{t('detail.indexJobHeader')}</span>
-            </button>
-          ) : null
-        }
         navItems={TAB_ORDER.map((tab) => ({
           to: TAB_PATHS[tab] ? `${base}/${TAB_PATHS[tab]}` : base,
           label: t(`detail.tabs.${tab}`),
           end: tab === 'documents',
         }))}
       >
-        {/* The card the tab used to be drawn inside, now that the shell owns the page chrome. The
-            comments rail is fixed to the window edge, so it costs nothing to host it here. */}
-        <ContentCommentsShell resourceType="knowledge_base" resourceId={kb.id}>
-          <EntityViewPanel>
-            <Outlet />
-          </EntityViewPanel>
-        </ContentCommentsShell>
+        <Outlet />
       </EntityViewShell>
       <KnowledgeBaseDialogs />
     </KnowledgeBaseDetailCtx.Provider>

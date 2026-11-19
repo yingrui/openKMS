@@ -12,7 +12,7 @@ import { metadataArrayFlags } from './detail/faqMetadata';
 import type { FAQResponse } from '../../data/knowledgeBasesApi';
 import { useKbChunks } from './detail/hooks/useKbChunks';
 import { useKbDocuments } from './detail/hooks/useKbDocuments';
-import { useKbScope } from './detail/hooks/useKbScope';
+import { useKbWikiSpaces } from './detail/hooks/useKbWikiSpaces';
 import { useKbFaqs } from './detail/hooks/useKbFaqs';
 import { useKbSettings } from './detail/hooks/useKbSettings';
 import { useKbSearch } from './detail/hooks/useKbSearch';
@@ -59,10 +59,9 @@ export function useKnowledgeBaseDetail() {
   }, [loadKb, loadModels]);
 
   const docsState = useKbDocuments({ kbId, channels, loadKb, t });
-  const scopeState = useKbScope({ kbId, kb, loadKb, t });
+  const wikiState = useKbWikiSpaces({ kbId, kb, loadKb, t });
   const loadDocs = docsState.loadDocs;
-  const loadKbWikiSpaces = scopeState.loadKbWikiSpaces;
-  const loadKbAgentScope = scopeState.loadKbAgentScope;
+  const loadKbWikiSpaces = wikiState.loadKbWikiSpaces;
   const faqsState = useKbFaqs({ kbId, kb, loadKb, t });
   const chunksState = useKbChunks({ kbId, kb, loadKb, t });
   const loadFaqs = faqsState.loadFaqs;
@@ -76,10 +75,9 @@ export function useKnowledgeBaseDetail() {
   useEffect(() => {
     if (activeTab === 'documents') void loadDocs();
     if (activeTab === 'wiki_spaces') void loadKbWikiSpaces();
-    if (activeTab === 'data_scope') void loadKbAgentScope();
     if (activeTab === 'faqs') void loadFaqs();
     if (activeTab === 'chunks') void loadChunks();
-  }, [activeTab, loadDocs, loadKbWikiSpaces, loadKbAgentScope, loadFaqs, loadChunks]);
+  }, [activeTab, loadDocs, loadKbWikiSpaces, loadFaqs, loadChunks]);
 
   /* Tab state that only its tab needs lives in its own hook; the object below still hands the page one
      flat surface, so a tab reads `search.searchQuery` only when it is the tab that asks. */
@@ -119,7 +117,7 @@ export function useKnowledgeBaseDetail() {
 
   return {
     ...docsState,
-    ...scopeState,
+    ...wikiState,
     ...settingsState,
     ...faqsState,
     ...chunksState,

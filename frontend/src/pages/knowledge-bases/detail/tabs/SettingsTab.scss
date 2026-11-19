@@ -4,62 +4,6 @@
 // The settings tab: its sub-tab strip, the two-column general form, and the index fieldset.
 
 /* Settings — sub-tabs (general / sharing) + panels */
-.kb-settings-page-title {
-  margin: 0 0 var(--space-4);
-  font-size: var(--text-base);
-  font-weight: 600;
-}
-
-.kb-settings-subtabs {
-  display: flex;
-  gap: var(--space-1);
-  margin-bottom: 0;
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-bottom: none;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: var(--space-1) var(--space-3) 0;
-  flex-shrink: 0;
-}
-
-.kb-settings-subtab {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  font-size: var(--text-base);
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-  white-space: nowrap;
-
-  &:hover {
-    color: var(--color-text);
-  }
-
-  &.active {
-    color: var(--color-accent);
-    border-bottom-color: var(--color-accent);
-  }
-}
-
-.kb-settings-subtab-panel {
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  padding: var(--space-6);
-  margin-bottom: var(--space-4);
-
-  .resource-share-panel {
-    margin-top: 0;
-  }
-}
-
 .kb-settings-general-lead {
   margin: 0;
   flex: 1 1 auto;
@@ -201,70 +145,6 @@
   font-size: var(--text-md);
   font-weight: 600;
   padding: 0 8px;
-  color: var(--color-text-secondary);
-}
-
-.kb-agent-scope-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  max-width: 36rem;
-}
-
-.kb-agent-scope-block {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.kb-agent-scope-heading {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.kb-agent-scope-add select {
-  width: 100%;
-}
-
-.kb-agent-scope-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.kb-agent-scope-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-elevated);
-}
-
-.kb-agent-scope-item-main {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.kb-agent-scope-item-name {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.kb-agent-scope-item-meta {
-  font-size: var(--text-xs);
   color: var(--color-text-secondary);
 }
 

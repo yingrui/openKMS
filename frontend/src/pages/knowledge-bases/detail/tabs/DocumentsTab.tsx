@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import type { TFunction } from 'i18next';
 import { Eye, FileStack, Plus, Trash2 } from 'lucide-react';
 import type { KBDocumentResponse } from '../../../../data/knowledgeBasesApi';
-import { PanelToolbar } from '../../../../styles/design-system';
+import { EntityViewHeader, EntityViewPanel } from '../../../shared/EntityViewShell';
 import { KbPagination } from '../KbPagination';
 
 /**
@@ -34,14 +34,14 @@ export function DocumentsTab({
   onRemove: (documentId: string) => void;
 }) {
   return (
-    <section className="kb-section">
-      <PanelToolbar
-        className="kb-section-header"
-        leading={<span>{t('detail.documentsTitle', { count: docTotal })}</span>}
+    <>
+      <EntityViewHeader
+        title={t('detail.documentsTitle', { count: docTotal })}
+        subtitle={t('detail.documentsSubtitle')}
         actions={
           <button
             type="button"
-            className="btn btn-primary btn-sm"
+            className="btn btn-primary"
             onClick={onAdd}
             aria-label={t('detail.addDocument')}
           >
@@ -50,11 +50,12 @@ export function DocumentsTab({
           </button>
         }
       />
+      <EntityViewPanel>
       {docTotal === 0 ? (
         <p className="kb-empty-text">{t('detail.emptyDocuments')}</p>
       ) : (
         <>
-          <div className="ds-table-wrap">
+          <div className="ds-table-wrap ds-table-wrap--flush">
             <table className="kb-table">
               <thead>
                 <tr>
@@ -111,6 +112,7 @@ export function DocumentsTab({
           />
         </>
       )}
-    </section>
+    </EntityViewPanel>
+    </>
   );
 }

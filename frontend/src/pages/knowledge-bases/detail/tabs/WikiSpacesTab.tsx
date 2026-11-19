@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import type { TFunction } from 'i18next';
 import { BookOpen, Eye, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import type { KBWikiSpaceResponse } from '../../../../data/knowledgeBasesApi';
-import { PanelToolbar } from '../../../../styles/design-system';
+import { EntityViewHeader, EntityViewPanel } from '../../../shared/EntityViewShell';
 
 /**
  * The wiki spaces linked into this knowledge base.
@@ -28,14 +28,14 @@ export function WikiSpacesTab({
   onRemove: (wikiSpaceId: string) => void;
 }) {
   return (
-    <section className="kb-section">
-      <PanelToolbar
-        className="kb-section-header"
-        leading={<span>{t('detail.wikiSpacesTitle')}</span>}
+    <>
+      <EntityViewHeader
+        title={t('detail.wikiSpacesTitle')}
+        subtitle={t('detail.wikiIndexHint')}
         actions={
           <button
             type="button"
-            className="btn btn-primary btn-sm"
+            className="btn btn-primary"
             onClick={onAdd}
             aria-label={t('detail.addWikiSpace')}
           >
@@ -44,11 +44,12 @@ export function WikiSpacesTab({
           </button>
         }
       />
+      <EntityViewPanel>
       <p className="kb-section-desc kb-wiki-index-hint">{t('detail.wikiIndexHint')}</p>
       {spaces.length === 0 ? (
         <p className="kb-empty-text">{t('detail.emptyWikiSpaces')}</p>
       ) : (
-        <div className="ds-table-wrap">
+        <div className="ds-table-wrap ds-table-wrap--flush">
           <table className="kb-table">
             <thead>
               <tr>
@@ -106,6 +107,7 @@ export function WikiSpacesTab({
           </table>
         </div>
       )}
-    </section>
+    </EntityViewPanel>
+    </>
   );
 }

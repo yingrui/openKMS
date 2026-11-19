@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
 import { HelpCircle, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import type { FAQResponse } from '../../../../data/knowledgeBasesApi';
-import { PanelToolbar } from '../../../../styles/design-system';
+import { EntityViewHeader, EntityViewPanel } from '../../../shared/EntityViewShell';
 import { KbPagination } from '../KbPagination';
 
 /**
@@ -37,15 +37,15 @@ export function FaqsTab({
   onDelete: (faqId: string) => void;
 }) {
   return (
-    <section className="kb-section">
-      <PanelToolbar
-        className="kb-section-header"
-        leading={<span>{t('detail.faqsTitle', { count: total })}</span>}
+    <>
+      <EntityViewHeader
+        title={t('detail.faqsTitle', { count: total })}
+        subtitle={t('detail.faqsSubtitle')}
         actions={
           <div className="kb-section-header-btns">
             <button
               type="button"
-              className="btn btn-secondary btn-sm"
+              className="btn btn-secondary"
               onClick={onGenerate}
               aria-label={t('detail.generateFaq')}
             >
@@ -54,7 +54,7 @@ export function FaqsTab({
             </button>
             <button
               type="button"
-              className="btn btn-primary btn-sm"
+              className="btn btn-primary"
               aria-label={t('detail.addFaq')}
               onClick={onAdd}
             >
@@ -64,12 +64,12 @@ export function FaqsTab({
           </div>
         }
       />
-
+      <EntityViewPanel>
       {total === 0 ? (
         <p className="kb-empty-text">{t('detail.emptyFaqs')}</p>
       ) : (
         <>
-          <div className="ds-table-wrap">
+          <div className="ds-table-wrap ds-table-wrap--flush">
             <table className="kb-table">
               <thead>
                 <tr>
@@ -132,6 +132,7 @@ export function FaqsTab({
           />
         </>
       )}
-    </section>
+    </EntityViewPanel>
+    </>
   );
 }

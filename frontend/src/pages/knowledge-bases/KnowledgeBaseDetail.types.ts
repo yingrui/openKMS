@@ -1,14 +1,19 @@
-export type TabId = 'documents' | 'wiki_spaces' | 'data_scope' | 'faqs' | 'chunks' | 'search' | 'settings';
-export type SettingsSubTabId = 'general' | 'agent' | 'sharing';
-
+export type TabId =
+  | 'documents'
+  | 'wiki_spaces'
+  | 'faqs'
+  | 'chunks'
+  | 'search'
+  | 'settings'
+  | 'sharing';
 export const TAB_ORDER: TabId[] = [
   'documents',
   'wiki_spaces',
-  'data_scope',
   'faqs',
   'chunks',
   'search',
   'settings',
+  'sharing',
 ];
 
 /**
@@ -18,11 +23,11 @@ export const TAB_ORDER: TabId[] = [
 export const TAB_PATHS: Record<TabId, string> = {
   documents: '',
   wiki_spaces: 'wiki-spaces',
-  data_scope: 'data-scope',
   faqs: 'faqs',
   chunks: 'chunks',
   search: 'search',
   settings: 'settings',
+  sharing: 'sharing',
 };
 
 /** Pathname → tab. `/knowledge-bases/:id` with no section is the documents list. */

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import type { TFunction } from 'i18next';
 import { Layers, Pencil } from 'lucide-react';
 import type { ChunkResponse } from '../../../../data/knowledgeBasesApi';
-import { PanelToolbar } from '../../../../styles/design-system';
+import { EntityViewHeader, EntityViewPanel } from '../../../shared/EntityViewShell';
 import { KbPagination } from '../KbPagination';
 
 /**
@@ -32,16 +32,17 @@ export function ChunksTab({
   onEdit: (chunk: ChunkResponse) => void;
 }) {
   return (
-    <section className="kb-section">
-      <PanelToolbar
-        className="kb-section-header"
-        leading={<span>{t('detail.chunksTitle', { count: total })}</span>}
+    <>
+      <EntityViewHeader
+        title={t('detail.chunksTitle', { count: total })}
+        subtitle={t('detail.chunksSubtitle')}
       />
+      <EntityViewPanel>
       {total === 0 ? (
         <p className="kb-empty-text">{t('detail.emptyChunks')}</p>
       ) : (
         <>
-          <div className="ds-table-wrap">
+          <div className="ds-table-wrap ds-table-wrap--flush">
             <table className="kb-table">
               <thead>
                 <tr>
@@ -106,6 +107,7 @@ export function ChunksTab({
           />
         </>
       )}
-    </section>
+    </EntityViewPanel>
+    </>
   );
 }

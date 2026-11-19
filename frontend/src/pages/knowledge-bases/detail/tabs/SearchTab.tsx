@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Filter, Search as SearchIcon, Send } from 'l
 import type { SearchResult } from '../../../../data/knowledgeBasesApi';
 import type { KbSearchRetrievalDiff } from '../../KnowledgeBaseDetail.types';
 import { ChatRetrievalProvenancePanel } from '../../../workforce/chat';
+import { EntityViewHeader, EntityViewPanel } from '../../../shared/EntityViewShell';
 import './SearchTab.scss';
 
 export type KbSearchType = 'all' | 'chunks' | 'faqs';
@@ -68,9 +69,9 @@ export function SearchTab({
   onChunkEdit: (chunkId: string) => void;
 }) {
   return (
-    <section className="kb-section kb-search-section">
-      <h2>{t('detail.searchTitle')}</h2>
-      <p className="kb-section-desc">{t('detail.searchDesc')}</p>
+    <>
+      <EntityViewHeader title={t('detail.searchTitle')} subtitle={t('detail.searchDesc')} />
+      <EntityViewPanel>
 
       <div className="kb-search-type-tabs">
         {(['all', 'chunks', 'faqs'] as const).map((type) => (
@@ -286,6 +287,7 @@ export function SearchTab({
           <p>{t('detail.searchEmptyPrompt')}</p>
         </div>
       )}
-    </section>
+      </EntityViewPanel>
+    </>
   );
 }

@@ -1,11 +1,11 @@
 import { useKbDetail } from '../KnowledgeBaseDetailCtx';
 import { DocumentsTab } from './tabs/DocumentsTab';
 import { WikiSpacesTab } from './tabs/WikiSpacesTab';
-import { DataScopeTab } from './tabs/DataScopeTab';
 import { FaqsTab } from './tabs/FaqsTab';
 import { ChunksTab } from './tabs/ChunksTab';
 import { SearchTab } from './tabs/SearchTab';
 import { SettingsTab } from './tabs/SettingsTab';
+import { KbSharingSection } from './KbSharingSection';
 
 /**
  * The section the URL names, out of the shell's state.
@@ -28,21 +28,6 @@ export function KbSection() {
           onAdd={() => void d.openWikiSpacePicker()}
           onIndex={(id) => void d.handleIndexWikiSpace(id)}
           onRemove={(id) => void d.handleRemoveWikiSpaceFromKb(id)}
-        />
-      );
-    case 'data_scope':
-      return (
-        <DataScopeTab
-          t={d.t}
-          semanticModels={d.kbSemanticModels}
-          ontologyGroups={d.kbOntologyGroups}
-          allSemanticModels={d.allSemanticModels}
-          allOntologyGroups={d.allOntologyGroups}
-          busyId={d.scopeBusyId}
-          onAddSemanticModel={(id) => void d.handleAddSemanticModelToKb(id)}
-          onRemoveSemanticModel={(id) => void d.handleRemoveSemanticModelFromKb(id)}
-          onAddOntologyGroup={(id) => void d.handleAddOntologyGroupToKb(id)}
-          onRemoveOntologyGroup={(id) => void d.handleRemoveOntologyGroupFromKb(id)}
         />
       );
     case 'faqs':
@@ -114,11 +99,7 @@ export function KbSection() {
       return d.kb ? (
         <SettingsTab
           t={d.t}
-          kbId={d.kb.id}
           kb={d.kb}
-          subTabs={d.settingsSubTabs}
-          subTab={d.settingsSubTab ?? 'general'}
-          onSubTabChange={d.setSettingsSubTab}
           embeddingModels={d.embeddingModels}
           embeddingModelId={d.settingsEmbeddingModelId}
           onEmbeddingModelIdChange={d.setSettingsEmbeddingModelId}
@@ -142,6 +123,8 @@ export function KbSection() {
           onEnqueueIndex={() => void d.enqueueIndexJob()}
         />
       ) : null;
+    case 'sharing':
+      return <KbSharingSection />;
     case 'documents':
     default:
       return (

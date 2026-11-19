@@ -29,14 +29,12 @@
     "tabs": {
       "documents": "Documents",
       "wiki_spaces": "Wiki spaces",
-      "data_scope": "Data scope",
       "faqs": "FAQs",
       "chunks": "Chunks",
       "search": "Search",
-      "settings": "Settings"
+      "settings": "Settings",
+      "sharing": "Sharing"
     },
-    "dataScopeTitle": "Data scope",
-    "dataScopeHint": "Catalog semantic models and ontology groups the workforce agent may consult when answering from this knowledge base. Not used for search indexing.",
     "expandTree": "Expand",
     "collapseTree": "Collapse",
     "documentsTitle": "Documents ({{count}})",
@@ -141,27 +139,8 @@
         "rerank": "Rerank"
       }
     },
-    "agentScopeTitle": "Agent data scope",
-    "agentScopeSemanticModels": "Semantic models",
-    "agentScopeOntologyGroups": "Ontology groups",
-    "agentScopeAddSemanticModel": "Link a semantic model…",
-    "agentScopeAddOntologyGroup": "Link an ontology group…",
-    "agentScopeEmptySemanticModels": "No semantic models linked yet.",
-    "agentScopeEmptyOntologyGroups": "No ontology groups linked yet.",
-    "agentScopeMetricCount": "{{count}} metrics",
-    "agentScopeObjectTypeCount": "{{count}} object types",
-    "toastSemanticModelLinked": "Semantic model linked",
-    "toastSemanticModelLinkFailed": "Failed to link semantic model",
-    "toastSemanticModelRemoved": "Semantic model removed",
-    "toastSemanticModelRemoveFailed": "Failed to remove semantic model",
-    "toastOntologyGroupLinked": "Ontology group linked",
-    "toastOntologyGroupLinkFailed": "Failed to link ontology group",
-    "toastOntologyGroupRemoved": "Ontology group removed",
-    "toastOntologyGroupRemoveFailed": "Failed to remove ontology group",
     "sources": "Sources:",
     "settingsTitle": "Knowledge Base Settings",
-    "settingsTabGeneral": "General",
-    "settingsTabSharing": "Sharing",
     "settingsGeneralLead": "Models, chunking, FAQ generation, and indexing for this knowledge base.",
     "sharingTitle": "Sharing",
     "agentSkillOntology": "Ontology",
@@ -304,6 +283,11 @@
     "retrievalRerankDefault": "Whatever the deployment does",
     "retrievalRerankOn": "Always rerank",
     "retrievalRerankOff": "Never rerank",
-    "retrievalRerankHelp": "Reranking reorders the candidates with a cross-encoder. Off unless this base needs it and the deployment has a rerank endpoint."
+    "retrievalRerankHelp": "Reranking reorders the candidates with a cross-encoder. Off unless this base needs it and the deployment has a rerank endpoint.",
+    "documentsSubtitle": "Files linked into this knowledge base. Linking one adds its parsed text to the index.",
+    "faqsSubtitle": "Curated question/answer pairs the retriever can return as answers.",
+    "chunksSubtitle": "What the index holds, one row per chunk, with the metadata it was built from.",
+    "settingsSubtitle": "How this base is embedded, chunked and retrieved. The index run is here too.",
+    "sharingSubtitle": "Who may read this knowledge base. Access is granted per user or group."
   }
 }

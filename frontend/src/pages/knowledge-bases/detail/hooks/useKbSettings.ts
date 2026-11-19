@@ -1,7 +1,6 @@
-import { useCallback, useMemo, useState, type MutableRefObject } from 'react';
+import { useCallback, useState, type MutableRefObject } from 'react';
 import type { TFunction } from 'i18next';
 import type { NavigateFunction } from 'react-router-dom';
-import { Settings, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   enqueueKnowledgeBaseIndexJob,
@@ -9,15 +8,14 @@ import {
   type KnowledgeBaseResponse,
 } from '../../../../data/knowledgeBasesApi';
 import { fetchAllModels, type ApiModelResponse } from '../../../../data/modelsApi';
-import type { SettingsSubTabId } from '../../KnowledgeBaseDetail.types';
 import { mergeAgentConfig } from '../../../workforce/agentConfigMerge';
 
 /**
  * The settings tab: the embedding and chunking choices, the FAQ prompt, the metadata keys, the index run.
  *
  * Its own hook because these are the fields of *one form over the knowledge-base row* — saving them is a
- * single PUT, and the draft only exists so a half-typed number does not round-trip. The tab's sub-tabs
- * (general / agent / sharing) are here too: they are one navigation decision, not three.
+ * single PUT, and the draft only exists so a half-typed number does not round-trip. Sharing is a section of
+ * its own, so there is no sub-tab state here.
  */
 export function useKbSettings({
   kbId,
@@ -55,7 +53,6 @@ export function useKbSettings({
   const [embeddingModels, setEmbeddingModels] = useState<ApiModelResponse[]>([]);
   const [llmModels, setLlmModels] = useState<ApiModelResponse[]>([]);
   const [settingsSaving, setSettingsSaving] = useState(false);
-  const [settingsSubTab, setSettingsSubTab] = useState<SettingsSubTabId>('general');
   const [indexJobSubmitting, setIndexJobSubmitting] = useState(false);
 
 
@@ -72,15 +69,6 @@ export function useKbSettings({
     setRetrievalTopK(String(retrieval?.top_k ?? 5));
     setRetrievalRerank(retrieval?.rerank ?? null);
   };
-
-  const settingsSubTabs = useMemo(
-    () =>
-      [
-        { id: 'general' as const, label: t('detail.settingsTabGeneral'), icon: Settings },
-        { id: 'sharing' as const, label: t('detail.settingsTabSharing'), icon: Users },
-      ],
-    [t],
-  );
 
   const enqueueIndexJob = useCallback(async () => {
     if (!kbId) return;
@@ -167,9 +155,6 @@ export function useKbSettings({
     retrievalRerank,
     setRetrievalRerank,
     settingsSaving,
-    settingsSubTab,
-    setSettingsSubTab,
-    settingsSubTabs,
     embeddingModels,
     llmModels,
     indexJobSubmitting,
