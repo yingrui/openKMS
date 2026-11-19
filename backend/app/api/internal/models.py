@@ -89,6 +89,25 @@ async def get_llm_defaults(db: AsyncSession = Depends(get_db)):
     }
 
 
+@router.get("/{model_id}/llm-credentials")
+async def get_model_llm_credentials(model_id: str, db: AsyncSession = Depends(get_db)):
+    """Endpoint + key for one registered chat model, so an agent can name its own model.
+
+    The same shape as `/llm-defaults`, resolved from an explicit model instead of the deployment default: an agent
+    that picks a model from another provider needs that provider's `base_url` and key, not just a different model
+    name. The key never travels in the ask body — the qa-agent fetches it with its own service credentials.
+    """
+    cfg = await resolve_agent_llm_config(db, model_id=model_id)
+    if cfg is None:
+        raise HTTPException(status_code=404, detail=f"Chat model {model_id!r} not found or not chat-completions")
+    return {
+        "base_url": cfg["base_url"] or "",
+        "model_name": cfg["model_name"] or "",
+        "api_key": cfg["api_key"] or "",
+        "thinking": cfg.get("thinking") or {},
+    }
+
+
 @router.get("/kb-embedding-credentials")
 async def get_kb_embedding_credentials(
     request: Request,

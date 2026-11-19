@@ -10,7 +10,7 @@ behavior, layout, sessions, skills, and scheduled runs, see [Agents](../features
 | `OPENKMS_PROJECTS_ROOT` | `data/projects` (local) / `/data/projects` (Docker) | One folder per project UUID |
 | `OPENKMS_AGENT_SKILLS_ROOT` | `data/agent-skills` | Global skills registry |
 | `OPENKMS_DEEP_AGENT_MODEL_ID` | — | Falls back to `OPENKMS_AGENT_MODEL_ID` |
-| `OPENKMS_AGENT_LLM_EXTRA_BODY` | unset | Deep Agents façade (`deep_agents/llm_chat.py`); **`enable_thinking`** always forced **false** |
+| `OPENKMS_AGENT_LLM_EXTRA_BODY` | unset | Deep Agents façade (`deep_agents/llm_chat.py`); the provider's `off` fragment is applied (nothing when it defines none) |
 | `OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM` | unset (**auto**) | Same façade: inject empty **`reasoning_content`** on assistant rows for non-`api.openai.com` bases |
 | `OPENKMS_AGENT_SANDBOX_TIMEOUT_SECONDS` | `60` | Python sandbox in project dir |
 | `OPENKMS_AGENT_DENIED_COMMANDS` | built-in list | Comma-separated host-control binaries the project agent shell may not run (`docker`, `docker-compose`, `kubectl`, `podman`, `systemctl`, `launchctl`, `service`, `iptables`, `mount`, `shutdown`, `reboot`, `lsof`, `ps`). Unset = defaults; **empty string disables** the check for local development. |

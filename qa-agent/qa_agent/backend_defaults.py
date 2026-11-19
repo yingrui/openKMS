@@ -71,6 +71,49 @@ def _fetch_agent_llm_defaults(cfg: Settings) -> dict[str, Any] | None:
         raise RuntimeError(f"Could not reach backend llm-defaults at {url!r}: {exc}") from exc
 
 
+def _fetch_json(url: str, *, what: str) -> dict[str, Any] | None:
+    """GET an internal endpoint with qa-agent service auth (Basic or Bearer), refreshing once on expiry."""
+    try:
+        headers, basic = api_request_auth()
+    except ValueError as exc:
+        raise RuntimeError(f"qa-agent service auth failed: {exc}") from exc
+    auth = httpx.BasicAuth(basic[0], basic[1]) if basic else None
+    try:
+        r = httpx.get(url, headers=headers, auth=auth, timeout=15.0)
+        if auth_expired_response(r) and not basic:
+            headers, basic = api_request_auth()
+            auth = httpx.BasicAuth(basic[0], basic[1]) if basic else None
+            r = httpx.get(url, headers=headers, auth=auth, timeout=15.0)
+        r.raise_for_status()
+        return r.json()
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text[:500] if exc.response is not None else str(exc)
+        raise RuntimeError(f"Backend {what} returned HTTP {exc.response.status_code}: {detail}") from exc
+
+
+def resolve_llm_for_model(cfg: Settings, model_id: str) -> tuple[str, str, str, dict[str, Any]]:
+    """Endpoint, model name, key and thinking fragments for one registered chat model.
+
+    An agent may name a model that belongs to a different provider than the deployment default, so the endpoint and
+    key come from that model's provider rather than from the default. `OPENKMS_LLM_MODEL_*` overrides are not applied
+    here: they describe the deployment default, and applying them to every model would defeat the point.
+    """
+    api = (cfg.openkms_backend_url or "").strip()
+    if not api:
+        raise RuntimeError("OPENKMS_BACKEND_URL is required to resolve a named model")
+    data = _fetch_json(f"{api.rstrip('/')}/internal-api/models/{model_id}/llm-credentials",
+                       what=f"llm-credentials({model_id})")
+    if not data or not data.get("base_url") or not data.get("model_name"):
+        raise RuntimeError(f"Backend returned no endpoint for model {model_id!r}")
+    thinking = data.get("thinking")
+    return (
+        str(data["base_url"]),
+        str(data["model_name"]),
+        str(data.get("api_key") or "no-key"),
+        thinking if isinstance(thinking, dict) else {},
+    )
+
+
 def resolve_llm_for_agent(cfg: Settings) -> tuple[str, str, str]:
     """
     Effective (base_url, model_name, api_key) for ChatOpenAI.

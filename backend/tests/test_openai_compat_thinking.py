@@ -13,7 +13,7 @@ from app.services.runtime.deep_agents.llm_chat import (
     deep_agent_use_reasoning_content_shim,
 )
 from app.services.platform.openai_compat import (
-    chat_extra_body_disable_thinking,
+    chat_extra_body,
     inject_reasoning_content_on_assistant_rows,
     use_reasoning_content_shim,
 )
@@ -24,10 +24,26 @@ from app.services.platform.openai_compat.thinking import (
 )
 
 
-def test_chat_extra_body_forces_enable_thinking_false() -> None:
-    body = chat_extra_body_disable_thinking('{"enable_thinking": true, "foo": 1}')
-    assert body["enable_thinking"] is False
+def test_chat_extra_body_merges_the_providers_off_fragment() -> None:
+    """The provider spells "off"; this must not invent `enable_thinking`, which DeepSeek ignores and GLM rejects.
+
+    Measured: `enable_thinking: false` kept `deepseek-flash` reasoning, `{"thinking": {"type": "disabled"}}` stopped
+    it, and `glm-5.3-flash` answers HTTP 400 to any disable request (`docs/research/agent-config/deepseek-thinking.md`).
+    """
+    body = chat_extra_body(
+        '{"enable_thinking": true, "foo": 1}', off_fragment={"thinking": {"type": "disabled"}}
+    )
+    # The deployment's own JSON is kept, but the provider's spelling replaces the legacy flag outright: leaving
+    # `enable_thinking` in place would contradict the fragment, and GLM-5.3-Flash rejects such a request.
     assert body["foo"] == 1
+    assert body["thinking"] == {"type": "disabled"}
+    assert "enable_thinking" not in body
+
+
+def test_chat_extra_body_sends_nothing_extra_without_a_fragment() -> None:
+    """A provider that cannot be asked is left alone — guessing a spelling produces a silent no-op."""
+    assert chat_extra_body(None) == {}
+    assert chat_extra_body(None, off_fragment=None) == {}
 
 
 def test_shim_auto_skips_openai_host() -> None:
@@ -46,9 +62,12 @@ def test_inject_reasoning_content() -> None:
 def test_deep_agent_facade_binds_settings(monkeypatch) -> None:
     monkeypatch.setattr("app.config.settings.agent_llm_extra_body_json", '{"foo": 2}')
     monkeypatch.setattr("app.config.settings.agent_llm_reasoning_content_shim", None)
+    # Without provider fragments only the deployment JSON is sent; nothing invents a spelling.
     body = deep_agent_chat_extra_body()
-    assert body["enable_thinking"] is False
-    assert body["foo"] == 2
+    assert body == {"foo": 2}
+    # With them, the provider's "off" fragment is what turns thinking off.
+    with_fragments = deep_agent_chat_extra_body({"off": {"thinking": {"type": "disabled"}}})
+    assert with_fragments == {"foo": 2, "thinking": {"type": "disabled"}}
     assert deep_agent_use_reasoning_content_shim("https://api.deepseek.com/v1") is True
 
 
@@ -63,7 +82,8 @@ def test_build_deep_agent_chat_openai_injects_reasoning_content(monkeypatch) -> 
         streaming=False,
         max_tokens=128,
     )
-    assert llm.extra_body.get("enable_thinking") is False
+    # No `enable_thinking` is invented: the provider decides the spelling (see chat_extra_body's docstring).
+    assert "enable_thinking" not in llm.extra_body
     with patch.object(llm, "_use_responses_api", return_value=False):
         payload = llm._get_request_payload(
             [HumanMessage(content="hi"), AIMessage(content="hello")],

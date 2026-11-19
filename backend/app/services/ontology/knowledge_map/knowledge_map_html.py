@@ -621,7 +621,7 @@ async def designer_chat_via_llm(
     if len(openai_messages) < 2:
         raise ValueError("Add at least one user message")
 
-    extra_body = _wiki_agent_chat_extra_body()
+    extra_body = _wiki_agent_chat_extra_body(model_config.get("thinking"))
     use_rc_shim = _wiki_use_llm_reasoning_content_shim(base_url)
 
     last_text = ""
@@ -788,7 +788,7 @@ async def iter_designer_chat_llm_stream_events(
     if len(openai_messages) < 2:
         raise ValueError("Add at least one user message")
 
-    extra_body = _wiki_agent_chat_extra_body()
+    extra_body = _wiki_agent_chat_extra_body(model_config.get("thinking"))
     use_rc_shim = _wiki_use_llm_reasoning_content_shim(base_url)
 
     last_text = ""

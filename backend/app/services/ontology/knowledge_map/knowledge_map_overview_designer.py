@@ -118,7 +118,7 @@ async def iter_overview_designer_chat_ndjson(
     client = AsyncOpenAI(base_url=base_url, api_key=model_config.get("api_key") or "no-key")
     model_name = model_config.get("model_name", "gpt-4o-mini")
     use_shim = _wiki_use_llm_reasoning_content_shim(base_url)
-    extra_body = _wiki_agent_chat_extra_body()
+    extra_body = _wiki_agent_chat_extra_body(model_config.get("thinking"))
 
     openai_messages: list[dict[str, Any]] = [
         {"role": "system", "content": _SYSTEM},

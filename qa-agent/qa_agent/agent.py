@@ -15,7 +15,7 @@ from langgraph.prebuilt import ToolNode
 from typing_extensions import TypedDict
 
 from .config import settings
-from .llm_config import get_effective_llm_config
+from .llm_config import get_effective_llm_config, get_llm_config
 from .logging_config import preview_text
 from .kb_answer_sources import (
     ONTOLOGY_SCHEMA_TOOL_NAME,
@@ -86,6 +86,25 @@ class AgentState(TypedDict):
     thinking_fragments: dict[str, Any]
     #: How hard to reason (`generation.reasoning_effort`); dropped when thinking is off.
     reasoning_effort: str | None
+    #: The registered chat model this agent answers with; absent means the deployment default.
+    model_id: str | None
+
+
+def _llm_for(state: dict[str, Any]):
+    """The model this turn uses: the agent's choice, else the deployment default.
+
+    A named model that no longer resolves (deleted, or its provider lost its key) falls back to the default with an
+    error in the log. Failing every answer over a stale reference is worse, and answering silently would make
+    "which model answered" unknowable — the response carries the model name.
+    """
+    model_id = state.get("model_id")
+    if not model_id:
+        return get_effective_llm_config()
+    try:
+        return get_llm_config(str(model_id))
+    except Exception:
+        logger.exception("model_id=%s could not be resolved; falling back to the deployment model", model_id)
+        return get_effective_llm_config()
 
 
 def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
@@ -177,7 +196,7 @@ def _build_system_prompt(
 
 def generate_node(state: dict[str, Any]) -> dict[str, Any]:
     """Generate answer using LLM with RAG context and ontology tools."""
-    llm_cfg = get_effective_llm_config()
+    llm_cfg = _llm_for(state)
     base_url = llm_cfg.openai_v1_base_url
 
     llm = make_qa_chat_openai(
@@ -296,7 +315,7 @@ def _answer_pending_tool_calls(messages: list[Any]) -> list[Any]:
 
 def finalize_node(state: dict[str, Any]) -> dict[str, Any]:
     """One last model turn with no tools bound, so a cut-short turn still yields an answer."""
-    llm_cfg = get_effective_llm_config()
+    llm_cfg = _llm_for(state)
     llm = make_qa_chat_openai(
         base_url=llm_cfg.openai_v1_base_url,
         api_key=llm_cfg.api_key,
@@ -439,6 +458,7 @@ def invoke_agent(
                 "thinking": thinking,
                 "thinking_fragments": llm_cfg.thinking_fragments,
                 "reasoning_effort": agent_config_module.reasoning_effort(agent_config),
+                "model_id": agent_config_module.model_id(agent_config),
                 "top_p": agent_config_module.top_p(agent_config),
                 "max_tokens": agent_config_module.max_tokens(agent_config),
                 "rerank": agent_config_module.rerank_override(agent_config),
@@ -477,6 +497,7 @@ def invoke_agent(
             "grounding": grounding,
             "langfuse_trace_id": trace_id,
             "prompt_version": prompt_version,
+            "model": llm_cfg.model_name,
             "warnings": warnings,
             "verified": ground_mode == "enforce" and not warnings,
         }
@@ -724,6 +745,7 @@ def _turn_state(
         "thinking": thinking,
         "thinking_fragments": thinking_fragments,
         "reasoning_effort": reasoning_effort,
+        "model_id": agent_config_module.model_id(agent_config),
         "top_p": agent_config_module.top_p(agent_config),
         "max_tokens": agent_config_module.max_tokens(agent_config),
         "rerank": agent_config_module.rerank_override(agent_config),
@@ -912,6 +934,7 @@ async def astream_agent_ndjson(
                 "grounding": grounding.model_dump(),
                 "langfuse_trace_id": current_trace_id(callback),
                 "prompt_version": prompt_version,
+                "model": llm_cfg.model_name,
                 "warnings": warnings,
                 "verified": ground_mode == "enforce" and not warnings,
             }

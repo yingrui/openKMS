@@ -72,7 +72,7 @@ class Settings(BaseSettings):
         validation_alias="OPENKMS_AGENT_LLM_EXTRA_BODY",
         description=(
             "Optional JSON object merged into ChatOpenAI extra_body for agent calls. "
-            "enable_thinking is always forced to false after this merge."
+            "Provider thinking fragments (`api_providers.config.thinking`) are merged on top of this."
         ),
     )
     agent_llm_reasoning_content_shim: str | None = Field(

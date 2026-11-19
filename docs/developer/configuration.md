@@ -93,7 +93,7 @@ Documents land under `documents/{file_hash}/` (legacy `{file_hash}/` still read 
 | `OPENKMS_AGENT_LOG_LEVEL` | `INFO` | Project Deep Agents turn logs (`agent_turn_start` / `agent_turn_done`; **`agent_turn_failed` at ERROR**). See [Agents — Observability](project-agent-runtime.md#observability-without-langfuse). |
 | `OPENKMS_BACKEND_LOG_LEVEL` | — | Optional root log level for all `app.*` loggers when set |
 | `OPENKMS_AGENT_SANDBOX_TIMEOUT_SECONDS` | `60` | Python sandbox in project workspace (Deep Agents `execute`) |
-| `OPENKMS_AGENT_LLM_EXTRA_BODY` | unset | Optional JSON merged into OpenAI-compat **`extra_body`**. Used independently by **Knowledge Map Designer** (`agent.shared` wrappers) and **Deep Agents** (`deep_agents.llm_chat`). **enable_thinking** is always forced to **false** after merge — these paths do not support thinking / full **`reasoning_content`** round-trip beyond what the shim echoes. Shared primitives live in **`app.services.openai_compat`**. |
+| `OPENKMS_AGENT_LLM_EXTRA_BODY` | unset | Optional JSON merged into OpenAI-compat **`extra_body`**. Used independently by **Knowledge Map Designer** (`agent.shared` wrappers) and **Deep Agents** (`deep_agents.llm_chat`). After the merge, the **provider's** `off` fragment (`api_providers.config.thinking.off`) is applied — every vendor spells the toggle differently, and a stale `enable_thinking` is dropped when a fragment is applied. With no fragment, nothing extra is sent and the model's own default applies. Shared primitives live in **`app.services.openai_compat`**. |
 | `OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM` | unset | **auto**: inject **`reasoning_content`** on assistant messages for every **base_url** except **`api.openai.com`** (covers generic OpenAI-compat proxies, including DeepSeek). Same env is read by Designer and Deep Agents façades separately. **`true`** / **`1`**: always inject. **`false`** / **`0`**: never inject. Legacy alias: **`OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM`**. |
 | `OPENKMS_AGENT_KB_QA_MAX_CONTEXT_MESSAGES` | `120` | Max prior messages included in **`conversation_history`** for one KB / evaluation / FAQ-assist qa-agent call. |
 | `LANGFUSE_SECRET_KEY` | unset | With **`LANGFUSE_PUBLIC_KEY`** and **`LANGFUSE_BASE_URL`**, enables Langfuse on **Deep Agents** (same keys as qa-agent). |
@@ -107,7 +107,7 @@ Documents land under `documents/{file_hash}/` (legacy `{file_hash}/` still read 
 
 **LLM:** When **`OPENKMS_LLM_MODEL_*`** are unset, qa-agent calls **`GET /internal-api/models/llm-defaults`** (internal service client only — same as openkms-cli on **`document-parse-defaults`**). If qa-agent uses a distinct IdP client id, add it to backend **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**. Local mode: **`OPENKMS_QA_AGENT_BASIC_*`** on qa-agent (and backend). OIDC: **`OPENKMS_QA_AGENT_OIDC_CLIENT_*`**. Backend allowlist: **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**. Docker Compose sets app service env via **`environment`** only; override **`${…}`** substitution with **`docker/.env`** (see **`docker/.env.example`**, **`docker/README.md`**).
 
-Same OpenAI-compat **thinking** handling as the backend in-app agents: optional JSON **`extra_body`**, then **`enable_thinking: false`** is always applied; **`reasoning_content`** is injected on outgoing assistant rows when the shim is on (see `OPENKMS_AGENT_LLM_*` rows above). You can set either the **`OPENKMS_LLM_*`** names below or reuse the **`OPENKMS_AGENT_*`** names so one block of env works for both.
+Same OpenAI-compat **thinking** handling as the backend in-app agents: optional JSON **`extra_body`**, then the provider's `off` fragment is applied (nothing when the provider defines none); **`reasoning_content`** is injected on outgoing assistant rows when the shim is on (see `OPENKMS_AGENT_LLM_*` rows above). You can set either the **`OPENKMS_LLM_*`** names below or reuse the **`OPENKMS_AGENT_*`** names so one block of env works for both.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -140,7 +140,7 @@ Set on **`backend/.env`**. The worker injects **`OPENKMS_CLI_*`** into every **o
 | `OPENKMS_LLM_MODEL_BASE_URL` | unset | Override LLM base URL (skip backend fetch for this field) |
 | `OPENKMS_LLM_MODEL_NAME` | unset | Override model name |
 | `OPENKMS_LLM_MODEL_API_KEY` | unset | Override API key |
-| `OPENKMS_LLM_EXTRA_BODY` | unset | Optional JSON merged into ChatOpenAI **`extra_body`** for the QA agent. **Alias:** **`OPENKMS_AGENT_LLM_EXTRA_BODY`**. After merge, **`enable_thinking`** is forced **`false`**. |
+| `OPENKMS_LLM_EXTRA_BODY` | unset | Optional JSON merged into ChatOpenAI **`extra_body`** for the QA agent. **Alias:** **`OPENKMS_AGENT_LLM_EXTRA_BODY`**. After merge, the provider's `off` fragment is applied (the legacy `enable_thinking` flag is dropped); nothing is forced when the provider defines no fragment. |
 | `OPENKMS_LLM_REASONING_CONTENT_SHIM` | unset | Same semantics as **`OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM`**. **Aliases:** **`OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM`**, **`OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM`**. |
 | `LANGFUSE_SECRET_KEY` | unset | With **`LANGFUSE_PUBLIC_KEY`** (and optional **`LANGFUSE_BASE_URL`**), enables Langfuse tracing for **`/ask`** and (by default) **`/ask/stream`**. |
 | `LANGFUSE_PUBLIC_KEY` | unset | Public key for Langfuse SDK. |

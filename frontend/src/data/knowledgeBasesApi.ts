@@ -14,8 +14,8 @@ export interface KbAgentConfig {
     /** Sent as `max_tokens`; self-hosted OpenAI-compatible gateways commonly lack `max_completion_tokens`. */
     max_tokens?: number | null;
     thinking?: 'on' | 'off' | null;
-    /** Union of what vendors accept; each model takes a subset (DeepSeek and GLM: low/high/max). */
-    reasoning_effort?: 'minimal' | 'low' | 'medium' | 'high' | 'max' | null;
+    /** The levels the providers we run accept; anything else is rejected by the vendor rather than ignored. */
+    reasoning_effort?: 'low' | 'high' | 'max' | null;
   };
   prompts?: { agents_md?: string | null };
   retrieval?: { top_k?: number; rerank?: boolean | null; min_score?: number | null };

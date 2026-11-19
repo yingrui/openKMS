@@ -255,9 +255,12 @@ async def archive_agent(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Archive, not delete: bindings and the audit trail keep pointing at a row that exists.
+    """Delete the service without losing the record: the row stays (bindings and audit keep pointing at it), the
+    credentials stop working immediately, and the UI stops listing it.
 
-    Archiving also stops the agent's credentials — `verify_credential` refuses a non-active agent.
+    The word matters. There is no restore endpoint, so calling this "archive" in the interface promised something
+    reversible that is not; it is a delete as far as a reader is concerned, and the confirm text says what survives.
+    `status = archived` is the storage value for that state.
     """
     agent = await _scoped(db, request, agent_id, write=False)
     agent.status = AGENT_STATUS_ARCHIVED
@@ -635,6 +638,7 @@ async def ask_agent(
         # checked" is not "passed" — the qa-agent sends False unless the answer passed an enforced policy.
         verified=data.get("verified") is True,
         prompt_version=data.get("prompt_version"),
+        model=data.get("model"),
     )
 
 

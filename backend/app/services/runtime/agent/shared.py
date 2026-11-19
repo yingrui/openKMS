@@ -104,12 +104,15 @@ def _ndjson_line(payload: Any) -> bytes:
     return ndjson_line(payload)
 
 
-def _wiki_agent_chat_extra_body() -> dict[str, Any]:
-    """Wiki / designer paths: merge OPENKMS_AGENT_LLM_EXTRA_BODY; force thinking off."""
+def _wiki_agent_chat_extra_body(thinking_fragments: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Wiki / designer paths: deployment extras plus this provider's "thinking off" fragment."""
     from app.config import settings
-    from app.services.platform.openai_compat import chat_extra_body_disable_thinking
+    from app.services.platform.openai_compat import chat_extra_body
 
-    return chat_extra_body_disable_thinking(settings.agent_llm_extra_body_json)
+    return chat_extra_body(
+        settings.agent_llm_extra_body_json,
+        off_fragment=(thinking_fragments or {}).get("off"),
+    )
 
 
 def _wiki_use_llm_reasoning_content_shim(base_url: str) -> bool:

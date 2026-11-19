@@ -218,3 +218,48 @@ class TestReasoningEffort:
     def test_dropped_when_thinking_is_off(self):
         payload = self._payload(thinking=False, reasoning_effort="max")
         assert "reasoning_effort" not in payload
+
+
+class TestNamedModel:
+    """An agent may name a registered chat model; the id (not the vendor name) is what carries credentials."""
+
+    def test_read_as_a_registry_id(self):
+        from qa_agent.agent_config import model_id
+
+        assert model_id(None) is None
+        assert model_id({"model_id": ""}) is None
+        assert model_id({"model_id": "  "}) is None
+        assert model_id({"model_id": "model_abc123"}) == "model_abc123"
+
+    def test_no_choice_uses_the_deployment_default(self, monkeypatch):
+        from qa_agent import llm_config
+
+        called = []
+
+        def fake_default(**kwargs):
+            called.append(kwargs)
+            return "DEFAULT"
+
+        monkeypatch.setattr(llm_config, "get_effective_llm_config", fake_default)
+        assert llm_config.get_llm_config(None) == "DEFAULT"
+        assert len(called) == 1
+
+    def test_a_named_model_is_resolved_and_cached(self, monkeypatch):
+        from qa_agent import llm_config
+
+        llm_config.clear_llm_config_cache()
+        calls = []
+
+        def fake_resolve(settings, mid):
+            calls.append(mid)
+            return ("https://other.example/v1", "vendor-model", "key", {"off": {"thinking": {"type": "disabled"}}})
+
+        monkeypatch.setattr(llm_config, "resolve_llm_for_model", fake_resolve)
+
+        first = llm_config.get_llm_config("model_x")
+        second = llm_config.get_llm_config("model_x")
+        assert first is second
+        assert calls == ["model_x"]
+        assert first.model_name == "vendor-model"
+        assert first.base_url == "https://other.example/v1"
+        assert first.thinking_fragments["off"] == {"thinking": {"type": "disabled"}}

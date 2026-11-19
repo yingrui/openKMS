@@ -57,6 +57,7 @@ async def resolve_project_llm(
         max_tokens=settings.agent_max_output_tokens,
         streaming=streaming,
         temperature=temperature,
+        thinking_fragments=cfg.get("thinking") or {},
     )
 
 

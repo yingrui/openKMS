@@ -17,7 +17,7 @@ export interface BehaviourDraft {
   maxTokens: string;
   thinking: 'on' | 'off';
   /** '' = the model's own default. Only meaningful while thinking is on. */
-  reasoningEffort: '' | 'minimal' | 'low' | 'medium' | 'high' | 'max';
+  reasoningEffort: '' | 'low' | 'high' | 'max';
   unknownMeasure: 'try_anyway' | 'refuse';
   grounding: 'off' | 'mark' | 'enforce';
   schemaLookup: boolean;

@@ -63,7 +63,7 @@ from app.services.identity.permissions.permission_catalog import PERM_PROJECTS_R
 from app.services.platform.project_fs import read_lessons_json, write_lessons_json
 from app.services.runtime.agent.session_review import merge_lessons, review_session
 from app.services.runtime.deep_agents.improvement_runner import iter_improvement_stream_parts
-from app.services.platform.openai_compat import chat_extra_body_disable_thinking
+from app.services.platform.openai_compat import chat_extra_body
 from app.services.runtime.deep_agents.llm_chat import normalize_openai_base_url
 
 router = APIRouter()
@@ -413,7 +413,10 @@ async def generate_skill_route(
     from openai import AsyncOpenAI
     client = AsyncOpenAI(base_url=base_url, api_key=model_config.get("api_key") or "no-key")
     model_name = model_config.get("model_name") or "gpt-4o-mini"
-    extra_body = chat_extra_body_disable_thinking(settings.agent_llm_extra_body_json)
+    extra_body = chat_extra_body(
+        settings.agent_llm_extra_body_json,
+        off_fragment=(model_config.get("thinking") or {}).get("off"),
+    )
 
     system_prompt = (
         "You generate SKILL.md files for agent capabilities. "

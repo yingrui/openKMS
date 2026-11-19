@@ -93,7 +93,18 @@ def temperature(config: dict[str, Any] | None) -> float:
     return DEFAULT_TEMPERATURE
 
 
-REASONING_EFFORTS = ("minimal", "low", "medium", "high", "max")
+def model_id(config: dict[str, Any] | None) -> str | None:
+    """The registered chat model this agent answers with; `None` means the deployment's default model.
+
+    The id, not the vendor model name: resolving credentials needs the registry row, because the model may belong to
+    a different provider than the deployment default and then the endpoint and key are that provider's.
+    """
+    raw = (config or {}).get("model_id")
+    return raw.strip() if isinstance(raw, str) and raw.strip() else None
+
+
+#: What the vendors we run accept (DeepSeek and GLM both take these three; anything else is rejected, not ignored).
+REASONING_EFFORTS = ("low", "high", "max")
 
 
 def reasoning_effort(config: dict[str, Any] | None) -> str | None:

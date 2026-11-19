@@ -66,11 +66,12 @@ class GenerationConfig(BaseModel):
     #: Transport is the provider's `thinking` fragments (`api_providers.config.thinking`), because every vendor spells
     #: the toggle differently and an unknown field is ignored rather than rejected.
     thinking: Literal["on", "off"] = "off"
-    #: How hard to reason, for vendors that take a level. The vocabulary is the union vendors use, and each model
-    #: accepts a subset — measured: DeepSeek and GLM take `low | high | max`; OpenAI adds `minimal` and `medium`. A
-    #: value the model does not know is *rejected* by that vendor (GLM answers 400 for an unsupported level), so this
-    #: is not a harmless knob. Only sent while `thinking` is on: an effort level with thinking off is a contradiction.
-    reasoning_effort: Literal["minimal", "low", "medium", "high", "max"] | None = None
+    #: How hard to reason. Three levels, because that is what the vendors we run accept — measured: DeepSeek and GLM
+    #: both take `low | high | max`, and a level outside that set is *rejected* (GLM answers 400), not ignored. OpenAI
+    #: also knows `minimal`/`medium`; offering them here would hand the reader a value that fails on our models, so
+    #: they arrive with the provider that needs them. Only sent while `thinking` is on: an effort level with the
+    #: switch off is a contradiction.
+    reasoning_effort: Literal["low", "high", "max"] | None = None
 
 
 class AnswerPolicy(BaseModel):

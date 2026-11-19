@@ -26,8 +26,14 @@ DEFAULT_STREAM_TIMEOUT = httpx.Timeout(connect=10.0, read=180.0, write=30.0, poo
 DEFAULT_BLOCKING_TIMEOUT = httpx.Timeout(connect=10.0, read=1800.0, write=60.0, pool=10.0)
 
 
-def chat_extra_body_disable_thinking(raw_json: str | None) -> dict[str, Any]:
-    """Merge optional JSON into extra_body; always force ``enable_thinking`` false."""
+def chat_extra_body(raw_json: str | None, *, off_fragment: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Deployment extras, plus the provider's own "thinking off" fragment when it has one.
+
+    Deliberately not `enable_thinking: false`: measured on `deepseek-flash`, that key is ignored and the model keeps
+    reasoning, while `{"thinking": {"type": "disabled"}}` stops it; on `glm-5.3-flash` the same key is rejected with
+    HTTP 400. The provider stores how it wants to be asked (`api_providers.config.thinking`), and this only merges the
+    fragment. No fragment means nothing is sent — a provider that cannot be asked should not look like one that was.
+    """
     extra: dict[str, Any] = {}
     raw = (raw_json or "").strip()
     if raw:
@@ -37,9 +43,11 @@ def chat_extra_body_disable_thinking(raw_json: str | None) -> dict[str, Any]:
                 extra.update(parsed)
         except (json.JSONDecodeError, TypeError):
             logger.warning("LLM extra_body JSON is invalid; ignoring")
-    # DeepSeek/DashScope thinking + tools require reasoning_content round-trip;
-    # callers that only shim empty keys must disable thinking.
-    extra["enable_thinking"] = False
+    if off_fragment:
+        # The provider's spelling is authoritative: a leftover `enable_thinking` from the deployment JSON would
+        # contradict it, and on GLM-5.3-Flash such a request is rejected outright rather than ignored.
+        extra.pop("enable_thinking", None)
+        extra.update(off_fragment)
     return extra
 
 

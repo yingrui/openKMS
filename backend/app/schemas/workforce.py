@@ -164,3 +164,5 @@ class WorkforceAskResponse(BaseModel):
     #: this is False, and `grounding["policy"]` distinguishes "not checked" from "checked and failed".
     verified: bool = False
     prompt_version: str | None = None
+    #: The model that answered — an agent may choose one, so the reply names it.
+    model: str | None = None

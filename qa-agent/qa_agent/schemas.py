@@ -69,6 +69,9 @@ class AskResponse(BaseModel):
     langfuse_trace_id: str | None = None
     #: Which prompt version produced this answer (None = the built-in text).
     prompt_version: str | None = None
+    #: The model that actually answered. Named here because an agent may choose one, and a fallback to the
+    #: deployment default must be visible rather than inferred.
+    model: str | None = None
     #: Unsourced numbers, when the KB asks to be told about them (`answer_policy.require_grounded_numbers`).
     warnings: list[str] = []
     #: True only when the answer was checked and passed: `enforce` was on and every number traced. "Not
