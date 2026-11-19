@@ -8,13 +8,18 @@ import type { JobResponse } from './jobsApi';
 /** Per-KB agent configuration. Every field defaults to today's behaviour; see docs/features/knowledge-base-qa-agent.md. */
 export interface KbAgentConfig {
   /** Request parameters of the model call — not prompt text. */
-  generation?: { temperature?: number | null; thinking?: 'on' | 'off' | null };
+  generation?: {
+    temperature?: number | null;
+    top_p?: number | null;
+    /** Sent as `max_tokens`; self-hosted OpenAI-compatible gateways commonly lack `max_completion_tokens`. */
+    max_tokens?: number | null;
+    thinking?: 'on' | 'off' | null;
+  };
   prompts?: { agents_md?: string | null };
   retrieval?: { top_k?: number; rerank?: boolean | null; min_score?: number | null };
   answer_policy?: {
     unknown_measure?: 'try_anyway' | 'refuse';
     require_grounded_numbers?: 'off' | 'mark' | 'enforce';
-    evidence_labels?: 'flat' | 'used+consulted';
     require_schema_lookup?: boolean;
   };
   workspace?: { enabled?: boolean; disk_mb?: number | null; session_ttl_minutes?: number | null; artifact_max_mb?: number | null };
@@ -27,11 +32,9 @@ export interface KbAgentConfig {
   sandbox?: {
     enabled?: boolean;
     timeout_seconds?: number | null;
-    memory_mb?: number | null;
     /** Only adds to the agent's built-in allow list; a KB cannot narrow it. */
     allow_commands?: string[] | null;
   };
-  observability?: { langfuse_credential_id?: string | null; langfuse_tags?: string[]; sample_rate?: number | null };
   model_id?: string | null;
 }
 

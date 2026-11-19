@@ -7,9 +7,10 @@ import { mergeAgentConfig } from './agentConfigMerge';
  */
 describe('mergeAgentConfig', () => {
   it('keeps a group the form does not render', () => {
-    const base = { observability: { langfuse_credential_id: 'cred-1', sample_rate: 0.5 } };
+    const base = { prompts: { agents_md: '# rules' }, retrieval: { top_k: 9 } };
     const merged = mergeAgentConfig(base, { workspace: { enabled: true } });
-    expect(merged.observability).toEqual({ langfuse_credential_id: 'cred-1', sample_rate: 0.5 });
+    expect(merged.prompts).toEqual({ agents_md: '# rules' });
+    expect(merged.retrieval).toEqual({ top_k: 9 });
     expect(merged.workspace).toEqual({ enabled: true });
   });
 

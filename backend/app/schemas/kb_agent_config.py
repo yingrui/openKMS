@@ -55,7 +55,13 @@ class GenerationConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     temperature: float | None = Field(None, ge=0.0, le=2.0)
-    #: Some OpenAI-compatible gateways expose a thinking budget as `extra_body.enable_thinking`.
+    top_p: float | None = Field(None, ge=0.0, le=1.0)
+    #: Sent as `max_tokens`, not `max_completion_tokens`: the current SDK accepts both, but self-hosted
+    #: OpenAI-compatible gateways commonly implement only the former. Raising this ceiling is a deliberate
+    #: change, not a rename.
+    max_tokens: int | None = Field(None, ge=1, le=32_768)
+    #: Some OpenAI-compatible gateways expose a thinking budget as `extra_body.enable_thinking`. Not portable:
+    #: Anthropic spells it `thinking.budget_tokens`, OpenAI `reasoning_effort`.
     thinking: Literal["on", "off"] | None = None
 
 
@@ -67,7 +73,6 @@ class AnswerPolicy(BaseModel):
 
     unknown_measure: Literal["try_anyway", "refuse"] = "try_anyway"
     require_grounded_numbers: Literal["off", "mark", "enforce"] = "off"
-    evidence_labels: Literal["flat", "used+consulted"] = "flat"
     require_schema_lookup: bool = False
 
 
@@ -104,19 +109,8 @@ class OrchestrationConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    profile: Literal["rag_only", "rag_tools", "agent_loop"] = "rag_tools"
     max_tool_rounds: int | None = Field(None, ge=1, le=100)
     retrieve: Literal["always", "never", "on_miss"] = "always"
-
-
-class ObservabilityConfig(BaseModel):
-    """A Langfuse project is a **reference**: the secret lives in the credential store, never in the KB row."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    langfuse_credential_id: str | None = None
-    langfuse_tags: list[str] = []
-    sample_rate: float | None = Field(None, ge=0.0, le=1.0)
 
 
 class AgentConfig(BaseModel):
@@ -134,7 +128,8 @@ class AgentConfig(BaseModel):
     workspace: WorkspaceConfig = WorkspaceConfig()
     orchestration: OrchestrationConfig = OrchestrationConfig()
     sandbox: SandboxConfig = SandboxConfig()
-    observability: ObservabilityConfig = ObservabilityConfig()
+    #: No `observability` key: the three fields it held were never read. Tracing is a deployment concern
+    #: (`LANGFUSE_*` on the qa-agent), and a per-KB tracing toggle that does nothing is worse than none.
 
 def parse_agent_config(raw: object) -> AgentConfig:
     """Stored JSON → validated config. `None`/empty gives every default, which is today's behaviour."""

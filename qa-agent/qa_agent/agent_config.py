@@ -93,6 +93,32 @@ def temperature(config: dict[str, Any] | None) -> float:
     return DEFAULT_TEMPERATURE
 
 
+def top_p(config: dict[str, Any] | None) -> float | None:
+    """Nucleus sampling mass; `None` leaves the gateway default."""
+    raw = ((config or {}).get("generation") or {}).get("top_p")
+    if isinstance(raw, (int, float)) and 0.0 <= float(raw) <= 1.0:
+        return float(raw)
+    return None
+
+
+def max_tokens(config: dict[str, Any] | None) -> int | None:
+    """Answer length ceiling; `None` leaves the gateway default."""
+    raw = ((config or {}).get("generation") or {}).get("max_tokens")
+    if isinstance(raw, int) and 1 <= raw <= 32_768:
+        return raw
+    return None
+
+
+def rerank_override(config: dict[str, Any] | None) -> bool | None:
+    """Per-corpus rerank choice: `None` follows the deployment, `True`/`False` force it.
+
+    Retrieval depth belongs to the knowledge source (this reads `retrieval.rerank` off the KB's config). `True`
+    still needs a rerank endpoint in the deployment; `retriever.retrieve` skips the call when there is none.
+    """
+    raw = ((config or {}).get("retrieval") or {}).get("rerank")
+    return raw if isinstance(raw, bool) else None
+
+
 def enable_thinking(config: dict[str, Any] | None) -> bool:
     """Whether gateways that expose `extra_body.enable_thinking` should think. Off by default, as before."""
     raw = ((config or {}).get("generation") or {}).get("thinking")

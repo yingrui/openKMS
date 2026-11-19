@@ -80,6 +80,8 @@ def make_qa_chat_openai(
     temperature: float,
     streaming: bool,
     enable_thinking: bool = False,
+    top_p: float | None = None,
+    max_tokens: int | None = None,
 ) -> ChatOpenAI:
     common: dict[str, Any] = {
         "base_url": base_url,
@@ -89,6 +91,12 @@ def make_qa_chat_openai(
         "streaming": streaming,
         "extra_body": qa_agent_chat_extra_body(enable_thinking=enable_thinking),
     }
+    # `None` leaves the key out entirely so the gateway's own default applies; sending an explicit null is not
+    # the same request. `max_tokens` (not `max_completion_tokens`) is what self-hosted compatible gateways read.
+    if top_p is not None:
+        common["top_p"] = top_p
+    if max_tokens is not None:
+        common["max_tokens"] = max_tokens
     if use_llm_reasoning_content_shim(base_url):
         return _ReasoningContentShimChatOpenAI(**common)
     return ChatOpenAI(**common)

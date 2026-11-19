@@ -12,8 +12,11 @@ import { useWorkforceDetail } from './workforceDetailContext';
  * Which model answers.
  *
  * Sampling and thinking depth belong on this screen because they are request parameters, not sentences to
- * write into a prompt: the qa-agent reads `generation.temperature` and `generation.thinking` and sends them
+ * write into a prompt: the qa-agent reads `generation.{temperature,top_p,max_tokens,thinking}` and sends them
  * with the call. Empty means "whatever the deployment does", which is the behaviour before they existed.
+ *
+ * `thinking` is the one setting here that is not portable: it is a gateway-specific `extra_body` flag, so the
+ * hint says it follows the gateway rather than implying it works anywhere.
  */
 export function WorkforceModelTab() {
   const { t } = useTranslation('workforce');
@@ -68,6 +71,30 @@ export function WorkforceModelTab() {
               value={draft.temperature}
               placeholder={t('temperaturePlaceholder')}
               onChange={(e) => setDraft({ ...draft, temperature: e.target.value })}
+            />
+          </FormField>
+          <FormField label={t('topP')} hint={t('topPHint')}>
+            <input
+              className="ds-control"
+              type="number"
+              min={0}
+              max={1}
+              step={0.05}
+              value={draft.topP}
+              placeholder={t('topPPlaceholder')}
+              onChange={(e) => setDraft({ ...draft, topP: e.target.value })}
+            />
+          </FormField>
+          <FormField label={t('maxTokens')} hint={t('maxTokensHint')}>
+            <input
+              className="ds-control"
+              type="number"
+              min={1}
+              max={32768}
+              step={256}
+              value={draft.maxTokens}
+              placeholder={t('maxTokensPlaceholder')}
+              onChange={(e) => setDraft({ ...draft, maxTokens: e.target.value })}
             />
           </FormField>
           <FormField label={t('thinking')} hint={t('thinkingHint')}>

@@ -92,8 +92,14 @@ def _rrf_fuse(
     return out
 
 
-def _rerank(query: str, candidates: list[dict[str, Any]], top_k: int) -> tuple[list[dict[str, Any]], bool]:
-    if not candidates or len(candidates) <= top_k or not settings.rerank_enabled:
+def _rerank(
+    query: str,
+    candidates: list[dict[str, Any]],
+    top_k: int,
+    *,
+    enabled: bool,
+) -> tuple[list[dict[str, Any]], bool]:
+    if not candidates or len(candidates) <= top_k or not enabled:
         return candidates[:top_k], False
 
     llm_cfg = get_effective_llm_config()
@@ -225,8 +231,15 @@ def retrieve(
     query: str,
     access_token: str,
     top_k: int = 5,
+    rerank: bool | None = None,
 ) -> list[SourceItem]:
-    """Hybrid retrieve: dense pool → BM25 re-score → RRF → cross-encoder rerank → top-K."""
+    """Hybrid retrieve: dense pool → BM25 re-score → RRF → cross-encoder rerank → top-K.
+
+    ``rerank`` is the knowledge source's choice, not the agent's: retrieval depth is a property of the corpus.
+    ``None`` follows the deployment (``OPENKMS_RERANK_ENABLED``); ``False`` turns reranking off for this corpus
+    even when the deployment has it on; ``True`` asks for it, but only a deployment with a rerank endpoint can
+    honour that — without one the fused order stands, which is what the settings screen says in the option's label.
+    """
     clean_query = _strip_slash_prefix(query)
     recall_k = max(top_k, settings.hybrid_recall_top_k)
     pool_k = _candidate_pool_k(top_k)
@@ -246,6 +259,7 @@ def retrieve(
         candidates = dense or bm25
         retrieval_mode = "dense" if dense else "bm25_only"
 
-    reranked, rerank_applied = _rerank(clean_query, candidates, top_k)
+    use_rerank = settings.rerank_enabled if rerank is None else (rerank and settings.rerank_enabled)
+    reranked, rerank_applied = _rerank(clean_query, candidates, top_k, enabled=use_rerank)
     stages = _pipeline_stages(retrieval_mode, rerank_applied)
     return [_row_to_source_item(r, retrieval_mode=retrieval_mode, pipeline_stages=stages) for r in reranked]

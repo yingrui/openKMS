@@ -12,7 +12,11 @@ class TestDefaults:
         assert config.workspace.enabled is False
         assert config.answer_policy.unknown_measure == "try_anyway"
         assert config.answer_policy.require_grounded_numbers == "off"
-        assert config.orchestration.profile == "rag_tools"
+        assert config.orchestration.retrieve == "always"
+        # The sampling group is unset, so the deployment's values apply.
+        assert config.generation.temperature is None
+        assert config.generation.top_p is None
+        assert config.generation.max_tokens is None
 
     def test_empty_json_and_none_agree(self):
         assert parse_agent_config({}).model_dump() == parse_agent_config(None).model_dump()
@@ -86,5 +90,8 @@ class TestGeneration:
             parse_agent_config({"generation": {"thinking": "maybe"}})
 
     def test_unknown_generation_keys_are_refused(self):
+        # `top_k` belongs to retrieval, so it is not a generation key; `frequency_penalty` was never ours.
         with pytest.raises(ValidationError):
-            parse_agent_config({"generation": {"top_p": 0.9}})
+            parse_agent_config({"generation": {"top_k": 5}})
+        with pytest.raises(ValidationError):
+            parse_agent_config({"generation": {"frequency_penalty": 0.1}})

@@ -13,6 +13,8 @@ export interface BehaviourDraft {
   modelId: string;
   /** Empty means "whatever the deployment does" — the field is a string so a half-typed number is not coerced. */
   temperature: string;
+  topP: string;
+  maxTokens: string;
   thinking: 'default' | 'on' | 'off';
   unknownMeasure: 'try_anyway' | 'refuse';
   grounding: 'off' | 'mark' | 'enforce';
@@ -29,6 +31,8 @@ export function draftFromConfig(cfg: KbAgentConfig | null | undefined): Behaviou
     agentsMd: c.prompts?.agents_md ?? '',
     modelId: c.model_id ?? '',
     temperature: c.generation?.temperature != null ? String(c.generation.temperature) : '',
+    topP: c.generation?.top_p != null ? String(c.generation.top_p) : '',
+    maxTokens: c.generation?.max_tokens != null ? String(c.generation.max_tokens) : '',
     thinking: c.generation?.thinking ?? 'default',
     unknownMeasure: c.answer_policy?.unknown_measure ?? 'try_anyway',
     grounding: c.answer_policy?.require_grounded_numbers ?? 'off',
@@ -46,11 +50,16 @@ export function draftFromConfig(cfg: KbAgentConfig | null | undefined): Behaviou
 export function draftToConfig(d: BehaviourDraft): Omit<KbAgentConfig, 'retrieval'> {
   const rounds = Number.parseInt(d.maxToolRounds, 10);
   const temperature = Number.parseFloat(d.temperature);
+  const topP = Number.parseFloat(d.topP);
+  const maxTokens = Number.parseInt(d.maxTokens, 10);
   return {
     model_id: d.modelId.trim() || null,
     generation: {
       temperature:
         Number.isFinite(temperature) ? Math.min(2, Math.max(0, temperature)) : null,
+      top_p: Number.isFinite(topP) ? Math.min(1, Math.max(0, topP)) : null,
+      // Floor is 1: a ceiling of 0 would ask the model for an empty answer, which is a config error, not a choice.
+      max_tokens: Number.isFinite(maxTokens) && maxTokens >= 1 ? Math.min(32_768, maxTokens) : null,
       thinking: d.thinking === 'default' ? null : d.thinking,
     },
     prompts: { agents_md: d.agentsMd.trim() ? d.agentsMd : null },
@@ -72,9 +81,8 @@ export function draftToConfig(d: BehaviourDraft): Omit<KbAgentConfig, 'retrieval
  * The draft applied to what the agent already has.
  *
  * The API replaces `agent_config` wholesale and this form draws only some of its keys, so sending the
- * form's object alone would silently clear the rest (the Langfuse reference, for one). Same rule — and
- * the same function — as the knowledge base's Agent tab: one level of merge, lists replaced, an
- * explicit `null` clears.
+ * form's object alone would silently clear the rest. Same rule — and the same function — as the knowledge
+ * base's own settings: one level of merge, lists replaced, an explicit `null` clears.
  */
 export function configFromDraft(
   current: KbAgentConfig | null | undefined,

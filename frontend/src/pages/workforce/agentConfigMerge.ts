@@ -7,10 +7,10 @@ import type { KbAgentConfig } from '../../data/knowledgeBasesApi';
  * own silently cleared the rest — enabling code execution in one place and switching it off by pressing Save in another.
  * Both callers need this: the agent's behaviour form, and the knowledge base's retrieval field.
  * One level of merge is enough: every key of the config is a group of scalars, and a group this form does not render
- * (`observability`) survives untouched.
+ * (`prompts`, `retrieval`) survives untouched.
  *
- * Lists are replaced, not concatenated (`allow_commands` and `langfuse_tags` are the values the user is editing), and an
- * explicit `null` in the patch **clears** — that is how the form says "no override".
+ * Lists are replaced, not concatenated (`sandbox.allow_commands` is the value the user is editing), and an explicit
+ * `null` in the patch **clears** — that is how the form says "no override".
  */
 export function mergeAgentConfig(base: KbAgentConfig | null | undefined, patch: KbAgentConfig): KbAgentConfig {
   const out: KbAgentConfig = { ...(base ?? {}) };

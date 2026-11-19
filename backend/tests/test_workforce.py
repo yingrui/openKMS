@@ -62,6 +62,33 @@ class TestConfigSplit:
         agent = _agent({"retrieval": {"top_k": 40}})
         assert runtime_config(kb, agent)["retrieval"]["top_k"] == 3
 
+    def test_the_deleted_keys_are_rejected_rather_than_silently_dropped(self):
+        # `extra="forbid"` is what makes a stale client fail loudly instead of writing a key nothing reads back.
+        import pytest
+        from pydantic import ValidationError
+
+        from app.schemas.kb_agent_config import parse_agent_config
+
+        for stale in (
+            {"observability": {"sample_rate": 0.5}},
+            {"orchestration": {"profile": "rag_only"}},
+            {"answer_policy": {"evidence_labels": "flat"}},
+        ):
+            with pytest.raises(ValidationError):
+                parse_agent_config(stale)
+
+    def test_generation_carries_the_whole_sampling_group(self):
+        from app.schemas.kb_agent_config import parse_agent_config
+
+        cfg = parse_agent_config(
+            {"generation": {"temperature": 0.2, "top_p": 0.9, "max_tokens": 800}}
+        )
+        assert cfg.generation.model_dump(exclude_none=True) == {
+            "temperature": 0.2,
+            "top_p": 0.9,
+            "max_tokens": 800,
+        }
+
     def test_runtime_config_without_agent_is_the_old_payload(self):
         kb = _kb({"retrieval": {"top_k": 7}, "workspace": {"enabled": True}})
         runtime = runtime_config(kb, None)

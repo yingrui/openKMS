@@ -100,6 +100,7 @@ def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
         state["question"],
         access_token=state["access_token"],
         top_k=int(state.get("top_k") or 5),
+        rerank=state.get("rerank"),
     )
     logger.info("retrieve_node kb=%s hits=%d", kb_id, len(sources))
     logger.debug("retrieve_node question=%r", preview_text(state.get("question"), 120))
@@ -182,6 +183,8 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
         temperature=float(state.get("temperature") or agent_config_module.DEFAULT_TEMPERATURE),
         streaming=True,
         enable_thinking=bool(state.get("enable_thinking")),
+        top_p=state.get("top_p"),
+        max_tokens=state.get("max_tokens"),
     )
     skill_ids = normalize_skill_ids(state.get("agent_skills"))
     tools = get_all_skill_tools(skill_ids)
@@ -295,6 +298,8 @@ def finalize_node(state: dict[str, Any]) -> dict[str, Any]:
         temperature=float(state.get("temperature") or agent_config_module.DEFAULT_TEMPERATURE),
         streaming=True,
         enable_thinking=bool(state.get("enable_thinking")),
+        top_p=state.get("top_p"),
+        max_tokens=state.get("max_tokens"),
     )
     messages = build_messages_for_generate(
         context_prompt=_build_system_prompt(
@@ -424,6 +429,9 @@ def invoke_agent(
                 "sandbox": sandbox_settings,
                 "temperature": temperature,
                 "enable_thinking": thinking,
+                "top_p": agent_config_module.top_p(agent_config),
+                "max_tokens": agent_config_module.max_tokens(agent_config),
+                "rerank": agent_config_module.rerank_override(agent_config),
             },
             config=config,
         )
@@ -701,6 +709,9 @@ def _turn_state(
         "sandbox": sandbox_settings,
         "temperature": temperature,
         "enable_thinking": enable_thinking,
+        "top_p": agent_config_module.top_p(agent_config),
+        "max_tokens": agent_config_module.max_tokens(agent_config),
+        "rerank": agent_config_module.rerank_override(agent_config),
     }
 
 
@@ -743,7 +754,13 @@ async def astream_agent_ndjson(
     logger.debug("astream_agent_ndjson question=%r", preview_text(question, 200))
     try:
         ctx = (
-            retrieve(knowledge_base_id, question, access_token=access_token, top_k=retrieve_k)
+            retrieve(
+                knowledge_base_id,
+                question,
+                access_token=access_token,
+                top_k=retrieve_k,
+                rerank=agent_config_module.rerank_override(agent_config),
+            )
             if retrieve_mode == "always"
             else []
         )
