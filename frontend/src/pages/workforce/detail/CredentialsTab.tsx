@@ -28,8 +28,11 @@ import { useWorkforceDetail } from './workforceDetailContext';
  * A credential belongs to the agent, not to a person: revoking it stops this service and leaves the owner's
  * own sign-in alone. The token is shown once — only its hash is stored, so an operator who loses it issues a
  * new one rather than hunting for the old.
+ *
+ * The endpoint sits at the bottom of this tab because "who may call" and "how to call" are one question. It
+ * is a line, not a curl block: the request shape is the API reference's job.
  */
-export function WorkforceAccessTab() {
+export function WorkforceCredentialsTab() {
   const { t } = useTranslation('workforce');
   const confirm = useConfirm();
   const { agent, reload } = useWorkforceDetail();
@@ -87,7 +90,7 @@ export function WorkforceAccessTab() {
 
   return (
     <>
-      <EntityViewHeader title={t('accessTitle')} subtitle={t('accessLead')} />
+      <EntityViewHeader title={t('credentialsTitle')} subtitle={t('credentialsLead')} />
       <EntityViewPanel>
       <p className="ds-field__hint">{t('readOnlyNote')}</p>
 
@@ -169,6 +172,12 @@ export function WorkforceAccessTab() {
         <p className="ds-field__hint">{t('credentialCreatedBody')}</p>
         {created ? <TokenBox token={created.token} label={created.name || created.key_prefix} /> : null}
       </Dialog>
+
+      <EntityViewPanel title={t('endpointLabel')} description={t('endpointHint')}>
+        <code className="workforce-endpoint">
+          POST {window.location.origin}/api/workforce/agents/{agent.id}/ask
+        </code>
+      </EntityViewPanel>
     </>
   );
 }

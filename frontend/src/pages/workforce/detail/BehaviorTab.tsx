@@ -3,38 +3,30 @@ import { useTranslation } from 'react-i18next';
 import { Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { updateWorkforceAgent } from '../../../data/workforceApi';
-import { CORE_AGENT_SKILLS, OPTIONAL_AGENT_SKILLS } from '../../../data/kbAgentSkills';
 import { CheckRow, FormField } from '../../../styles/design-system';
-import { EntityViewField, EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
+import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { configFromDraft, draftFromConfig, type BehaviourDraft } from '../workforceConfigDraft';
 import { useWorkforceDetail } from './workforceDetailContext';
 
 /**
- * How the agent answers: its instructions, model, skills, answer policy, orchestration and the two
- * capabilities that touch the workspace.
+ * What counts as an acceptable answer, and how far the agent may go to produce one.
  *
- * Retrieval depth is deliberately absent — it belongs to the knowledge source, and offering it here would
- * let one corpus be searched two different ways.
+ * These are not instructions to the model: the agent checks them. A number without a cited source is
+ * *marked* (or refused) by the runtime, and a tool-round ceiling is enforced by the loop — written into a
+ * prompt, either could be argued away by a clever question.
  */
 export function WorkforceBehaviorTab() {
   const { t } = useTranslation('workforce');
-  const { t: tk } = useTranslation('knowledgeBase');
   const { agent, reload } = useWorkforceDetail();
-  const [skills, setSkills] = useState<string[]>(
-    Array.isArray(agent.agent_skills) ? agent.agent_skills : []
-  );
   const [draft, setDraft] = useState<BehaviourDraft>(() => draftFromConfig(agent.agent_config));
   const [saving, setSaving] = useState(false);
 
   const patch = (values: Partial<BehaviourDraft>) => setDraft((d) => ({ ...d, ...values }));
-  const toggleSkill = (id: string) =>
-    setSkills((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
 
   const save = async () => {
     setSaving(true);
     try {
       await updateWorkforceAgent(agent.id, {
-        agent_skills: skills,
         agent_config: configFromDraft(agent.agent_config, draft),
       });
       await reload();
@@ -46,60 +38,18 @@ export function WorkforceBehaviorTab() {
     }
   };
 
-  const skillRow = (skill: (typeof CORE_AGENT_SKILLS)[number]) => (
-    <CheckRow
-      key={skill.id}
-      checked={skills.includes(skill.id)}
-      onChange={() => toggleSkill(skill.id)}
-      title={tk(`detail.${skill.labelKey}`)}
-      hint={tk(`detail.${skill.helpKey}`)}
-    />
-  );
-
   return (
     <>
       <EntityViewHeader
         title={t('behaviorTitle')}
         subtitle={t('behaviorLead')}
         actions={
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={saving}
-            onClick={() => void save()}
-          >
+          <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void save()}>
             <Save size={16} aria-hidden />
             {saving ? t('saving') : t('save')}
           </button>
         }
       />
-
-      <EntityViewPanel>
-        <div className="entity-view__form">
-          <EntityViewField label={t('instructions')} hint={t('instructionsHint')}>
-            <textarea
-              className="ds-control"
-              rows={6}
-              value={draft.agentsMd}
-              placeholder={t('instructionsPlaceholder')}
-              onChange={(e) => patch({ agentsMd: e.target.value })}
-            />
-          </EntityViewField>
-          <FormField label={t('model')} hint={t('modelHint')}>
-            <input
-              className="ds-control"
-              value={draft.modelId}
-              placeholder={t('modelPlaceholder')}
-              onChange={(e) => patch({ modelId: e.target.value })}
-            />
-          </FormField>
-        </div>
-      </EntityViewPanel>
-
-      <EntityViewPanel title={t('skills')} description={t('skillsHint')}>
-        {CORE_AGENT_SKILLS.map(skillRow)}
-        {OPTIONAL_AGENT_SKILLS.map(skillRow)}
-      </EntityViewPanel>
 
       <EntityViewPanel title={t('answerPolicy')}>
         <div className="entity-view__form">
@@ -158,18 +108,6 @@ export function WorkforceBehaviorTab() {
             />
           </FormField>
         </div>
-        <CheckRow
-          checked={draft.workspace}
-          onChange={(checked) => patch({ workspace: checked })}
-          title={t('workspace')}
-          hint={t('workspaceHint')}
-        />
-        <CheckRow
-          checked={draft.sandbox}
-          onChange={(checked) => patch({ sandbox: checked })}
-          title={t('sandbox')}
-          hint={t('sandboxHint')}
-        />
       </EntityViewPanel>
     </>
   );

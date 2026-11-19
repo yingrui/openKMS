@@ -5,6 +5,10 @@ import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
  *
  * One list for both consumers: the route table in `App.tsx` renders it, and the shell's rail builds its
  * `navItems` from it. Two lists is how a tab ends up reachable from the URL but missing from the rail.
+ *
+ * The split follows what each setting *is*: prompt text (Profile), request parameters (Model), capability
+ * switches (Skills), what it may reach (Tools), what the runtime enforces (Behavior), and who may call
+ * (Credentials — which also says where).
  */
 export type WorkforceTab = {
   /** URL segment under `/workforce/:agentId`; empty for the tab at the root. */
@@ -17,10 +21,25 @@ export type WorkforceTab = {
 export const WORKFORCE_TABS: WorkforceTab[] = [
   {
     segment: '',
-    labelKey: 'navIdentity',
+    labelKey: 'navProfile',
     Component: lazy(() =>
-      import('./IdentityTab').then((m) => ({ default: m.WorkforceIdentityTab }))
+      import('./ProfileTab').then((m) => ({ default: m.WorkforceProfileTab }))
     ),
+  },
+  {
+    segment: 'model',
+    labelKey: 'navModel',
+    Component: lazy(() => import('./ModelTab').then((m) => ({ default: m.WorkforceModelTab }))),
+  },
+  {
+    segment: 'skills',
+    labelKey: 'navSkills',
+    Component: lazy(() => import('./SkillsTab').then((m) => ({ default: m.WorkforceSkillsTab }))),
+  },
+  {
+    segment: 'tools',
+    labelKey: 'navTools',
+    Component: lazy(() => import('./ToolsTab').then((m) => ({ default: m.WorkforceToolsTab }))),
   },
   {
     segment: 'behavior',
@@ -30,25 +49,10 @@ export const WORKFORCE_TABS: WorkforceTab[] = [
     ),
   },
   {
-    segment: 'knowledge',
-    labelKey: 'navKnowledge',
+    segment: 'credentials',
+    labelKey: 'navCredentials',
     Component: lazy(() =>
-      import('./KnowledgeTab').then((m) => ({ default: m.WorkforceKnowledgeTab }))
+      import('./CredentialsTab').then((m) => ({ default: m.WorkforceCredentialsTab }))
     ),
-  },
-  {
-    segment: 'data',
-    labelKey: 'navData',
-    Component: lazy(() => import('./DataTab').then((m) => ({ default: m.WorkforceDataTab }))),
-  },
-  {
-    segment: 'access',
-    labelKey: 'navAccess',
-    Component: lazy(() => import('./AccessTab').then((m) => ({ default: m.WorkforceAccessTab }))),
-  },
-  {
-    segment: 'call',
-    labelKey: 'navTry',
-    Component: lazy(() => import('./CallTab').then((m) => ({ default: m.WorkforceCallTab }))),
   },
 ];

@@ -180,7 +180,7 @@ export function WorkforceList() {
                 <th>{t('name')}</th>
                 <th>{t('knowledgeTitle')}</th>
                 <th>{t('skills')}</th>
-                <th>{t('accessTitle')}</th>
+                <th>{t('credentialsTitle')}</th>
               </tr>
             </thead>
             <tbody>

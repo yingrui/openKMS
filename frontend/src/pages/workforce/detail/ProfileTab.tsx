@@ -5,20 +5,28 @@ import { toast } from 'sonner';
 import { archiveWorkforceAgent, updateWorkforceAgent } from '../../../data/workforceApi';
 import { useConfirm } from '../../../contexts/ConfirmContext';
 import { EntityViewField, EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
+import { configFromDraft, draftFromConfig } from '../workforceConfigDraft';
 import { useWorkforceDetail } from './workforceDetailContext';
 
 /**
- * Who the service is: the name a caller sees and the line saying what it is for.
+ * Who the service is: the name a caller sees, the line saying what it is for, and what it has been told.
+ *
+ * Instructions sit here rather than in a tab of their own because they are the same kind of thing — prompt
+ * text that shapes identity and conduct. What is *not* here is anything the runtime must enforce: the answer
+ * policy and the tool set are separate, because a rule that only exists in a prompt can be argued with.
  *
  * Archive lives here because it is the one action that ends the service — kept beside Save, and behind a
  * confirm, rather than beside the tab's primary action.
  */
-export function WorkforceIdentityTab() {
+export function WorkforceProfileTab() {
   const { t } = useTranslation('workforce');
   const confirm = useConfirm();
   const { agent, reload } = useWorkforceDetail();
   const [name, setName] = useState(agent.name);
   const [description, setDescription] = useState(agent.description ?? '');
+  const [instructions, setInstructions] = useState(
+    agent.agent_config?.prompts?.agents_md ?? ''
+  );
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -27,6 +35,11 @@ export function WorkforceIdentityTab() {
       await updateWorkforceAgent(agent.id, {
         name: name.trim() || agent.name,
         description: description.trim() || null,
+        // Only the one config key this tab owns; the rest is merged on the server side of the form.
+        agent_config: configFromDraft(agent.agent_config, {
+          ...draftFromConfig(agent.agent_config),
+          agentsMd: instructions,
+        }),
       });
       await reload();
       toast.success(t('saved'));
@@ -59,8 +72,8 @@ export function WorkforceIdentityTab() {
   return (
     <>
       <EntityViewHeader
-        title={t('identityTitle')}
-        subtitle={t('identityLead')}
+        title={t('profileTitle')}
+        subtitle={t('profileLead')}
         actions={
           <>
             <button type="button" className="btn btn-secondary" onClick={() => void archive()}>
@@ -91,6 +104,15 @@ export function WorkforceIdentityTab() {
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+            />
+          </EntityViewField>
+          <EntityViewField label={t('instructions')} hint={t('instructionsHint')}>
+            <textarea
+              className="ds-control"
+              rows={8}
+              value={instructions}
+              placeholder={t('instructionsPlaceholder')}
+              onChange={(e) => setInstructions(e.target.value)}
             />
           </EntityViewField>
         </div>
