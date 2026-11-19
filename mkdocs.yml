@@ -236,5 +236,10 @@ nav:
       - Apache Ossie semantic layer: research/ossie_semantic_layer.md
       - Palantir Foundry Rules: research/foundry-rules.md
       - 指标勾稽（metric reconciliation）: research/metric-reconciliation.md
+      - Agent configuration surfaces (research): research/agent-config/README.md
+      - AWS Bedrock Agents (vendored): research/agent-config/bedrock-agents.md
+      - OpenAI SDK params (vendored): research/agent-config/openai-sdk.md
+      - Anthropic SDK params (vendored): research/agent-config/anthropic-sdk.md
+      - Dify agent config (vendored): research/agent-config/dify.md
       - Apache Ossie core spec (vendored): research/ossie/spec.md
       - Apache Ossie expression language (vendored): research/ossie/expression_language.md
