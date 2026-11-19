@@ -12,7 +12,10 @@ import type { KbAgentConfig } from '../../data/knowledgeBasesApi';
  * Lists are replaced, not concatenated (`sandbox.allow_commands` is the value the user is editing), and an explicit
  * `null` in the patch **clears** — that is how the form says "no override".
  */
-export function mergeAgentConfig(base: KbAgentConfig | null | undefined, patch: KbAgentConfig): KbAgentConfig {
+export function mergeAgentConfig(
+  base: KbAgentConfig | null | undefined,
+  patch: Partial<KbAgentConfig>,
+): KbAgentConfig {
   const out: KbAgentConfig = { ...(base ?? {}) };
   for (const key of Object.keys(patch) as (keyof KbAgentConfig)[]) {
     const next = patch[key];

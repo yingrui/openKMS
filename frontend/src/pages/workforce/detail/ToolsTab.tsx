@@ -11,7 +11,8 @@ import {
 } from '../../../data/workforceApi';
 import { fetchSemanticModels, type SemanticModelResponse } from '../../../data/semanticModelsApi';
 import { fetchOntologyGroups, type OntologyGroupResponse } from '../../../data/ontologyGroupsApi';
-import { CheckRow } from '../../../styles/design-system';
+import { CheckRow, FormField } from '../../../styles/design-system';
+import { CORE_AGENT_SKILLS, OPTIONAL_AGENT_SKILLS } from '../../../data/kbAgentSkills';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { configFromDraft, draftFromConfig } from '../workforceConfigDraft';
 import { useWorkforceDetail } from './workforceDetailContext';
@@ -28,6 +29,7 @@ import { useWorkforceDetail } from './workforceDetailContext';
  */
 export function WorkforceToolsTab() {
   const { t } = useTranslation('workforce');
+  const { t: tk } = useTranslation('knowledgeBase');
   const { agent, reload } = useWorkforceDetail();
   const [models, setModels] = useState<SemanticModelResponse[]>([]);
   const [groups, setGroups] = useState<OntologyGroupResponse[]>([]);
@@ -35,6 +37,13 @@ export function WorkforceToolsTab() {
   const [groupPick, setGroupPick] = useState('');
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState(() => draftFromConfig(agent.agent_config));
+  const [tools, setTools] = useState<string[]>(
+    Array.isArray(agent.agent_skills) ? agent.agent_skills : []
+  );
+  // One command per line; the API takes a list that only *adds* to the built-in allow list.
+  const [allowCommands, setAllowCommands] = useState(() =>
+    (agent.agent_config?.sandbox?.allow_commands ?? []).join('\n')
+  );
 
   const loadOptions = useCallback(async () => {
     try {
@@ -65,11 +74,30 @@ export function WorkforceToolsTab() {
     }
   };
 
+  const saveTools = async () => {
+    setBusy(true);
+    try {
+      await updateWorkforceAgent(agent.id, { agent_skills: tools });
+      await reload();
+      toast.success(t('saved'));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('saveFailed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const saveEnvironment = async () => {
     setBusy(true);
     try {
+      const commands = allowCommands
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
       await updateWorkforceAgent(agent.id, {
-        agent_config: configFromDraft(agent.agent_config, draft),
+        agent_config: configFromDraft(agent.agent_config, draft, {
+          sandbox: { allow_commands: commands.length ? commands : null },
+        }),
       });
       await reload();
       toast.success(t('saved'));
@@ -195,6 +223,25 @@ export function WorkforceToolsTab() {
         </div>
       </EntityViewPanel>
 
+      <EntityViewPanel title={t('toolsSwitchesTitle')} description={t('toolsSwitchesLead')}>
+        {[...CORE_AGENT_SKILLS, ...OPTIONAL_AGENT_SKILLS].map((tool) => (
+          <CheckRow
+            key={tool.id}
+            checked={tools.includes(tool.id)}
+            onChange={() =>
+              setTools((prev) =>
+                prev.includes(tool.id) ? prev.filter((id) => id !== tool.id) : [...prev, tool.id]
+              )
+            }
+            title={tk(`detail.${tool.labelKey}`)}
+            hint={tk(`detail.${tool.helpKey}`)}
+          />
+        ))}
+        <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void saveTools()}>
+          {busy ? t('saving') : t('save')}
+        </button>
+      </EntityViewPanel>
+
       <EntityViewPanel title={t('toolsEnvSection')} description={t('toolsEnvHint')}>
         <CheckRow
           checked={draft.workspace}
@@ -208,6 +255,18 @@ export function WorkforceToolsTab() {
           title={t('sandbox')}
           hint={t('sandboxHint')}
         />
+        {draft.sandbox ? (
+          <FormField label={t('sandboxAllowCommands')} hint={t('sandboxAllowCommandsHint')}>
+            <textarea
+              className="ds-control"
+              rows={4}
+              spellCheck={false}
+              value={allowCommands}
+              placeholder={'rg\ncat\npython'}
+              onChange={(e) => setAllowCommands(e.target.value)}
+            />
+          </FormField>
+        ) : null}
         <button
           type="button"
           className="btn btn-primary"

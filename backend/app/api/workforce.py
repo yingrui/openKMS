@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import authenticate_request, jwt_payload_is_admin, require_auth
 from app.config import settings
 from app.database import get_db
+from app.models.agent_skill import AgentSkill
 from app.models.knowledge_base import KnowledgeBase
 from app.models.workforce_agent import (
     AGENT_STATUS_ACTIVE,
@@ -35,7 +36,10 @@ from app.models.workforce_agent import (
     WorkforceAgentSemanticModel,
 )
 from app.schemas.workforce import (
+    WorkforceAvailableSkill,
+    WorkforceInstalledSkill,
     WorkforcePromptPreviewResponse,
+    WorkforceSkillInstall,
     WorkforceAgentCreate,
     WorkforceAgentDetailResponse,
     WorkforceAgentKBAdd,
@@ -271,6 +275,92 @@ async def archive_agent(
     return None
 
 
+@router.get("/agents/{agent_id}/skills", response_model=list[WorkforceInstalledSkill])
+async def list_agent_skills(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    """The skill packages installed on this agent, resolved against the global registry."""
+    agent = await _scoped(db, request, agent_id, write=False)
+    installed = dict(agent.installed_skills or {})
+    rows = (
+        await db.execute(select(AgentSkill).where(AgentSkill.id.in_(installed.keys())))
+    ).scalars().all() if installed else []
+    by_id = {skill.id: skill for skill in rows}
+    out: list[WorkforceInstalledSkill] = []
+    for skill_id, version in installed.items():
+        skill = by_id.get(skill_id)
+        out.append(
+            WorkforceInstalledSkill(
+                skill_id=skill_id,
+                display_name=skill.display_name if skill else skill_id,
+                version=str(version or ""),
+                # A registry entry can disappear while an agent still names it; say so instead of hiding the row.
+                available=skill is not None,
+            )
+        )
+    return sorted(out, key=lambda s: s.display_name.lower())
+
+
+@router.get("/agents/{agent_id}/skills/available", response_model=list[WorkforceAvailableSkill])
+async def list_available_skills(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    """Skill packages in the global registry that this agent has not installed yet.
+
+    Read with the agent's own permission rather than the projects permission: a workforce owner does not necessarily
+    manage projects, and the registry is shared.
+    """
+    await _scoped(db, request, agent_id, write=False)
+    installed = (
+        await db.execute(select(AgentSkill).order_by(AgentSkill.display_name))
+    ).scalars().all()
+    return [
+        WorkforceAvailableSkill(
+            skill_id=skill.id,
+            display_name=skill.display_name,
+            default_version=skill.default_version,
+            versions=[v.version for v in skill.versions],
+        )
+        for skill in installed
+    ]
+
+
+@router.post("/agents/{agent_id}/skills", response_model=list[WorkforceInstalledSkill], status_code=201)
+async def install_agent_skill(
+    agent_id: str,
+    body: WorkforceSkillInstall,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Install a skill package from the registry. The version defaults to the registry's default."""
+    agent = await _scoped(db, request, agent_id, write=True)
+    skill = await db.get(AgentSkill, body.skill_id)
+    if skill is None:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    version = body.version or skill.default_version
+    if not version:
+        latest = sorted((v.version for v in skill.versions), reverse=True)
+        if not latest:
+            raise HTTPException(status_code=400, detail="Skill has no versions")
+        version = latest[0]
+    installed = dict(agent.installed_skills or {})
+    installed[skill.id] = version
+    agent.installed_skills = installed
+    await db.commit()
+    return await list_agent_skills(agent_id, request, db)
+
+
+@router.delete("/agents/{agent_id}/skills/{skill_id}", response_model=list[WorkforceInstalledSkill])
+async def uninstall_agent_skill(
+    agent_id: str,
+    skill_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    agent = await _scoped(db, request, agent_id, write=True)
+    installed = dict(agent.installed_skills or {})
+    installed.pop(skill_id, None)
+    agent.installed_skills = installed or None
+    await db.commit()
+    return await list_agent_skills(agent_id, request, db)
+
+
 @router.get("/agents/{agent_id}/prompt-preview", response_model=WorkforcePromptPreviewResponse)
 async def agent_prompt_preview(
     agent_id: str,
@@ -305,6 +395,7 @@ async def agent_prompt_preview(
     body = {
         "agent_skills": agent_skills_for(kb, agent),
         "agent_config": runtime_config(kb, agent),
+        "installed_skills": dict(agent.installed_skills or {}),
     }
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -673,6 +764,8 @@ async def ask_agent(
         agent_config=runtime,
         # The author's base instruction; without it the qa-agent uses its built-in text.
         system_prompt=base_instruction_for(runtime),
+        # Skill packages installed on this agent; the qa-agent fetches their text with its own service credentials.
+        installed_skills=dict(agent.installed_skills or {}),
     )
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:

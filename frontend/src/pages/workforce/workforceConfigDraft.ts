@@ -99,8 +99,11 @@ export function draftToConfig(d: BehaviourDraft): Omit<KbAgentConfig, 'retrieval
 export function configFromDraft(
   current: KbAgentConfig | null | undefined,
   d: BehaviourDraft,
+  /** Extra groups this form owns but the draft does not model (e.g. the sandbox command list). */
+  extra?: Partial<KbAgentConfig>,
 ): Omit<KbAgentConfig, 'retrieval'> {
   const merged = mergeAgentConfig(current, draftToConfig(d));
-  const { retrieval: _retrieval, ...rest } = merged;
+  const withExtra = extra ? mergeAgentConfig(merged, extra) : merged;
+  const { retrieval: _retrieval, ...rest } = withExtra;
   return rest;
 }

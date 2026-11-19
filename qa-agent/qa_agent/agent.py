@@ -90,6 +90,8 @@ class AgentState(TypedDict):
     model_id: str | None
     #: Workspace conventions, injected into the system prompt and written to AGENTS.md in the session.
     agents_md: str | None
+    #: Installed skill packages (resolved to their SKILL.md text) for the prompt's "Installed skills" section.
+    installed_skill_packages: list[dict[str, Any]]
 
 
 def _llm_for(state: dict[str, Any]):
@@ -163,6 +165,7 @@ def _build_system_prompt(
     policy: dict[str, Any] | None = None,
     state_prompt: str | None = None,
     agents_md: str | None = None,
+    installed_skills: list[dict[str, Any]] | None = None,
 ) -> str:
     def _source_ref(s: SourceItem) -> str:
         parts = []
@@ -187,6 +190,20 @@ def _build_system_prompt(
     # AGENTS.md is agent memory, not a second prompt: `deepagents` reads it as a file and appends it to the system
     # message in a wrapper that says what it is (its `MemoryMiddleware` / `MEMORY_SYSTEM_PROMPT`). The wrapper matters —
     # file content can be stale or written by someone else, and it must not read like an instruction from the operator.
+    # Installed skill packages: prose the author installed, unlike the tool descriptions below which the runtime
+    # writes from the enabled tools. Kept in its own section so the two are not confused.
+    packages = ""
+    if installed_skills:
+        blocks = []
+        for skill in installed_skills:
+            body = str(skill.get("content") or "").strip()
+            if not body:
+                continue
+            name = skill.get("display_name") or skill.get("skill_id") or "skill"
+            blocks.append(f"### {name}\n{body}")
+        if blocks:
+            packages = "Installed skills:\n" + "\n\n".join(blocks) + "\n\n"
+
     conventions = ""
     if (agents_md or "").strip():
         conventions = (
@@ -199,6 +216,7 @@ def _build_system_prompt(
     return (
         f"{base}\n\n"
         f"{conventions}"
+        f"{packages}"
         "Sources you may use:\n"
         "1. **Knowledge base** – Document chunks and FAQs (context below).\n"
         "2. **Enabled skills** – described next (only these tools are available).\n\n"
@@ -247,6 +265,7 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
             state.get("answer_policy"),
             state.get("system_prompt"),
             state.get("agents_md"),
+            state.get("installed_skill_packages"),
         ),
         conversation_history=state["conversation_history"],
         question=state["question"],
@@ -355,6 +374,7 @@ def finalize_node(state: dict[str, Any]) -> dict[str, Any]:
             state.get("answer_policy"),
             state.get("system_prompt"),
             state.get("agents_md"),
+            state.get("installed_skill_packages"),
         ),
         conversation_history=state["conversation_history"],
         question=state["question"],
@@ -428,11 +448,13 @@ def invoke_agent(
     agent_config: dict[str, Any] | None = None,
     system_prompt: str | None = None,
     prompt_version: str | None = None,
+    installed_skills: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Invoke the agent and return answer + sources."""
     from .langfuse_client import build_langgraph_trace_config, current_trace_id
 
     skill_ids = normalize_skill_ids(agent_skills)
+    installed_skill_packages = fetch_skill_prompts(settings, installed_skills or {})
     retrieve_k = agent_config_module.top_k(agent_config)
     retrieve_mode = agent_config_module.retrieve_mode(agent_config)
     sandbox_settings = sandbox_runner.sandbox_config(agent_config)
@@ -746,6 +768,7 @@ def _turn_state(
     reasoning_effort: str | None,
     system_prompt: str | None,
     prompt_version: str | None,
+    installed_skill_packages: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     return {
         "knowledge_base_id": knowledge_base_id,
@@ -769,6 +792,7 @@ def _turn_state(
         "reasoning_effort": reasoning_effort,
         "model_id": agent_config_module.model_id(agent_config),
         "agents_md": agent_config_module.agents_md(agent_config),
+        "installed_skill_packages": installed_skill_packages or [],
         "top_p": agent_config_module.top_p(agent_config),
         "max_tokens": agent_config_module.max_tokens(agent_config),
         "rerank": agent_config_module.rerank_override(agent_config),
@@ -785,11 +809,13 @@ async def astream_agent_ndjson(
     agent_config: dict[str, Any] | None = None,
     system_prompt: str | None = None,
     prompt_version: str | None = None,
+    installed_skills: dict[str, str] | None = None,
 ) -> AsyncIterator[bytes]:
     """NDJSON stream: ``delta`` / ``tool_*`` events (wiki-copilot-compatible), then ``done`` or ``error``."""
     from .langfuse_client import build_langgraph_trace_config, current_trace_id, get_langfuse_callback
 
     skill_ids = normalize_skill_ids(agent_skills)
+    installed_skill_packages = fetch_skill_prompts(settings, installed_skills or {})
     retrieve_k = agent_config_module.top_k(agent_config)
     retrieve_mode = agent_config_module.retrieve_mode(agent_config)
     sandbox_settings = sandbox_runner.sandbox_config(agent_config)
@@ -842,6 +868,7 @@ async def astream_agent_ndjson(
             reasoning_effort=agent_config_module.reasoning_effort(agent_config),
             system_prompt=system_prompt,
             prompt_version=prompt_version,
+            installed_skill_packages=installed_skill_packages,
         )
         agent = get_agent()
         stream_cb = get_langfuse_callback() if settings.langfuse_trace_streaming else None

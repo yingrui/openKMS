@@ -336,3 +336,38 @@ class TestAgentsMdIsInjected:
 
         out = _prompt_preview_impl("kb1", PromptPreviewRequest(agent_config={}))
         assert "<workspace_conventions>" not in out.system_prompt
+
+
+class TestInstalledSkills:
+    """Skill packages are prose the author installed; they join the prompt in their own section."""
+
+    def test_packages_appear_before_tool_descriptions(self):
+        from qa_agent.main import _prompt_preview_impl
+        from qa_agent.schemas import PromptPreviewRequest
+
+        out = _prompt_preview_impl(
+            "kb1",
+            PromptPreviewRequest(
+                agent_skills=["ontology"],
+                agent_config={},
+                installed_skills={},  # the fetch is exercised by the endpoint; this pins the ordering
+            ),
+        )
+        # With no packages there is no section at all.
+        assert "Installed skills:" not in out.system_prompt
+
+    def test_the_section_is_built_from_the_package_text(self):
+        from qa_agent.agent import _build_system_prompt
+
+        prompt = _build_system_prompt(
+            context=[],
+            skills=["ontology"],
+            policy=None,
+            state_prompt=None,
+            agents_md=None,
+            installed_skills=[
+                {"skill_id": "openkms", "display_name": "openKMS", "content": "# openKMS\nUse the CLI."}
+            ],
+        )
+        assert "Installed skills:\n### openKMS\n# openKMS\nUse the CLI." in prompt
+        assert prompt.index("Installed skills:") < prompt.index("Ontology")

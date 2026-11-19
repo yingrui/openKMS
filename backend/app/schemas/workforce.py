@@ -177,3 +177,28 @@ class WorkforcePromptPreviewResponse(BaseModel):
     base_instruction: str | None = None
     #: The text that becomes `AGENTS.md` in the session workspace; None when the agent wrote none.
     agents_md: str | None = None
+
+
+class WorkforceInstalledSkill(BaseModel):
+    """A skill package installed on an agent, resolved against the global registry."""
+
+    skill_id: str
+    display_name: str
+    version: str = ""
+    #: False when the registry entry disappeared while this agent still names it.
+    available: bool = True
+
+
+class WorkforceSkillInstall(BaseModel):
+    skill_id: str
+    #: Omitted installs the registry's default version.
+    version: str | None = None
+
+
+class WorkforceAvailableSkill(BaseModel):
+    """A package in the global skill registry, as the workforce Skills tab lists it."""
+
+    skill_id: str
+    display_name: str
+    default_version: str | None = None
+    versions: list[str] = []

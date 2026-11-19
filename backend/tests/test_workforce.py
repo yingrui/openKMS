@@ -227,7 +227,7 @@ class TestPromptPreviewRoute:
 
         from app.api import workforce
 
-        agent = SimpleNamespace(id="agent_1", agent_skills=None, agent_config=None)
+        agent = SimpleNamespace(id="agent_1", agent_skills=None, agent_config=None, installed_skills=None)
         kb = SimpleNamespace(id="kb_1", agent_config=None, qa_agent_url=None)
 
         class FakeDB:
@@ -267,8 +267,8 @@ class TestPromptPreviewRoute:
         assert out.system_prompt == "SYSTEM"
         assert out.agents_md == "# rules"
         assert sent["url"].endswith("/knowledge-bases/kb_1/prompt-preview")
-        # The qa-agent receives the same two things the answer path sends.
-        assert set(sent["body"]) == {"agent_skills", "agent_config"}
+        # The qa-agent receives the same things the answer path sends: tools, runtime config, installed skills.
+        assert set(sent["body"]) == {"agent_skills", "agent_config", "installed_skills"}
 
 
 async def _async(value):

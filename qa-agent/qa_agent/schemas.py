@@ -83,6 +83,7 @@ class PromptPreviewRequest(BaseModel):
     knowledge_base_id: str | None = None
     agent_skills: list[str] | None = None
     agent_config: dict[str, Any] | None = None
+    installed_skills: dict[str, str] | None = None
 
 
 class PromptPreviewResponse(BaseModel):

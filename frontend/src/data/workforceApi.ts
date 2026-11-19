@@ -230,3 +230,49 @@ export async function fetchPromptPreview(
     `/api/workforce/agents/${agentId}/prompt-preview?kb_id=${encodeURIComponent(kbId)}`
   );
 }
+
+export interface WorkforceInstalledSkill {
+  skill_id: string;
+  display_name: string;
+  version: string;
+  /** False when the registry entry disappeared while the agent still names it. */
+  available: boolean;
+}
+
+export interface WorkforceAvailableSkill {
+  skill_id: string;
+  display_name: string;
+  default_version: string | null;
+  versions: string[];
+}
+
+export async function listWorkforceAvailableSkills(
+  agentId: string
+): Promise<WorkforceAvailableSkill[]> {
+  return request<WorkforceAvailableSkill[]>(`/api/workforce/agents/${agentId}/skills/available`);
+}
+
+export async function listWorkforceSkills(agentId: string): Promise<WorkforceInstalledSkill[]> {
+  return request<WorkforceInstalledSkill[]>(`/api/workforce/agents/${agentId}/skills`);
+}
+
+export async function installWorkforceSkill(
+  agentId: string,
+  skillId: string,
+  version?: string
+): Promise<WorkforceInstalledSkill[]> {
+  return request<WorkforceInstalledSkill[]>(`/api/workforce/agents/${agentId}/skills`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ skill_id: skillId, version: version ?? null }),
+  });
+}
+
+export async function uninstallWorkforceSkill(
+  agentId: string,
+  skillId: string
+): Promise<WorkforceInstalledSkill[]> {
+  return request<WorkforceInstalledSkill[]>(`/api/workforce/agents/${agentId}/skills/${skillId}`, {
+    method: 'DELETE',
+  });
+}

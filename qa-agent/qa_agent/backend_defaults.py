@@ -177,3 +177,34 @@ def resolve_thinking_fragments(cfg: Settings) -> dict[str, dict[str, object]]:
     if not isinstance(raw, dict):
         return {}
     return {k: v for k, v in raw.items() if k in {"on", "off"} and isinstance(v, dict)}
+
+
+def fetch_skill_prompts(cfg: Settings, installed: dict[str, str]) -> list[dict[str, Any]]:
+    """`SKILL.md` text for each installed skill, read from the backend that owns the registry.
+
+    A missing skill is skipped rather than failing the answer: the agent was configured with a package that has since
+    been removed, and refusing to answer would be a worse outcome than answering without it.
+    """
+    out: list[dict[str, Any]] = []
+    api = (cfg.openkms_backend_url or "").strip()
+    if not api or not installed:
+        return out
+    for skill_id, version in installed.items():
+        try:
+            data = _fetch_json(
+                f"{api.rstrip('/')}/internal-api/skills/{skill_id}/{version}/prompt",
+                what=f"skill({skill_id}@{version})",
+            )
+        except Exception:
+            logger.exception("skill %s@%s could not be loaded; continuing without it", skill_id, version)
+            continue
+        if data and data.get("content"):
+            out.append(
+                {
+                    "skill_id": skill_id,
+                    "display_name": data.get("display_name") or skill_id,
+                    "version": version,
+                    "content": data["content"],
+                }
+            )
+    return out

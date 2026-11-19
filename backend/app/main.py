@@ -30,6 +30,7 @@ from app.api.internal import knowledge_bases_router as internal_knowledge_bases_
 from app.api.internal import executions_router as internal_executions_router
 from app.api.internal import models_router as internal_models_router
 from app.api.internal import process_heartbeat_router as internal_process_heartbeat_router
+from app.api.internal import skills_router as internal_skills_router
 from app.api.models import router as models_router
 from app.api.pipelines import router as pipelines_router
 from app.api.agent_prompts import router as agent_prompts_router
@@ -220,6 +221,7 @@ app.include_router(internal_executions_router)
 app.include_router(internal_documents_router)
 app.include_router(internal_knowledge_bases_router)
 app.include_router(internal_process_heartbeat_router)
+app.include_router(internal_skills_router)
 app.include_router(providers_router, prefix="/api")
 app.include_router(jobs_router, prefix="/api")
 app.include_router(knowledge_bases_router, prefix="/api")

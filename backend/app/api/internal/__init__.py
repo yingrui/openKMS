@@ -5,6 +5,7 @@ from app.api.internal.knowledge_bases import router as knowledge_bases_router
 from app.api.internal.executions import router as executions_router
 from app.api.internal.models import router as models_router
 from app.api.internal.process_heartbeat import router as process_heartbeat_router
+from app.api.internal.skills import router as skills_router
 
 __all__ = [
     "documents_router",
@@ -12,4 +13,5 @@ __all__ = [
     "models_router",
     "executions_router",
     "process_heartbeat_router",
+    "skills_router",
 ]

@@ -48,6 +48,11 @@ class WorkforceAgent(Base):
     #: knowledge source (`knowledge_bases.agent_config.retrieval`) and is merged in at request time.
     agent_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
+    #: Installed skill packages, `{"<skill_id>": "<version>"}`. Skills are instruction packages from the global
+    #: registry (`agent_skills`), not tool switches: installing one adds its SKILL.md to the prompt, while a tool is a
+    #: capability the runtime enforces. `agent_skills` above keeps the tool switches for that reason.
+    installed_skills: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
     #: Set when the agent was created as a knowledge base's default runtime, so the knowledge base's
     #: own Q&A resolves one agent instead of keeping a second copy of the same configuration.
     origin_knowledge_base_id: Mapped[str | None] = mapped_column(

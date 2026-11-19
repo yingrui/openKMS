@@ -1,64 +1,125 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Save } from 'lucide-react';
+import { Package, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { updateWorkforceAgent } from '../../../data/workforceApi';
-import { CORE_AGENT_SKILLS, OPTIONAL_AGENT_SKILLS } from '../../../data/kbAgentSkills';
-import { CheckRow } from '../../../styles/design-system';
+import {
+  installWorkforceSkill,
+  listWorkforceAvailableSkills,
+  listWorkforceSkills,
+  uninstallWorkforceSkill,
+  type WorkforceAvailableSkill,
+  type WorkforceInstalledSkill,
+} from '../../../data/workforceApi';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { useWorkforceDetail } from './workforceDetailContext';
 
-/** What the agent can do besides read: the qa-agent skill ids this service enables. */
+/**
+ * Skill packages: instruction bundles from the global registry, installed onto this agent.
+ *
+ * This is not the tool list. A tool is a capability the runtime enforces (ontology lookups, catalog queries, code
+ * execution) and is switched on the Tools tab; a skill is prose plus supporting files that tells the agent how to do
+ * a job. Installing one adds its `SKILL.md` to the prompt — the same kind of package an Agent Project installs.
+ */
 export function WorkforceSkillsTab() {
   const { t } = useTranslation('workforce');
-  const { t: tk } = useTranslation('knowledgeBase');
   const { agent, reload } = useWorkforceDetail();
-  const [skills, setSkills] = useState<string[]>(
-    Array.isArray(agent.agent_skills) ? agent.agent_skills : []
-  );
-  const [saving, setSaving] = useState(false);
+  const [installed, setInstalled] = useState<WorkforceInstalledSkill[]>([]);
+  const [registry, setRegistry] = useState<WorkforceAvailableSkill[]>([]);
+  const [busy, setBusy] = useState(false);
 
-  const toggle = (id: string) =>
-    setSkills((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
-
-  const save = async () => {
-    setSaving(true);
+  const load = useCallback(async () => {
     try {
-      await updateWorkforceAgent(agent.id, { agent_skills: skills });
+      const [mine, available] = await Promise.all([
+        listWorkforceSkills(agent.id),
+        listWorkforceAvailableSkills(agent.id),
+      ]);
+      setInstalled(mine);
+      setRegistry(available);
+    } catch {
+      // The registry is a convenience: what is installed still comes from the agent row.
+    }
+  }, [agent.id]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const run = async (action: () => Promise<unknown>) => {
+    setBusy(true);
+    try {
+      await action();
       await reload();
-      toast.success(t('saved'));
+      await load();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('saveFailed'));
+      toast.error(e instanceof Error ? e.message : t('skillFailed'));
     } finally {
-      setSaving(false);
+      setBusy(false);
     }
   };
 
-  const row = (skill: (typeof CORE_AGENT_SKILLS)[number]) => (
-    <CheckRow
-      key={skill.id}
-      checked={skills.includes(skill.id)}
-      onChange={() => toggle(skill.id)}
-      title={tk(`detail.${skill.labelKey}`)}
-      hint={tk(`detail.${skill.helpKey}`)}
-    />
-  );
+  const installedIds = new Set(installed.map((s) => s.skill_id));
+  const available = registry.filter((s) => !installedIds.has(s.skill_id));
 
   return (
     <>
-      <EntityViewHeader
-        title={t('skillsTitle')}
-        subtitle={t('skillsLead')}
-        actions={
-          <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void save()}>
-            <Save size={16} aria-hidden />
-            {saving ? t('saving') : t('save')}
-          </button>
-        }
-      />
-      <EntityViewPanel>
-        {CORE_AGENT_SKILLS.map(row)}
-        {OPTIONAL_AGENT_SKILLS.map(row)}
+      <EntityViewHeader title={t('skillsTitle')} subtitle={t('skillsPackagesLead')} />
+
+      <EntityViewPanel title={t('skillsInstalledTitle')} description={t('skillsInstalledLead')}>
+        {installed.length === 0 ? (
+          <p className="ds-field__hint">{t('skillsNoneInstalled')}</p>
+        ) : (
+          <ul className="workforce-bindings">
+            {installed.map((skill) => (
+              <li key={skill.skill_id}>
+                <span className="workforce-binding-name">
+                  <Package size={14} aria-hidden /> {skill.display_name}
+                  {skill.version ? <span className="workforce-binding-meta">v{skill.version}</span> : null}
+                  {skill.available ? null : (
+                    <span className="workforce-binding-meta is-warning">{t('skillMissing')}</span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={busy}
+                  onClick={() => void run(() => uninstallWorkforceSkill(agent.id, skill.skill_id))}
+                >
+                  <X size={14} aria-hidden />
+                  {t('skillUninstall')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </EntityViewPanel>
+
+      <EntityViewPanel title={t('skillsRegistryTitle')} description={t('skillsRegistryLead')}>
+        {available.length === 0 ? (
+          <p className="ds-field__hint">{t('skillsNoneAvailable')}</p>
+        ) : (
+          <ul className="workforce-bindings">
+            {available.map((skill) => (
+              <li key={skill.skill_id}>
+                <span className="workforce-binding-name">
+                  <Package size={14} aria-hidden /> {skill.display_name}
+                  {skill.default_version ? (
+                    <span className="workforce-binding-meta">v{skill.default_version}</span>
+                  ) : null}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={busy}
+                  onClick={() => void run(() => installWorkforceSkill(agent.id, skill.skill_id))}
+                >
+                  <Plus size={14} aria-hidden />
+                  {t('skillInstall')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="ds-field__hint">{t('skillsWhereToManage')}</p>
       </EntityViewPanel>
     </>
   );

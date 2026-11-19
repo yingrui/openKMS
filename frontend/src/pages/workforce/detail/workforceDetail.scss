@@ -23,6 +23,23 @@
     background: var(--color-bg-elevated);
   }
 
+  // A binding row: name (+ version / warning) on the left, its action on the right.
+  .workforce-binding-name {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .workforce-binding-meta {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+
+    &.is-warning {
+      color: var(--color-error);
+    }
+  }
+
   // The row keeps its label on the left and its actions on the right; wrapping keeps them usable when the
   // label is long and the rail is narrow.
   &__actions {
@@ -148,4 +165,44 @@
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* Identity fields sit side by side when there is room; the prompt editors below span the panel. */
+.workforce-identity {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.workforce-editor {
+  display: flex;
+  flex-direction: column;
+}
+
+.workforce-editor__input {
+  min-height: 200px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.workforce-editor__meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.workforce-editor__count {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+
+  &.is-over {
+    color: var(--color-error);
+  }
 }

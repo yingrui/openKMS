@@ -90,6 +90,7 @@ async def _ask_impl(kb_id: str, request: AskRequest) -> AskResponse:
             session_id=request.session_id,
             agent_skills=request.agent_skills,
         agent_config=request.agent_config,
+        installed_skills=request.installed_skills,
         system_prompt=request.system_prompt,
         prompt_version=request.prompt_version,
     )
@@ -168,6 +169,7 @@ def _prompt_preview_impl(kb_id: str, request: PromptPreviewRequest) -> PromptPre
         policy=agent_config_module.answer_policy(config),
         state_prompt=base,
         agents_md=agent_config_module.agents_md(config),
+        installed_skills=request.installed_skills,
     ).replace(
         "Context from the knowledge base:\n\n",
         "Context from the knowledge base:\n<passages retrieved for this question>\n",
