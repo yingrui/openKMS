@@ -4,12 +4,16 @@ Read-only: it prints the joins whose target declares no key and whose profile sh
 no profile at all. Run it against a live deployment before relying on the stricter save path, so the existing
 catalog is not a surprise.
 
+**Exit code 1 when anything would be refused**, so a scheduled run (or a shell `&&`) notices a regression instead
+of printing into a log nobody reads.
+
     cd backend && uv run python scripts/audit_dataset_joins.py
 """
 
 from __future__ import annotations
 
 import asyncio
+import sys
 
 from sqlalchemy import select
 
@@ -60,6 +64,13 @@ async def main() -> None:
     print(f"{len(joins)} relationships, {len(refused)} would be refused:")
     for line in refused:
         print(f"  {line}")
+    if refused:
+        print(
+            "\nEach one needs its target to declare a key, or its statistics refreshed — the save path "
+            "refuses them, so a new relationship of the same shape cannot be created.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
