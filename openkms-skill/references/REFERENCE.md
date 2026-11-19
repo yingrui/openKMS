@@ -106,8 +106,6 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 |---|---|---|---|
 | `knowledge-bases create` *(write)* | POST | `/api/knowledge-bases` | Body `{name, description?, embedding_model_id?}`; optional `--wiki-space-ids-json` / `--semantic-model-ids-json` / `--ontology-group-ids-json` link each id afterwards. An embedding model is required before `kb index` runs. |
 | `knowledge-bases delete` *(write)* | DELETE | `/api/knowledge-bases/{id}` | 204. |
-| `knowledge-bases semantic-models add` *(write)* | POST | `/api/knowledge-bases/{id}/semantic-models` | Body `{semantic_model_id}`. `list` / `delete` mirror it. |
-| `knowledge-bases ontology-groups add` *(write)* | POST | `/api/knowledge-bases/{id}/ontology-groups` | Body `{ontology_group_id}`. `list` / `delete` mirror it. |
 | `knowledge-bases list` | GET | `/api/knowledge-bases` | |
 | `knowledge-bases get` | GET | `/api/knowledge-bases/{id}` | Includes counts (documents, wiki spaces, chunks, FAQs) + embedding status. |
 | `knowledge-bases search` | POST | `/api/knowledge-bases/{id}/search` | Body `{query, limit?}`. Returns ranked chunk + FAQ matches; chunk hits from wiki pages include `wiki_page_id` / `wiki_space_id`. |

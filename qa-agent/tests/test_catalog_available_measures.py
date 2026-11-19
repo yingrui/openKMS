@@ -20,14 +20,12 @@ METRICS = [
 
 
 class _Config(dict):
-    """Stands in for the RunnableConfig that carries the request token and KB id."""
+    """Stands in for the RunnableConfig that carries the request token."""
 
 
 def _call() -> dict:
     config = _Config()
     with patch("qa_agent.skills.catalog.get_tool_access_token", return_value="t"), \
-         patch("qa_agent.skills.catalog.get_tool_knowledge_base_id", return_value="kb1"), \
-         patch("qa_agent.skills.catalog._ensure_model_in_kb", return_value=[]), \
          patch("qa_agent.skills.catalog.catalog_client.get_semantic_model", return_value={"id": "m", "access_mode": "public"}), \
          patch("qa_agent.skills.catalog.catalog_client.list_model_metrics", return_value=METRICS), \
          patch("qa_agent.skills.catalog.catalog_client.list_model_fields", return_value=FIELDS), \

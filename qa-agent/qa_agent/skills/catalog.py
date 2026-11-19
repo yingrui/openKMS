@@ -8,36 +8,20 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from .. import catalog_client
-from ..request_context import get_tool_access_token, get_tool_knowledge_base_id
+from ..request_context import get_tool_access_token
 
-
-def _ensure_model_in_kb(token: str, kb_id: str, model_id: str) -> list[dict[str, Any]]:
-    linked = catalog_client.list_kb_semantic_models(token, kb_id)
-    ids = {m.get("semantic_model_id") for m in linked}
-    if model_id not in ids:
-        raise ValueError(
-            f"Semantic model '{model_id}' is not linked to this knowledge base. "
-            "Call list_semantic_models_tool first."
-        )
-    return linked
 
 
 @tool
 def list_semantic_models_tool(_config: RunnableConfig) -> str:
-    """List semantic models linked to this knowledge base (name, description, metric names, ai_context).
-    Use this before querying numbers. If empty, this KB has no Catalog models in scope."""
+    """List the Catalog semantic models you can read (name, description, ai_context).
+    Use this before querying numbers. If empty, no model is readable with this caller's access."""
     try:
         token = get_tool_access_token(_config)
-        kb_id = get_tool_knowledge_base_id(_config)
-        if not kb_id:
-            return "Error: knowledge_base_id missing."
-        items = catalog_client.list_kb_semantic_models(token, kb_id)
+        items = catalog_client.list_semantic_models(token)
         if not items:
             return json.dumps(
-                {
-                    "items": [],
-                    "message": "This knowledge base has no linked semantic models.",
-                },
+                {"items": [], "message": "No readable semantic models."},
                 indent=2,
             )
         return json.dumps({"items": items}, indent=2, default=str)
@@ -105,14 +89,10 @@ def _model_tables(token: str, model: dict[str, Any]) -> list[dict[str, Any]]:
 
 @tool
 def get_semantic_model_tool(model_id: str, _config: RunnableConfig) -> str:
-    """Get one linked semantic model plus metrics, fields, and physical tables (for query or SQL Lab).
+    """Get one readable semantic model plus metrics, fields, and physical tables (for query or SQL Lab).
     model_id must be from list_semantic_models_tool."""
     try:
         token = get_tool_access_token(_config)
-        kb_id = get_tool_knowledge_base_id(_config)
-        if not kb_id:
-            return "Error: knowledge_base_id missing."
-        _ensure_model_in_kb(token, kb_id, model_id)
         model = catalog_client.get_semantic_model(token, model_id)
         metrics = catalog_client.list_model_metrics(token, model_id)
         fields = catalog_client.list_model_fields(token, model_id)
@@ -212,10 +192,6 @@ def query_semantic_model_tool(
     model_id must be linked to this KB."""
     try:
         token = get_tool_access_token(_config)
-        kb_id = get_tool_knowledge_base_id(_config)
-        if not kb_id:
-            return "Error: knowledge_base_id missing."
-        _ensure_model_in_kb(token, kb_id, model_id)
         body: dict[str, Any] = {
             "group_by": group_by or [],
             "filters": filters or [],
@@ -258,10 +234,6 @@ def sql_semantic_model_tool(
     model_id must be linked to this KB."""
     try:
         token = get_tool_access_token(_config)
-        kb_id = get_tool_knowledge_base_id(_config)
-        if not kb_id:
-            return "Error: knowledge_base_id missing."
-        _ensure_model_in_kb(token, kb_id, model_id)
         resource_id = _resolve_resource(token, model_id, resource_id)
         result = catalog_client.run_model_sql(
             token, model_id, sql, limit=limit, resource_id=resource_id
@@ -279,8 +251,8 @@ catalog_tools = [
 ]
 
 CATALOG_PROMPT = (
-    "**Catalog skill** – For numeric / tabular questions against linked semantic models:\n"
-    "1. Call **list_semantic_models_tool** (only models linked to this knowledge base).\n"
+    "**Catalog skill** – For numeric / tabular questions against readable semantic models:\n"
+    "1. Call **list_semantic_models_tool** (the models this caller can read).\n"
     "2. Call **get_semantic_model_tool** for metrics, fields, and **tables** "
     "(``schema.table`` allowlist for SQL Lab).\n"
     "3. Prefer **query_semantic_model_tool** with `metric=<saved name>` (or `expression` + "

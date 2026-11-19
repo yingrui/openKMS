@@ -20,7 +20,7 @@ Two agent products, two postures. This is the frame every capability decision be
 | Who calls it | **outside** — any user holding a KB read grant, through the KB's public `/ask` | the operator, inside a workspace they own |
 | Trust in the caller | **low**: input is attacker-controlled by definition | medium: a workspace they chose |
 | Trust in content | **low**: retrieved text can contain injected instructions | low, but the blast radius is one project |
-| Data scope | one KB, read-only, multi-tenant | one project workspace, read-write |
+| Data scope | the models the **caller** can read (per-model data-resource grant still applies) | one project workspace, read-write |
 | Consequence of failure | a wrong or leaked answer served to the outside | a bad edit in one workspace |
 | Therefore | **execution only inside a real isolation boundary** (§ Executing code) · per-session filesystem · strict tool allowlist · data reads stay read-only | may execute, may write, may delegate, on the host |
 

@@ -97,12 +97,10 @@ def test_kb_faq_create(mock_api):
     assert json.loads(req.content) == {"question": "Q", "answer": "A"}
 
 
-def test_kb_create_links_wiki_space_model_and_group(mock_api):
+def test_kb_create_links_wiki_space(mock_api):
     recorded, responses = mock_api
     responses[("POST", "/api/knowledge-bases")] = (201, {"id": "kb1", "name": "分货知识库"})
     responses[("POST", "/api/knowledge-bases/kb1/wiki-spaces")] = (201, {"id": "link1"})
-    responses[("POST", "/api/knowledge-bases/kb1/semantic-models")] = (201, {"id": "link2"})
-    responses[("POST", "/api/knowledge-bases/kb1/ontology-groups")] = (201, {"id": "link3"})
 
     from openkms.commands.kb import cmd_create
 
@@ -113,8 +111,6 @@ def test_kb_create_links_wiki_space_model_and_group(mock_api):
             embedding_model_id="model_1",
             judge_model_id=None,
             wiki_space_ids_json='["ws1"]',
-            semantic_model_ids_json='["sm1"]',
-            ontology_group_ids_json='["og1"]',
             yes=True,
             dry_run=False,
         )
@@ -124,13 +120,9 @@ def test_kb_create_links_wiki_space_model_and_group(mock_api):
     assert paths == [
         "/api/knowledge-bases",
         "/api/knowledge-bases/kb1/wiki-spaces",
-        "/api/knowledge-bases/kb1/semantic-models",
-        "/api/knowledge-bases/kb1/ontology-groups",
     ]
     assert json.loads(recorded[0].content)["embedding_model_id"] == "model_1"
     assert json.loads(recorded[1].content) == {"wiki_space_id": "ws1"}
-    assert json.loads(recorded[2].content) == {"semantic_model_id": "sm1"}
-    assert json.loads(recorded[3].content) == {"ontology_group_id": "og1"}
 
 
 def test_kb_create_rejects_a_non_array_id_flag(mock_api):
@@ -167,27 +159,4 @@ def test_kb_delete(mock_api):
     assert recorded[-1].url.path == "/api/knowledge-bases/kb1"
 
 
-def test_kb_semantic_model_add(mock_api):
-    recorded, responses = mock_api
-    responses[("POST", "/api/knowledge-bases/kb1/semantic-models")] = (201, {"id": "l1"})
 
-    from openkms.commands.kb import cmd_semantic_models_add
-
-    cmd_semantic_models_add(
-        argparse.Namespace(kb_id="kb1", semantic_model_id="sm1", yes=True, dry_run=False)
-    )
-    assert recorded[-1].url.path == "/api/knowledge-bases/kb1/semantic-models"
-    assert json.loads(recorded[-1].content) == {"semantic_model_id": "sm1"}
-
-
-def test_kb_ontology_group_add(mock_api):
-    recorded, responses = mock_api
-    responses[("POST", "/api/knowledge-bases/kb1/ontology-groups")] = (201, {"id": "l1"})
-
-    from openkms.commands.kb import cmd_ontology_groups_add
-
-    cmd_ontology_groups_add(
-        argparse.Namespace(kb_id="kb1", ontology_group_id="og1", yes=True, dry_run=False)
-    )
-    assert recorded[-1].url.path == "/api/knowledge-bases/kb1/ontology-groups"
-    assert json.loads(recorded[-1].content) == {"ontology_group_id": "og1"}

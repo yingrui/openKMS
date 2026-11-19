@@ -19,14 +19,18 @@ def _base() -> str:
     return settings.openkms_backend_url.rstrip("/")
 
 
-def list_kb_semantic_models(access_token: str, knowledge_base_id: str) -> list[dict[str, Any]]:
-    """Models linked to this KB (name, metrics, ai_context summary) — selection list for the agent."""
-    url = f"{_base()}/api/knowledge-bases/{knowledge_base_id}/semantic-models"
+def list_semantic_models(access_token: str) -> list[dict[str, Any]]:
+    """The Catalog models this caller can read — selection list for the agent.
+
+    A knowledge base no longer scopes models to itself, so the gate is the caller's own read access
+    (and, per model, the data-resource grant the query tools check)."""
+    url = f"{_base()}/api/semantic-models"
     with httpx.Client(timeout=30.0) as client:
         resp = client.get(url, headers=_headers(access_token))
         resp.raise_for_status()
         data = resp.json()
-    return data if isinstance(data, list) else []
+    items = data.get("items") if isinstance(data, dict) else data
+    return items if isinstance(items, list) else []
 
 
 def get_semantic_model(access_token: str, model_id: str) -> dict[str, Any]:
