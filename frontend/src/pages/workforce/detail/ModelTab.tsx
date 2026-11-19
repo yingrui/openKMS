@@ -15,8 +15,12 @@ import { useWorkforceDetail } from './workforceDetailContext';
  * write into a prompt: the qa-agent reads `generation.{temperature,top_p,max_tokens,thinking}` and sends them
  * with the call. Empty means "whatever the deployment does", which is the behaviour before they existed.
  *
- * `thinking` is the one setting here that is not portable: it is a gateway-specific `extra_body` flag, so the
- * hint says it follows the gateway rather than implying it works anywhere.
+ * The field is named after the concept, not the transport: "thinking mode" is what DeepSeek's and OpenAI's docs call
+ * it, and what a reader can look up. Its former third option read "whatever the deployment does" — a value stored in
+ * an environment variable nobody looking at this screen had seen, and one the agent could not honour anyway.
+ *
+ * The hint carries the two things a chooser needs: what it buys (reasoning before the answer), what it costs (latency,
+ * tokens), and the side effect the provider documents — while thinking is on, `temperature` is ignored.
  */
 export function WorkforceModelTab() {
   const { t } = useTranslation('workforce');
@@ -97,7 +101,7 @@ export function WorkforceModelTab() {
               onChange={(e) => setDraft({ ...draft, maxTokens: e.target.value })}
             />
           </FormField>
-          <FormField label={t('thinking')} hint={t('thinkingHint')}>
+          <FormField label={t('thinkingMode')} hint={t('thinkingModeHint')}>
             <select
               className="ds-control"
               value={draft.thinking}
@@ -105,9 +109,30 @@ export function WorkforceModelTab() {
                 setDraft({ ...draft, thinking: e.target.value as typeof draft.thinking })
               }
             >
-              <option value="default">{t('thinkingDefault')}</option>
-              <option value="on">{t('thinkingOn')}</option>
-              <option value="off">{t('thinkingOff')}</option>
+              <option value="off">{t('thinkingModeOff')}</option>
+              <option value="on">{t('thinkingModeOn')}</option>
+            </select>
+          </FormField>
+          {/* Level of reasoning. Disabled while thinking is off, because the runtime drops it then — a value that
+              looks settable but is ignored is the failure mode this screen is trying to avoid. */}
+          <FormField label={t('reasoningEffort')} hint={t('reasoningEffortHint')}>
+            <select
+              className="ds-control"
+              value={draft.reasoningEffort}
+              disabled={draft.thinking === 'off'}
+              onChange={(e) =>
+                setDraft({
+                  ...draft,
+                  reasoningEffort: e.target.value as typeof draft.reasoningEffort,
+                })
+              }
+            >
+              <option value="">{t('reasoningEffortDefault')}</option>
+              <option value="minimal">{t('reasoningEffortMinimal')}</option>
+              <option value="low">{t('reasoningEffortLow')}</option>
+              <option value="medium">{t('reasoningEffortMedium')}</option>
+              <option value="high">{t('reasoningEffortHigh')}</option>
+              <option value="max">{t('reasoningEffortMax')}</option>
             </select>
           </FormField>
         </div>

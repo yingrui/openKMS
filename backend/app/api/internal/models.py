@@ -62,6 +62,8 @@ async def get_model_config_by_name(
         "base_url": cfg["base_url"] or "",
         "model_name": cfg["model_name"] or "",
         "api_key": cfg["api_key"] or "",
+        # Body fragments for thinking on/off; the qa-agent merges the one the agent chose.
+        "thinking": cfg.get("thinking") or {},
     }
 
 
@@ -81,6 +83,9 @@ async def get_llm_defaults(db: AsyncSession = Depends(get_db)):
         "base_url": cfg["base_url"] or "",
         "model_name": cfg["model_name"] or "",
         "api_key": cfg["api_key"] or "",
+        # How this provider spells its thinking toggle; the qa-agent needs it to send the right field.
+        # Body fragments for thinking on/off; the qa-agent merges the one the agent chose.
+        "thinking": cfg.get("thinking") or {},
     }
 
 

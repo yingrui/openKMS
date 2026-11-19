@@ -1,12 +1,25 @@
 /** API for service providers (OpenAI, Anthropic, etc.). */
 import { request } from './apiClient';
 
+/**
+ * What to send when asking this provider to think, or not to.
+ *
+ * Data rather than a choice from a list, because every vendor spells it differently — DeepSeek
+ * `{"thinking": {"type": "disabled"}}`, DashScope `{"enable_thinking": false}`, OpenAI `reasoning_effort`, Anthropic
+ * a token budget. A missing fragment means the vendor cannot be asked, so nothing is sent.
+ */
+export interface ProviderThinking {
+  on?: Record<string, unknown>;
+  off?: Record<string, unknown>;
+}
+
 export interface ApiProviderResponse {
   id: string;
   name: string;
   base_url: string;
   api_key_set: boolean;
   config?: Record<string, unknown> | null;
+  thinking?: ProviderThinking | null;
   created_at: string;
   updated_at: string;
 }
@@ -21,6 +34,7 @@ export interface ApiProviderCreate {
   base_url: string;
   api_key?: string | null;
   config?: Record<string, unknown> | null;
+  thinking?: ProviderThinking | null;
 }
 
 export interface ApiProviderUpdate {
@@ -28,6 +42,7 @@ export interface ApiProviderUpdate {
   base_url?: string;
   api_key?: string | null;
   config?: Record<string, unknown> | null;
+  thinking?: ProviderThinking | null;
 }
 
 export async function fetchProviders(): Promise<ApiProviderListResponse> {

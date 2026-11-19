@@ -15,7 +15,9 @@ export interface BehaviourDraft {
   temperature: string;
   topP: string;
   maxTokens: string;
-  thinking: 'default' | 'on' | 'off';
+  thinking: 'on' | 'off';
+  /** '' = the model's own default. Only meaningful while thinking is on. */
+  reasoningEffort: '' | 'minimal' | 'low' | 'medium' | 'high' | 'max';
   unknownMeasure: 'try_anyway' | 'refuse';
   grounding: 'off' | 'mark' | 'enforce';
   schemaLookup: boolean;
@@ -33,7 +35,8 @@ export function draftFromConfig(cfg: KbAgentConfig | null | undefined): Behaviou
     temperature: c.generation?.temperature != null ? String(c.generation.temperature) : '',
     topP: c.generation?.top_p != null ? String(c.generation.top_p) : '',
     maxTokens: c.generation?.max_tokens != null ? String(c.generation.max_tokens) : '',
-    thinking: c.generation?.thinking ?? 'default',
+    thinking: c.generation?.thinking ?? 'off',
+    reasoningEffort: c.generation?.reasoning_effort ?? '',
     unknownMeasure: c.answer_policy?.unknown_measure ?? 'try_anyway',
     grounding: c.answer_policy?.require_grounded_numbers ?? 'off',
     schemaLookup: Boolean(c.answer_policy?.require_schema_lookup),
@@ -60,7 +63,10 @@ export function draftToConfig(d: BehaviourDraft): Omit<KbAgentConfig, 'retrieval
       top_p: Number.isFinite(topP) ? Math.min(1, Math.max(0, topP)) : null,
       // Floor is 1: a ceiling of 0 would ask the model for an empty answer, which is a config error, not a choice.
       max_tokens: Number.isFinite(maxTokens) && maxTokens >= 1 ? Math.min(32_768, maxTokens) : null,
-      thinking: d.thinking === 'default' ? null : d.thinking,
+      thinking: d.thinking,
+      // Dropped when thinking is off: an effort level with the switch off is a contradiction, and the runtime
+      // would ignore it anyway.
+      reasoning_effort: d.thinking === 'on' && d.reasoningEffort ? d.reasoningEffort : null,
     },
     prompts: { agents_md: d.agentsMd.trim() ? d.agentsMd : null },
     answer_policy: {

@@ -14,6 +14,7 @@ from app.schemas.api_provider import (
     ApiProviderListResponse,
     ApiProviderResponse,
     ApiProviderUpdate,
+    _merge_thinking,
 )
 
 router = APIRouter(prefix="/providers", tags=["providers"], dependencies=[Depends(require_auth)])
@@ -37,7 +38,7 @@ async def create_provider(body: ApiProviderCreate, db: AsyncSession = Depends(ge
         name=body.name,
         base_url=body.base_url,
         api_key=body.api_key,
-        config=body.config,
+        config=_merge_thinking(body.config, body.thinking),
     )
     db.add(provider)
     await db.commit()
@@ -61,6 +62,12 @@ async def update_provider(provider_id: str, body: ApiProviderUpdate, db: AsyncSe
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
     update_data = body.model_dump(exclude_unset=True)
+    thinking = update_data.pop("thinking", None)
+    # The fragments live inside `config`, so they are merged rather than set as a column; sending only the
+    # fragments through the API must not wipe the rest of the provider's config.
+    update_data["config"] = _merge_thinking(
+        update_data.get("config", provider.config), thinking
+    )
     for key, value in update_data.items():
         setattr(provider, key, value)
     await db.commit()

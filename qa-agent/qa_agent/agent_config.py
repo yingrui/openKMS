@@ -93,6 +93,20 @@ def temperature(config: dict[str, Any] | None) -> float:
     return DEFAULT_TEMPERATURE
 
 
+REASONING_EFFORTS = ("minimal", "low", "medium", "high", "max")
+
+
+def reasoning_effort(config: dict[str, Any] | None) -> str | None:
+    """How hard to reason, when the model takes a level. `None` leaves the model's own default.
+
+    Sent as the OpenAI `reasoning_effort` field, which every OpenAI-compatible vendor we use reads at the top level
+    (DeepSeek and GLM accept `low | high | max`). It only means something while thinking is on, so callers drop it
+    when the switch is off rather than sending a contradictory pair.
+    """
+    raw = ((config or {}).get("generation") or {}).get("reasoning_effort")
+    return raw if raw in REASONING_EFFORTS else None
+
+
 def top_p(config: dict[str, Any] | None) -> float | None:
     """Nucleus sampling mass; `None` leaves the gateway default."""
     raw = ((config or {}).get("generation") or {}).get("top_p")

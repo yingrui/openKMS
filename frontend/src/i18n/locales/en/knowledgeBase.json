@@ -269,7 +269,7 @@
     "retrievalTopK": "Results to retrieve",
     "retrievalTopKHelp": "How many chunks the agent pulls before answering. A dense report and a short FAQ base want different numbers.",
     "retrievalRerank": "Rerank",
-    "retrievalRerankDefault": "Whatever the deployment does",
+    "retrievalRerankDefault": "Default",
     "retrievalRerankOn": "Always rerank (needs a rerank endpoint)",
     "retrievalRerankOff": "Never rerank",
     "retrievalRerankHelp": "Reranking reorders the retrieved candidates with a cross-encoder, after recall and fusion and before the final selection. \"Never\" turns it off even where the deployment has it on; \"Always\" only takes effect when the deployment is configured with a rerank endpoint.",

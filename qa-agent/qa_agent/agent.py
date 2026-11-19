@@ -80,8 +80,12 @@ class AgentState(TypedDict):
     sandbox: dict[str, Any]
     #: Sampling temperature for this request (`generation.temperature`, default 0.3).
     temperature: float
-    #: Ask gateways that expose it to think (`generation.thinking`); off unless asked.
-    enable_thinking: bool
+    #: Thinking mode for this request (`generation.thinking`); off unless asked.
+    thinking: bool
+    #: Body fragments this provider merges for thinking on / off; empty when it cannot be asked.
+    thinking_fragments: dict[str, Any]
+    #: How hard to reason (`generation.reasoning_effort`); dropped when thinking is off.
+    reasoning_effort: str | None
 
 
 def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
@@ -182,7 +186,9 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
         model_name=llm_cfg.model_name,
         temperature=float(state.get("temperature") or agent_config_module.DEFAULT_TEMPERATURE),
         streaming=True,
-        enable_thinking=bool(state.get("enable_thinking")),
+        thinking=state.get("thinking"),
+        thinking_fragments=state.get("thinking_fragments") or {},
+        reasoning_effort=state.get("reasoning_effort"),
         top_p=state.get("top_p"),
         max_tokens=state.get("max_tokens"),
     )
@@ -297,7 +303,9 @@ def finalize_node(state: dict[str, Any]) -> dict[str, Any]:
         model_name=llm_cfg.model_name,
         temperature=float(state.get("temperature") or agent_config_module.DEFAULT_TEMPERATURE),
         streaming=True,
-        enable_thinking=bool(state.get("enable_thinking")),
+        thinking=state.get("thinking"),
+        thinking_fragments=state.get("thinking_fragments") or {},
+        reasoning_effort=state.get("reasoning_effort"),
         top_p=state.get("top_p"),
         max_tokens=state.get("max_tokens"),
     )
@@ -428,7 +436,9 @@ def invoke_agent(
                 "prompt_version": prompt_version,
                 "sandbox": sandbox_settings,
                 "temperature": temperature,
-                "enable_thinking": thinking,
+                "thinking": thinking,
+                "thinking_fragments": llm_cfg.thinking_fragments,
+                "reasoning_effort": agent_config_module.reasoning_effort(agent_config),
                 "top_p": agent_config_module.top_p(agent_config),
                 "max_tokens": agent_config_module.max_tokens(agent_config),
                 "rerank": agent_config_module.rerank_override(agent_config),
@@ -688,7 +698,9 @@ def _turn_state(
     ctx: list[Any],
     sandbox_settings: dict[str, Any],
     temperature: float,
-    enable_thinking: bool,
+    thinking: bool,
+    thinking_fragments: dict[str, Any],
+    reasoning_effort: str | None,
     system_prompt: str | None,
     prompt_version: str | None,
 ) -> dict[str, Any]:
@@ -709,7 +721,9 @@ def _turn_state(
         "prompt_version": prompt_version,
         "sandbox": sandbox_settings,
         "temperature": temperature,
-        "enable_thinking": enable_thinking,
+        "thinking": thinking,
+        "thinking_fragments": thinking_fragments,
+        "reasoning_effort": reasoning_effort,
         "top_p": agent_config_module.top_p(agent_config),
         "max_tokens": agent_config_module.max_tokens(agent_config),
         "rerank": agent_config_module.rerank_override(agent_config),
@@ -778,7 +792,9 @@ async def astream_agent_ndjson(
             ctx=ctx,
             sandbox_settings=sandbox_settings,
             temperature=temperature,
-            enable_thinking=thinking,
+            thinking=thinking,
+            thinking_fragments=llm_cfg.thinking_fragments,
+            reasoning_effort=agent_config_module.reasoning_effort(agent_config),
             system_prompt=system_prompt,
             prompt_version=prompt_version,
         )

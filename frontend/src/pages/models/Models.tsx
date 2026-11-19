@@ -21,7 +21,9 @@ import {
   updateProvider,
   deleteProvider,
   type ApiProviderResponse,
+  type ProviderThinking,
 } from '../../data/providersApi';
+import { ProviderThinkingFields } from './ProviderThinkingFields';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import {
   Dialog,
@@ -64,6 +66,7 @@ export function Models() {
   const [provFormName, setProvFormName] = useState('');
   const [provFormBaseUrl, setProvFormBaseUrl] = useState('');
   const [provFormApiKey, setProvFormApiKey] = useState('');
+  const [provFormThinking, setProvFormThinking] = useState<ProviderThinking | null>(null);
 
   // Model form
   const [formProviderId, setFormProviderId] = useState('');
@@ -137,6 +140,7 @@ export function Models() {
     setProvFormName('');
     setProvFormBaseUrl('');
     setProvFormApiKey('');
+    setProvFormThinking(null);
     setModalMode('provider');
   };
 
@@ -145,6 +149,7 @@ export function Models() {
     setProvFormName(p.name);
     setProvFormBaseUrl(p.base_url);
     setProvFormApiKey('');
+    setProvFormThinking(p.thinking ?? null);
     setModalMode('provider');
   };
 
@@ -189,6 +194,7 @@ export function Models() {
           name: provFormName,
           base_url: provFormBaseUrl,
           api_key: provFormApiKey || undefined,
+          thinking: provFormThinking,
         });
         toast.success(t('models.providerUpdated'));
       } else {
@@ -196,6 +202,7 @@ export function Models() {
           name: provFormName,
           base_url: provFormBaseUrl,
           api_key: provFormApiKey || null,
+          thinking: provFormThinking,
         });
         toast.success(t('models.providerAdded'));
       }
@@ -555,6 +562,7 @@ export function Models() {
             placeholder={editProvider ? t('models.provApiKeyPlaceholderEdit') : t('models.provApiKeyPlaceholderNew')}
           />
         </FormField>
+        <ProviderThinkingFields value={provFormThinking} onChange={setProvFormThinking} />
       </Dialog>
 
       <Dialog

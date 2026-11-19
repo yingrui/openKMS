@@ -418,3 +418,31 @@
     margin-left: 0;
   }
 }
+
+/* Provider thinking fields: a label with a hover tip, and the two JSON boxes. */
+.models-field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Hover tip only — no state, so it is a marker rather than a button. */
+.models-field-label__help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: 1;
+  cursor: help;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+}

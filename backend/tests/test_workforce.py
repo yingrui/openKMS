@@ -87,6 +87,7 @@ class TestConfigSplit:
             "temperature": 0.2,
             "top_p": 0.9,
             "max_tokens": 800,
+            "thinking": "off",  # two-state, defaulted rather than unset
         }
 
     def test_runtime_config_without_agent_is_the_old_payload(self):

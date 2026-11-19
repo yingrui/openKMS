@@ -40,6 +40,7 @@ Pipelines define how a document is processed (command template + linked model). 
 | Service providers | ✅ | CRUD via `/api/providers`; add OpenAI, Anthropic, etc. with base_url and api_key |
 | Model registry | ✅ | Models belong to providers; CRUD via `/api/models`; provider selector in Models.tsx sidebar |
 | Provider–model UI | ✅ | Models.tsx: left sidebar lists providers (filter models); Add Provider / Add Model modals |
+| Provider — thinking toggle | ✅ | Two body fragments on the provider (`api_providers.config.thinking = {"on": …, "off": …}`), edited in the Add/Edit Provider dialog: a preset fills them (DeepSeek and GLM are measured against their real endpoints; DashScope / OpenAI / Anthropic come from their documentation), and the stored value is the JSON. Not an enum, because the differences are not enumerable — DeepSeek `{"thinking": {"type": "disabled"}}`, DashScope `{"enable_thinking": false}`, OpenAI `reasoning_effort: none`, Anthropic a token budget rather than an off switch. The runtime merges the fragment for the choice; an empty fragment means the provider cannot be asked, so nothing is sent. Added a vendor = edited JSON, no code change |
 | API kinds | ✅ | `chat-completions`, `embeddings`, `custom`; `GET /api/models/api-kinds` |
 | Capabilities | ✅ | Tags on each model (`text[]`, e.g. `vision`, `document-parse`); `GET /api/models/capabilities` |
 | Pipeline link | ✅ | Pipelines can link to a model (`model_id` FK); model selector in pipeline create/edit form |

@@ -269,7 +269,7 @@
     "retrievalTopK": "检索条数",
     "retrievalTopKHelp": "回答前取回多少片段。研报型知识和短问答型知识需要的数字不一样。",
     "retrievalRerank": "重排序",
-    "retrievalRerankDefault": "跟随部署配置",
+    "retrievalRerankDefault": "默认",
     "retrievalRerankOn": "总是重排（需部署配置重排端点）",
     "retrievalRerankOff": "不重排",
     "retrievalRerankHelp": "重排序在召回与融合之后、最终选取之前，用交叉编码器给候选重新打分。选\"不重排\"时，即使部署开了也会关掉；选\"总是重排\"只在部署配了重排端点时生效。",

@@ -492,7 +492,16 @@
     "modelApiName": "Model Name",
     "modelApiPlaceholder": "e.g. gpt-4",
     "configJson": "Config (JSON)",
-    "configPlaceholder": "{\"max_concurrency\": 3}"
+    "configPlaceholder": "{\"max_concurrency\": 3}",
+    "provThinkingOn": "Thinking on — request fields",
+    "provThinkingOnHint": "Merged into the request body. Empty means this provider cannot be asked to think.",
+    "provThinkingOff": "Thinking off — request fields",
+    "provThinkingOffHint": "Empty means thinking cannot be switched off here; the model decides.",
+    "provThinkingInvalid": "Not a JSON object — this will not be saved.",
+    "provThinkingPreview": "Stored as:",
+    "provThinkingOnHelp": "Measured against a real endpoint\n  DeepSeek        {\"thinking\": {\"type\": \"enabled\"}}\n  GLM             {\"thinking\": {\"type\": \"enabled\"}}\n\nFrom documentation, not verified here\n  OpenAI          {\"reasoning_effort\": \"high\"}\n  Anthropic       {\"thinking\": {\"type\": \"enabled\", \"budget_tokens\": 4000}}\n\nEmpty means this provider cannot be asked to think.",
+    "provThinkingOffHelp": "Measured against a real endpoint\n  DeepSeek        {\"thinking\": {\"type\": \"disabled\"}}\n  GLM             {\"thinking\": {\"type\": \"disabled\"}}\n  local qwen3.5   none of the shapes above take effect\n\nCareful: glm-5.3-flash always thinks and answers 400 to a disable request;\nuse reasoning_effort: low there, or leave this empty.\n\nFrom documentation, not verified here\n  OpenAI          {\"reasoning_effort\": \"none\"}\n  Anthropic       no off switch (it takes a token budget)\n\nEmpty means thinking cannot be switched off here.",
+    "provThinkingHelpLabel": "Field examples"
   },
   "modelDetail": {
     "loadFailed": "Failed to load model",

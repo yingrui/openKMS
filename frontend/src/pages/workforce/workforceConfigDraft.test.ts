@@ -61,3 +61,23 @@ describe('workforce behaviour draft', () => {
     expect(next.orchestration?.max_tool_rounds).toBeNull();
   });
 });
+
+describe('reasoning effort', () => {
+  it('is only saved while thinking is on', () => {
+    // Asking for an effort level with thinking off is a contradiction; the runtime drops it, so the form does too.
+    const off = configFromDraft(null, { ...draftFromConfig(null), reasoningEffort: 'max' });
+    expect(off.generation?.reasoning_effort).toBeNull();
+
+    const on = configFromDraft(null, {
+      ...draftFromConfig(null),
+      thinking: 'on',
+      reasoningEffort: 'max',
+    });
+    expect(on.generation?.reasoning_effort).toBe('max');
+  });
+
+  it('round-trips through the draft', () => {
+    const saved = { generation: { thinking: 'on' as const, reasoning_effort: 'high' as const } };
+    expect(draftFromConfig(saved).reasoningEffort).toBe('high');
+  });
+});

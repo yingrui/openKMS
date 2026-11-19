@@ -118,3 +118,19 @@ def resolve_llm_for_agent(cfg: Settings) -> tuple[str, str, str]:
             "and set it as default for that API kind."
         )
     return base_url, model_name, api_key or "no-key"
+
+
+def resolve_thinking_fragments(cfg: Settings) -> dict[str, dict[str, object]]:
+    """The provider's thinking fragments, as the backend reports them.
+
+    The provider knows how it wants to be asked; this side only merges the chosen fragment, so adding a vendor is a
+    provider setting rather than a code change here.
+    """
+    try:
+        data = _fetch_agent_llm_defaults(cfg)
+    except RuntimeError:
+        return {}
+    raw = (data or {}).get("thinking")
+    if not isinstance(raw, dict):
+        return {}
+    return {k: v for k, v in raw.items() if k in {"on", "off"} and isinstance(v, dict)}

@@ -72,8 +72,13 @@ class TestGeneration:
 
     def test_defaults_match_what_the_agent_sent_before(self):
         generation = parse_agent_config(None).generation
+        # Unset sampling = the deployment's own values.
         assert generation.temperature is None
-        assert generation.thinking is None
+        assert generation.top_p is None
+        assert generation.max_tokens is None
+        # Thinking is the exception: it is a two-state choice, and `off` is what the agent used to send, so a stored
+        # "off" changes nothing. It has no "unset" state — the third option could not be explained or honoured.
+        assert generation.thinking == "off"
 
     def test_accepts_a_temperature_in_range(self):
         cfg = parse_agent_config({"generation": {"temperature": 0.7}})
@@ -95,3 +100,53 @@ class TestGeneration:
             parse_agent_config({"generation": {"top_k": 5}})
         with pytest.raises(ValidationError):
             parse_agent_config({"generation": {"frequency_penalty": 0.1}})
+
+
+class TestProviderThinkingFragments:
+    """The thinking toggle is spelled differently by every vendor, so the provider stores what to send.
+
+    Measured: `deepseek` honours `{"thinking": {"type": "disabled"}}`; the local qwen gateway ignores every shape.
+    A vendor that does not know a field ignores it silently, so a guess produces a no-op that looks like a setting.
+    """
+
+    def test_fragments_are_passed_through_untouched(self):
+        from app.services.runtime.agent.llm import thinking_fragments
+
+        cfg = {"thinking": {"on": {"enable_thinking": True}, "off": {"enable_thinking": False}}}
+        assert thinking_fragments(cfg) == cfg["thinking"]
+
+    def test_a_provider_without_fragments_cannot_be_asked(self):
+        from app.services.runtime.agent.llm import thinking_fragments
+
+        assert thinking_fragments(None) == {}
+        assert thinking_fragments({}) == {}
+        assert thinking_fragments({"thinking": "deepseek"}) == {}
+
+    def test_only_on_and_off_survive(self):
+        from app.services.runtime.agent.llm import thinking_fragments
+
+        cfg = {"thinking": {"on": {"a": 1}, "sideways": {"b": 2}, "off": "not-an-object"}}
+        assert thinking_fragments(cfg) == {"on": {"a": 1}}
+
+    def test_the_api_stores_them_in_config(self):
+        from app.schemas.api_provider import _merge_thinking
+
+        assert _merge_thinking(None, {"off": {"enable_thinking": False}}) == {
+            "thinking": {"off": {"enable_thinking": False}}
+        }
+        # An empty object clears them, which is how a provider says "I cannot be asked".
+        assert _merge_thinking({"thinking": {"on": {}}, "other": 1}, {}) == {"other": 1}
+        # Leaving it out preserves what is stored, and the old enum key is dropped.
+        assert _merge_thinking({"thinking_style": "deepseek", "other": 1}, None) == {
+            "thinking_style": "deepseek",
+            "other": 1,
+        }
+
+    def test_bad_fragments_are_rejected(self):
+        import pytest
+
+        from app.schemas.api_provider import normalise_thinking
+
+        for bad in ({"sideways": {}}, {"on": "string"}, ["list"], {"on": {"k": "v" * 3000}}):
+            with pytest.raises(ValueError):
+                normalise_thinking(bad)

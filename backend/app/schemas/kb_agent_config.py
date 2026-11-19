@@ -60,9 +60,17 @@ class GenerationConfig(BaseModel):
     #: OpenAI-compatible gateways commonly implement only the former. Raising this ceiling is a deliberate
     #: change, not a rename.
     max_tokens: int | None = Field(None, ge=1, le=32_768)
-    #: Some OpenAI-compatible gateways expose a thinking budget as `extra_body.enable_thinking`. Not portable:
-    #: Anthropic spells it `thinking.budget_tokens`, OpenAI `reasoning_effort`.
-    thinking: Literal["on", "off"] | None = None
+    #: Whether the model should reason before answering. Two states, no "unset": a third option reading "follow the
+    #: deployment" pointed at a value configured in `OPENKMS_LLM_EXTRA_BODY`, which is not something a reader of this
+    #: screen can see or act on. `off` is what the agent already sent by default, so choosing it changes nothing.
+    #: Transport is the provider's `thinking` fragments (`api_providers.config.thinking`), because every vendor spells
+    #: the toggle differently and an unknown field is ignored rather than rejected.
+    thinking: Literal["on", "off"] = "off"
+    #: How hard to reason, for vendors that take a level. The vocabulary is the union vendors use, and each model
+    #: accepts a subset — measured: DeepSeek and GLM take `low | high | max`; OpenAI adds `minimal` and `medium`. A
+    #: value the model does not know is *rejected* by that vendor (GLM answers 400 for an unsupported level), so this
+    #: is not a harmless knob. Only sent while `thinking` is on: an effort level with thinking off is a contradiction.
+    reasoning_effort: Literal["minimal", "low", "medium", "high", "max"] | None = None
 
 
 class AnswerPolicy(BaseModel):

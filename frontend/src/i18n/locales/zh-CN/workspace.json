@@ -492,7 +492,16 @@
     "modelApiName": "模型名称",
     "modelApiPlaceholder": "例如 gpt-4",
     "configJson": "配置（JSON）",
-    "configPlaceholder": "{\"max_concurrency\": 3}"
+    "configPlaceholder": "{\"max_concurrency\": 3}",
+    "provThinkingOn": "思考开启 — 请求字段",
+    "provThinkingOnHint": "合并进请求体。留空表示无法要求这家服务思考。",
+    "provThinkingOff": "思考关闭 — 请求字段",
+    "provThinkingOffHint": "留空表示这家服务关不掉思考，由模型自己决定。",
+    "provThinkingInvalid": "不是一个 JSON 对象——这样不会保存。",
+    "provThinkingPreview": "将保存为：",
+    "provThinkingOnHelp": "实测（对真实端点验证过）\n  DeepSeek        {\"thinking\": {\"type\": \"enabled\"}}\n  GLM             {\"thinking\": {\"type\": \"enabled\"}}\n\n文档写法（未在本环境验证）\n  OpenAI          {\"reasoning_effort\": \"high\"}\n  Anthropic       {\"thinking\": {\"type\": \"enabled\", \"budget_tokens\": 4000}}\n\n留空表示无法要求这家服务思考。",
+    "provThinkingOffHelp": "实测（对真实端点验证过）\n  DeepSeek        {\"thinking\": {\"type\": \"disabled\"}}\n  GLM             {\"thinking\": {\"type\": \"disabled\"}}\n  本地 qwen3.5    以上写法均不生效\n\n注意：glm-5.3-flash 始终思考，发送关闭会返回 400；\n该模型请改用 reasoning_effort: low，或让此项留空。\n\n文档写法（未在本环境验证）\n  OpenAI          {\"reasoning_effort\": \"none\"}\n  Anthropic       没有关闭动作（给的是 token 预算）\n\n留空表示这家服务关不掉思考，由模型自己决定。",
+    "provThinkingHelpLabel": "字段示例"
   },
   "modelDetail": {
     "loadFailed": "无法加载模型",

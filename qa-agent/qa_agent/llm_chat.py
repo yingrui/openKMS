@@ -54,10 +54,16 @@ class _ReasoningContentShimChatOpenAI(ChatOpenAI):
         return payload
 
 
-def qa_agent_chat_extra_body(*, enable_thinking: bool = False) -> dict[str, Any]:
-    """Merge optional JSON extra_body; ``enable_thinking`` defaults to false (wiki copilot behavior).
+def qa_agent_chat_extra_body(
+    *, thinking: bool | None = None, fragments: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Vendor-specific body fields, merged into the request (this is what OpenAI SDK's `extra_body` does).
 
-    A knowledge base or workforce agent may ask for it, which is why this is a parameter and not a constant.
+    The thinking toggle is spelled differently by every vendor, and a field the vendor does not know is *ignored*,
+    not rejected — measured on `deepseek-flash`: `enable_thinking: false` still produced a reasoning chain, while
+    `{"thinking": {"type": "disabled"}}` produced none. So the provider owns two fragments (`on` / `off`) and this
+    function only merges the one the agent chose. No fragment means nothing is sent: a provider that cannot be
+    asked should not look like a provider that was.
     """
     merged: dict[str, Any] = {}
     raw = (settings.llm_extra_body_json or "").strip()
@@ -68,7 +74,10 @@ def qa_agent_chat_extra_body(*, enable_thinking: bool = False) -> dict[str, Any]
                 merged.update(obj)
         except (json.JSONDecodeError, TypeError):
             logger.warning("OPENKMS_LLM_EXTRA_BODY is not valid JSON; ignoring")
-    merged["enable_thinking"] = bool(enable_thinking)
+    if thinking is not None and fragments:
+        fragment = fragments.get("on" if thinking else "off")
+        if isinstance(fragment, dict):
+            merged.update(fragment)
     return merged
 
 
@@ -79,24 +88,36 @@ def make_qa_chat_openai(
     model_name: str,
     temperature: float,
     streaming: bool,
-    enable_thinking: bool = False,
+    thinking: bool | None = None,
+    thinking_fragments: dict[str, Any] | None = None,
+    reasoning_effort: str | None = None,
     top_p: float | None = None,
     max_tokens: int | None = None,
 ) -> ChatOpenAI:
+    extra_body = qa_agent_chat_extra_body(thinking=thinking, fragments=thinking_fragments)
     common: dict[str, Any] = {
         "base_url": base_url,
         "api_key": api_key,
         "model": model_name,
         "temperature": temperature,
         "streaming": streaming,
-        "extra_body": qa_agent_chat_extra_body(enable_thinking=enable_thinking),
+        "extra_body": extra_body,
     }
     # `None` leaves the key out entirely so the gateway's own default applies; sending an explicit null is not
-    # the same request. `max_tokens` (not `max_completion_tokens`) is what self-hosted compatible gateways read.
+    # the same request.
     if top_p is not None:
         common["top_p"] = top_p
+    if reasoning_effort and thinking:
+        # A first-class OpenAI field, so it needs no fragment: every compatible vendor reads it at the top level
+        # (DeepSeek and GLM take low/high/max). Dropped when thinking is off — asking for an effort level while
+        # asking not to think is a contradiction, and the switch is the more specific statement.
+        common["reasoning_effort"] = reasoning_effort
     if max_tokens is not None:
-        common["max_tokens"] = max_tokens
+        # NOT as a first-class field: `langchain_openai` renames a top-level `max_tokens` to
+        # `max_completion_tokens` before sending (checked on the wire, not from docs), and self-hosted
+        # OpenAI-compatible gateways commonly read only `max_tokens`. Riding in `extra_body` keeps the key we claim
+        # to send — and this is the last merge, so the agent's explicit value wins over a provider fragment.
+        extra_body["max_tokens"] = max_tokens
     if use_llm_reasoning_content_shim(base_url):
         return _ReasoningContentShimChatOpenAI(**common)
     return ChatOpenAI(**common)
