@@ -211,12 +211,6 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/workforce/agents/{id}/credentials` | Mint a credential (`name`). The `wfks.…` token is in this response only |
 | DELETE | `/api/workforce/agents/{id}/credentials/{credential_id}` | Revoke a credential |
 | POST | `/api/workforce/agents/{id}/ask` | **Service plane.** Authenticated by the agent's `wfks.…` credential, never by a session; `kb_id` names the one bound source. See [Workforce agents](../features/workforce.md) |
-| GET | `/api/knowledge-bases/{id}/semantic-models` | List semantic models linked as **qa-agent Catalog scope** (not RAG) |
-| POST | `/api/knowledge-bases/{id}/semantic-models` | Link a semantic model (`{ "semantic_model_id": "…" }`) |
-| DELETE | `/api/knowledge-bases/{id}/semantic-models/{semantic_model_id}` | Unlink a semantic model from the KB |
-| GET | `/api/knowledge-bases/{id}/ontology-groups` | List ontology groups linked as **qa-agent schema scope** |
-| POST | `/api/knowledge-bases/{id}/ontology-groups` | Link an ontology group (`{ "ontology_group_id": "…" }`) |
-| DELETE | `/api/knowledge-bases/{id}/ontology-groups/{ontology_group_id}` | Unlink an ontology group from the KB |
 | GET | `/api/knowledge-bases/{id}/wiki-pages-for-index` | Paginated wiki pages with body from linked spaces (`?offset=`, `limit` 1–500); used by `kb-index` |
 | GET | `/api/knowledge-bases/{id}/faqs` | List FAQs (paginated; ?offset=, ?limit=, ?current_for_rag_only=) |
 | POST | `/api/knowledge-bases/{id}/faqs` | Create FAQ |

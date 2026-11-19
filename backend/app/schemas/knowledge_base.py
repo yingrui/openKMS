@@ -6,7 +6,6 @@ from pydantic import BaseModel, model_validator
 
 from app.schemas.kb_agent_config import AgentConfig
 
-
 # --- Knowledge Base ---
 
 class KnowledgeBaseCreate(BaseModel):
@@ -21,7 +20,6 @@ class KnowledgeBaseCreate(BaseModel):
     faq_prompt: str | None = None
     metadata_keys: list[str] | None = None
 
-
 class KnowledgeBaseUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
@@ -33,7 +31,6 @@ class KnowledgeBaseUpdate(BaseModel):
     chunk_config: dict[str, Any] | None = None
     faq_prompt: str | None = None
     metadata_keys: list[str] | None = None
-
 
 class KnowledgeBaseResponse(BaseModel):
     id: str
@@ -56,19 +53,16 @@ class KnowledgeBaseResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
-
 class KnowledgeBaseListResponse(BaseModel):
     items: list[KnowledgeBaseResponse]
     total: int
     limit: int
     offset: int
 
-
 # --- KB Documents ---
 
 class KBDocumentAdd(BaseModel):
     document_id: str
-
 
 class KBDocumentResponse(BaseModel):
     id: str
@@ -81,19 +75,16 @@ class KBDocumentResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
-
 class KBDocumentListResponse(BaseModel):
     items: list[KBDocumentResponse]
     total: int
     offset: int
     limit: int
 
-
 # --- KB wiki spaces ---
 
 class KBWikiSpaceAdd(BaseModel):
     wiki_space_id: str
-
 
 class KBWikiSpaceResponse(BaseModel):
     id: str
@@ -103,38 +94,6 @@ class KBWikiSpaceResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
-
-
-class KBSemanticModelAdd(BaseModel):
-    semantic_model_id: str
-
-
-class KBSemanticModelResponse(BaseModel):
-    """A semantic model linked to a KB — includes a short summary for agent selection."""
-
-    id: str
-    knowledge_base_id: str
-    semantic_model_id: str
-    name: str
-    description: str | None = None
-    metric_names: list[str] = []
-    ai_context: dict[str, Any] | None = None
-    created_at: datetime
-
-
-class KBOntologyGroupAdd(BaseModel):
-    ontology_group_id: str
-
-
-class KBOntologyGroupResponse(BaseModel):
-    id: str
-    knowledge_base_id: str
-    ontology_group_id: str
-    display_name: str
-    description: str | None = None
-    object_type_count: int = 0
-    created_at: datetime
-
 
 class WikiPageForKbIndexItem(BaseModel):
     """Wiki page row for offline KB indexing (includes body)."""
@@ -146,13 +105,11 @@ class WikiPageForKbIndexItem(BaseModel):
     body: str
     metadata: dict[str, Any] | None = None
 
-
 class WikiPageForKbIndexListResponse(BaseModel):
     items: list[WikiPageForKbIndexItem]
     total: int
     offset: int
     limit: int
-
 
 # --- FAQs ---
 
@@ -162,27 +119,22 @@ class FAQCreate(BaseModel):
     document_id: str | None = None
     doc_metadata: dict[str, Any] | None = None
 
-
 class FAQUpdate(BaseModel):
     question: str | None = None
     answer: str | None = None
     doc_metadata: dict[str, Any] | None = None
 
-
 class FAQPolishRequest(BaseModel):
     question: str
     answer: str
 
-
 class FAQPolishResponse(BaseModel):
     answer: str
-
 
 class FAQGenerateRequest(BaseModel):
     document_ids: list[str]
     model_id: str
     prompt: str | None = None
-
 
 class FAQGenerateResult(BaseModel):
     """Generated FAQ pair (preview, not yet saved)."""
@@ -192,17 +144,14 @@ class FAQGenerateResult(BaseModel):
     answer: str
     doc_metadata: dict[str, Any] | None = None
 
-
 class FAQBatchItem(BaseModel):
     document_id: str
     question: str
     answer: str
     doc_metadata: dict[str, Any] | None = None
 
-
 class FAQBatchCreateRequest(BaseModel):
     items: list[FAQBatchItem]
-
 
 class FAQResponse(BaseModel):
     id: str
@@ -218,11 +167,9 @@ class FAQResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
-
 class FAQListResponse(BaseModel):
     items: list[FAQResponse]
     total: int
-
 
 # --- Chunks ---
 
@@ -245,25 +192,20 @@ class ChunkBatchItem(BaseModel):
             raise ValueError("Each chunk must set exactly one of document_id or wiki_page_id")
         return self
 
-
 class ChunkBatchCreateRequest(BaseModel):
     items: list[ChunkBatchItem]
-
 
 class ChunkUpdate(BaseModel):
     content: str | None = None
     doc_metadata: dict[str, Any] | None = None
-
 
 class FAQEmbeddingUpdate(BaseModel):
     id: str
     embedding: str  # base64-encoded float32 array
     doc_metadata: dict[str, Any] | None = None
 
-
 class FAQBatchEmbeddingsRequest(BaseModel):
     items: list[FAQEmbeddingUpdate]
-
 
 class ChunkResponse(BaseModel):
     id: str
@@ -282,11 +224,9 @@ class ChunkResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
-
 class ChunkListResponse(BaseModel):
     items: list[ChunkResponse]
     total: int
-
 
 # --- Search ---
 
@@ -298,7 +238,6 @@ class SearchRequest(BaseModel):
     metadata_filters: dict[str, Any] | None = None
     include_historical_documents: bool = False
     force_dense: bool = False  # internal: qa-agent sets this to bypass hybrid recursion
-
 
 class SearchResult(BaseModel):
     id: str
@@ -324,11 +263,9 @@ class SearchResult(BaseModel):
     #: How many of the answer's numbers appear in this source's rows.
     traceable_numbers: int | None = None
 
-
 class SearchResponse(BaseModel):
     results: list[SearchResult]
     query: str
-
 
 # --- Ask (QA proxy) ---
 
@@ -338,7 +275,6 @@ class AskRequest(BaseModel):
     #: Sent to the QA agent as ``langfuse_session_id`` so traces group into one Langfuse **Session** (opaque string, e.g. UUID).
     session_id: str | None = None
 
-
 class GroundingReport(BaseModel):
     """How many of the answer's numbers came from the cited results — a ratio, not a verdict."""
 
@@ -346,7 +282,6 @@ class GroundingReport(BaseModel):
     total: int = 0
     ratio: float = 1.0
     untraced: list[float] = []
-
 
 class AskResponse(BaseModel):
     answer: str
