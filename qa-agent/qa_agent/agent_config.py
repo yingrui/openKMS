@@ -44,6 +44,18 @@ def max_tool_rounds(config: dict[str, Any] | None) -> int | None:
     return None
 
 
+def system_prompt(config: dict[str, Any] | None) -> str | None:
+    """The base instruction an author wrote, or `None` for the built-in text.
+
+    This is only the first paragraph of the system prompt: the skill descriptions, the policy rules and the retrieved
+    passages are appended at answer time and are not part of this text.
+    """
+    raw = ((config or {}).get("prompts") or {}).get("system_prompt")
+    if isinstance(raw, str) and raw.strip():
+        return raw
+    return None
+
+
 def agents_md(config: dict[str, Any] | None) -> str | None:
     """KB-wide instructions, copied into the session workspace as `AGENTS.md`. `None` when the KB has not written any."""
     raw = ((config or {}).get("prompts") or {}).get("agents_md")

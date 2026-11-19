@@ -79,6 +79,22 @@ class AskResponse(BaseModel):
     verified: bool = False
 
 
+class PromptPreviewRequest(BaseModel):
+    knowledge_base_id: str | None = None
+    agent_skills: list[str] | None = None
+    agent_config: dict[str, Any] | None = None
+
+
+class PromptPreviewResponse(BaseModel):
+    """What the model is actually given, before a question arrives."""
+
+    system_prompt: str
+    #: The base instruction alone: the part an author writes. None means the built-in text is in use.
+    base_instruction: str | None = None
+    #: The text that becomes `AGENTS.md` in the session workspace; None when the agent wrote none.
+    agents_md: str | None = None
+
+
 class RetrieveRequest(BaseModel):
     query: str
     access_token: str = ""

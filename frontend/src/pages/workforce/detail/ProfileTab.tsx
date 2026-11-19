@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Archive, Save } from 'lucide-react';
+import { Archive, Code2, Save } from 'lucide-react';
 import { toast } from 'sonner';
-import { deleteWorkforceAgent, updateWorkforceAgent } from '../../../data/workforceApi';
+import {
+  deleteWorkforceAgent,
+  fetchPromptPreview,
+  updateWorkforceAgent,
+  type WorkforcePromptPreview,
+} from '../../../data/workforceApi';
 import { useConfirm } from '../../../contexts/ConfirmContext';
 import { EntityViewField, EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { configFromDraft, draftFromConfig } from '../workforceConfigDraft';
@@ -11,9 +16,21 @@ import { useWorkforceDetail } from './workforceDetailContext';
 /**
  * Who the service is: the name a caller sees, the line saying what it is for, and what it has been told.
  *
- * Instructions sit here rather than in a tab of their own because they are the same kind of thing — prompt
- * text that shapes identity and conduct. What is *not* here is anything the runtime must enforce: the answer
- * policy and the tool set are separate, because a rule that only exists in a prompt can be argued with.
+ * Two different texts live here, and they are labelled as different things — the way Dify separates Instructions from
+ * everything else:
+ *
+ * - **Instructions** are the agent's system prompt. One field, sent with every answer; the skill descriptions, the
+ *   answer policy and the retrieved passages are appended by the runtime, never written here.
+ * - **Workspace conventions** are `AGENTS.md` — a file in the session workspace that the model reads through the file
+ *   tools when it needs them. Not part of the prompt, which is why it is named after the file rather than after
+ *   "instructions".
+ *
+ * What is *not* here: the answer policy and the enabled skills, because a rule that lives only in prompt text can be
+ * argued with.
+ *
+ * "Model input" shows the assembled text rather than explaining it: the system prompt from the qa-agent's own builder,
+ * and the AGENTS.md that the session workspace receives. It is a page panel, not a dialog, because both texts are long
+ * and are compared line by line against the fields above.
  *
  * Archive lives here because it is the one action that ends the service — kept beside Save, and behind a
  * confirm, rather than beside the tab's primary action.
@@ -24,10 +41,31 @@ export function WorkforceProfileTab() {
   const { agent, reload } = useWorkforceDetail();
   const [name, setName] = useState(agent.name);
   const [description, setDescription] = useState(agent.description ?? '');
+  const [baseInstruction, setBaseInstruction] = useState(
+    agent.agent_config?.prompts?.system_prompt ?? ''
+  );
   const [instructions, setInstructions] = useState(
     agent.agent_config?.prompts?.agents_md ?? ''
   );
   const [saving, setSaving] = useState(false);
+  const [preview, setPreview] = useState<WorkforcePromptPreview | null>(null);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  const sourceId = agent.knowledge_bases[0]?.knowledge_base_id ?? null;
+
+  const togglePreview = async () => {
+    if (!sourceId) return;
+    const next = !previewVisible;
+    setPreviewVisible(next);
+    if (!next || preview) return;
+    setPreviewError(null);
+    try {
+      setPreview(await fetchPromptPreview(agent.id, sourceId));
+    } catch (e: unknown) {
+      setPreviewError(e instanceof Error ? e.message : t('previewFailed'));
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -38,6 +76,7 @@ export function WorkforceProfileTab() {
         // Only the one config key this tab owns; the rest is merged on the server side of the form.
         agent_config: configFromDraft(agent.agent_config, {
           ...draftFromConfig(agent.agent_config),
+          systemPrompt: baseInstruction,
           agentsMd: instructions,
         }),
       });
@@ -76,6 +115,16 @@ export function WorkforceProfileTab() {
         subtitle={t('profileLead')}
         actions={
           <>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={!sourceId}
+              title={sourceId ? undefined : t('previewNeedsSource')}
+              onClick={() => void togglePreview()}
+            >
+              <Code2 size={16} aria-hidden />
+              {previewVisible ? t('previewHide') : t('previewOpen')}
+            </button>
             <button type="button" className="btn btn-secondary" onClick={() => void archive()}>
               <Archive size={16} aria-hidden />
               {t('archiveAgent')}
@@ -106,17 +155,50 @@ export function WorkforceProfileTab() {
               onChange={(e) => setDescription(e.target.value)}
             />
           </EntityViewField>
-          <EntityViewField label={t('instructions')} hint={t('instructionsHint')}>
+          <EntityViewField label={t('systemPromptLabel')} hint={t('systemPromptHint')}>
             <textarea
               className="ds-control"
-              rows={8}
+              rows={6}
+              value={baseInstruction}
+              placeholder={t('systemPromptPlaceholder')}
+              onChange={(e) => setBaseInstruction(e.target.value)}
+            />
+          </EntityViewField>
+          <EntityViewField label={t('agentsMdLabel')} hint={t('agentsMdHint')}>
+            <textarea
+              className="ds-control"
+              rows={6}
               value={instructions}
-              placeholder={t('instructionsPlaceholder')}
+              placeholder={t('agentsMdPlaceholder')}
               onChange={(e) => setInstructions(e.target.value)}
             />
           </EntityViewField>
         </div>
       </EntityViewPanel>
+
+      {previewVisible ? (
+        <EntityViewPanel title={t('previewTitle')} description={t('previewLead')}>
+          {previewError ? (
+            <p className="ds-field__hint page-subtitle--error">{previewError}</p>
+          ) : preview ? (
+            <>
+              <p className="ds-field__hint">{t('previewLegend')}</p>
+              <h3 className="ds-compact-label">{t('previewSystemPrompt')}</h3>
+              <pre className="workforce-prompt-preview">{preview.system_prompt}</pre>
+
+              <h3 className="ds-compact-label">{t('previewAgentsMd')}</h3>
+              {preview.agents_md ? (
+                <pre className="workforce-prompt-preview">{preview.agents_md}</pre>
+              ) : (
+                <p className="ds-field__hint">{t('previewAgentsMdEmpty')}</p>
+              )}
+              <p className="ds-field__hint">{t('previewAgentsMdNote')}</p>
+            </>
+          ) : (
+            <p className="ds-field__hint">{t('loading')}</p>
+          )}
+        </EntityViewPanel>
+      ) : null}
     </>
   );
 }

@@ -13,6 +13,8 @@ from .config import settings
 from .langfuse_client import silence_otel_export_loggers
 from .logging_config import configure_logging, preview_text
 from .schemas import (
+    PromptPreviewRequest,
+    PromptPreviewResponse,
     AskRequest,
     AskResponse,
     RetrieveRequest,
@@ -151,6 +153,32 @@ def _stream_response(kb_id: str, request: AskRequest) -> StreamingResponse:
     )
 
 
+def _prompt_preview_impl(kb_id: str, request: PromptPreviewRequest) -> PromptPreviewResponse:
+    from . import agent_config as agent_config_module
+    from .agent import _build_system_prompt
+
+    config = request.agent_config
+    skills = request.agent_skills
+    base = agent_config_module.system_prompt(config)
+    # The same call the answer path makes, with the retrieved passages replaced by a marker: they depend on the
+    # question, and inventing sample passages would misrepresent what the model sees.
+    system_prompt = _build_system_prompt(
+        context=[],
+        skills=skills,
+        policy=agent_config_module.answer_policy(config),
+        state_prompt=base,
+        agents_md=agent_config_module.agents_md(config),
+    ).replace(
+        "Context from the knowledge base:\n\n",
+        "Context from the knowledge base:\n<passages retrieved for this question>\n",
+    )
+    return PromptPreviewResponse(
+        system_prompt=system_prompt,
+        base_instruction=base,
+        agents_md=agent_config_module.agents_md(config),
+    )
+
+
 def _retrieve_impl(kb_id: str, request: RetrieveRequest) -> RetrieveResponse:
     from .retriever import retrieve
 
@@ -220,6 +248,18 @@ async def ask_stream_for_kb(kb_id: str, request: AskRequest):
     """Stream answer as NDJSON for the knowledge base named in the path."""
     kid = _kb_or_400(kb_id, request.knowledge_base_id)
     return _stream_response(kid, request)
+
+
+@app.post("/knowledge-bases/{kb_id}/prompt-preview", response_model=PromptPreviewResponse)
+async def prompt_preview_for_kb(kb_id: str, request: PromptPreviewRequest):
+    """The system prompt as it is actually assembled, plus the text that becomes AGENTS.md.
+
+    Uses the same builder the answer path uses, so this is the text the model receives rather than a description of
+    it. Retrieved context is the one part that cannot be rendered without a question: it is shown as a marker where
+    the passages are inserted.
+    """
+    kid = _kb_or_400(kb_id, request.knowledge_base_id)
+    return _prompt_preview_impl(kid, request)
 
 
 @app.post("/knowledge-bases/{kb_id}/retrieve", response_model=RetrieveResponse)

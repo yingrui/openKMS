@@ -35,6 +35,7 @@ from app.models.workforce_agent import (
     WorkforceAgentSemanticModel,
 )
 from app.schemas.workforce import (
+    WorkforcePromptPreviewResponse,
     WorkforceAgentCreate,
     WorkforceAgentDetailResponse,
     WorkforceAgentKBAdd,
@@ -54,6 +55,7 @@ from app.schemas.workforce import (
 )
 from app.services.content.knowledge_bases.qa_agent_proxy import (
     agent_error,
+    base_instruction_for,
     agent_kb_path,
     ask_agent_body,
     resolve_agent_url,
@@ -67,6 +69,7 @@ from app.services.identity.acl.resource_guard import resource_allowed
 from app.services.identity.permissions.permission_resolution import jwt_realm_role_names
 from app.services.workforce.agent_config import (
     agent_config_payload,
+    agent_skills_for,
     resolve_skills,
     runtime_config,
 )
@@ -266,6 +269,59 @@ async def archive_agent(
     agent.status = AGENT_STATUS_ARCHIVED
     await db.commit()
     return None
+
+
+@router.get("/agents/{agent_id}/prompt-preview", response_model=WorkforcePromptPreviewResponse)
+async def agent_prompt_preview(
+    agent_id: str,
+    kb_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """The system prompt the model actually receives, plus the text that becomes AGENTS.md.
+
+    Assembled by the qa-agent, not here: a second implementation in the backend would drift from the one that runs.
+    The knowledge source is only needed to reach that agent and to supply its retrieval settings.
+    """
+    kb = await db.get(KnowledgeBase, kb_id)
+    if kb is None:
+        raise HTTPException(status_code=404, detail="Knowledge source not found")
+    linked = (
+        await db.execute(
+            select(WorkforceAgentKB).where(
+                WorkforceAgentKB.agent_id == agent_id,
+                WorkforceAgentKB.knowledge_base_id == kb_id,
+            )
+        )
+    ).scalars().first()
+    if linked is None:
+        raise HTTPException(status_code=404, detail="Knowledge source is not bound to this agent")
+    agent = await _scoped(db, request, agent_id, write=False)
+
+    url = resolve_agent_url(kb)
+    if not url:
+        raise HTTPException(status_code=400, detail="No QA agent URL configured for this deployment")
+
+    body = {
+        "agent_skills": agent_skills_for(kb, agent),
+        "agent_config": runtime_config(kb, agent),
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(agent_kb_path(url, kb.id, "prompt-preview"), json=body)
+            resp.raise_for_status()
+            data = resp.json()
+    except httpx.HTTPStatusError as e:
+        raise agent_error(e) from e
+    except httpx.HTTPError as e:
+        logger.error("Prompt preview could not reach %s: %s", url, e)
+        raise HTTPException(status_code=502, detail="Could not reach agent service") from e
+
+    return WorkforcePromptPreviewResponse(
+        system_prompt=str(data.get("system_prompt") or ""),
+        base_instruction=data.get("base_instruction"),
+        agents_md=data.get("agents_md"),
+    )
 
 
 # --- Knowledge sources ---
@@ -606,6 +662,7 @@ async def ask_agent(
 
     token = request.state.openkms_auth_token or ""
 
+    runtime = runtime_config(kb, agent)
     request_body = ask_agent_body(
         kb=kb,
         question=body.question,
@@ -613,7 +670,9 @@ async def ask_agent(
         access_token=token,
         session_id=body.session_id,
         agent_skills=resolve_skills(agent.agent_skills),
-        agent_config=runtime_config(kb, agent),
+        agent_config=runtime,
+        # The author's base instruction; without it the qa-agent uses its built-in text.
+        system_prompt=base_instruction_for(runtime),
     )
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:

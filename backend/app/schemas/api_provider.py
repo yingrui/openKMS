@@ -1,7 +1,7 @@
 """ApiProvider schemas."""
 from datetime import datetime
 import json
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, model_validator
 

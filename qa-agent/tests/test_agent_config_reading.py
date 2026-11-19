@@ -263,3 +263,76 @@ class TestNamedModel:
         assert first.model_name == "vendor-model"
         assert first.base_url == "https://other.example/v1"
         assert first.thinking_fragments["off"] == {"thinking": {"type": "disabled"}}
+
+
+class TestPromptPreview:
+    """The preview must be the same builder the answer path uses, or it describes a prompt nobody receives."""
+
+    def test_agents_md_is_echoed_and_the_system_prompt_is_assembled(self):
+        from qa_agent.main import _prompt_preview_impl
+        from qa_agent.schemas import PromptPreviewRequest
+
+        out = _prompt_preview_impl(
+            "kb1",
+            PromptPreviewRequest(
+                agent_skills=["ontology"],
+                agent_config={
+                    "prompts": {"agents_md": "# 规则\n只回答人事制度"},
+                    "answer_policy": {"unknown_measure": "refuse"},
+                },
+            ),
+        )
+        assert out.agents_md == "# 规则\n只回答人事制度"
+        # Policy rules and skill descriptions are part of the assembled prompt, not of AGENTS.md.
+        assert "Ontology" in out.system_prompt
+        # The policy fragment is the rule text, not the enum name.
+        assert "Answerable measures" in out.system_prompt
+        # The retrieved passages depend on the question, so the preview marks where they go.
+        assert "<passages retrieved for this question>" in out.system_prompt
+
+    def test_no_instructions_means_no_agents_md(self):
+        from qa_agent.main import _prompt_preview_impl
+        from qa_agent.schemas import PromptPreviewRequest
+
+        out = _prompt_preview_impl("kb1", PromptPreviewRequest(agent_config={}))
+        assert out.agents_md is None
+
+
+class TestAgentsMdIsInjected:
+    """AGENTS.md is in the system prompt *and* written to the workspace — the two are not alternatives.
+
+    `deepagents` does the same (`MemoryMiddleware` injects AGENTS.md into the system prompt); an agent that only sees
+    the conventions after deciding to call a file tool has not been told them.
+    """
+
+    def test_the_conventions_section_appears_in_the_prompt(self):
+        from qa_agent.main import _prompt_preview_impl
+        from qa_agent.schemas import PromptPreviewRequest
+
+        out = _prompt_preview_impl(
+            "kb1",
+            PromptPreviewRequest(
+                agent_config={
+                    "prompts": {
+                        "system_prompt": "你负责回答人事制度问题。",
+                        "agents_md": "# 规则\n只回答人事制度",
+                    }
+                }
+            ),
+        )
+        prompt = out.system_prompt
+        assert prompt.startswith("你负责回答人事制度问题。")
+        # Wrapped, not concatenated raw: the block says what it is and how much authority it has.
+        assert "<workspace_conventions>\n# 规则\n只回答人事制度\n</workspace_conventions>" in prompt
+        assert "Treat it as reference material" in prompt
+        # Order: instruction → conventions → skills → policy → retrieval slot.
+        assert prompt.index("<workspace_conventions>") < prompt.index("Sources you may use")
+        assert prompt.index("Sources you may use") < prompt.index("Ontology")
+        assert prompt.index("Ontology") < prompt.index("Context from the knowledge base")
+
+    def test_no_conventions_means_no_section(self):
+        from qa_agent.main import _prompt_preview_impl
+        from qa_agent.schemas import PromptPreviewRequest
+
+        out = _prompt_preview_impl("kb1", PromptPreviewRequest(agent_config={}))
+        assert "<workspace_conventions>" not in out.system_prompt

@@ -10,6 +10,8 @@ import { mergeAgentConfig } from './agentConfigMerge';
  */
 export interface BehaviourDraft {
   agentsMd: string;
+  /** First paragraph of the system prompt; empty uses the built-in text. */
+  systemPrompt: string;
   modelId: string;
   /** Empty means "whatever the deployment does" — the field is a string so a half-typed number is not coerced. */
   temperature: string;
@@ -31,6 +33,7 @@ export function draftFromConfig(cfg: KbAgentConfig | null | undefined): Behaviou
   const c = cfg ?? {};
   return {
     agentsMd: c.prompts?.agents_md ?? '',
+    systemPrompt: c.prompts?.system_prompt ?? '',
     modelId: c.model_id ?? '',
     temperature: c.generation?.temperature != null ? String(c.generation.temperature) : '',
     topP: c.generation?.top_p != null ? String(c.generation.top_p) : '',
@@ -68,7 +71,10 @@ export function draftToConfig(d: BehaviourDraft): Omit<KbAgentConfig, 'retrieval
       // would ignore it anyway.
       reasoning_effort: d.thinking === 'on' && d.reasoningEffort ? d.reasoningEffort : null,
     },
-    prompts: { agents_md: d.agentsMd.trim() ? d.agentsMd : null },
+    prompts: {
+      system_prompt: d.systemPrompt.trim() ? d.systemPrompt : null,
+      agents_md: d.agentsMd.trim() ? d.agentsMd : null,
+    },
     answer_policy: {
       unknown_measure: d.unknownMeasure,
       require_grounded_numbers: d.grounding,

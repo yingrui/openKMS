@@ -30,6 +30,10 @@ class PromptsConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    #: The first paragraph of the system prompt — role, task, tone, boundaries. Everything else in the prompt is
+    #: assembled at answer time from the enabled skills, the answer policy and the retrieved passages; making those
+    #: editable would turn a runtime guarantee into text a prompt edit can delete.
+    system_prompt: str | None = Field(None, max_length=20_000)
     agents_md: str | None = Field(None, max_length=20_000)
 
 

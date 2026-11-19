@@ -212,3 +212,21 @@ export async function revokeWorkforceCredential(
     method: 'DELETE',
   });
 }
+
+export interface WorkforcePromptPreview {
+  /** The assembled prompt the model receives. */
+  system_prompt: string;
+  /** The base instruction alone — the part an author writes; null means the built-in text. */
+  base_instruction: string | null;
+  agents_md: string | null;
+}
+
+/** The assembled prompt, from the qa-agent that assembles it at answer time. */
+export async function fetchPromptPreview(
+  agentId: string,
+  kbId: string
+): Promise<WorkforcePromptPreview> {
+  return request<WorkforcePromptPreview>(
+    `/api/workforce/agents/${agentId}/prompt-preview?kb_id=${encodeURIComponent(kbId)}`
+  );
+}

@@ -79,6 +79,17 @@ def ask_agent_body(
     return body
 
 
+def base_instruction_for(agent_config: dict[str, Any] | None) -> str | None:
+    """The author-written base instruction inside an agent config, if any.
+
+    Sent as `system_prompt`, which the qa-agent uses as the first paragraph of the prompt; the skill descriptions,
+    policy rules and retrieved passages are appended by the runtime and are not part of this text.
+    """
+    from app.schemas.kb_agent_config import parse_agent_config
+
+    return parse_agent_config(agent_config or {}).prompts.system_prompt
+
+
 async def ask_agent_body_for_kb(db: Any, *, kb: KnowledgeBase, **kwargs: Any) -> dict[str, Any]:
     """`ask_agent_body` with the knowledge base's default workforce agent supplying the runtime half.
 

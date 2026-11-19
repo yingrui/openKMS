@@ -166,3 +166,14 @@ class WorkforceAskResponse(BaseModel):
     prompt_version: str | None = None
     #: The model that answered — an agent may choose one, so the reply names it.
     model: str | None = None
+
+
+class WorkforcePromptPreviewResponse(BaseModel):
+    """What the model is given before a question arrives, as the qa-agent assembles it."""
+
+    #: The assembled prompt the model receives (base instruction + skills + policy + retrieval slot).
+    system_prompt: str
+    #: The base instruction alone: the part an author writes. None means the built-in text is in use.
+    base_instruction: str | None = None
+    #: The text that becomes `AGENTS.md` in the session workspace; None when the agent wrote none.
+    agents_md: str | None = None

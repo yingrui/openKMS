@@ -210,3 +210,66 @@ class TestQueryPlane:
         with pytest.raises(HTTPException) as exc:
             _reject_workforce_mutation(_request(method, path, agent_id="a1"))
         assert exc.value.status_code == 403
+
+
+class TestPromptPreviewRoute:
+    """The route assembles nothing itself — it forwards to the qa-agent that does.
+
+    This exercises the function body end to end (the imports, the binding check, the body it sends), which is what a
+    missing name in it would have needed: `ruff` catches undefined names, but only if the gate is actually read.
+    """
+
+    def test_it_forwards_the_runtime_config_and_echoes_the_answer(self, monkeypatch):
+        import asyncio
+        from types import SimpleNamespace
+
+        import httpx
+
+        from app.api import workforce
+
+        agent = SimpleNamespace(id="agent_1", agent_skills=None, agent_config=None)
+        kb = SimpleNamespace(id="kb_1", agent_config=None, qa_agent_url=None)
+
+        class FakeDB:
+            async def get(self, model, pk):
+                return kb
+
+            async def execute(self, stmt):
+                return SimpleNamespace(scalars=lambda: SimpleNamespace(first=lambda: object()))
+
+        sent: dict = {}
+
+        class FakeClient:
+            def __init__(self, *a, **kw):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc):
+                return False
+
+            async def post(self, url, json=None):
+                sent["url"] = url
+                sent["body"] = json
+                return httpx.Response(
+                    200,
+                    json={"system_prompt": "SYSTEM", "agents_md": "# rules"},
+                    request=httpx.Request("POST", url),
+                )
+
+        monkeypatch.setattr(workforce, "_scoped", lambda *a, **kw: _async(agent))
+        monkeypatch.setattr(workforce, "resolve_agent_url", lambda kb: "http://agent")
+        monkeypatch.setattr(workforce.httpx, "AsyncClient", FakeClient)
+
+        out = asyncio.run(workforce.agent_prompt_preview("agent_1", "kb_1", SimpleNamespace(), FakeDB()))
+
+        assert out.system_prompt == "SYSTEM"
+        assert out.agents_md == "# rules"
+        assert sent["url"].endswith("/knowledge-bases/kb_1/prompt-preview")
+        # The qa-agent receives the same two things the answer path sends.
+        assert set(sent["body"]) == {"agent_skills", "agent_config"}
+
+
+async def _async(value):
+    return value

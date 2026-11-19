@@ -17,7 +17,7 @@ export interface KbAgentConfig {
     /** The levels the providers we run accept; anything else is rejected by the vendor rather than ignored. */
     reasoning_effort?: 'low' | 'high' | 'max' | null;
   };
-  prompts?: { agents_md?: string | null };
+  prompts?: { system_prompt?: string | null; agents_md?: string | null };
   retrieval?: { top_k?: number; rerank?: boolean | null; min_score?: number | null };
   answer_policy?: {
     unknown_measure?: 'try_anyway' | 'refuse';
