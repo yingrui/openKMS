@@ -11,6 +11,12 @@
 | [`openai-sdk.md`](openai-sdk.md) | PyPI `openai` **3.55.1** wheel | `Chat Completions` 与 `Responses` 的请求字段名、`reasoning_effort` 取值、工具联合类型 |
 | [`anthropic-sdk.md`](anthropic-sdk.md) | PyPI `anthropic` **2.10.0** wheel | `MessageCreateParams` 的全部字段、`thinking` 配置、`output_config` |
 | [`dify.md`](dify.md) | `docs.dify.ai/llms-full.txt` | 知识检索归属、生成参数模板、记忆窗口的原文段落 |
+| [`deep-agents.md`](deep-agents.md) | **已安装的** `deepagents` **0.7.21** + 本仓库调用点 | `create_deep_agent` 全参数、`MemoryMiddleware`、`SummarizationMiddleware`、`SubAgent`、我们传了/没传什么 |
+| [`pi-harness.md`](pi-harness.md) | 本机 `pi` **1.4.0** 自带文档 | 压缩阈值（`reserveTokens` / `keepRecentTokens` / 按模型覆盖）、摘要骨架、技能加载方式 |
+
+后两份与前三份的证据性质不同：**不是"别人怎么做"，而是"我们在跑什么"**。`deepagents` 0.7.21 是
+`backend/.venv` 里实际安装的版本，`factory.py` 的调用点就在仓库里；pi 是我们开发时用的 harness，
+它的约定（`AGENTS.md`、`SKILL.md`、结构化摘要段落）已经渗进本仓库。
 
 ## 怎么取（可复现）
 
@@ -40,6 +46,12 @@ curl -sSL https://docs.dify.ai/llms-full.txt -o /tmp/dify.txt
   命令自己取。
 - **有版本时效**：SDK 与服务端都会变。引用这里的结论时请连同版本号一起引用（例如"`anthropic` 2.10.0 的
   `MessageCreateParams` 没有 `temperature`"），不要写成"Anthropic 没有 temperature"。
+
+## 一个同名不同义的坑（摘自 `deep-agents.md`）
+
+`AGENTS.md` 在三处指三样东西：`deepagents` 的 `MemoryMiddleware` 把它当**记忆**注入 system prompt；pi 把它当
+**项目指令**；我们的 KB agent（`qa-agent/session_fs.py`）把它当**KB 规则**拷进会话工作区。
+搬运这个文件时，"它到底是被当成指令还是记忆"必须重新确认。
 
 ## 未纳入的
 
