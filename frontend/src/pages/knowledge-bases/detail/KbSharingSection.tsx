@@ -18,7 +18,7 @@ export function KbSharingSection() {
   return (
     <>
       <EntityViewHeader
-        title={t('detail.sharingTitle')}
+        title={t('detail.tabs.sharing')}
         subtitle={t('detail.sharingSubtitle')}
       />
       <EntityViewPanel>

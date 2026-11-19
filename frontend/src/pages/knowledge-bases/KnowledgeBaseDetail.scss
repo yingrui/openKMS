@@ -1,31 +1,10 @@
-@use '../../styles/design-system/mixins' as *;
 @use '../../styles/design-system/tokens' as ds;
 
-.kb-section h2 {
-  font-size: var(--text-base);
-  font-weight: 600;
-  margin: 0 0 var(--space-3) 0;
-}
-
-.kb-section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-}
-
-.kb-section-header-btns {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.kb-section-desc {
-  font-size: var(--text-md);
-  color: var(--color-text-secondary);
-  margin: 0 0 var(--space-4) 0;
-}
+/*
+ * The knowledge base detail shell adds no chrome of its own: identity and the rail come from
+ * `EntityViewShell`, each section opens with `EntityViewHeader` + `EntityViewPanel`, and the tables are the
+ * shared `.ds-table` inside `.ds-table-wrap--flush`. What is left is the content of those tables.
+ */
 
 .kb-empty-text {
   color: var(--color-text-muted);
@@ -33,146 +12,7 @@
   padding: var(--space-5) 0;
 }
 
-.kb-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  margin-top: var(--space-4);
-}
-
-.kb-pagination-info {
-  display: flex;
-  align-items: center;
-  gap: var(--space-5);
-  font-size: var(--text-md);
-  color: var(--color-text-muted);
-}
-
-.kb-pagination-info label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.kb-pagination-info select {
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-elevated);
-  font-size: var(--text-md);
-}
-
-.kb-pagination-btns {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.kb-pagination-nums {
-  font-size: var(--text-md);
-  color: var(--color-text-muted);
-  margin: 0 var(--space-1);
-}
-
-/* Buttons – match documents header actions */
-.kb-section-header .btn-sm {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) calc(var(--space-3) + var(--space-1) / 2);
-  font-size: var(--text-md);
-  font-weight: 500;
-  border-radius: var(--radius-md);
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-
-.kb-section-header .btn {
-  background: var(--color-bg-elevated);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-  cursor: pointer;
-}
-
-.kb-section-header .btn:hover {
-  background: var(--color-bg-muted);
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
-.kb-section-header .btn-secondary {
-  background: var(--color-bg-elevated);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-}
-
-.kb-section-header .btn-secondary:hover {
-  background: var(--color-bg-muted);
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
-.kb-section-header .btn-primary {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-  border: none;
-}
-
-.kb-section-header .btn-primary:hover {
-  background: var(--color-accent-hover);
-}
-
-/* Inline forms */
-.kb-inline-form input,
-.kb-inline-form textarea,
-.kb-inline-form select {
-  padding: var(--padding-compact-y) var(--padding-compact-x);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-elevated);
-  color: var(--color-text);
-  font-size: var(--text-base);
-}
-
-.kb-inline-form input:focus,
-.kb-inline-form textarea:focus,
-.kb-inline-form select:focus {
-  outline: none;
-  border-color: var(--color-accent);
-}
-
-/* Tables – match documents-table */
-.kb-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-base);
-}
-
-.kb-table th,
-.kb-table td {
-  padding: var(--space-3) var(--space-4);
-  text-align: left;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.kb-table th {
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  background: var(--color-bg-muted);
-  font-size: var(--text-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.kb-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.kb-table tbody tr:hover {
-  background: var(--color-bg-muted);
-}
-
+/* The row's subject: an icon and the name it links to. */
 .kb-table-name {
   display: flex;
   align-items: center;
@@ -191,41 +31,6 @@
 
 .kb-table-name a:hover {
   color: var(--color-accent);
-}
-
-.kb-table-actions {
-  width: 1%;
-  white-space: nowrap;
-}
-
-.kb-table-btns {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.kb-table-btns button,
-.kb-table-btns a {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--gap-compact);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-}
-
-.kb-table-btns button:hover,
-.kb-table-btns a:hover {
-  background: var(--color-bg-muted);
-  color: var(--color-text);
-}
-
-.kb-table-btns button[aria-label="Remove"]:hover {
-  color: var(--color-error);
 }
 
 .kb-table-question-col {

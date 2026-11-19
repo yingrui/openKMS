@@ -37,10 +37,8 @@
     },
     "expandTree": "Expand",
     "collapseTree": "Collapse",
-    "documentsTitle": "Documents ({{count}})",
     "addDocument": "Add document",
     "emptyDocuments": "No documents added yet.",
-    "wikiSpacesTitle": "Wiki spaces",
     "addWikiSpace": "Add wiki space",
     "emptyWikiSpaces": "No wiki spaces linked yet.",
     "colWikiSpace": "Wiki space",
@@ -57,7 +55,6 @@
     "actions": "Actions",
     "view": "View",
     "remove": "Remove",
-    "faqsTitle": "FAQs ({{count}})",
     "generateFaq": "Generate FAQ",
     "addFaq": "Add FAQ",
     "emptyFaqs": "No FAQs yet.",
@@ -65,7 +62,6 @@
     "colAnswer": "Answer",
     "colSource": "Source",
     "edit": "Edit",
-    "chunksTitle": "Chunks ({{count}})",
     "emptyChunks": "No chunks yet. Link documents and/or wiki spaces, then run indexing (openkms-cli or the background job) to generate chunks.",
     "colExcerpt": "Excerpt",
     "colTokens": "Tokens",
@@ -73,13 +69,8 @@
     "yes": "Yes",
     "no": "No",
     "dash": "—",
-    "paginationRange": "Showing {{start}}–{{end}} of {{total}}",
-    "pageSize": "Page size:",
-    "firstPage": "First page",
     "previous": "Previous",
     "next": "Next",
-    "lastPage": "Last page",
-    "pageOf": "Page {{current}} of {{total}}",
     "searchTitle": "Semantic Search",
     "searchDesc": "Search over indexed chunks (channel documents and linked wiki pages) and FAQs using vector similarity. Link wiki spaces on the Wiki spaces tab, run KB indexing, then search here.",
     "searchTypeAll": "All",
@@ -140,8 +131,6 @@
       }
     },
     "sources": "Sources:",
-    "settingsTitle": "Knowledge Base Settings",
-    "settingsGeneralLead": "Models, chunking, FAQ generation, and indexing for this knowledge base.",
     "sharingTitle": "Sharing",
     "agentSkillOntology": "Ontology",
     "agentSkillOntologyHelp": "Explore linked ontology groups and run graph queries",
@@ -288,6 +277,7 @@
     "faqsSubtitle": "Curated question/answer pairs the retriever can return as answers.",
     "chunksSubtitle": "What the index holds, one row per chunk, with the metadata it was built from.",
     "settingsSubtitle": "How this base is embedded, chunked and retrieved. The index run is here too.",
-    "sharingSubtitle": "Who may read this knowledge base. Access is granted per user or group."
+    "sharingSubtitle": "Who may read this knowledge base. Access is granted per user or group.",
+    "searchTypeAria": "Search scope"
   }
 }

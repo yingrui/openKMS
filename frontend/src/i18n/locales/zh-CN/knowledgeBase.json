@@ -37,10 +37,8 @@
     },
     "expandTree": "展开",
     "collapseTree": "收起",
-    "documentsTitle": "文档（{{count}}）",
     "addDocument": "添加文档",
     "emptyDocuments": "尚未添加文档。",
-    "wikiSpacesTitle": "Wiki 空间",
     "addWikiSpace": "添加 wiki 空间",
     "emptyWikiSpaces": "尚未关联 wiki 空间。",
     "colWikiSpace": "Wiki 空间",
@@ -57,7 +55,6 @@
     "actions": "操作",
     "view": "查看",
     "remove": "移除",
-    "faqsTitle": "常见问题（{{count}}）",
     "generateFaq": "生成常见问题",
     "addFaq": "添加常见问题",
     "emptyFaqs": "暂无常见问题。",
@@ -65,7 +62,6 @@
     "colAnswer": "回答",
     "colSource": "来源",
     "edit": "编辑",
-    "chunksTitle": "分块（{{count}}）",
     "emptyChunks": "暂无分块。请关联文档和/或在「Wiki 空间」中关联空间，然后运行索引（openkms-cli 或后台任务）以生成分块。",
     "colExcerpt": "摘要",
     "colTokens": "Token",
@@ -73,13 +69,8 @@
     "yes": "是",
     "no": "否",
     "dash": "—",
-    "paginationRange": "显示第 {{start}}–{{end}} 条，共 {{total}} 条",
-    "pageSize": "每页条数：",
-    "firstPage": "首页",
     "previous": "上一页",
     "next": "下一页",
-    "lastPage": "末页",
-    "pageOf": "第 {{current}} / {{total}} 页",
     "searchTitle": "语义搜索",
     "searchDesc": "使用向量相似度在已索引的分块（渠道文档与已关联的 wiki 页面）和常见问题中检索。请先在「Wiki 空间」中关联空间并运行知识库索引，再在此搜索。",
     "searchTypeAll": "全部",
@@ -140,8 +131,6 @@
       }
     },
     "sources": "来源：",
-    "settingsTitle": "知识库设置",
-    "settingsGeneralLead": "本知识库的模型、分块、常见问题生成与索引。",
     "sharingTitle": "共享",
     "agentSkillOntology": "本体",
     "agentSkillOntologyHelp": "浏览已关联的本体分组并运行图查询",
@@ -288,6 +277,7 @@
     "faqsSubtitle": "人工维护的问答对，检索命中时可直接作为答案返回。",
     "chunksSubtitle": "索引里实际存放的内容，每行一个分块及其来源元数据。",
     "settingsSubtitle": "本知识库的向量化、分块与检索方式；重建索引也在这里。",
-    "sharingSubtitle": "谁可以读取本知识库，按用户或分组授权。"
+    "sharingSubtitle": "谁可以读取本知识库，按用户或分组授权。",
+    "searchTypeAria": "检索范围"
   }
 }
