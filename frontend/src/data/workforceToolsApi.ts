@@ -47,6 +47,8 @@ export interface ToolCapability {
   requires: string[];
   /** Enabled when the agent enables nothing. */
   core: boolean;
+  /** False when the deployment cannot honour it (no web-search provider); the switch is disabled and says so. */
+  available: boolean;
   tools: RuntimeTool[];
   /** Limits that belong to this capability (only code execution has them today). */
   policy?: CodeExecutionPolicy;

@@ -71,6 +71,26 @@ def _fetch_agent_llm_defaults(cfg: Settings) -> dict[str, Any] | None:
         raise RuntimeError(f"Could not reach backend llm-defaults at {url!r}: {exc}") from exc
 
 
+def _post_json(url: str, *, what: str, payload: dict[str, Any]) -> dict[str, Any] | None:
+    """POST JSON to an internal endpoint with qa-agent service auth, refreshing once on expiry."""
+    try:
+        headers, basic = api_request_auth()
+    except ValueError as exc:
+        raise RuntimeError(f"qa-agent service auth failed: {exc}") from exc
+    auth = httpx.BasicAuth(basic[0], basic[1]) if basic else None
+    try:
+        r = httpx.post(url, json=payload, headers=headers, auth=auth, timeout=30.0)
+        if auth_expired_response(r) and not basic:
+            headers, basic = api_request_auth()
+            auth = httpx.BasicAuth(basic[0], basic[1]) if basic else None
+            r = httpx.post(url, json=payload, headers=headers, auth=auth, timeout=30.0)
+        r.raise_for_status()
+        return r.json()
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text[:300] if exc.response is not None else str(exc)
+        raise RuntimeError(f"Backend {what} returned HTTP {exc.response.status_code}: {detail}") from exc
+
+
 def _fetch_json(url: str, *, what: str) -> dict[str, Any] | None:
     """GET an internal endpoint with qa-agent service auth (Basic or Bearer), refreshing once on expiry."""
     try:

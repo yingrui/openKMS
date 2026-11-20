@@ -67,7 +67,7 @@ def test_no_capability_ships_prose_of_its_own():
 
 def test_every_capability_sits_in_a_known_group_and_says_what_it_is_for():
     groups = [group["id"] for group in CATALOG["groups"]]
-    assert groups == ["documents", "data", "files", "runtime"]
+    assert groups == ["retrieval", "documents", "data", "files", "runtime"]
     for capability in CATALOG["capabilities"]:
         assert capability["group"] in groups, capability["id"]
         assert capability.get("summary"), f"{capability['id']} has no summary"
@@ -84,13 +84,6 @@ def test_capabilities_are_ordered_by_group_then_core():
 def test_only_code_execution_carries_a_policy():
     with_policy = [c["id"] for c in CATALOG["capabilities"] if "policy" in c]
     assert with_policy == ["code_execution"]
-
-
-def test_the_environment_tools_carry_a_display_name():
-    """`Python` and `Shell` read better than `run_python`, but the callable name has to stay: it is what a tool
-    call and a trace contain."""
-    labels = {t["name"]: t.get("label") for t in _capability("code_execution")["tools"]}
-    assert labels == {"run_python": "Python", "run_command": "Shell"}
 
 
 def test_descriptions_are_not_shown_with_their_source_indentation():
@@ -152,3 +145,14 @@ def test_every_parameter_says_what_it_is():
         if not schema.get("description")
     ]
     assert missing == []
+
+
+def test_retrieval_is_two_capabilities_not_one():
+    """Searching our own documents and calling the internet are one kind of act and two different boundaries: a single
+    switch would let "search the knowledge base" also mean "reach the web"."""
+    ids = {capability["id"] for capability in CATALOG["capabilities"]}
+    assert {"knowledge_search", "web_search"} <= ids
+    for capability_id in ("knowledge_search", "web_search"):
+        capability = _capability(capability_id)
+        assert capability["group"] == "retrieval"
+        assert capability["core"] is False

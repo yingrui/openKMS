@@ -17,12 +17,14 @@ from __future__ import annotations
 from typing import Any
 
 from .skills import ALL_SKILL_IDS, CORE_SKILL_IDS, sandbox_tools
-from .skills import catalog_tools, ontology_tools, page_index_tools, workspace_tools
+from .skills import catalog_tools, kb_search_tools, ontology_tools, page_index_tools, web_search_tools
+from .skills import workspace_tools
 from .sandbox import ALLOWED_COMMANDS, DEFAULT_TIMEOUT_SECONDS
 
 #: Groups, by *what a capability touches*. The order is the order on screen: knowledge first (what an answer is made
 #: of), then the runtime that runs things. A new capability joins a group; it does not need a new layout.
 GROUPS: tuple[tuple[str, str], ...] = (
+    ("retrieval", "Retrieval"),
     ("documents", "Documents"),
     ("data", "Data and graph"),
     ("files", "Files"),
@@ -30,6 +32,7 @@ GROUPS: tuple[tuple[str, str], ...] = (
 )
 
 GROUPS_ZH: dict[str, str] = {
+    "retrieval": "检索",
     "documents": "文档",
     "data": "数据与图谱",
     "files": "文件",
@@ -38,6 +41,8 @@ GROUPS_ZH: dict[str, str] = {
 
 #: One line per capability: what it is for. Display metadata — it never enters a prompt, so it costs no tokens.
 CAPABILITY_SUMMARIES: dict[str, str] = {
+    "knowledge_search": "Search this knowledge base for passages the model has not been given yet.",
+    "web_search": "Search the public web. External to this knowledge base, so its results cite a URL, not a document.",
     "catalog": "Query metrics, fields and tables from the semantic models this agent may read.",
     "ontology": "Walk the object graph: coverage and relationship questions.",
     "page_index": "Read a document section by section when retrieved chunks are not enough.",
@@ -54,6 +59,8 @@ CAPABILITY_REQUIRES: dict[str, tuple[str, ...]] = {
 
 #: Display names. The id is the contract with `agent_skills`; the name is what a person reads.
 CAPABILITY_NAMES: dict[str, str] = {
+    "knowledge_search": "Knowledge search",
+    "web_search": "Web search",
     "ontology": "Ontology",
     "catalog": "Catalog",
     "page_index": "Page index",
@@ -77,16 +84,13 @@ TOOL_IDS: dict[str, str] = {
     "write_file": "file.write",
     "run_python": "exec.python",
     "run_command": "exec.shell",
-}
-
-#: The two environment tools read better by what they run than by their callable name. The callable name stays: it is
-#: what appears in a tool call and in a trace, so the label is a display name, not a rename.
-ENVIRONMENT_TOOL_LABELS: dict[str, str] = {
-    "run_python": "Python",
-    "run_command": "Shell",
+    "search_knowledge_base": "retrieval.knowledge",
+    "search_web": "retrieval.web",
 }
 
 CAPABILITY_TOOLS: dict[str, list[Any]] = {
+    "knowledge_search": kb_search_tools,
+    "web_search": web_search_tools,
     "ontology": ontology_tools,
     "catalog": catalog_tools,
     "page_index": page_index_tools,
@@ -96,6 +100,8 @@ CAPABILITY_TOOLS: dict[str, list[Any]] = {
 #: Which group each capability belongs to. `code_execution` is not an `agent_skills` id — it is enabled by
 #: `agent_config.sandbox.enabled` — but it is a capability all the same, so it is listed with the others.
 CAPABILITY_GROUPS: dict[str, str] = {
+    "knowledge_search": "retrieval",
+    "web_search": "retrieval",
     "catalog": "data",
     "ontology": "data",
     "page_index": "documents",
@@ -128,13 +134,11 @@ def _prose(text: str) -> str:
     )
 
 
-def _tool(tool: Any, label: str | None = None) -> dict[str, Any]:
+def _tool(tool: Any) -> dict[str, Any]:
     return {
         # The stable id a stored selection names; `name` is what the model calls.
         "id": TOOL_IDS.get(tool.name, tool.name),
         "name": tool.name,
-        # A display name when the callable name is not the clearest heading; the callable name stays in `name`.
-        **({"label": label} if label else {}),
         # The same words the model receives as the function description — one copy, so they cannot disagree.
         "description": _prose(tool.description or ""),
         "parameters": _parameters(tool),
@@ -158,6 +162,9 @@ def tool_catalog() -> dict[str, Any]:
                 "group": CAPABILITY_GROUPS.get(skill_id, "runtime"),
                 "summary": CAPABILITY_SUMMARIES.get(skill_id),
                 "requires": list(CAPABILITY_REQUIRES.get(skill_id, ())),
+                # Availability is decided by whoever owns the dependency: the backend knows whether a web-search
+                # connector exists, so it fills this in when it proxies the catalogue.
+                "available": True,
                 # Core = enabled when the agent enables nothing (same rule as `normalize_skill_ids`).
                 "core": skill_id in CORE_SKILL_IDS,
                 "tools": [_tool(tool) for tool in tools],
@@ -171,11 +178,10 @@ def tool_catalog() -> dict[str, Any]:
             "group": "runtime",
             "summary": CAPABILITY_SUMMARIES["code_execution"],
             "requires": [],
+            "available": True,
             # Off unless an agent turns it on, so not "core" — but it is an environment capability, not a skill id.
             "core": False,
-            "tools": [
-                _tool(tool, ENVIRONMENT_TOOL_LABELS.get(tool.name)) for tool in sandbox_tools
-            ],
+            "tools": [_tool(tool) for tool in sandbox_tools],
             # Policy belongs to the capability, not to the bottom of the page: a limit is part of what it can do.
             "policy": {
                 # Where a command runs and what it may write. The model's container is the conversation directory,

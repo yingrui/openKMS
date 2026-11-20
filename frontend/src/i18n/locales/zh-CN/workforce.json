@@ -421,5 +421,6 @@
   "toolsParamRequired": "必填",
   "toolsParamYes": "必填",
   "toolsNoParameters": "这个工具没有参数。",
-  "toolsParamDescription": "说明"
+  "toolsParamDescription": "说明",
+  "toolsNotConfigured": "这个部署还没有配置"
 }

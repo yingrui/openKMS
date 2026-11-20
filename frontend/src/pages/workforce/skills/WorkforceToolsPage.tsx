@@ -118,10 +118,9 @@ function ToolRow({
         <div className="workforce-tool-line__detail">
           <dl>
             {capability.tools.map((tool) => (
-              <div key={tool.name}>
+              <div key={tool.name} id={`tool-${tool.id.replace(/\./g, '-')}`}>
                 <dt>
-                  <span className="workforce-tool-line__tool-name">{tool.label ?? tool.name}</span>
-                  {tool.label ? <code>{tool.name}</code> : null}
+                  <span className="workforce-tool-line__tool-name">{tool.name}</span>
                 </dt>
                 <dd>{tool.description}</dd>
                 <dd>

@@ -463,11 +463,11 @@ def sources_from_catalog_tools(messages: list[Any]) -> list[SourceItem] | None:
     return out or None
 
 
-KB_SEARCH_TOOL_NAME = "search_knowledge_base_tool"
+KB_SEARCH_TOOL_NAME = "search_knowledge_base"
 
 
 def sources_from_kb_search_tools(messages: list[Any]) -> list[SourceItem] | None:
-    """Passages a `search_knowledge_base_tool` call returned — in `on_miss` mode, the answer's evidence.
+    """Passages a `search_knowledge_base` call returned — in `on_miss` mode, the answer's evidence.
 
     Read from the transcript rather than from a request-scoped accumulator: LangGraph runs a tool node in a copied context,
     so anything the tool writes to a context variable never comes back to the caller. The transcript does.

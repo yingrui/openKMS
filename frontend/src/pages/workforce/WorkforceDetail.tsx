@@ -53,7 +53,9 @@ export function WorkforceDetail() {
 
   const base = `/workforce/${agent.id}`;
   return (
-    <WorkforceDetailCtx.Provider value={{ agent, reload: load }}>
+    // `load` alone flips `loading` and unmounts the tab that asked to refresh, resetting every open row and typed
+    // field; the context promises the silent variant.
+    <WorkforceDetailCtx.Provider value={{ agent, reload: () => load(true) }}>
       <EntityViewShell
         backTo="/workforce"
         backLabel={t('backToList')}

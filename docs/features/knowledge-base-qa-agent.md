@@ -179,6 +179,11 @@ its arguments: `awk` (`system()`), `sed` (`e`), `find -exec`, `xargs`, `git` (`!
 adds it per agent; that is a decision, not a default. `find` is allowed for locating files only: `-exec`, `-execdir`,
 `-delete` and `-ok` are refused.
 
+`search_knowledge_base` is the retrieval tool (`qa_agent/skills/kb_search.py`): available whenever `retrieve =
+on_miss`, and also whenever an agent's tool ledger enables `knowledge_search`. `search_web`
+(`qa_agent/skills/web_search.py`) is the only tool that leaves the deployment; it needs a provider in this service's
+settings and reports "not configured" rather than an empty result when there is none.
+
 `run_python` needs no list — there is no command to allow — so the list guards the shell tool, and turning on `exec.python`
 is itself the decision to allow arbitrary code.
 

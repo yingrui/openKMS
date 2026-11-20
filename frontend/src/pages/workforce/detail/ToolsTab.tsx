@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { updateWorkforceAgent } from '../../../data/workforceApi';
-import { CheckRow, FormField } from '../../../styles/design-system';
+import { FormField } from '../../../styles/design-system';
 import {
   fetchToolCatalog,
   type CodeExecutionPolicy,
@@ -12,7 +12,6 @@ import {
 } from '../../../data/workforceToolsApi';
 import { useAsyncData } from '../../../hooks/useAsyncData';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
-import { ToolParameters } from '../ToolParameters';
 import { configFromDraft, draftFromConfig } from '../workforceConfigDraft';
 import { useWorkforceDetail } from './workforceDetailContext';
 
@@ -115,11 +114,6 @@ export function WorkforceToolsTab() {
       <EntityViewPanel
         title={t('toolsSwitchesTitle')}
         description={t('toolsSwitchesLead')}
-        actions={
-          <Link className="btn btn-link btn-sm" to="/workforce/tools">
-            {t('toolsSeeCatalogue')}
-          </Link>
-        }
       >
         {catalog.error ? <p className="ds-field__hint">{t('toolsCatalogFailed')}</p> : null}
         {catalog.loading ? <p className="ds-field__hint">{t('loading')}</p> : null}
@@ -213,24 +207,55 @@ function CapabilityRow({
 
   return (
     <div className={`workforce-tool-row${expanded ? ' is-open' : ''}`}>
-      <CheckRow
-        checked={enabled}
-        onChange={onToggle}
-        disabled={busy}
-        title={capability.name}
-        hint={capability.summary}
-      />
-      <button
-        type="button"
-        className="btn btn-link btn-sm workforce-tool-row__toggle"
-        aria-expanded={expanded}
+      {/* The row is the disclosure; the checkbox is the selection. Clicking the row must not tick anything. */}
+      <div
+        className="workforce-tool-row__head"
         onClick={onExpand}
+        onKeyDown={(event) => {
+          // Only the row itself toggles the disclosure: Space on the checkbox must tick it, not open the row.
+          if (event.target !== event.currentTarget) return;
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onExpand();
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
       >
-        {needsData
-          ? t('toolsRowNeeds', { count: capability.tools.length })
-          : t('toolsCount', { count: capability.tools.length })}
-        {expanded ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
-      </button>
+        {/* The checkbox owns selection; everything else in the row opens it. `CheckRow` wraps the title in a label,
+            which would make the name itself a selection target — exactly what this layout must avoid. */}
+        <input
+          type="checkbox"
+          className="ds-checkbox"
+          checked={enabled}
+          disabled={busy || !capability.available}
+          aria-label={capability.name}
+          onChange={() => onToggle()}
+          onClick={(event) => event.stopPropagation()}
+        />
+        <span className="workforce-tool-row__title">
+          {capability.name}
+          {capability.summary ? (
+            <span className="workforce-tool-row__hint">{capability.summary}</span>
+          ) : null}
+          {capability.available ? null : (
+            <span className="workforce-tool-row__unavailable">
+              {t('toolsNotConfigured')}
+            </span>
+          )}
+        </span>
+        <span className="workforce-tool-row__meta">
+          {needsData
+            ? t('toolsRowNeeds', { count: capability.tools.length })
+            : t('toolsCount', { count: capability.tools.length })}
+          {expanded ? (
+            <ChevronDown size={14} aria-hidden />
+          ) : (
+            <ChevronRight size={14} aria-hidden />
+          )}
+        </span>
+      </div>
 
       {expanded ? (
         <div className="workforce-tool-row__detail">
@@ -371,27 +396,32 @@ function ToolChecklist({
   busy: boolean;
   onToggle: (toolId: string, next: boolean) => void;
 }) {
-  const { t } = useTranslation('workforce');
-
   return (
     <section className="workforce-tool-resource workforce-tool-checklist">
       {capability.tools.map((tool) => (
-        <div key={tool.id}>
-          <CheckRow
-            checked={selected.includes(tool.id)}
-            onChange={(next) => onToggle(tool.id, next)}
-            disabled={busy}
-            title={`${tool.label ?? tool.name} · ${tool.id}`}
-            hint={tool.description}
-          />
-          <details className="workforce-tool-params-disclosure">
-            <summary>
-              {t('toolsParameters', {
-                count: Object.keys(tool.parameters?.properties ?? {}).length,
-              })}
-            </summary>
-            <ToolParameters parameters={tool.parameters} />
-          </details>
+        <div key={tool.id} className="workforce-tool-checklist__row">
+          <span
+            className="workforce-tool-checklist__check"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <input
+              type="checkbox"
+              className="ds-checkbox"
+              checked={selected.includes(tool.id)}
+              disabled={busy}
+              aria-label={tool.name}
+              onChange={(event) => onToggle(tool.id, event.target.checked)}
+            />
+          </span>
+          <span className="workforce-tool-checklist__body">
+            <Link
+              className="workforce-tool-checklist__name"
+              to={`/workforce/tools#tool-${tool.id.replace(/\./g, '-')}`}
+            >
+              {tool.name}
+            </Link>
+            <span className="ds-field__hint">{tool.description}</span>
+          </span>
         </div>
       ))}
     </section>

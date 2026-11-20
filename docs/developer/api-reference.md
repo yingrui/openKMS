@@ -56,6 +56,9 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | DELETE | `/internal-api/knowledge-bases/{id}/wiki-spaces/{wiki_space_id}/chunks` | **Internal service client only**; delete chunks for pages in one linked wiki space |
 | POST | `/internal-api/knowledge-bases/{id}/chunks/batch` | **Internal service client only**; bulk insert chunks with embeddings |
 | PUT | `/internal-api/knowledge-bases/{id}/faqs/batch-embeddings` | **Internal service client only**; bulk update FAQ embeddings |
+| GET | `/internal-api/skills/{registry}/{id}/{version}/prompt` | **Internal service client only**; `registry` is `agent` (Agent Project packages) or `workforce`; the `SKILL.md` text for **qa-agent** |
+| GET | `/internal-api/web-search/available` | **Internal service client only**; `{ available, connector }` — whether an enabled web-search connector exists |
+| POST | `/internal-api/web-search` | **Internal service client only**; body `{ query, limit }`; runs the enabled `zhipu_web_search` connector and returns `{ query, connector, results[{title,url,content,publisher,published_at}] }`; 404 when no connector, 502 when the provider refuses |
 | GET | `/api/public/system` | No auth: `{ "system_name" }` trimmed from DB (may be `""`; SPA shows `openKMS` when empty after load) |
 | GET | `/api/system/settings` | Authenticated `console:settings` (or admin): `system_name`, `default_timezone`, `api_base_url_note` |
 | PUT | `/api/system/settings` | Authenticated `console:settings` (or admin): update system-wide display settings |

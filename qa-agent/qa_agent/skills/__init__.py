@@ -12,6 +12,7 @@ from typing import Any
 from .catalog import catalog_tools
 from .ontology import ontology_tools
 from .kb_search import kb_search_tools
+from .web_search import web_search_tools
 from .sandbox import sandbox_tools
 from .page_index import page_index_tools
 from .workspace import workspace_tools
@@ -25,6 +26,7 @@ __all__ = [
     "catalog_tools",
     "page_index_tools",
     "kb_search_tools",
+    "web_search_tools",
     "sandbox_tools",
     "workspace_tools",
     "get_all_skill_tools",
@@ -34,6 +36,10 @@ __all__ = [
 CORE_SKILL_IDS: tuple[str, ...] = ("ontology", "catalog", "page_index")
 ALL_SKILL_IDS: tuple[str, ...] = (
     *CORE_SKILL_IDS,
+    #: Retrieval an agent may switch on. Neither is core: pre-retrieval already covers the corpus, and the web leaves
+    #: the tenant's boundary, so both are decisions.
+    "knowledge_search",
+    "web_search",
     #: Opt-in per KB: file tools over this conversation's own directory. Not core — a KB that does not want the agent
     #: touching files should not have to turn anything off.
     "workspace",
@@ -44,7 +50,9 @@ _SKILL_TOOLS: dict[str, list] = {
     "catalog": catalog_tools,
     "page_index": page_index_tools,
     "workspace": workspace_tools,
-    # Not selectable skills: `ToolNode` must be able to execute them, while binding is a config decision.
+    "knowledge_search": kb_search_tools,
+    "web_search": web_search_tools,
+    # Not a selectable capability: `run_python`/`run_command` live in the sandbox group, added by the ledger.
     "_kb_search": kb_search_tools,
     "_sandbox": sandbox_tools,
 }

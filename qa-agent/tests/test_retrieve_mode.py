@@ -52,14 +52,14 @@ class TestOnDemandEvidence:
         return ToolMessage(
             content=__import__("json").dumps({"query": "q", "passages": passages}, ensure_ascii=False),
             tool_call_id="c1",
-            name="search_knowledge_base_tool",
+            name="search_knowledge_base",
         )
 
     def test_the_search_tool_returns_readable_json(self):
         from unittest.mock import patch
 
         from qa_agent import request_context
-        from qa_agent.skills.kb_search import search_knowledge_base_tool
+        from qa_agent.skills.kb_search import search_knowledge_base
 
         hit = type("H", (), {"id": "c1", "source_type": "document", "source_name": "doc.md", "content": "passage",
                              "score": 0.8, "document_id": "d1", "wiki_page_id": None, "wiki_space_id": None,
@@ -67,7 +67,7 @@ class TestOnDemandEvidence:
         h = request_context.set_request_knowledge_base_id("kb1")
         try:
             with patch("qa_agent.skills.kb_search.retrieve", return_value=[hit]):
-                payload = __import__("json").loads(search_knowledge_base_tool.func(query="q", _config={}))
+                payload = __import__("json").loads(search_knowledge_base.func(query="q", _config={}))
         finally:
             request_context.reset_request_knowledge_base_id(h)
         assert payload["passages"][0]["source_name"] == "doc.md"

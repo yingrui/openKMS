@@ -343,8 +343,11 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
         max_tokens=state.get("max_tokens"),
     )
     tools = tools_for(state.get("agent_tools"))
-    if state.get("retrieve_mode") == "on_miss":
-        # No pre-retrieval in this mode, so the model needs a way to fetch context when it decides it is missing.
+    if state.get("retrieve_mode") == "on_miss" and not any(
+        tool.name == "search_knowledge_base" for tool in tools
+    ):
+        # `on_miss` means "no pre-retrieval": without this tool the model would have no way to fetch context at all.
+        # An agent whose ledger already enables `knowledge_search` has it, and adding it twice would bind it twice.
         from .skills.kb_search import kb_search_tools
 
         tools = [*tools, *kb_search_tools]

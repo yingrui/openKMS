@@ -67,7 +67,22 @@ async def tool_catalog(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
         logger.error("tool catalogue could not be read from %s: %s", url, e)
         raise HTTPException(status_code=502, detail="Could not read the tool catalogue") from e
 
+    payload = await _annotate_availability(db, payload)
     _cache = (time.monotonic(), payload)
+    return payload
+
+
+async def _annotate_availability(db: AsyncSession, payload: dict[str, Any]) -> dict[str, Any]:
+    """Mark capabilities this deployment cannot honour, so the screen can disable the switch instead of lying.
+
+    The qa-agent cannot see the connector table; a capability whose dependency lives here is decided here.
+    """
+    from app.services.data.connectors.web_search import web_search_connector
+
+    has_web_search = await web_search_connector(db) is not None
+    for capability in payload.get("capabilities") or []:
+        if capability.get("id") == "web_search":
+            capability["available"] = has_web_search
     return payload
 
 

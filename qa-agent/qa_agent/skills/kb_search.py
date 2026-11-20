@@ -1,15 +1,13 @@
-"""Retrieval as a tool, for the `on_miss` configuration.
+"""Retrieval of this knowledge base, as a tool the model may call.
 
-Today retrieval is a node that always runs before generation: the model is handed five chunks whether or not the question
-needs them, and pays for them in prompt tokens and latency. `orchestration.retrieve = on_miss` turns that around — no
-pre-retrieval, and this tool instead, so the model fetches context when it judges it missing.
-
-It is registered so `ToolNode` can execute it, but it is only **bound** to the model when the KB asks for `on_miss`.
+`orchestration.retrieve = always` pre-fetches five chunks before generation; `on_miss` skips that and gives the model this
+tool instead, so it fetches context when it judges it missing. The tool is also available whenever the agent's tool ledger
+enables the `knowledge_search` capability — searching again with a better query is a normal thing for a model to do.
 """
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Annotated, Any
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
@@ -23,7 +21,10 @@ ON_DEMAND_TOP_K = 8
 
 
 @tool
-def search_knowledge_base_tool(query: str, _config: RunnableConfig) -> str:
+def search_knowledge_base(
+    query: Annotated[str, "What to look for in this knowledge base"],
+    _config: RunnableConfig,
+) -> str:
     """Search this knowledge base for passages about `query`. Use when you need facts you do not already have —
     definitions, method descriptions, policy. Returns numbered passages with their source; quote from them and cite."""
     try:
@@ -64,4 +65,4 @@ def search_knowledge_base_tool(query: str, _config: RunnableConfig) -> str:
         return f"Error searching the knowledge base: {exc}"
 
 
-kb_search_tools: list[Any] = [search_knowledge_base_tool]
+kb_search_tools: list[Any] = [search_knowledge_base]

@@ -222,23 +222,76 @@
   }
 }
 
-.workforce-tool-row {
+.workforce-tool-row__head {
   display: grid;
-  /* The meta column is fixed: the rows are a list, and a list whose right edge moves with its text is hard to scan. */
-  grid-template-columns: minmax(0, 1fr) 200px;
+  grid-template-columns: auto minmax(0, 1fr) 200px;
+  align-items: start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--color-border-strong);
+  }
+
+  .ds-checkbox {
+    margin-top: 2px;
+  }
+}
+
+.workforce-tool-row.is-open > .workforce-tool-row__head {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-muted);
+}
+
+.workforce-tool-row__title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.workforce-tool-row__unavailable {
+  font-weight: 400;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.workforce-tool-row__hint {
+  font-weight: 400;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.workforce-tool-row__meta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  min-height: var(--tap-min);
+}
+
+.workforce-tool-row {
+  display: block;
+
+  & + & {
+    margin-top: var(--space-2);
+  }
   align-items: start;
   gap: 4px 12px;
   margin-bottom: 8px;
 }
 
-.workforce-tool-row__toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  white-space: nowrap;
-  justify-self: end;
-}
 
 .workforce-picker-count {
   margin-right: auto;
@@ -275,9 +328,8 @@
 }
 
 .workforce-tool-row__detail {
-  grid-column: 1 / -1;
-  margin: 4px 0 8px;
-  padding-left: 28px;
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-4);
   border-left: 2px solid var(--color-border);
 }
 
@@ -285,6 +337,47 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+.workforce-tool-checklist__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+}
+
+.workforce-tool-checklist__check {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap-min);
+}
+
+.workforce-tool-checklist__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.workforce-tool-checklist__name {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+}
+
+.workforce-tool-checklist__body code {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
 }
 
 .workforce-tool-resource {

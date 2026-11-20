@@ -423,5 +423,6 @@
   "toolsParamRequired": "Required",
   "toolsParamYes": "required",
   "toolsNoParameters": "This tool takes no arguments.",
-  "toolsParamDescription": "Description"
+  "toolsParamDescription": "Description",
+  "toolsNotConfigured": "Not configured for this deployment"
 }

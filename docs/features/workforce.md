@@ -208,6 +208,29 @@ The grouping is **data**, three fields per capability in `qa-agent/tool_catalog.
 decision about one agent and lives on that agent's Tools tab, which is also where the bound model or ontology group is
 chosen.
 
+## Retrieval is two capabilities, not one
+
+Two tools do the same kind of act — look something up — across two different boundaries, so they are two switches:
+
+| Capability | Tool | Reads | Default |
+|---|---|---|---|
+| Knowledge search | `search_knowledge_base` | this knowledge base, through the same retriever the answer node uses | off |
+| Web search | `search_web` | the public web, through a provider the deployment configures | off, and unavailable until configured |
+
+One switch for both would let "search our documents" also mean "reach the internet". The per-tool checkbox inside a
+capability is too easy to miss for a boundary that decides whether tenant data leaves the deployment.
+
+`orchestration.retrieve = on_miss` still implies `search_knowledge_base`: that mode exists to skip pre-retrieval, and a
+model with no way to fetch context is not a configuration, it is a bug. When the ledger already enables the capability,
+the tool is bound once, not twice.
+
+**Web search configuration** is deployment-level, because which search API an installation may use is a purchase and a
+jurisdiction: `OPENKMS_WEB_SEARCH_PROVIDER` (`tavily` or `searxng`), `OPENKMS_WEB_SEARCH_URL`, `OPENKMS_WEB_SEARCH_API_KEY`,
+and optionally `OPENKMS_WEB_SEARCH_DOMAINS` (hosts results may come from). With no provider the catalogue marks the
+capability "not configured" and its switch is disabled — a switch that cannot do anything is worse than no switch. Results
+carry a `note` telling the model they are external: citing a web page as if it were a document in the corpus is a false
+citation, and the model copies what it reads.
+
 ## Tools are described once
 
 A capability switch (`ontology`, `catalog`, `page_index`, `workspace`) exists to put that capability's tools into the
