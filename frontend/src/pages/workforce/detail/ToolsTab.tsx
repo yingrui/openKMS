@@ -34,6 +34,10 @@ export function WorkforceToolsTab() {
   // The capability list and every tool description come from the service that owns them, so the screen cannot
   // describe a tool the model no longer has — or miss one it gained.
   const catalog = useAsyncData(() => fetchToolCatalog(), []);
+  // The policy lives on the capability that enforces it, so this tab reads it from there rather than from a second copy.
+  const sandboxPolicy = catalog.data?.capabilities.find(
+    (capability) => capability.id === 'code_execution',
+  )?.policy;
   const [openCapability, setOpenCapability] = useState<string | null>(null);
   const [models, setModels] = useState<SemanticModelResponse[]>([]);
   const [groups, setGroups] = useState<OntologyGroupResponse[]>([]);
@@ -266,16 +270,16 @@ export function WorkforceToolsTab() {
           title={t('sandbox')}
           hint={t('sandboxHint')}
         />
-        {catalog.data ? (
+        {sandboxPolicy ? (
           <div className="workforce-tool-details">
             <p className="ds-field__hint">
               {t('sandboxPolicy', {
-                count: catalog.data.environment.policy.builtin_allow.length,
-                timeout: catalog.data.environment.policy.timeout_seconds,
+                count: sandboxPolicy.builtin_allow.length,
+                timeout: sandboxPolicy.timeout_seconds,
               })}
             </p>
             <ul>
-              {catalog.data.environment.policy.builtin_allow.map((command) => (
+              {sandboxPolicy.builtin_allow.map((command) => (
                 <li key={command}>
                   <code>{command}</code>
                 </li>

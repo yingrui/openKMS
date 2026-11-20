@@ -381,8 +381,13 @@
   "toolsCatalogFailed": "无法读取工具目录，稍后重试。",
   "sandboxPolicy": "内置白名单 {{count}} 个命令，单次执行上限 {{timeout}} 秒；下面追加的只能加，不能减。",
   "toolsCatalogTitle": "数字员工 – 工具",
-  "toolsCatalogLead": "运行时提供哪些工具、它们能做什么、命令执行允许什么。只读：给哪个数字员工开启，在那个员工的「工具」页决定。",
-  "toolsCatalogEnvLead": "代码执行的两个工具与它们的边界：在对话目录内运行，只有一个目录可写，只允许白名单里的命令。",
+  "toolsCatalogLead": "运行时提供什么、每条需要什么、边界在哪。只读：给哪个数字员工开启，在那个员工的「工具」页决定。",
   "toolsCatalogAllowSummary": "内置允许的命令（{{count}} 个），单次执行上限 {{timeout}} 秒",
-  "toolsCatalogAllowHint": "这些是所有数字员工共有的；某个员工自己追加的只能加，不能减。"
+  "toolsCatalogAllowHint": "这些是所有数字员工共有的；某个员工自己追加的只能加，不能减。",
+  "toolsCatalogCounts": "{{capabilities}} 项能力 · {{tools}} 个工具",
+  "toolsRequires": "需要 {{what}}",
+  "toolsRequires_semantic_model": "已绑定语义模型",
+  "toolsRequires_ontology_group": "已绑定本体分组",
+  "toolsHasPolicy": "有策略",
+  "toolsPolicyLine": "在{{cwd}}内运行，只有 {{writable}} 可写，单次上限 {{timeout}} 秒。"
 }

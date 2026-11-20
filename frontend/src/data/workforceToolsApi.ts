@@ -20,12 +20,27 @@ export interface RuntimeTool {
   parameters: ToolParameterSchema;
 }
 
+/** A capability grouped by what it touches. The order is the runtime's. */
+export interface ToolGroup {
+  id: string;
+  name: string;
+  name_zh?: string;
+}
+
 export interface ToolCapability {
   id: string;
   name: string;
+  /** One line on what the capability is for. Display only — never sent to the model. */
+  summary?: string;
+  /** Which group it belongs to (`knowledge`, `data`, `files`, `runtime`). */
+  group: string;
+  /** What must be bound on the agent before it can do anything (`semantic_model`, `ontology_group`). */
+  requires: string[];
   /** Enabled when the agent enables nothing. */
   core: boolean;
   tools: RuntimeTool[];
+  /** Limits that belong to this capability (only code execution has them today). */
+  policy?: CodeExecutionPolicy;
 }
 
 export interface CodeExecutionPolicy {
@@ -38,13 +53,8 @@ export interface CodeExecutionPolicy {
 }
 
 export interface ToolCatalog {
+  groups: ToolGroup[];
   capabilities: ToolCapability[];
-  environment: {
-    id: string;
-    name: string;
-    tools: RuntimeTool[];
-    policy: CodeExecutionPolicy;
-  };
 }
 
 export async function fetchToolCatalog(): Promise<ToolCatalog> {

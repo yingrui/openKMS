@@ -160,12 +160,17 @@ spacing come from the design system rather than from a page-local override — t
 own `font-size: 16px` and compact padding, which is why its buttons stood a few pixels taller than Workforce's. A reader who learned the agents list does not have to learn the skills list. Agent cards carry two shortcuts in
 their top row (open a chat, retire the agent); the destructive one is on the list, not on the detail page.
 
-**Tools** is the read-only one: capabilities, the tools each puts in the model's hands, and the code-execution policy
-including the command allowlist. The two environment tools read as **Python** and **Shell** — a display label from the
-catalogue, with the callable name (`run_python_tool`) beside it, because that is what a tool call and a trace contain.
-Their descriptions arrive with the docstring's wrapping joined: only paragraph breaks survive, so a paragraph does not
-carry a four-space gutter down its left side. Nothing on it can be edited — enabling a tool is a decision about one agent and
-lives on that agent's Tools tab — so it has no create action and no switches.
+**Tools** is the read-only one, and it is organised as a **catalogue**, not a grid of cards: capabilities are grouped
+by what they touch — Documents, Data and graph, Files, Runtime — and each row answers, in order, what the capability is
+for, which tools it brings, what it needs bound on the agent, and whether it carries limits. Opening a row shows the
+tool definitions the model receives; for code execution it also shows the policy (conversation directory, `out/`
+writable, 60s, and the built-in allowlist folded behind a summary).
+
+The grouping is **data**, three fields per capability in `qa-agent/tool_catalog.py` — `group`, one-line `summary`,
+`requires` — so a new capability joins a group and the page is unchanged; a capability with limits carries its own
+`policy` block instead of the page growing a section. Nothing on this page can be edited: enabling a capability is a
+decision about one agent and lives on that agent's Tools tab, which is also where the bound model or ontology group is
+chosen.
 
 ## Tools are described once
 
