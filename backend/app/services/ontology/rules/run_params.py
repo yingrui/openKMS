@@ -38,7 +38,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.metric_definition import MetricDefinition
 from app.models.metric_rule import MetricRule
 from app.models.semantic_model_field import SemanticModelField
-from app.services.ontology.rules.periods import LABEL_FORMATS, kind_of_dimension
+from app.services.ontology.rules.calendars import field_calendar
+from app.services.ontology.rules.periods import LABEL_FORMATS
 
 FILTER = "filter"
 KEY = "key"
@@ -155,9 +156,7 @@ async def describe_run_params(db: AsyncSession, rule: MetricRule) -> dict[str, A
         if field is not None and field.label:
             entry["label"] = field.label
         if str(argument.get("role") or "") == PERIOD_ROLE:
-            calendar = kind_of_dimension(
-                field.dimension if field else None, field.datatype if field else None
-            )
+            calendar = await field_calendar(db, field)
             entry.update(
                 {
                     "required": True,

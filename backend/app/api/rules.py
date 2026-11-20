@@ -34,7 +34,7 @@ from app.services.ontology.rules.events import (
     list_events,
     transition,
 )
-from app.services.ontology.rules.periods import kind_of_dimension
+from app.services.ontology.rules.calendars import field_calendar
 from app.services.ontology.rules.refs import referenced_metric_ids, sync_rule_refs
 from app.services.ontology.rules.run_params import describe_run_params
 from app.services.ontology.rules.relations import RelationError, validate_relation
@@ -325,7 +325,7 @@ async def _validate_run_params(
                     detail=f"'{argument.key}' must name the group field ('{group_field}').",
                 )
         if argument.role == "period":
-            calendar = kind_of_dimension(field.dimension, field.datatype)
+            calendar = await field_calendar(db, field)
             if calendar == "custom":
                 # The value names no interval, and an event without a period is not a period event.
                 raise HTTPException(

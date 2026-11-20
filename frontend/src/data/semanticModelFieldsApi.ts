@@ -63,11 +63,16 @@ export const TEMPORAL_DATATYPES = new Set([
 export const isTemporalDatatype = (datatype?: string | null): boolean =>
   TEMPORAL_DATATYPES.has((datatype ?? '').trim().toLowerCase());
 
-/** The effective Ossie time-dimension role: explicit `is_time`, else the `datatype` default. */
+/** The effective time-dimension role. The server resolves it from the field's override, the datatype and the
+ *  column's `time_format` — a `%G-W%V` text column is a week — so the client reads the answer instead of
+ *  re-deriving it (the datatype fallback is only for payloads that predate the field). */
 export const isTimeDimension = (field: {
   dimension: SemanticModelFieldDimension | null;
   datatype?: string | null;
+  /** Effective role, resolved by the server (override → column `time_format` → datatype). */
+  is_time?: boolean | null;
 }): boolean => {
+  if (typeof field.is_time === 'boolean') return field.is_time;
   const isTime = field.dimension?.is_time;
   return typeof isTime === 'boolean' ? isTime : isTemporalDatatype(field.datatype);
 };
@@ -82,7 +87,10 @@ export interface SemanticModelFieldResponse {
   datatype: string | null;
   label: string | null;
   description: string | null;
-  dimension: SemanticModelFieldDimension | null;
+  dimension: SemanticModelFieldDimension | null
+  /** Effective role, resolved by the server (override → column `time_format` → datatype). */
+  is_time?: boolean
+  period_kind?: string | null;
   ai_context: Record<string, unknown> | null;
   ordinal: number;
   created_at: string;
@@ -102,7 +110,10 @@ export interface SemanticModelFieldPayload {
   datatype: string | null;
   label: string | null;
   description: string | null;
-  dimension: SemanticModelFieldDimension | null;
+  dimension: SemanticModelFieldDimension | null
+  /** Effective role, resolved by the server (override → column `time_format` → datatype). */
+  is_time?: boolean
+  period_kind?: string | null;
   ai_context: Record<string, unknown> | null;
 }
 

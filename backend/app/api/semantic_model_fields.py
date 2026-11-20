@@ -14,6 +14,7 @@ from app.api.auth import require_permission
 from app.api.catalog_scoped import require_model_access
 from app.database import get_db
 from app.models.dataset import Dataset
+from app.models.dataset_column import DatasetColumn
 from app.models.semantic_model import SemanticModel
 from app.models.semantic_model_field import SemanticModelField
 from app.schemas.semantic_model_field import (
@@ -24,6 +25,7 @@ from app.schemas.semantic_model_field import (
 )
 from app.services.data.columns import ColumnError, pg_columns
 from app.services.data.expressions import normalize_expression
+from app.services.data.time_role import resolve_time_role
 from app.services.data.semantic_model_fields import (
     FieldError,
     column_expression,
@@ -66,6 +68,40 @@ async def _dataset_columns(db: AsyncSession, model_id: str, dataset_id: str) -> 
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+async def _with_time_roles(
+    db: AsyncSession, fields: list[SemanticModelField]
+) -> list[SemanticModelFieldResponse]:
+    """Attach the resolved time role to each field.
+
+    The role needs the column's `time_format`, which a field does not carry, so it is looked up here once for
+    the whole list instead of being re-derived by every client.
+    """
+    dataset_ids = {f.dataset_id for f in fields if f.dataset_id}
+    annotations: dict[tuple[str, str], str | None] = {}
+    if dataset_ids:
+        for dataset_id, column_name, time_format in (
+            await db.execute(
+                select(DatasetColumn.dataset_id, DatasetColumn.column_name, DatasetColumn.time_format).where(
+                    DatasetColumn.dataset_id.in_(dataset_ids)
+                )
+            )
+        ).all():
+            annotations[(dataset_id, column_name)] = time_format
+    out: list[SemanticModelFieldResponse] = []
+    for field in fields:
+        is_time, kind = resolve_time_role(
+            datatype=field.datatype,
+            time_format=annotations.get((field.dataset_id, field.column_name or "")),
+            field_dimension=field.dimension,
+        )
+        out.append(
+            SemanticModelFieldResponse.model_validate(field).model_copy(
+                update={"is_time": is_time, "period_kind": kind if is_time else None}
+            )
+        )
+    return out
+
+
 @router.get(
     "/{model_id}/fields",
     response_model=SemanticModelFieldListResponse,
@@ -76,7 +112,7 @@ async def list_model_fields(model_id: str, db: AsyncSession = Depends(get_db)):
     model = await _load_model(db, model_id)
     fields = await list_fields(db, model)
     return SemanticModelFieldListResponse(
-        items=[SemanticModelFieldResponse.model_validate(f) for f in fields], total=len(fields)
+        items=await _with_time_roles(db, fields), total=len(fields)
     )
 
 
@@ -143,7 +179,7 @@ async def create_model_field(
     db.add(field)
     await db.commit()
     await db.refresh(field)
-    return SemanticModelFieldResponse.model_validate(field)
+    return (await _with_time_roles(db, [field]))[0]
 
 
 @router.put(
@@ -187,7 +223,7 @@ async def update_model_field(
         setattr(field, key, value)
     await db.commit()
     await db.refresh(field)
-    return SemanticModelFieldResponse.model_validate(field)
+    return (await _with_time_roles(db, [field]))[0]
 
 
 @router.delete(

@@ -39,6 +39,7 @@ def test_time_dimension_is_qualified_and_date_truncated():
         name="trade_date",
         column_name="trade_date",
         expression=None,
+        datatype="Date",
         dimension={"is_time": True},
     )
     assert dimension_sql(f, "month") == 'date_trunc(\'month\', base."trade_date")'
@@ -49,6 +50,7 @@ def test_time_dimension_granularity_defaults_and_rejects_unknown():
         name="trade_date",
         column_name="trade_date",
         expression=None,
+        datatype="Date",
         dimension={"is_time": True},
     )
     assert dimension_sql(f, None) == 'date_trunc(\'day\', base."trade_date")'
@@ -111,15 +113,20 @@ def test_explicit_false_opts_a_temporal_column_out():
     assert dimension_sql(f, "day") == 'base."created_at"'
 
 
-def test_explicit_true_makes_a_non_temporal_column_a_time_dimension():
+def test_a_text_period_column_groups_as_written():
+    """`d_year` holds `2026`: the value already names its period, so there is nothing to truncate.
+
+    Truncation is a timestamp operation — `date_trunc('year', "d_year")` on a text column is a type error, and
+    the old behaviour (truncate whenever `is_time` is true) produced exactly that for a text calendar.
+    """
     f = _field(
         name="d_year",
         column_name="d_year",
         expression=None,
-        datatype="number",
+        datatype="String",
         dimension={"is_time": True},
     )
-    assert dimension_sql(f, "year") == 'date_trunc(\'year\', base."d_year")'
+    assert dimension_sql(f, "year") == 'base."d_year"'
 
 
 # --- spec conformance: DataType enum + the dimension having only `is_time` --------
@@ -400,6 +407,7 @@ def test_a_joined_time_dimension_truncates_its_own_alias():
         name="trade_date",
         column_name="trade_date",
         dataset_id="other",
+        datatype="Date",
         dimension={"is_time": True},
     )
     assert dimension_sql(joined, "month", "j1") == "date_trunc('month', j1.\"trade_date\")"

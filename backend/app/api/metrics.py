@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_permission
 from app.database import get_db
 from app.models.dataset import Dataset
+from app.models.dataset_column import DatasetColumn
 from app.models.metric_definition import MetricDefinition
 from app.models.metric_rule import MetricRule
 from app.models.metric_run import MetricRun
@@ -84,12 +85,22 @@ async def _validate_time_dimension(
             status_code=400,
             detail=f"time_dimension '{name}' is not a field of this metric's model.",
         )
-    if not resolve_is_time(field.dimension, field.datatype):
+    time_format = None
+    if field.column_name:
+        time_format = (
+            await db.execute(
+                select(DatasetColumn.time_format).where(
+                    DatasetColumn.dataset_id == field.dataset_id,
+                    DatasetColumn.column_name == field.column_name,
+                )
+            )
+        ).scalar_one_or_none()
+    if not resolve_is_time(field.dimension, field.datatype, time_format):
         raise HTTPException(
             status_code=400,
             detail=(
-                f"'{name}' is not a time dimension — mark the field `dimension.is_time` (or give it a "
-                "temporal datatype) before using it as the period column."
+                f"'{name}' is not a time dimension — give the column a `time_format` (a text column holding "
+                "periods), give the field a temporal datatype, or clear `dimension.is_time: false`."
             ),
         )
 

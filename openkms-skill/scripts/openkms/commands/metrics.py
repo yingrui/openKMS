@@ -49,6 +49,35 @@ def cmd_add(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def cmd_update(ns: argparse.Namespace) -> None:
+    body: dict[str, Any] = {}
+    for field, value in (
+        ("name", ns.name),
+        ("business_definition", ns.definition),
+        ("additivity", ns.additivity),
+        ("datatype", ns.datatype),
+        ("time_dimension", ns.time_dimension),
+        ("semantic_model_id", ns.semantic_model_id),
+        ("base_dataset_id", ns.base_dataset_id),
+    ):
+        if value is not None:
+            body[field] = value
+    if ns.expression:
+        body["expression"] = {"dialects": {"ANSI_SQL": ns.expression}}
+    if ns.filters is not None:
+        body["filters"] = json.loads(ns.filters)
+    if ns.joins is not None:
+        body["joins"] = [j.strip() for j in ns.joins.split(",") if j.strip()]
+    if not body:
+        raise SystemExit("Nothing to update — pass at least one field.")
+    path = f"/api/metrics/{ns.metric_id}"
+    confirm_or_abort("update metric", "PUT", path, body, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.put(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
 def cmd_compute(ns: argparse.Namespace) -> None:
     with client() as s:
         r = s.get(f"/api/metrics/{ns.metric_id}/compute")
@@ -113,6 +142,21 @@ def add_subparser(sub) -> None:
     ma.add_argument("--ai-instructions", default=None, dest="ai_instructions")
     add_write_flags(ma)
     ma.set_defaults(fn=cmd_add)
+
+    mu = sp.add_parser("update", help="Update a metric (partial)")
+    mu.add_argument("--metric-id", required=True)
+    mu.add_argument("--name", default=None)
+    mu.add_argument("--semantic-model-id", default=None)
+    mu.add_argument("--base-dataset-id", default=None)
+    mu.add_argument("--expression", default=None)
+    mu.add_argument("--additivity", default=None, choices=("additive", "non_additive"))
+    mu.add_argument("--datatype", default=None)
+    mu.add_argument("--time-dimension", default=None, help="model field that carries the period ('' clears it)")
+    mu.add_argument("--filters", default=None, help="JSON array ({column, op, value}); [] clears")
+    mu.add_argument("--joins", default=None, help="comma-separated relationship ids; empty string clears")
+    mu.add_argument("--definition", default=None)
+    add_write_flags(mu)
+    mu.set_defaults(fn=cmd_update)
 
     mc = sp.add_parser("compute", help="Compute a metric (read-only)")
     mc.add_argument("--metric-id", required=True)

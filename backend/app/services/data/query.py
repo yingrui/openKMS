@@ -39,7 +39,7 @@ from app.services.data.entity_scope import (
     EntityScopeError,
     compile_entity_scope,
 )
-from app.services.data.semantic_model_fields import resolve_is_time
+from app.services.data.semantic_model_fields import is_temporal_datatype, resolve_is_time
 from app.services.data.query_errors import (
     DATA,
     DEFINITION,
@@ -112,7 +112,9 @@ def dimension_sql(
 ) -> str:
     """A field used as a group-by dimension; a time dimension is truncated to its grain."""
     expr = field_sql(field, alias)
-    if not resolve_is_time(field.dimension, field.datatype):
+    # Truncation is a timestamp operation. A text period column (`2026-W47`) already holds exactly one
+    # period, so `date_trunc` on it is both meaningless and a SQL type error.
+    if not (resolve_is_time(field.dimension, field.datatype) and is_temporal_datatype(field.datatype)):
         return expr
     grain = granularity if granularity in GRANULARITIES else "day"
     return f"date_trunc('{grain}', {expr})"

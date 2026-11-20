@@ -42,7 +42,8 @@ from app.services.ontology.rules.relations import (
     weight_of,
     within_tolerance,
 )
-from app.services.ontology.rules.periods import PeriodError, kind_of_dimension, parse_period
+from app.services.ontology.rules.calendars import field_calendar
+from app.services.ontology.rules.periods import PeriodError, parse_period
 from app.services.ontology.rules.run_params import (
     period_argument,
     period_value,
@@ -177,7 +178,7 @@ async def _resolve_period(
     ).scalars().first()
     if field is None:
         return None, f"'{field_name}' is not a field of this model"
-    kind = kind_of_dimension(field.dimension, field.datatype)
+    kind = await field_calendar(db, field)
     if kind == "custom":
         return None, (
             f"'{field_name}' has a custom calendar: its value does not name an interval, so it cannot be a "

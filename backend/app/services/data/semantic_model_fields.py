@@ -18,6 +18,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.semantic_model import SemanticModel
+from app.services.data.time_role import is_temporal_datatype as _is_temporal
+from app.services.data.time_role import resolve_time_role
 from app.models.semantic_model_field import SemanticModelField
 from app.services.data.expressions import (
     ANSI,
@@ -83,7 +85,6 @@ async def list_fields(db: AsyncSession, model: SemanticModel) -> list[SemanticMo
     return list(rows)
 
 
-_TEMPORAL_DATATYPES = {"date", "time", "datetime", "datetimetz", "timestamp", "timestamptz"}
 # The spec's `DataType` enum — the only values a field's/metric's `datatype` may take.
 OSSIE_DATATYPES = (
     "String",
@@ -108,17 +109,24 @@ def validate_datatype(datatype: str | None) -> None:
 
 
 def is_temporal_datatype(datatype: str | None) -> bool:
-    return (datatype or "").strip().lower() in _TEMPORAL_DATATYPES
+    """Whether the datatype itself is a point in time — one input to the role, not the answer."""
+    return _is_temporal(datatype)
 
 
-def resolve_is_time(dimension: dict | None, datatype: str | None) -> bool:
-    """The effective Ossie time-dimension role (spec §DataType vs `is_time`): an
-    explicit `dimension.is_time` always wins; otherwise it defaults to `true` for a
-    temporal `datatype` (`Date`/`Time`/`DateTime`/`DateTimeTz`) and `false` otherwise —
-    so a temporal column is opted *out* with `{"is_time": false}`."""
-    if isinstance(dimension, dict) and isinstance(dimension.get("is_time"), bool):
-        return bool(dimension["is_time"])
-    return is_temporal_datatype(datatype)
+def resolve_is_time(
+    dimension: dict | None, datatype: str | None, time_format: str | None = None
+) -> bool:
+    """The effective time-dimension role, from **three** inputs: the field's override, the datatype and the
+    column's `time_format`.
+
+    This is a delegate on purpose. The role used to be decided here from the datatype alone, while the
+    dataset's columns were decided from `time_format` too — so a text column holding weeks (`%G-W%V`) was a
+    time dimension on the columns page and not one here, and a metric could not name it as its period.
+    One question, one implementation (`services/data/time_role.py`).
+    """
+    return resolve_time_role(
+        datatype=datatype, time_format=time_format, field_dimension=dimension
+    )[0]
 
 
 #: What kind of period instance a time dimension holds. `custom` is a calendar we do not interpret: the

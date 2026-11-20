@@ -91,7 +91,8 @@ class _Rows:
 
 def test_a_custom_calendar_cannot_label_a_run():
     """Its value does not name an interval, so an "event period" built from it would be a lie."""
-    field = SimpleNamespace(dimension=None, datatype="String")
+    # A text field with no column and no `time_format` anywhere: nothing names an interval.
+    field = SimpleNamespace(dimension=None, datatype="String", column_name=None, dataset_id="d")
     params = RuleRunParams(
         arguments=[RuleArgument(key="cycle", kind="filter", field="cycle", role="period")]
     )

@@ -61,21 +61,22 @@ class PeriodError(ValueError):
     """The label is not a period of this calendar."""
 
 
-def kind_of_dimension(dimension: dict | None, datatype: str | None) -> str:
+def kind_of_dimension(
+    dimension: dict | None, datatype: str | None, time_format: str | None = None
+) -> str:
     """The calendar a time dimension holds, derived from its value's format.
 
-    The format is the only source: `period_kind` used to be stored beside it, and the two could disagree. A
-    field that predates `time_format` is read through its old `period_kind` once, by turning it into the format
-    it implies.
+    The format is the only source: `period_kind` used to be stored beside it, and the two could disagree.
+    The format normally lives on the **column** (`dataset_columns.time_format`), so callers that can read it
+    must pass it — a text column holding `%G-W%V` is a week, not a custom cycle. A field that predates
+    `time_format` anywhere is read through its old `period_kind` once, by turning it into the format it implies.
     """
     declared = (dimension or {}).get("period_kind")
-    time_format = (dimension or {}).get("time_format") or _FORMAT_FOR_KIND.get(str(declared or ""))
-    is_time, kind = resolve_time_role(
-        datatype=datatype, time_format=time_format, field_dimension=dimension
-    )
+    fmt = time_format or (dimension or {}).get("time_format") or _FORMAT_FOR_KIND.get(str(declared or ""))
+    is_time, kind = resolve_time_role(datatype=datatype, time_format=fmt, field_dimension=dimension)
     if not is_time:
         return "custom"
-    if isinstance(declared, str) and declared in PERIOD_KINDS and not (dimension or {}).get("time_format"):
+    if isinstance(declared, str) and declared in PERIOD_KINDS and not fmt:
         return declared
     return kind
 

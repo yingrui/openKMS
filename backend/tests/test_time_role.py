@@ -46,3 +46,26 @@ def test_legacy_period_kind_still_reads():
     assert kind_of_dimension({"period_kind": "month"}, "String") == "month"
     assert kind_of_dimension(None, "Date") == "day"
     assert kind_of_dimension(None, "String") == "custom"
+
+
+def test_the_field_role_agrees_with_the_column_for_a_text_period():
+    """A text column with `%G-W%V` is a week, whether you ask the columns page or the field API."""
+    from app.services.data.semantic_model_fields import resolve_is_time
+    from app.services.data.time_role import resolve_time_role
+
+    assert resolve_is_time(None, "String", "%G-W%V") is True
+    assert resolve_time_role(datatype="String", time_format="%G-W%V") == (True, "week")
+
+
+def test_the_field_override_still_wins_over_the_column():
+    from app.services.data.semantic_model_fields import resolve_is_time
+
+    assert resolve_is_time({"is_time": False}, "String", "%G-W%V") is False
+    assert resolve_is_time({"is_time": False}, "Date", None) is False
+
+
+def test_a_temporal_datatype_needs_no_format():
+    from app.services.data.semantic_model_fields import resolve_is_time
+
+    assert resolve_is_time(None, "Date", None) is True
+    assert resolve_is_time(None, "String", None) is False
