@@ -45,7 +45,8 @@ do. The three kinds — corpora, semantic models, ontology groups — share one 
 one question ("what does it know?") answered with one action ("bind"). They are all knowledge in different shapes:
 documents, metrics, and the object graph. A capability that reads one says so and links there (`Needs a semantic model
 (1 bound)`), so the dependency is visible without a second copy of the list and a binding does not disappear when a
-capability is switched off. Retrieval depth is neither: it belongs to the corpus, so the knowledge tab links to the
+capability is switched off. Each section adds through a picker — search, multi-select, one submit — instead of a
+dropdown plus a button, because choosing and confirming are one decision, not two. Retrieval depth is neither: it belongs to the corpus, so the knowledge tab links to the
 source's settings rather than offering a second place to set `top_k`. The same rule reaches the API: `agent_config_payload` strips
 `retrieval` from anything the agent saves. The tab list is one module (`pages/workforce/detail/tabs.ts`) that both the route table and the sidebar rail read, so a tab cannot exist in one place and not the other. **Archive**, not delete — bindings and the audit trail keep pointing at a row that exists |
 | Ownership | ✅ | An agent is visible to its creator and to admins, and to nobody else. `owner_sub` is the ceiling on what it may read; there is no sharing surface yet |

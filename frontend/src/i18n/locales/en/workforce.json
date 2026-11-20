@@ -114,8 +114,7 @@
   "knowledgeTitle": "Knowledge bases",
   "knowledgeLead": "The corpus an answer is drawn from. Each question names one source.",
   "noKnowledge": "No knowledge source bound yet.",
-  "addKnowledge": "Bind a knowledge source",
-  "bind": "Bind",
+  "addKnowledge": "Add knowledge base",
   "unbind": "Unbind",
   "bindingFailed": "Could not update the bindings.",
   "extSource": "Knowledge source",
@@ -124,8 +123,8 @@
   "dataLead": "The Catalog models and ontology groups this agent may consult when it answers with numbers or objects.",
   "noModels": "No model bound.",
   "noGroups": "No ontology group bound.",
-  "addModel": "Bind a model",
-  "addGroup": "Bind a group",
+  "addModel": "Add model",
+  "addGroup": "Add group",
   "modelBound": "Binding a model lets the agent use that model's metrics as evidence.",
   "groupBound": "Binding a group lets the agent read those object types and links.",
   "noCredentials": "No credential yet.",
@@ -410,5 +409,11 @@
   "toolsBindResource": "Bind one",
   "navKnowledge": "Knowledge",
   "knowledgeTabTitle": "Knowledge",
-  "knowledgeTabLead": "What this agent may read: the corpus it answers from, the metrics it may query, and the graph it may walk. All three are knowledge, in three shapes."
+  "knowledgeTabLead": "What this agent may read: the corpus it answers from, the metrics it may query, and the graph it may walk. All three are knowledge, in three shapes.",
+  "pickerSearch": "Search by name",
+  "pickerSelected": "{{count}} selected",
+  "pickerAdd": "Add {{count}}",
+  "pickerNothingToAdd": "Nothing left to add.",
+  "modelAccess_public": "public",
+  "modelAccess_restricted": "restricted"
 }

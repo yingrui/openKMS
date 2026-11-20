@@ -6,11 +6,14 @@
 
 .workforce-bindings {
   list-style: none;
-  margin: 0 0 var(--space-4);
+  margin: 0 0 var(--space-2);
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  /* A column of names, not a wall of bars: the row stops where its content stops, and the "add" control below shares
+     the same width so the three sections read as one shape. */
+  max-width: 560px;
 
   li {
     display: flex;
@@ -237,6 +240,12 @@
   justify-self: end;
 }
 
+.workforce-picker-count {
+  margin-right: auto;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
 .workforce-tool-needs {
   display: flex;
   align-items: center;
@@ -327,5 +336,32 @@
     border-radius: var(--radius-sm);
     background: var(--color-bg-elevated);
     color: var(--color-text-secondary);
+  }
+}
+
+/* The add affordance belongs to the collection: it sits where the list ends, at the same width. */
+.workforce-resource-add {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 560px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-height: var(--tap-min);
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
 }

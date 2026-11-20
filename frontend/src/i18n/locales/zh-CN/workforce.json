@@ -114,8 +114,7 @@
   "knowledgeTitle": "知识库",
   "knowledgeLead": "回答所依据的语料。每个问题指定一个来源。",
   "noKnowledge": "还没有绑定知识源。",
-  "addKnowledge": "绑定知识源",
-  "bind": "绑定",
+  "addKnowledge": "添加知识库",
   "unbind": "解绑",
   "bindingFailed": "更新绑定失败。",
   "extSource": "知识源",
@@ -124,8 +123,8 @@
   "dataLead": "回答涉及数字或对象时，它可以查阅的模型与本体分组。",
   "noModels": "还没有绑定模型。",
   "noGroups": "还没有绑定本体分组。",
-  "addModel": "绑定模型",
-  "addGroup": "绑定分组",
+  "addModel": "添加模型",
+  "addGroup": "添加分组",
   "modelBound": "绑定后，可使用该模型中的指标作为回答依据。",
   "groupBound": "绑定后，可读取该分组中的对象类型与关系。",
   "noCredentials": "还没有凭证。",
@@ -409,5 +408,11 @@
   "toolsBindResource": "去绑定",
   "navKnowledge": "知识",
   "knowledgeTabTitle": "知识",
-  "knowledgeTabLead": "它能读什么：答题依据的语料、可以查的指标、可以走的图谱。三者都是知识，只是形态不同。"
+  "knowledgeTabLead": "它能读什么：答题依据的语料、可以查的指标、可以走的图谱。三者都是知识，只是形态不同。",
+  "pickerSearch": "按名称搜索",
+  "pickerSelected": "已选 {{count}} 个",
+  "pickerAdd": "添加 {{count}} 个",
+  "pickerNothingToAdd": "没有可添加的了。",
+  "modelAccess_public": "公开",
+  "modelAccess_restricted": "受限"
 }

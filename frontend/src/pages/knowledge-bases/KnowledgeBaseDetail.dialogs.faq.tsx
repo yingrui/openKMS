@@ -1,7 +1,7 @@
 import { Check, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Dialog } from '../../styles/design-system';
-import { PickerList, PickerRow, PickerState } from '../../components/picker/PickerDialog';
+import { PickerCheck, PickerList, PickerRow, PickerState } from '../../components/picker/PickerDialog';
 import type { ApiModelResponse } from '../../data/modelsApi';
 import type {
   FAQGenerateResult,
@@ -348,7 +348,7 @@ export function KbGenerateFaqDialog({
                             selected ? (
                               <Check size={16} aria-hidden />
                             ) : (
-                              <span className="picker__check" />
+                              <PickerCheck selected={false} />
                             )
                           }
                           selected={selected}

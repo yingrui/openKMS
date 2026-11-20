@@ -1,4 +1,4 @@
-import { Check, Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ChannelNode } from '../../data/channelsApi';
 import type { DocumentListItemResponse } from '../../data/documentsApi';
@@ -7,6 +7,7 @@ import type { KBWikiSpaceResponse } from '../../data/knowledgeBasesApi';
 import { DocPickerChannelTree } from './KnowledgeBaseDetail.docPickerTree';
 import { SearchField } from '../../styles/design-system';
 import {
+  PickerCheck,
   PickerDialog,
   PickerList,
   PickerPagination,
@@ -163,7 +164,7 @@ export function KbDocPickerDialog({
                     name={doc.name}
                     meta={`${doc.file_type} · ${doc.status || 'completed'}`}
                     leading={
-                      added || selected ? <Check size={16} aria-hidden /> : <span className="picker__check" />
+                      <PickerCheck selected={added || selected} />
                     }
                     trailing={added ? t('detail.addedBadge') : undefined}
                     selected={selected}

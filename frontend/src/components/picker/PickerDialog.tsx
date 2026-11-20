@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import { Dialog } from '../../styles/design-system';
 import './Picker.scss';
 
@@ -100,6 +100,16 @@ export function PickerRow({
       </span>
       {trailing ? <span className="picker__row-trailing">{trailing}</span> : null}
     </button>
+  );
+}
+
+/** The selection mark: a check when picked, an empty box when not. Callers used to write this class themselves, which
+ *  made one picker's private class look like a shared one. */
+export function PickerCheck({ selected }: { selected: boolean }) {
+  return selected ? (
+    <Check size={16} aria-hidden />
+  ) : (
+    <span className="picker__check" aria-hidden />
   );
 }
 
