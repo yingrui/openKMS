@@ -6,7 +6,7 @@
     "skills": "技能"
   },
   "skills": {
-    "pageTitle": "技能",
+    "pageTitle": "智能体项目 – 技能",
     "upload": "上传技能",
     "uploadHeading": "上传技能包",
     "dialogUpload": "上传技能包",
@@ -64,12 +64,12 @@
     "deleteSkillConfirm": "删除技能「{{name}}」（{{skillId}}）及所有版本？此操作不可撤销。",
     "deleteSkillSuccess": "技能已删除",
     "deleteSkillError": "无法删除技能",
-    "deleteSkill": "删除技能"
+    "deleteSkill": "删除技能",
+    "pageLead": "在这里上传技能包；在某个项目的设置里把它装到那个项目。"
   },
   "list": {
     "title": "智能体项目",
-    "pageTitle": "智能体项目",
-    "settings": "设置",
+    "pageTitle": "智能体项目 – 项目",
     "subtitle": "创建项目工作区，与可读写文件、检索知识、运行代码的智能体对话。",
     "namePlaceholder": "项目名称",
     "descPlaceholder": "项目用途（可选）",
@@ -103,7 +103,8 @@
     "homeDefaultSaved": "已将 {{name}} 设为首页默认",
     "homeDefaultFailed": "无法设置首页默认项目",
     "chooseHomeDefaultHint": "选一个项目，点卡片上的房子图标把它设为首页默认。",
-    "dismissHint": "关闭"
+    "dismissHint": "关闭",
+    "pageLead": "每个项目是一个工作区：智能体在里面和你一起干活，指令、已装技能与文件都留在项目里。"
   },
   "sessions": {
     "back": "全部智能体项目",

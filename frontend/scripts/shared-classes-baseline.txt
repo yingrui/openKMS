@@ -3,7 +3,6 @@
 agents-chat-msg	components/agents,pages/agents
 agents-chat-msg-body	components/agents,pages/agents
 agents-chat-msg-user-col	components/agents,pages/agents
-agents-list	components/agents,pages/agents
 agents-workspace-body	components/agents,pages/agents
 channel-browse-back	pages/articles,pages/documents,pages/media
 channel-item	pages/articles,pages/documents

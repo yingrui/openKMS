@@ -13,27 +13,8 @@
   width: 100%;
 }
 
-.agents-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  margin-bottom: var(--space-8);
-}
 
-.agents-toolbar h1 {
-  font-size: var(--text-2xl);
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  margin: 0;
-}
 
-.agents-toolbar-actions {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-2) + var(--space-1) / 2);
-}
 
 .agents-home-default-hint {
   display: flex;
@@ -68,19 +49,7 @@
   }
 }
 
-.agents-toolbar-actions .btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--padding-compact-y) var(--space-4);
-  font-size: var(--text-base);
-  font-weight: 500;
-  border-radius: var(--radius-md);
-}
 
-.agents-settings-btn {
-  text-decoration: none;
-}
 
 .agents-loading {
   color: var(--color-text-secondary);
@@ -316,14 +285,6 @@
 }
 
 @include max-width(ds.$bp-md-min) {
-  .agents-toolbar {
-    align-items: flex-start;
-  }
-
-  .agents-toolbar-actions .btn {
-    min-height: var(--tap-min);
-  }
-
   .agents-grid {
     grid-template-columns: 1fr;
     gap: var(--space-2);

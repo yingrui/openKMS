@@ -6,13 +6,13 @@
     "skills": "Skills"
   },
   "skills": {
-    "pageTitle": "Skills",
+    "pageTitle": "Agent Projects – Skills",
     "upload": "Upload skill",
     "uploadHeading": "Upload skill package",
     "dialogUpload": "Upload skill package",
     "emptyTitle": "Add your first skill",
     "emptyLead": "Upload a skill package with SKILL.md at the root. Install skills into projects from project settings.",
-    "versionCount": "{{count}} versions",
+    "versionCount": "{{count}} version",
     "manage": "Manage versions",
     "settings": {
       "title": "Skill settings",
@@ -64,12 +64,13 @@
     "deleteSkillConfirm": "Delete skill \"{{name}}\" ({{skillId}}) and all versions? This cannot be undone.",
     "deleteSkillSuccess": "Skill deleted",
     "deleteSkillError": "Could not delete skill",
-    "deleteSkill": "Delete skill"
+    "deleteSkill": "Delete skill",
+    "versionCount_other": "{{count}} versions",
+    "pageLead": "Skill packages uploaded here; install them into a project from that project’s settings."
   },
   "list": {
     "title": "Agent Projects",
-    "pageTitle": "Agent Projects",
-    "settings": "Settings",
+    "pageTitle": "Agent Projects – Projects",
     "subtitle": "Create a project workspace and chat with an agent that can read and update files, research your knowledge, and run code.",
     "namePlaceholder": "Project name",
     "descPlaceholder": "What is this project for? (optional)",
@@ -103,7 +104,8 @@
     "homeDefaultSaved": "{{name}} is now your Home default",
     "homeDefaultFailed": "Could not set Home default project",
     "chooseHomeDefaultHint": "Pick a project and use the home button on its card to make it your Home default.",
-    "dismissHint": "Dismiss"
+    "dismissHint": "Dismiss",
+    "pageLead": "Each project is a workspace where an agent works with you: instructions, installed skills and files kept per project."
   },
   "sessions": {
     "back": "All agent projects",

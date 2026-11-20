@@ -28,6 +28,7 @@ import {
   useStoredViewMode,
   type CardListViewMode,
 } from '../../hooks/useStoredViewMode';
+import './workforceList.scss';
 
 const VIEW_STORAGE_KEY = 'workforce-list-view';
 
@@ -153,8 +154,8 @@ export function WorkforceList() {
           </button>
         </>
       }
+      tabs={<WorkforceAreaNav />}
     >
-      <WorkforceAreaNav />
       {loading && <p className="ds-resource-list-loading">{t('loading')}</p>}
 
       {!loading && total === 0 && (
@@ -187,6 +188,25 @@ export function WorkforceList() {
                   <div className="ds-resource-list-icon">
                     <Users size={28} strokeWidth={1.5} />
                   </div>
+                  {/* The card's two shortcuts: open a chat, or retire the agent. Visible without hovering — a
+                      control nobody finds is not an affordance. */}
+                  <div className="workforce-card__actions">
+                    <Link
+                      to={`/workforce/${agent.id}/chat`}
+                      className="ds-table-row-action"
+                      title={t('chatOpen')}
+                      aria-label={t('chatOpen')}
+                    >
+                      <MessageSquare size={16} aria-hidden />
+                    </Link>
+                    <TableRowActionButton
+                      variant="danger"
+                      title={t('archiveAgent')}
+                      aria-label={t('archiveAgent')}
+                      icon={<Trash2 size={16} />}
+                      onClick={() => void remove(agent)}
+                    />
+                  </div>
                 </div>
                 <h3>{agent.name}</h3>
                 <p className="ds-resource-list-desc" title={agent.description?.trim() || undefined}>
@@ -198,20 +218,6 @@ export function WorkforceList() {
                   <span>{t('metaCredentials', { count: agent.credential_count })}</span>
                 </div>
               </Link>
-              <div className="workforce-card__actions">
-                <Link
-                  to={`/workforce/${agent.id}/chat`}
-                  className="workforce-card__chat"
-                  title={t('chatOpen')}
-                  aria-label={t('chatOpen')}
-                >
-                  <MessageSquare size={16} aria-hidden />
-                </Link>
-                <AgentRowActions
-                  label={t('archiveAgent')}
-                  onDelete={() => void remove(agent)}
-                />
-              </div>
             </div>
           ))}
         </div>

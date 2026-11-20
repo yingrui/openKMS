@@ -14,7 +14,7 @@ import {
 } from '../../data/agentSkillsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import './ProjectList.scss';
-import { Dialog, FormField } from '../../styles/design-system';
+import { Dialog, FormField, ListPage } from '../../styles/design-system';
 import './AgentSkillsPage.scss';
 
 export function AgentSkillsPage() {
@@ -203,28 +203,26 @@ export function AgentSkillsPage() {
   );
 
   return (
-    <div className={`agents-list page${isEmpty ? ' agents-list--empty' : ''}`}>
-      <AgentsAreaNav />
-
-      {hasSkills ? (
-        <div className="page-header agents-toolbar">
-          <h1>{t('skills.pageTitle')}</h1>
-          <div className="agents-toolbar-actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                resetUploadForm();
-                setShowUpload(true);
-              }}
-            >
-              <Plus size={18} />
-              <span className="ds-compact-label">{t('skills.upload')}</span>
-            </button>
-          </div>
-        </div>
-      ) : null}
-
+    <ListPage
+      className={`agents-list${isEmpty ? ' agents-list--empty' : ''}`}
+      title={t('skills.pageTitle')}
+      subtitle={t('skills.pageLead')}
+      actions={
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => {
+            resetUploadForm();
+            setShowUpload(true);
+          }}
+          aria-label={t('skills.upload')}
+        >
+          <Plus size={18} aria-hidden />
+          <span className="ds-compact-label">{t('skills.upload')}</span>
+        </button>
+      }
+      tabs={<AgentsAreaNav />}
+    >
       {loading ? <AgentsListSkeleton /> : null}
 
       {isEmpty ? (
@@ -316,6 +314,6 @@ export function AgentSkillsPage() {
       >
         {uploadFields}
       </Dialog>
-    </div>
+    </ListPage>
   );
 }

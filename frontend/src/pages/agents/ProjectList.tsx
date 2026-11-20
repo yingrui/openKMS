@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Bot, Home, Plus, Settings, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
-import { Dialog, FormField, Pagination } from '../../styles/design-system';
+import { Dialog, FormField, ListPage, Pagination } from '../../styles/design-system';
 import { fetchAuthMe, patchAuthDefaultAgentProject } from '../../data/authApi';
 import {
   createProject,
@@ -142,8 +142,6 @@ export function ProjectList() {
     }
   };
 
-  const hasProjects = !loading && !error && total > 0;
-
   const onSetHomeDefault = async (projectId: string, projectName: string) => {
     try {
       await patchAuthDefaultAgentProject(projectId);
@@ -156,8 +154,23 @@ export function ProjectList() {
   };
 
   return (
-    <div className={`agents-list page${!loading && projects.length === 0 ? ' agents-list--empty' : ''}`}>
-      <AgentsAreaNav />
+    <ListPage
+      className={`agents-list${!loading && projects.length === 0 ? ' agents-list--empty' : ''}`}
+      title={t('list.pageTitle')}
+      subtitle={t('list.pageLead')}
+      actions={
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={openCreate}
+          aria-label={t('list.create')}
+        >
+          <Plus size={18} aria-hidden />
+          <span className="ds-compact-label">{t('list.create')}</span>
+        </button>
+      }
+      tabs={<AgentsAreaNav />}
+    >
       {chooseHomeDefault && !hintDismissed ? (
         <div className="agents-home-default-hint" role="status">
           <span>{t('list.chooseHomeDefaultHint')}</span>
@@ -172,22 +185,6 @@ export function ProjectList() {
         </div>
       ) : null}
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
-      {hasProjects ? (
-        <div className="page-header agents-toolbar">
-          <h1>{t('list.pageTitle')}</h1>
-          <div className="agents-toolbar-actions">
-            <Link to="/settings#agent-git-credentials" className="btn btn-secondary agents-settings-btn">
-              <Settings size={18} aria-hidden />
-              <span className="ds-compact-label">{t('list.settings')}</span>
-            </Link>
-            <button type="button" className="btn btn-primary" onClick={openCreate}>
-              <Plus size={18} />
-              <span className="ds-compact-label">{t('list.create')}</span>
-            </button>
-          </div>
-        </div>
-      ) : null}
-
       {loading ? <AgentsListSkeleton /> : null}
 
       {!loading && !error && projects.length === 0 ? (
@@ -358,6 +355,6 @@ export function ProjectList() {
           </FormField>
         </form>
       </Dialog>
-    </div>
+    </ListPage>
   );
 }

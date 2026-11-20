@@ -102,8 +102,8 @@ export function WorkforceSkillsPage() {
           </button>
         </>
       }
+      tabs={<WorkforceAreaNav />}
     >
-      <WorkforceAreaNav />
 
       {loading && <p className="ds-resource-list-loading">{t('loading')}</p>}
 

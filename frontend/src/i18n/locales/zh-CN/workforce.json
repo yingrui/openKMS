@@ -27,8 +27,8 @@
   "model": "模型",
   "modelHint": "由哪个对话模型回答。默认使用系统配置的模型；也可指定其他服务提供的模型。",
   "skills": {
-    "registryTitle": "技能",
-    "registryLead": "数字员工 – 技能：一段工作说明加可选脚本。在这里写、在这里发布，装到员工上才会生效。",
+    "registryTitle": "数字员工 – 技能",
+    "registryLead": "一段工作说明加可选脚本。在这里写、在这里发布，装到员工上才会生效。",
     "newSkill": "新建技能",
     "registryEmpty": "还没有技能。新建一个，写下它何时使用、怎么做。",
     "registryLoadFailed": "无法加载技能。",
@@ -380,7 +380,7 @@
   "toolsDefinitionNote": "以上是模型实际看到的工具说明（英文，与 function calling 的定义一致）。",
   "toolsCatalogFailed": "无法读取工具目录，稍后重试。",
   "sandboxPolicy": "内置白名单 {{count}} 个命令，单次执行上限 {{timeout}} 秒；下面追加的只能加，不能减。",
-  "toolsCatalogTitle": "工具",
+  "toolsCatalogTitle": "数字员工 – 工具",
   "toolsCatalogLead": "运行时提供哪些工具、它们能做什么、命令执行允许什么。只读：给哪个数字员工开启，在那个员工的「工具」页决定。",
   "toolsCatalogEnvLead": "代码执行的两个工具与它们的边界：在对话目录内运行，只有一个目录可写，只允许白名单里的命令。"
 }

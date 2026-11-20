@@ -1,5 +1,5 @@
 {
-  "title": "Workforce",
+  "title": "Workforce – Agents",
   "subtitle": "Services that answer from your knowledge, for callers outside openKMS.",
   "newAgent": "New agent",
   "loadFailed": "Could not load workforce agents.",
@@ -27,8 +27,8 @@
   "model": "Model",
   "modelHint": "Which chat model answers. The default uses the one the system is configured with; a specific model may come from another service.",
   "skills": {
-    "registryTitle": "Skills",
-    "registryLead": "Workforce – Skills: a procedure plus optional scripts. Written and published here; an agent gets it only after installing it.",
+    "registryTitle": "Workforce – Skills",
+    "registryLead": "A procedure plus optional scripts. Written and published here; an agent gets it only after installing it.",
     "newSkill": "New skill",
     "registryEmpty": "No skills yet. Create one and write down when to use it and how.",
     "registryLoadFailed": "Could not load skills.",
@@ -373,14 +373,15 @@
     "tools": "Tools"
   },
   "skillVersion": "Skill version",
-  "toolsCount": "{{count}} tools",
+  "toolsCount": "{{count}} tool",
   "toolsCoreTag": " (on by default)",
   "toolsShowDefinition": "Show tool definitions",
   "toolsHideDefinition": "Hide tool definitions",
   "toolsDefinitionNote": "These are the tool definitions the model receives — the same text, not a summary.",
   "toolsCatalogFailed": "Could not read the tool catalogue. Try again shortly.",
   "sandboxPolicy": "{{count}} built-in commands, {{timeout}}s per run; the list below can only add to them.",
-  "toolsCatalogTitle": "Tools",
+  "toolsCatalogTitle": "Workforce – Tools",
   "toolsCatalogLead": "What the runtime provides, what each tool does, and what code execution may start. Read-only: which agent enables a tool is decided on that agent’s Tools tab.",
-  "toolsCatalogEnvLead": "The two code-execution tools and their bounds: run in the conversation directory, one writable folder, allowlisted commands only."
+  "toolsCatalogEnvLead": "The two code-execution tools and their bounds: run in the conversation directory, one writable folder, allowlisted commands only.",
+  "toolsCount_other": "{{count}} tools"
 }

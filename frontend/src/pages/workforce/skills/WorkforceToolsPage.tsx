@@ -20,8 +20,11 @@ export function WorkforceToolsPage() {
   const [open, setOpen] = useState<string | null>(null);
 
   return (
-    <ListPage title={t('toolsCatalogTitle')} subtitle={t('toolsCatalogLead')}>
-      <WorkforceAreaNav />
+    <ListPage
+      title={t('toolsCatalogTitle')}
+      subtitle={t('toolsCatalogLead')}
+      tabs={<WorkforceAreaNav />}
+    >
 
       {catalog.error ? <p className="ds-field__hint">{t('toolsCatalogFailed')}</p> : null}
       {catalog.loading ? <p className="ds-resource-list-loading">{t('loading')}</p> : null}

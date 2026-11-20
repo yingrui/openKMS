@@ -254,6 +254,14 @@
   min-height: var(--tap-min);
 }
 
+.workforce-tools-card .ds-resource-list-meta {
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
 .workforce-tools-card__name {
   display: inline-flex;
   align-items: center;

@@ -3,15 +3,13 @@
 /**
  * The agents list.
  *
- * These rules used to live in the detail page's stylesheet, which the list never imports — so the card's two
- * shortcuts fell into the flow at the bottom of the card instead of sitting in its top-right corner.
+ * The card's two shortcuts (open a chat, retire the agent) sit in the card's top row next to the icon — the row the
+ * design system already lays out as "icon left, actions right". They are always visible: these rules used to live in
+ * the detail page's stylesheet, which this page never imports, so the actions fell into the card's flow at the bottom
+ * and a hover-only reveal made them effectively invisible.
  */
 
 .workforce-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-
   .workforce-card__body {
     display: block;
     flex: 1;
@@ -19,30 +17,9 @@
     text-decoration: none;
   }
 
-  /* Both shortcuts sit where a card's affordances belong — top right — and stay visible: a hover-only control is a
-     control most people never find. */
   .workforce-card__actions {
-    position: absolute;
-    top: var(--space-2);
-    right: var(--space-2);
     display: flex;
     align-items: center;
-    gap: 2px;
-  }
-
-  .workforce-card__chat {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: var(--tap-min);
-    min-height: var(--tap-min);
-    border-radius: var(--radius-sm);
-    color: var(--color-text-muted);
-    transition: color 0.15s, background 0.15s;
-
-    &:hover {
-      color: var(--color-accent);
-      background: var(--color-bg-muted);
-    }
+    gap: var(--space-1);
   }
 }
