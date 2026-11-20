@@ -1,5 +1,4 @@
 """Evidence labelling: every source kept, each marked used or consulted."""
-import pytest
 
 from qa_agent.evidence import CONSULTED, USED, ground, label_sources
 from qa_agent.schemas import SourceItem

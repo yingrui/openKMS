@@ -12,7 +12,7 @@ ratio; this module only reports it.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 __all__ = ["normalize_numbers", "traceable_numbers"]

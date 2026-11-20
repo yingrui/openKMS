@@ -53,7 +53,7 @@ def score_candidates(
         return []
 
     out: list[dict[str, Any]] = []
-    for idx, score in zip(results_idx[0], results_score[0]):
+    for idx, score in zip(results_idx[0], results_score[0], strict=True):
         i = int(idx)
         if i < 0 or i >= len(docs):
             continue

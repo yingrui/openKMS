@@ -83,7 +83,7 @@ def get_all_skill_tools(skills: list[str] | None = None) -> list:
 def get_union_skill_tools() -> list:
     """Every registered tool (for ToolNode execution regardless of bind set)."""
     tools: list = []
-    for sid, group in _SKILL_TOOLS.items():
+    for group in _SKILL_TOOLS.values():
         tools.extend(group)
     return tools
 

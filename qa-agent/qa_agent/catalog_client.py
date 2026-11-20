@@ -89,7 +89,7 @@ def query_semantic_model(
         if resp.status_code >= 400:
             try:
                 detail = resp.json()
-            except Exception:
+            except ValueError:  # the error body is not JSON
                 detail = resp.text
             raise RuntimeError(f"query failed ({resp.status_code}): {detail}")
         return resp.json()
@@ -114,7 +114,7 @@ def run_model_sql(
         if resp.status_code >= 400:
             try:
                 detail = resp.json()
-            except Exception:
+            except ValueError:  # the error body is not JSON
                 detail = resp.text
             raise RuntimeError(f"sql lab failed ({resp.status_code}): {detail}")
         return resp.json()

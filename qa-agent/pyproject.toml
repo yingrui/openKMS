@@ -24,6 +24,25 @@ dependencies = [
     "matplotlib>=3.10.9",
 ]
 
+[tool.ruff]
+# Same high-signal selection as `backend/pyproject.toml`, so one `ruff check` means the same thing in every
+# service: E9 (unparseable), F (pyflakes — undefined names, shadowed definitions, unused imports/locals),
+# B (bugbear — real mistakes), BLE (named failures). Import sorting stays out, exactly as it does in backend.
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E9", "F", "B", "BLE"]
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+# A tool body's contract is "report the failure to the model as text and keep going": the exception type is
+# whatever the backend or the SDK raised, and there is nothing narrower to catch. Everything outside the skill
+# tools names its failures.
+"qa_agent/skills/catalog.py" = ["BLE001"]
+"qa_agent/skills/ontology.py" = ["BLE001"]
+"qa_agent/skills/page_index.py" = ["BLE001"]
+
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"

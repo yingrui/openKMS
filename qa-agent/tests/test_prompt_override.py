@@ -1,5 +1,4 @@
 """A KB's published prompt replaces the base instruction, and nothing else."""
-import pytest
 
 from qa_agent.agent import DEFAULT_BASE_INSTRUCTION, _build_system_prompt
 

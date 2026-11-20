@@ -98,7 +98,8 @@ def get_tool_agents_md(config: dict[str, Any] | None = None) -> str | None:
     return None
 
 
-_sandbox: ContextVar[dict] = ContextVar("qa_agent_sandbox", default={})
+# No mutable default: a shared `{}` default is the same dict in every context, so one request could read another's.
+_sandbox: ContextVar[dict | None] = ContextVar("qa_agent_sandbox", default=None)
 
 
 def set_request_sandbox(settings: dict) -> Any:

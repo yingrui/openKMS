@@ -1,7 +1,6 @@
 """Where context comes from: pre-retrieval, none, or a search tool the model calls."""
-from unittest.mock import patch
 
-from langchain_core.messages import AIMessage, HumanMessage
+from unittest.mock import patch
 
 from qa_agent import agent_config as cfg
 from qa_agent.agent import retrieve_node

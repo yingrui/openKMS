@@ -4,6 +4,8 @@ from __future__ import annotations
 import logging
 import threading
 import time
+
+import httpx
 from typing import TYPE_CHECKING, Any, Literal
 
 from .config import settings
@@ -38,11 +40,9 @@ def _langfuse_health_ok() -> bool:
     base = _langfuse_base()
     url = f"{base}/api/public/health"
     try:
-        import httpx
-
         resp = httpx.get(url, timeout=2.5)
         return resp.status_code < 500
-    except Exception:
+    except (httpx.HTTPError, OSError):  # a health probe reports "down", it never raises
         return False
 
 

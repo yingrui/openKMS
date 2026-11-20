@@ -1,5 +1,4 @@
 """Execution: the subprocess model the project agent uses, with an allow list for shell commands."""
-import os
 import sys
 import time
 from pathlib import Path

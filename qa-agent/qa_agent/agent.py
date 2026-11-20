@@ -305,29 +305,6 @@ def _build_system_prompt(
     )
 
 
-def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
-    """Retrieve relevant context from the knowledge base via backend search API."""
-    if state.get("context"):
-        logger.debug("retrieve_node skip (context already set)")
-        return {}
-    mode = state.get("retrieve_mode") or "always"
-    if mode != "always":
-        # `never` and `on_miss` both mean "no automatic retrieval"; `on_miss` differs by binding a search tool.
-        logger.debug("retrieve_node skipped (mode=%s)", mode)
-        return {"context": []}
-    kb_id = state["knowledge_base_id"]
-    sources = retrieve(
-        state["knowledge_base_id"],
-        state["question"],
-        access_token=state["access_token"],
-        top_k=int(state.get("top_k") or 5),
-        rerank=state.get("rerank"),
-    )
-    logger.info("retrieve_node kb=%s hits=%d", kb_id, len(sources))
-    logger.debug("retrieve_node question=%r", preview_text(state.get("question"), 120))
-    return {"context": sources}
-
-
 def _policy_fragments(policy: dict[str, Any] | None) -> str:
     """Rules the KB switched on. Empty when every policy is at its default, so an unconfigured KB reads exactly as before."""
     parts: list[str] = []
@@ -712,6 +689,7 @@ def invoke_agent(
                 "reasoning_effort": agent_config_module.reasoning_effort(agent_config),
                 "model_id": agent_config_module.model_id(agent_config),
                 "agents_md": agent_config_module.agents_md(agent_config),
+                "installed_skill_packages": installed_skill_packages,
                 "top_p": agent_config_module.top_p(agent_config),
                 "max_tokens": agent_config_module.max_tokens(agent_config),
                 "rerank": agent_config_module.rerank_override(agent_config),

@@ -22,12 +22,12 @@ _OIDC_TOKEN_TIMEOUT_SECONDS = 30.0
 def _auth_error_message(resp: httpx.Response) -> str:
     try:
         body = resp.json()
-        err = body.get("error", "unknown")
-        desc = body.get("error_description", "")
-        hint = desc or resp.text or str(resp.status_code)
-        return f"Token endpoint {err}: {hint}"
-    except Exception:
+    except ValueError:  # not JSON: report the status instead of guessing at the body
         return f"Token endpoint returned {resp.status_code}"
+    err = body.get("error", "unknown") if isinstance(body, dict) else "unknown"
+    desc = body.get("error_description", "") if isinstance(body, dict) else ""
+    hint = desc or resp.text or str(resp.status_code)
+    return f"Token endpoint {err}: {hint}"
 
 
 def is_local_auth_mode() -> bool:
@@ -115,9 +115,9 @@ def auth_expired_response(resp: httpx.Response) -> bool:
         return False
     try:
         body = resp.json()
-        detail = body.get("detail")
-        if isinstance(detail, dict):
-            return detail.get("code") in ("INVALID_OR_EXPIRED_TOKEN", "INVALID_TOKEN")
-    except Exception:
-        pass
+    except ValueError:  # not JSON: an expired session served by a proxy, say
+        return False
+    detail = body.get("detail") if isinstance(body, dict) else None
+    if isinstance(detail, dict):
+        return detail.get("code") in ("INVALID_OR_EXPIRED_TOKEN", "INVALID_TOKEN")
     return False

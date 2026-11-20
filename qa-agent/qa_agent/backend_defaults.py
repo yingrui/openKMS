@@ -136,10 +136,7 @@ def resolve_llm_for_agent(cfg: Settings) -> tuple[str, str, str]:
             )
         return base_url, model_name, api_key or "no-key"
 
-    try:
-        data = _fetch_agent_llm_defaults(cfg)
-    except RuntimeError:
-        raise
+    data = _fetch_agent_llm_defaults(cfg)
     if not data:
         raise RuntimeError(
             "Could not resolve LLM settings: OPENKMS_BACKEND_URL is unset and no "
