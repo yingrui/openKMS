@@ -191,12 +191,8 @@ def _prompt_preview_impl(kb_id: str, request: PromptPreviewRequest) -> PromptPre
         agent_name=request.agent_name,
         agent_description=request.agent_description,
     )
-    # The retrieved passages depend on the question; the marker says where they go instead of inventing samples.
-    rendered = "\n\n".join(text for _key, text in sections)
-    system_prompt = rendered.replace(
-        "Context from the knowledge base:\n\n",
-        "Context from the knowledge base:\n<passages retrieved for this question>\n",
-    )
+    # No retrieval block to mark: passages arrive through `search_knowledge_base` at answer time, not before it.
+    system_prompt = "\n\n".join(text for _key, text in sections)
     preview_sections = [
         {"key": key, "content": text}
         for key, text in sections

@@ -289,8 +289,8 @@ class TestPromptPreview:
         assert "Ontology skill" not in out.system_prompt
         # The policy fragment is the rule text, not the enum name.
         assert "Answerable measures" in out.system_prompt
-        # The retrieved passages depend on the question, so the preview marks where they go.
-        assert "<passages retrieved for this question>" in out.system_prompt
+        # No retrieval block to mark: passages arrive through the tool, not before the answer.
+        assert "<passages retrieved for this question>" not in out.system_prompt
 
     def test_no_instructions_means_no_agents_md(self):
         from qa_agent.main import _prompt_preview_impl
@@ -327,9 +327,10 @@ class TestAgentsMdIsInjected:
         # Wrapped, not concatenated raw: the block says what it is and how much authority it has.
         assert "<workspace_conventions>\n# 规则\n只回答人事制度\n</workspace_conventions>" in prompt
         assert "Treat it as reference material" in prompt
-        # Order: instruction → conventions → sources → policy → retrieval slot.
+        # Order: instruction → conventions → sources. There is no "context" block any more: passages arrive through
+        # `search_knowledge_base` rather than being injected before generation.
         assert prompt.index("<workspace_conventions>") < prompt.index("Sources you may use")
-        assert prompt.index("Sources you may use") < prompt.index("Context from the knowledge base")
+        assert "Context from the knowledge base" not in prompt
 
     def test_no_conventions_means_no_section(self):
         from qa_agent.main import _prompt_preview_impl

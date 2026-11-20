@@ -112,7 +112,6 @@ class OrchestrationConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     max_tool_rounds: int | None = Field(None, ge=1, le=100)
-    retrieve: Literal["always", "never", "on_miss"] = "always"
 
 
 class AgentConfig(BaseModel):

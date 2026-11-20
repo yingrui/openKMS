@@ -23,7 +23,6 @@ export interface BehaviourDraft {
   unknownMeasure: 'try_anyway' | 'refuse';
   grounding: 'off' | 'mark' | 'enforce';
   schemaLookup: boolean;
-  retrieve: 'always' | 'never' | 'on_miss';
   maxToolRounds: string;
   sandbox: boolean;
 }
@@ -42,7 +41,6 @@ export function draftFromConfig(cfg: KbAgentConfig | null | undefined): Behaviou
     unknownMeasure: c.answer_policy?.unknown_measure ?? 'try_anyway',
     grounding: c.answer_policy?.require_grounded_numbers ?? 'off',
     schemaLookup: Boolean(c.answer_policy?.require_schema_lookup),
-    retrieve: c.orchestration?.retrieve ?? 'always',
     maxToolRounds: c.orchestration?.max_tool_rounds
       ? String(c.orchestration.max_tool_rounds)
       : '',
@@ -79,7 +77,6 @@ export function draftToConfig(d: BehaviourDraft): Omit<KbAgentConfig, 'retrieval
       require_schema_lookup: d.schemaLookup,
     },
     orchestration: {
-      retrieve: d.retrieve,
       max_tool_rounds: Number.isFinite(rounds) && rounds > 0 ? rounds : null,
     },
     sandbox: { enabled: d.sandbox },

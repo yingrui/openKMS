@@ -220,9 +220,9 @@ Two tools do the same kind of act — look something up — across two different
 One switch for both would let "search our documents" also mean "reach the internet". The per-tool checkbox inside a
 capability is too easy to miss for a boundary that decides whether tenant data leaves the deployment.
 
-`orchestration.retrieve = on_miss` still implies `search_knowledge_base`: that mode exists to skip pre-retrieval, and a
-model with no way to fetch context is not a configuration, it is a bug. When the ledger already enables the capability,
-the tool is bound once, not twice.
+Retrieval is only a tool: there is no node that pre-fetches passages, and `orchestration.retrieve` is gone (`wf10noretrieve`).
+An agent with `knowledge_search` off simply cannot read its corpus — that is a configuration, not a bug, and the Knowledge
+tab is where its sources are bound.
 
 **Web search configuration** is deployment-level, because which search API an installation may use is a purchase and a
 jurisdiction: `OPENKMS_WEB_SEARCH_PROVIDER` (`tavily` or `searxng`), `OPENKMS_WEB_SEARCH_URL`, `OPENKMS_WEB_SEARCH_API_KEY`,

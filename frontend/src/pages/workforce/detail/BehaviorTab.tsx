@@ -86,17 +86,6 @@ export function WorkforceBehaviorTab() {
 
       <EntityViewPanel title={t('orchestration')}>
         <div className="entity-view__form">
-          <FormField label={t('retrieve')}>
-            <select
-              className="ds-control"
-              value={draft.retrieve}
-              onChange={(e) => patch({ retrieve: e.target.value as BehaviourDraft['retrieve'] })}
-            >
-              <option value="always">{t('retrieveAlways')}</option>
-              <option value="on_miss">{t('retrieveOnMiss')}</option>
-              <option value="never">{t('retrieveNever')}</option>
-            </select>
-          </FormField>
           <FormField label={t('maxToolRounds')} hint={t('maxToolRoundsHint')}>
             <input
               className="ds-control"

@@ -255,7 +255,7 @@ qa-agent/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI: /knowledge-bases/{kb_id}/ask|/ask/stream|/retrieve
 │   ├── config.py            # Settings (backend URL, LLM)
-│   ├── agent.py             # LangGraph agent: retrieve → generate (with tools) → tools
+│   ├── agent.py             # LangGraph agent: generate (with tools) → tools
 │   ├── retriever.py         # Calls backend search API (no DB access)
 │   ├── ontology_client.py   # GET object-types, link-types; POST ontology/explore (Cypher)
 │   ├── tools.py             # get_ontology_schema, run_cypher

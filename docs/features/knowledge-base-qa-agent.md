@@ -249,8 +249,8 @@ POST /knowledge-bases/{kb_id}/ask
 
 | Piece | Where | What it decides |
 |---|---|---|
-| Graph | `qa_agent/agent.py:160` | `retrieve → generate →(loop) tools` — three nodes, no refusal path |
-| System prompt | `qa_agent/agent.py` (`_build_system_prompt`) | RAG context + installed skill text + *"If the context or skills don't provide enough information, say so honestly."* Tool usage is **not** restated here: the tool definitions carry it |
+| Graph | `qa_agent/agent.py` (`build_graph`) | `generate →(loop) tools` — retrieval is a tool now, not a node before generation |
+| System prompt | `qa_agent/agent.py` (`_build_system_prompt`) | identity + instruction + conventions + installed skill text + *"If the context or skills don't provide enough information, say so honestly."* No retrieval block: passages arrive through `search_knowledge_base` at answer time. Tool usage is **not** restated here either — the tool definitions carry it |
 | Tool usage | the tools' own docstrings (`qa_agent/skills/*.py`) | `@tool` docstrings become the function descriptions the model receives — what it does, when to use it, parameters, limits. One copy, exported for the configuration screen by `qa_agent/tool_catalog.py` (`GET /tools`) |
 | Installed skills | registry text, fetched via `/internal-api/skills/{registry}/{id}/{version}/prompt` | procedures and judgement the author installed; nothing here describes a tool signature |
 | Tools | `qa_agent/skills/{catalog,ontology,page_index}.py` | `list_semantic_models`, `get_semantic_model` (metrics + fields + tables), `query_semantic_model`, `run_sql` |

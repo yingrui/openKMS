@@ -42,7 +42,6 @@ from .request_context import (
     set_request_sandbox,
     set_request_session_id,
 )
-from .retriever import retrieve
 from .schemas import SourceItem
 from .skills import (
     get_union_skill_tools,
@@ -66,8 +65,6 @@ class AgentState(TypedDict):
     top_k: int
     #: Tool rounds this request may use, from `orchestration.max_tool_rounds` (None = no bound).
     max_tool_rounds: int | None
-    #: `always` | `never` | `on_miss`, from `orchestration.retrieve`.
-    retrieve_mode: str
     #: `answer_policy` from the KB's agent_config — the rules the KB switched on.
     answer_policy: dict[str, Any]
     #: The KB's published prompt text, if it published one; None means the built-in instruction.
@@ -114,29 +111,6 @@ def _llm_for(state: dict[str, Any]):
     "which model answered" unknowable — the response carries the model name.
     """
     return _llm_for_model(state.get("model_id"))
-
-
-def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
-    """Retrieve relevant context from the knowledge base via backend search API."""
-    if state.get("context"):
-        logger.debug("retrieve_node skip (context already set)")
-        return {}
-    mode = state.get("retrieve_mode") or "always"
-    if mode != "always":
-        # `never` and `on_miss` both mean "no automatic retrieval"; `on_miss` differs by binding a search tool.
-        logger.debug("retrieve_node skipped (mode=%s)", mode)
-        return {"context": []}
-    kb_id = state["knowledge_base_id"]
-    sources = retrieve(
-        state["knowledge_base_id"],
-        state["question"],
-        access_token=state["access_token"],
-        top_k=int(state.get("top_k") or 5),
-        rerank=state.get("rerank"),
-    )
-    logger.info("retrieve_node kb=%s hits=%d", kb_id, len(sources))
-    logger.debug("retrieve_node question=%r", preview_text(state.get("question"), 120))
-    return {"context": sources}
 
 
 def _policy_fragments(policy: dict[str, Any] | None) -> str:
@@ -255,7 +229,8 @@ def prompt_sections(
         (
             "tools",
             "Sources you may use:\n"
-            "1. **Knowledge base** – Document chunks and FAQs (context below).\n"
+            "1. **Knowledge base** – call `search_knowledge_base` before answering from its material; passages come back\n"
+            "   with their source, and an answer that names a document must quote what that call returned.\n"
             "2. **Tools** – only the enabled ones are available; each definition says what it does and when to use it.\n"
             "3. **Installed skills** – procedures above, when any are installed.",
         )
@@ -264,7 +239,10 @@ def prompt_sections(
     if rules:
         sections.append(("policy", rules))
 
-    sections.append(("context", f"Context from the knowledge base:\n{context_text}"))
+    # Context arrives through `search_knowledge_base` now, so there is nothing to pre-append. Kept for the callers that
+    # still pass passages (the preview endpoint renders an empty list).
+    if context_text.strip():
+        sections.append(("context", f"Context from the knowledge base:\n{context_text}"))
 
     sections.append(
         (
@@ -343,14 +321,6 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
         max_tokens=state.get("max_tokens"),
     )
     tools = tools_for(state.get("agent_tools"))
-    if state.get("retrieve_mode") == "on_miss" and not any(
-        tool.name == "search_knowledge_base" for tool in tools
-    ):
-        # `on_miss` means "no pre-retrieval": without this tool the model would have no way to fetch context at all.
-        # An agent whose ledger already enables `knowledge_search` has it, and adding it twice would bind it twice.
-        from .skills.kb_search import kb_search_tools
-
-        tools = [*tools, *kb_search_tools]
     llm_with_tools = llm.bind_tools(tools)
 
     messages = build_messages_for_generate(
@@ -495,12 +465,10 @@ def build_graph() -> StateGraph:
     # Union of all skill tools so opted-in insurance tools can execute; generate binds a subset.
     tool_node = ToolNode(get_union_skill_tools())
 
-    graph.add_node("retrieve", retrieve_node)
     graph.add_node("generate", generate_node)
     graph.add_node("tools", tool_node)
     graph.add_node("finalize", finalize_node)
 
-    graph.add_edge("retrieve", "generate")
     graph.add_conditional_edges(
         "generate",
         should_continue,
@@ -508,7 +476,8 @@ def build_graph() -> StateGraph:
     )
     graph.add_edge("tools", "generate")
     graph.add_edge("finalize", END)
-    graph.set_entry_point("retrieve")
+    # Retrieval is a tool now: the graph starts at generation, not at a corpus fetch.
+    graph.set_entry_point("generate")
 
     return graph
 
@@ -559,7 +528,6 @@ def invoke_agent(
         settings, installed_skills or {}, skills_registry or "agent"
     )
     retrieve_k = agent_config_module.top_k(agent_config)
-    retrieve_mode = agent_config_module.retrieve_mode(agent_config)
     sandbox_settings = sandbox_runner.sandbox_config(agent_config)
     temperature = agent_config_module.temperature(agent_config)
     thinking = agent_config_module.enable_thinking(agent_config)
@@ -593,7 +561,6 @@ def invoke_agent(
                 "agent_tools": ledger,
                 "top_k": retrieve_k,
                 "max_tool_rounds": agent_config_module.max_tool_rounds(agent_config),
-                "retrieve_mode": retrieve_mode,
                 "answer_policy": agent_config_module.answer_policy(agent_config),
                 "system_prompt": system_prompt,
                 "prompt_version": prompt_version,
@@ -859,7 +826,6 @@ def _turn_state(
     access_token: str,
     agent_tools: dict[str, Any],
     retrieve_k: int,
-    retrieve_mode: str,
     agent_config: dict[str, Any] | None,
     ctx: list[Any],
     sandbox_settings: dict[str, Any],
@@ -884,7 +850,6 @@ def _turn_state(
         "agent_tools": agent_tools,
         "top_k": retrieve_k,
         "max_tool_rounds": agent_config_module.max_tool_rounds(agent_config),
-        "retrieve_mode": retrieve_mode,
         "answer_policy": agent_config_module.answer_policy(agent_config),
         "system_prompt": system_prompt,
         "prompt_version": prompt_version,
@@ -928,7 +893,6 @@ async def astream_agent_ndjson(
         settings, installed_skills or {}, skills_registry or "agent"
     )
     retrieve_k = agent_config_module.top_k(agent_config)
-    retrieve_mode = agent_config_module.retrieve_mode(agent_config)
     sandbox_settings = sandbox_runner.sandbox_config(agent_config)
     temperature = agent_config_module.temperature(agent_config)
     thinking = agent_config_module.enable_thinking(agent_config)
@@ -948,18 +912,6 @@ async def astream_agent_ndjson(
     )
     logger.debug("astream_agent_ndjson question=%r", preview_text(question, 200))
     try:
-        ctx = (
-            retrieve(
-                knowledge_base_id,
-                question,
-                access_token=access_token,
-                top_k=retrieve_k,
-                rerank=agent_config_module.rerank_override(agent_config),
-            )
-            if retrieve_mode == "always"
-            else []
-        )
-        logger.info("astream_agent_ndjson retrieve kb=%s mode=%s hits=%d", knowledge_base_id, retrieve_mode, len(ctx))
         state = _turn_state(
             knowledge_base_id=knowledge_base_id,
             question=question,
@@ -967,9 +919,9 @@ async def astream_agent_ndjson(
             access_token=access_token,
             agent_tools=ledger,
             retrieve_k=retrieve_k,
-            retrieve_mode=retrieve_mode,
             agent_config=agent_config,
-            ctx=ctx,
+            # No pre-retrieval: `search_knowledge_base` is the way in, so the answer starts without passages.
+            ctx=[],
             sandbox_settings=sandbox_settings,
             temperature=temperature,
             thinking=thinking,
@@ -1037,7 +989,7 @@ async def astream_agent_ndjson(
             return
 
         answer = "".join(collector.buf)
-        sources_list = collector.sources(ctx)
+        sources_list = collector.sources([])
         if not answer.strip():
             # A graph that streamed no tokens (a tool-only turn) still owes the client the answer it produced.
             logger.info(
@@ -1058,7 +1010,7 @@ async def astream_agent_ndjson(
             )
             answer = result.get("answer", "") or ""
             sources_list = select_display_sources(
-                list(result.get("context") or ctx),
+                list(result.get("context") or []),
                 messages=list(result.get("messages") or []),
                 streamed_sections=collector.sections or None,
                 streamed_catalog=collector.catalog or None,

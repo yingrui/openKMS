@@ -11,7 +11,6 @@ class TestDefaults:
         assert config.retrieval.top_k == 5           # the value that used to be hard-coded in the agent
         assert config.answer_policy.unknown_measure == "try_anyway"
         assert config.answer_policy.require_grounded_numbers == "off"
-        assert config.orchestration.retrieve == "always"
         # The sampling group is unset, so the deployment's values apply.
         assert config.generation.temperature is None
         assert config.generation.top_p is None

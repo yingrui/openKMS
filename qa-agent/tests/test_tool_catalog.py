@@ -156,3 +156,21 @@ def test_retrieval_is_two_capabilities_not_one():
         capability = _capability(capability_id)
         assert capability["group"] == "retrieval"
         assert capability["core"] is False
+
+
+def test_the_request_carries_every_field_the_answer_path_reads():
+    """A schema that drops a field does not fail a unit test — it silently stops sending it. The answer path reads
+    these by name, so the request must keep them."""
+    from qa_agent.schemas import AskRequest
+
+    fields = set(AskRequest.model_fields)
+    assert {
+        "agent_tools",
+        "agent_config",
+        "installed_skills",
+        "skills_registry",
+        "agent_name",
+        "agent_description",
+        "system_prompt",
+        "prompt_version",
+    } <= fields
