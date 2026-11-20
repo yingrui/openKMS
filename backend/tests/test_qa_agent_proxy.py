@@ -1,23 +1,22 @@
-"""qa-agent URL + agent_skills forwarding helpers."""
+"""qa-agent URL + tool-ledger forwarding helpers."""
 
 from types import SimpleNamespace
 
 from app.services.content.knowledge_bases.qa_agent_proxy import (
-    CORE_AGENT_SKILLS,
     agent_kb_path,
     ask_agent_body,
-    resolve_agent_skills,
 )
+from app.services.workforce.agent_config import CORE_AGENT_SKILLS, kb_tools_for, resolve_tools
 
 
-def test_resolve_agent_skills_defaults_to_core():
-    assert resolve_agent_skills(SimpleNamespace(agent_skills=None)) == list(CORE_AGENT_SKILLS)
-    assert resolve_agent_skills(SimpleNamespace(agent_skills=[])) == list(CORE_AGENT_SKILLS)
+def test_a_knowledge_base_folds_its_two_fields_into_one_ledger():
+    """A KB still stores a capability list plus `sandbox.enabled`; the wire carries one ledger."""
+    kb = SimpleNamespace(agent_skills=["catalog"], agent_config={"sandbox": {"enabled": True}})
+    assert kb_tools_for(kb) == {"catalog": "all", "code_execution": "all"}
 
 
-def test_resolve_agent_skills_keeps_explicit_list():
-    skills = ["ontology", "workspace"]
-    assert resolve_agent_skills(SimpleNamespace(agent_skills=skills)) == skills
+def test_no_capability_list_means_the_core_set():
+    assert resolve_tools(None) == {capability: "all" for capability in CORE_AGENT_SKILLS}
 
 
 def test_agent_kb_path():
@@ -27,7 +26,7 @@ def test_agent_kb_path():
     )
 
 
-def test_ask_agent_body_includes_skills():
+def test_ask_agent_body_carries_the_ledger():
     kb = SimpleNamespace(agent_skills=["catalog"], agent_config=None)
     body = ask_agent_body(
         kb=kb,
@@ -36,7 +35,7 @@ def test_ask_agent_body_includes_skills():
         access_token="t",
         session_id="s1",
     )
-    assert body["agent_skills"] == ["catalog"]
+    assert body["agent_tools"] == {"catalog": "all"}
     assert body["session_id"] == "s1"
     assert "knowledge_base_id" not in body
 

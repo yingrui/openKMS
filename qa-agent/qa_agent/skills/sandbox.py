@@ -9,7 +9,7 @@ It is not OS isolation, and `qa_agent/sandbox.py` says so — the project agent'
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
@@ -41,14 +41,11 @@ def _render(result: sandbox_runner.ExecResult) -> str:
 
 
 @tool
-def run_python_tool(code: str, _config: RunnableConfig) -> str:
-    """Run Python in this conversation's workspace (the working directory). Files written there are visible to the user,
-    so save results under `out/`.
-
-    Skills of this knowledge base are on `PYTHONPATH` (`{kb}/skills/`, `{kb}/skills/scripts/`), and `OPENKMS_API_KEY` holds
-    the asking user's token, so a skill CLI can call openKMS with that user's permissions. Print the numbers you want to
-    report: stdout is the evidence.
-    """
+def run_python(
+    code: Annotated[str, "Python source to run in the conversation directory"],
+    _config: RunnableConfig,
+) -> str:
+    """Run Python in this conversation's directory. Files go to `out/`; printed output is the evidence. The command allow list does not apply to code."""
     try:
         kb_id, session_id, settings = _scope(_config)
     except ValueError as exc:
@@ -69,10 +66,11 @@ def run_python_tool(code: str, _config: RunnableConfig) -> str:
 
 
 @tool
-def run_command_tool(command: str, _config: RunnableConfig) -> str:
-    """Run a shell command in this conversation's workspace. Only programs on this knowledge base's allow list may start a
-    command; anything else is refused before it runs. Prefer `run_python_tool` unless a command-line tool is the point
-    (`git`, `jq`, `sed`)."""
+def run_command(
+    command: Annotated[str, "One command line; its program must be on the allow list"],
+    _config: RunnableConfig,
+) -> str:
+    """Run one program from this agent's allow list, in this conversation's directory. Anything else is refused before it starts."""
     try:
         kb_id, session_id, settings = _scope(_config)
     except ValueError as exc:
@@ -95,4 +93,4 @@ def run_command_tool(command: str, _config: RunnableConfig) -> str:
 
 
 
-sandbox_tools: list[Any] = [run_python_tool, run_command_tool]
+sandbox_tools: list[Any] = [run_python, run_command]

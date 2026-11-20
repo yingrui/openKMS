@@ -18,16 +18,22 @@ The agent's **Tools** tab uses three words strictly, because mixing them is what
 
 | Word | What it is | Example | How it is configured |
 |---|---|---|---|
-| **Capability** | something the agent can do | `catalog`, `page_index`, `code_execution` | a switch, saved on toggle |
-| **Tool** | one callable function a capability brings | `query_semantic_model_tool` | not switchable on its own |
+| **Capability** | something the agent can do, and a shortcut for picking several tools | `catalog`, `page_index`, `code_execution` | a switch, saved on toggle |
+| **Tool** | one callable function a capability brings | `run_sql`, `run_command` | ticked individually inside its capability: the selection's real unit |
 | **Resource** | data a capability reads | a semantic model, an ontology group | bound inside its capability |
 
 A resource is bound **inside the capability that reads it**, because a binding without the capability does nothing —
 turning Catalog on is where "bind a semantic model" belongs, not a separate resources page. A capability whose switch
-is off says so instead of offering a binding it cannot use. `code_execution` is the one capability whose switch lives
-in the config rather than in `agent_skills` (it carries a policy object); the screen treats all five the same.
+is off says so instead of offering a binding it cannot use. The agent stores a **tool ledger**, `{capability_id: "all" | [tool_id, ...]}`: a missing key means off, `"all"` follows
+the capability as the runtime grows it, and a list is an explicit subset. Unticking one tool inside an enabled
+capability turns `"all"` into that list — `{"code_execution": ["exec.shell"]}` is "shell but not python", which is the
+case a capability-level switch cannot express. Tool ids (`catalog.sql`, `exec.shell`) are declared in the catalogue and
+survive a rename of the callable function; the callables themselves are named the way other agent platforms name theirs —
+verb first, no `_tool` suffix: `read_file`, `write_file`, `run_command`, `run_sql`. Where an object has a settled name in
+the data world it keeps it: `list_semantic_models` / `get_semantic_model` / `query_semantic_model`, because "semantic
+model" is the term Ossie's spec, Power BI and dbt's semantic layer all use — a bare `models` would read as LLM models.
 
-Limits are shown on the thing they limit: the command allow list constrains `run_command_tool` only — `run_python_tool`
+Limits are shown on the thing they limit: the command allow list constrains `run_command` only — `run_python`
 runs code, and code is not a command line — so the list (and its "additional commands" field) sits on that tool's row,
 with the shared limits (conversation directory, `out/` writable, 60s) stated once for the capability. Switches save
 themselves; the only form on the page is the additional-command list, and its Save appears when there is something to
@@ -56,7 +62,7 @@ source's settings rather than offering a second place to set `top_k`. The same r
 | Retrieval (on the knowledge source) | ✅ | `top_k`, `rerank`, `min_score` live on the knowledge base, and `rerank` is honoured: `qa-agent`'s `retrieve(..., rerank=)` reads it, `never` turns reranking off even in a deployment that has it on, and `always` still needs a rerank endpoint — the option's label says so instead of failing silently |
 | Skills vs tools | ✅ | Two different things, two tabs. **Tools** = capabilities the runtime provides (ontology, catalog, page index) plus the bound semantic models / ontology groups, the session workspace, code execution and its extra allowed commands. **Skills** = packages from the **workforce skill registry** (`workforce_skills`, `workforce_skill_versions`) — written in the product, not uploaded — stored per agent in `workforce_agents.installed_skills` as `{skill_id: version}`; an installed package contributes its `SKILL.md` to the prompt (`Installed skills:` section). The switch list is `agent_skills`, the package list is `installed_skills` — one is "what it can do", the other "how to do it". Agent Project keeps its own registry of uploaded archives (`agent_skills`); the two never reference each other |
 | Session workspace | ✅ | Each conversation gets its own directory (`qa-agent/session_fs.py`): `out/` for artifacts, `uploads/`, `tmp/`. The sandbox runs with that directory as its working directory, so work products land inside the conversation they belong to. Verified: creating a session yields `AGENTS.md`-capable root with `out/`, `uploads/`, `tmp/` |
-| Command allowlist | ✅ | `sandbox.allow_commands` on the Tools tab, one command per line. Additive only — it widens the built-in list (41 commands) and cannot narrow it; a rejected program raises `CommandNotAllowed` before anything runs |
+| Command allowlist | ✅ | `sandbox.allow_commands` on the Tools tab, one command per line. Additive only — it widens the built-in list (20 inspection commands) and cannot narrow it; a rejected program raises `CommandNotAllowed` before anything runs |
 | Prompt | ✅ | The system prompt is generated from four things, in this order: **name + description** ("You are <name>. <description>"), the **instruction**, **AGENTS.md** as memory, then the runtime sections. Name and description are part of the prompt rather than decoration — an author who names a service expects the model to know it. Two texts are editable on the Profile tab. `prompts.system_prompt` is the body of the system prompt (empty = built-in). `prompts.agents_md` is agent memory: appended to the same system message inside `<workspace_conventions>` with a note that file content is reference, not instructions, **and** written to `AGENTS.md` in the session workspace for the file tools — the same shape `deepagents` uses (`MemoryMiddleware` appends memory to the system prompt). The composed prompt is `identity → instruction → conventions → installed skills → tool descriptions → answer policy → retrieved passages`; only the first three are authored, the rest are generated by the runtime so a prompt edit cannot remove a behaviour the policy tab enforces. Its own **Prompt preview** tab shows the result as labelled blocks, each naming the tab it comes from (`POST …/prompt-preview`, built by the qa-agent's own `prompt_sections`), with retrieved passages as a marker. It is a top-level tab rather than a switch inside Profile because the prompt is composed from every tab — putting it inside Profile implied it reflected only Profile |
 | Behaviour | ✅ | Instructions (`prompts.agents_md`), `model_id`, `generation` (`temperature`, `top_p`, `max_tokens`, `thinking`), skills, answer policy, orchestration, workspace, sandbox — everything the knowledge base's Agent tab used to hold **except `retrieval`**. `generation` is sent with the model call: `temperature` defaults to the deployment's `0.3`, `top_p` and `max_tokens` stay unset (the gateway decides), `thinking` to off |
 | Credentials | ✅ | `wfks.{credential_id}.{secret}`, returned **once**. Belongs to the agent, not the person: revoking it stops this service without touching the owner's sign-in. A credential carries its owner's identity (local user id or OIDC sub + realm roles snapshot) |

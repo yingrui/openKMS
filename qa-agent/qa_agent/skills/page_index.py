@@ -1,5 +1,6 @@
 """LangGraph skill: Page Index (document table of contents → select section → extract content)."""
 import json
+from typing import Annotated
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
@@ -9,14 +10,11 @@ from ..request_context import get_tool_access_token
 
 
 @tool
-def read_table_of_contents_tool(
-    document_id: str,
+def read_document_toc(
+    document_id: Annotated[str, "Document id, from the search results in the context"],
     _config: RunnableConfig,
 ) -> str:
-    """Read the table of contents (Page Index) for a document.
-    Use when context from search mentions a document_id and you need to navigate the document structure.
-    Returns a flattened list of sections with node_id, title, start_line, end_line.
-    Use get_section_content_tool to fetch the content of a selected section."""
+    """ Section titles and line ranges for one document. Use when a retrieved chunk is not enough."""
     try:
         token = get_tool_access_token(_config)
         data = get_page_index(document_id, token)
@@ -34,15 +32,13 @@ def read_table_of_contents_tool(
 
 
 @tool
-def get_section_content_tool(
-    document_id: str,
-    start_line: int,
-    end_line: int,
+def read_document_section(
+    document_id: Annotated[str, "Document id, from the table of contents"],
+    start_line: Annotated[int, "First line, 1-based"],
+    end_line: Annotated[int, "Last line, inclusive"],
     _config: RunnableConfig,
 ) -> str:
-    """Fetch the markdown content of a document section by line range (1-based, inclusive).
-    Use after read_table_of_contents_tool: pick a section by its start_line and end_line.
-    Parent sections include all children (their end_line spans to next sibling)."""
+    """ The markdown of one document section, by the line range the table of contents gave."""
     if start_line < 1 or end_line < 1 or start_line > end_line:
         return "Error: start_line and end_line must be 1-based, start_line <= end_line"
     try:
@@ -53,5 +49,5 @@ def get_section_content_tool(
         return f"Error fetching section: {e}"
 
 
-page_index_tools = [read_table_of_contents_tool, get_section_content_tool]
+page_index_tools = [read_document_toc, read_document_section]
 

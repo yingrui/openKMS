@@ -12,6 +12,7 @@ import {
 } from '../../../data/workforceToolsApi';
 import { useAsyncData } from '../../../hooks/useAsyncData';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
+import { ToolParameters } from '../ToolParameters';
 import { configFromDraft, draftFromConfig } from '../workforceConfigDraft';
 import { useWorkforceDetail } from './workforceDetailContext';
 
@@ -21,12 +22,12 @@ import { useWorkforceDetail } from './workforceDetailContext';
  * Three words, used strictly, because mixing them is what made this page unreadable:
  *
  * - **capability** — a thing the agent can do (`page_index`, `catalog`, …). It is the switch.
- * - **tool** — one callable function a capability brings (`query_semantic_model_tool`). Not switched on its own.
+ * - **tool** — one callable function a capability brings (`query_semantic_model`). Not switched on its own.
  * - **resource** — data a capability reads (a semantic model, an ontology group). Bound *inside* its capability,
  *   because a binding without the capability does nothing.
  *
- * A limit is shown on the thing it limits. The command allow list constrains `run_command_tool` and nothing else —
- * `run_python_tool` runs code, and code is not a command line — so it appears on that tool, not on the capability.
+ * A limit is shown on the thing it limits. The command allow list constrains `run_command` and nothing else —
+ * `run_python` runs code, and code is not a command line — so it appears on that tool, not on the capability.
  *
  * Switches save themselves: a switch that needs a Save button is a switch whose state you cannot see.
  */
@@ -38,40 +39,49 @@ export function WorkforceToolsTab() {
   const catalog = useAsyncData(() => fetchToolCatalog(), []);
   const [openCapability, setOpenCapability] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [draft, setDraft] = useState(() => draftFromConfig(agent.agent_config));
-  const [tools, setTools] = useState<string[]>(
-    Array.isArray(agent.agent_skills) ? agent.agent_skills : []
+  const draft = draftFromConfig(agent.agent_config);
+  // The ledger: `{capability_id: "all" | [tool_id, ...]}`. A missing key means the capability is off.
+  const [ledger, setLedger] = useState<Record<string, 'all' | string[]>>(() =>
+    agent.agent_tools ?? {}
   );
   // One command per line; the API takes a list that only *adds* to the built-in allow list.
   const [allowCommands, setAllowCommands] = useState(() =>
     (agent.agent_config?.sandbox?.allow_commands ?? []).join('\n')
   );
 
-  /** A capability backed by `agent_skills`: the switch is the presence of its id. */
-  const saveTools = async (next: string[]) => {
-    setTools(next);
+  /** The ledger writes itself: the state on screen is the state stored. */
+  const saveLedger = async (next: Record<string, 'all' | string[]>) => {
+    const before = ledger;
+    setLedger(next);
     try {
-      await updateWorkforceAgent(agent.id, { agent_skills: next });
+      await updateWorkforceAgent(agent.id, { agent_tools: next });
       await reload();
     } catch (e: unknown) {
-      setTools(tools);
+      setLedger(before);
       toast.error(e instanceof Error ? e.message : t('saveFailed'));
     }
   };
 
-  /** Code execution carries a policy object, so its switch lives in the config rather than in `agent_skills`. */
-  const toggleCodeExecution = async (enabled: boolean) => {
-    const next = { ...draft, sandbox: enabled };
-    setDraft(next);
-    try {
-      await updateWorkforceAgent(agent.id, {
-        agent_config: configFromDraft(agent.agent_config, next),
-      });
-      await reload();
-    } catch (e: unknown) {
-      setDraft(draft);
-      toast.error(e instanceof Error ? e.message : t('saveFailed'));
-    }
+  /** Turning a capability on starts at "all"; turning it off removes its key. */
+  const toggleCapability = (capabilityId: string, enabled: boolean) => {
+    const next = { ...ledger };
+    if (enabled) next[capabilityId] = 'all';
+    else delete next[capabilityId];
+    void saveLedger(next);
+  };
+
+  /** Narrowing one tool turns "all" into an explicit list; checking every tool again goes back to "all". */
+  const toggleTool = (capability: ToolCapability, toolId: string, enabled: boolean) => {
+    const current = ledger[capability.id];
+    const allIds = capability.tools.map((tool) => tool.id);
+    const selected = current === 'all' || current === undefined ? allIds : current;
+    const nextIds = enabled
+      ? [...new Set([...selected, toolId])]
+      : selected.filter((id) => id !== toolId);
+    const next = { ...ledger };
+    if (nextIds.length === 0) delete next[capability.id];
+    else next[capability.id] = nextIds.length === allIds.length ? 'all' : nextIds;
+    void saveLedger(next);
   };
 
   const saveAllowCommands = async () => {
@@ -115,8 +125,12 @@ export function WorkforceToolsTab() {
         {catalog.loading ? <p className="ds-field__hint">{t('loading')}</p> : null}
 
         {(catalog.data?.capabilities ?? []).map((capability) => {
-          const isCodeExecution = capability.id === 'code_execution';
-          const enabled = isCodeExecution ? draft.sandbox : tools.includes(capability.id);
+          const choice = ledger[capability.id];
+          const enabled = choice !== undefined;
+          const selectedTools =
+            choice === 'all' || choice === undefined
+              ? capability.tools.map((tool) => tool.id)
+              : choice;
           return (
             <CapabilityRow
               key={capability.id}
@@ -124,15 +138,7 @@ export function WorkforceToolsTab() {
               enabled={enabled}
               busy={busy}
               expanded={openCapability === capability.id}
-              onToggle={() =>
-                isCodeExecution
-                  ? void toggleCodeExecution(!enabled)
-                  : void saveTools(
-                      enabled
-                        ? tools.filter((id) => id !== capability.id)
-                        : [...tools, capability.id],
-                    )
-              }
+              onToggle={() => toggleCapability(capability.id, !enabled)}
               onExpand={() =>
                 setOpenCapability((current) => (current === capability.id ? null : capability.id))
               }
@@ -145,6 +151,15 @@ export function WorkforceToolsTab() {
                     semantic_model: agent.semantic_models.length,
                     ontology_group: agent.ontology_groups.length,
                   }}
+                />
+              ) : null}
+
+              {enabled ? (
+                <ToolChecklist
+                  capability={capability}
+                  selected={selectedTools}
+                  busy={busy}
+                  onToggle={(toolId, next) => toggleTool(capability, toolId, next)}
                 />
               ) : null}
 
@@ -162,7 +177,7 @@ export function WorkforceToolsTab() {
           );
         })}
 
-        {tools.length === 0 ? (
+        {Object.keys(ledger).length === 0 ? (
           <p className="ds-field__hint">{t('toolsNoneSelected')}</p>
         ) : null}
       </EntityViewPanel>
@@ -221,18 +236,7 @@ function CapabilityRow({
         <div className="workforce-tool-row__detail">
           {enabled ? children : <p className="ds-field__hint">{t('toolsBindOnlyWhenOn')}</p>}
 
-          <dl className="workforce-tool-definitions">
-            {capability.tools.map((tool) => (
-              <div key={tool.name}>
-                <dt>
-                  <span className="workforce-tool-name">{tool.label ?? tool.name}</span>
-                  {tool.label ? <code>{tool.name}</code> : null}
-                </dt>
-                <dd>{tool.description}</dd>
-              </div>
-            ))}
-          </dl>
-          <p className="ds-field__hint">{t('toolsDefinitionNote')}</p>
+
         </div>
       ) : null}
     </div>
@@ -345,6 +349,51 @@ function CapabilityNeeds({
           </p>
         );
       })}
+    </section>
+  );
+}
+
+/**
+ * Which tools of a capability the model may call.
+ *
+ * "All" is the default and follows the runtime: a new tool reaches every agent that said all. Unticking one turns that
+ * into an explicit list — `shell but not python` is the case a capability-level switch cannot express, and it is the
+ * one that matters, because the command allow list constrains `run_command` only.
+ */
+function ToolChecklist({
+  capability,
+  selected,
+  busy,
+  onToggle,
+}: {
+  capability: ToolCapability;
+  selected: string[];
+  busy: boolean;
+  onToggle: (toolId: string, next: boolean) => void;
+}) {
+  const { t } = useTranslation('workforce');
+
+  return (
+    <section className="workforce-tool-resource workforce-tool-checklist">
+      {capability.tools.map((tool) => (
+        <div key={tool.id}>
+          <CheckRow
+            checked={selected.includes(tool.id)}
+            onChange={(next) => onToggle(tool.id, next)}
+            disabled={busy}
+            title={`${tool.label ?? tool.name} · ${tool.id}`}
+            hint={tool.description}
+          />
+          <details className="workforce-tool-params-disclosure">
+            <summary>
+              {t('toolsParameters', {
+                count: Object.keys(tool.parameters?.properties ?? {}).length,
+              })}
+            </summary>
+            <ToolParameters parameters={tool.parameters} />
+          </details>
+        </div>
+      ))}
     </section>
   );
 }

@@ -4,7 +4,7 @@ Two things live here, and they are different in kind:
 
 * **A capability** (`ontology`, `catalog`, …) is a tool switch. Enabling it puts its tools into the request's `tools`
   array; the model reads each tool's own description, so the same text is what the configuration screen shows.
-* **Environment tools** (`run_python_tool`, `run_command_tool`) are always part of the environment when code
+* **Environment tools** (`run_python`, `run_command`) are always part of the environment when code
   execution is on, and their policy is data — the command allowlist is the interesting part, because "what can it
   start" is a question the person configuring the agent must be able to answer without reading code.
 
@@ -60,11 +60,30 @@ CAPABILITY_NAMES: dict[str, str] = {
     "workspace": "Workspace files",
 }
 
+#: Stable tool ids. The callable name can change (it is what the model sees); a stored selection must not, so the ledger
+#: is written in these. Shape: `<capability>.<verb>`.
+TOOL_IDS: dict[str, str] = {
+    "list_ontology_groups": "ontology.groups",
+    "get_ontology_schema": "ontology.schema",
+    "run_cypher": "ontology.cypher",
+    "list_semantic_models": "catalog.list_models",
+    "get_semantic_model": "catalog.get_model",
+    "query_semantic_model": "catalog.query",
+    "run_sql": "catalog.sql",
+    "read_document_toc": "page.toc",
+    "read_document_section": "page.section",
+    "list_files": "file.list",
+    "read_file": "file.read",
+    "write_file": "file.write",
+    "run_python": "exec.python",
+    "run_command": "exec.shell",
+}
+
 #: The two environment tools read better by what they run than by their callable name. The callable name stays: it is
 #: what appears in a tool call and in a trace, so the label is a display name, not a rename.
 ENVIRONMENT_TOOL_LABELS: dict[str, str] = {
-    "run_python_tool": "Python",
-    "run_command_tool": "Shell",
+    "run_python": "Python",
+    "run_command": "Shell",
 }
 
 CAPABILITY_TOOLS: dict[str, list[Any]] = {
@@ -111,6 +130,8 @@ def _prose(text: str) -> str:
 
 def _tool(tool: Any, label: str | None = None) -> dict[str, Any]:
     return {
+        # The stable id a stored selection names; `name` is what the model calls.
+        "id": TOOL_IDS.get(tool.name, tool.name),
         "name": tool.name,
         # A display name when the callable name is not the clearest heading; the callable name stays in `name`.
         **({"label": label} if label else {}),
@@ -162,10 +183,10 @@ def tool_catalog() -> dict[str, Any]:
                 "cwd": "conversation directory",
                 "writable": "out/",
                 "timeout_seconds": DEFAULT_TIMEOUT_SECONDS,
-                # The allow list constrains exactly one tool. `run_python_tool` runs code, not a command line, so it
+                # The allow list constrains exactly one tool. `run_python` runs code, not a command line, so it
                 # bypasses it — saying "the allowlist limits code execution" would be a claim the runtime does not keep.
                 "allowlist": {
-                    "tools": ["run_command_tool"],
+                    "tools": ["run_command"],
                     "builtin_allow": sorted(ALLOWED_COMMANDS),
                     # Additive: an agent may extend the built-in set, never shrink it.
                     "additive": True,

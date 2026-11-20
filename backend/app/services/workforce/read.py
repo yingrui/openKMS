@@ -80,7 +80,7 @@ def agent_to_response(agent: WorkforceAgent, counts: dict[str, int]) -> Workforc
         status=agent.status,
         owner_sub=agent.owner_sub,
         owner_name=agent.owner_name,
-        agent_skills=list(agent.agent_skills) if isinstance(agent.agent_skills, list) else None,
+        agent_tools=dict(agent.agent_tools) if isinstance(agent.agent_tools, dict) else None,
         agent_config=dict(agent.agent_config) if isinstance(agent.agent_config, dict) else None,
         origin_knowledge_base_id=agent.origin_knowledge_base_id,
         **counts,

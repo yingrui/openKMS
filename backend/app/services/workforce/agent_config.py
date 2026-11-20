@@ -46,11 +46,40 @@ def runtime_config(kb: KnowledgeBase, agent: WorkforceAgent | None) -> dict[str,
 
 
 def resolve_skills(raw: list | None) -> list[str]:
-    """Explicit list wins; an empty/absent one means the core defaults."""
+    """Explicit list wins; an empty/absent one means the core defaults.
+
+    Kept for the knowledge base side, which still stores capability ids as a list; the workforce agent stores the tool
+    ledger below. Both end up as the same request field.
+    """
     if isinstance(raw, list) and raw:
         return [str(s) for s in raw if isinstance(s, str) and s.strip()]
     return list(CORE_AGENT_SKILLS)
 
 
-def agent_skills_for(kb: KnowledgeBase, agent: WorkforceAgent | None) -> list[str]:
-    return resolve_skills(agent.agent_skills if agent is not None else kb.agent_skills)
+def resolve_tools(raw: dict | None) -> dict[str, object]:
+    """The tool ledger a request carries: `{capability_id: "all" | [tool_id, ...]}`.
+
+    An agent stores it directly. A knowledge base still stores a capability list plus a `sandbox.enabled` flag, so its
+    two fields are folded into the same ledger here — one contract on the wire, two storages behind it.
+    """
+    if isinstance(raw, dict) and raw:
+        return {str(key): value for key, value in raw.items() if isinstance(key, str)}
+    return {capability: "all" for capability in CORE_AGENT_SKILLS}
+
+
+def agent_tools_for(agent: WorkforceAgent) -> dict[str, object]:
+    """The ledger for one workforce agent."""
+    ledger = resolve_tools(agent.agent_tools)
+    sandbox = (agent.agent_config or {}).get("sandbox") or {}
+    if sandbox.get("enabled"):
+        ledger.setdefault("code_execution", "all")
+    return ledger
+
+
+def kb_tools_for(kb: KnowledgeBase) -> dict[str, object]:
+    """The ledger for a knowledge base's own Q&A, where no workforce agent overrides it."""
+    ledger = {capability: "all" for capability in resolve_skills(kb.agent_skills)}
+    sandbox = (kb.agent_config or {}).get("sandbox") or {}
+    if sandbox.get("enabled"):
+        ledger["code_execution"] = "all"
+    return ledger

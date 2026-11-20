@@ -3,9 +3,9 @@ import pytest
 
 from qa_agent import request_context, session_fs
 from qa_agent.skills.workspace import (
-    list_workspace_files_tool,
-    read_workspace_file_tool,
-    write_workspace_file_tool,
+    list_files,
+    read_file,
+    write_file,
 )
 
 
@@ -25,15 +25,15 @@ def sessions_root(tmp_path, monkeypatch):
 
 def _write(path, content):
     # keyword args: the tools take `_config` first, so positional calls silently mis-bind
-    return write_workspace_file_tool.func(_config={}, path=path, content=content)
+    return write_file.func(_config={}, path=path, content=content)
 
 
 def _read(path):
-    return read_workspace_file_tool.func(_config={}, path=path)
+    return read_file.func(_config={}, path=path)
 
 
 def _list(path=""):
-    return list_workspace_files_tool.func(_config={}, path=path)
+    return list_files.func(_config={}, path=path)
 
 
 class TestScoping:
@@ -88,7 +88,6 @@ class TestConventionsAreNotAFilesystemCopy:
 
         prompt = agent_module._build_system_prompt(
             context=[],
-            skills=[],
             policy=None,
             agents_md="# 量化交易 KB\n- 营收不属于本模型",
         )

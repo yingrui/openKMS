@@ -10,7 +10,8 @@ export interface WorkforceAgentResponse {
   owner_sub: string;
   owner_name?: string | null;
   /** Enabled skills; null means the qa-agent core set. */
-  agent_skills?: string[] | null;
+  /** `{capability_id: "all" | [tool_id, ...]}` — which tools this agent may use. */
+  agent_tools?: Record<string, 'all' | string[]> | null;
   /** The agent's half of the runtime configuration. `retrieval` is not here — it belongs to the source. */
   agent_config?: KbAgentConfig | null;
   origin_knowledge_base_id?: string | null;
@@ -96,7 +97,8 @@ export async function fetchWorkforceAgent(agentId: string): Promise<WorkforceAge
 export async function createWorkforceAgent(data: {
   name: string;
   description?: string | null;
-  agent_skills?: string[] | null;
+  /** `{capability_id: "all" | [tool_id, ...]}` — which tools this agent may use. */
+  agent_tools?: Record<string, 'all' | string[]> | null;
   agent_config?: AgentConfigInput | null;
   knowledge_base_ids?: string[];
 }): Promise<WorkforceAgentDetail> {
@@ -112,7 +114,8 @@ export async function updateWorkforceAgent(
   data: {
     name?: string;
     description?: string | null;
-    agent_skills?: string[] | null;
+    /** `{capability_id: "all" | [tool_id, ...]}` — which tools this agent may use. */
+  agent_tools?: Record<string, 'all' | string[]> | null;
     agent_config?: AgentConfigInput | null;
   },
 ): Promise<WorkforceAgentDetail> {

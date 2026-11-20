@@ -257,10 +257,6 @@
   color: var(--color-text-secondary);
 }
 
-.workforce-tool-name {
-  font-size: 0.85rem;
-  font-weight: 600;
-}
 
 .workforce-tool-policy-actions {
   display: flex;
@@ -271,31 +267,6 @@
   margin-top: 8px;
 }
 
-.workforce-tool-definitions {
-  grid-column: 1 / -1;
-  margin: 4px 0 12px;
-  padding: 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-muted);
-
-  dt {
-    margin-bottom: 4px;
-  }
-
-  dt code {
-    font-size: 0.78rem;
-    color: var(--color-text-secondary);
-  }
-
-  dd {
-    margin: 0 0 12px;
-    font-size: 0.82rem;
-    line-height: 1.6;
-    color: var(--color-text-secondary);
-    white-space: pre-wrap;
-  }
-}
 
 .workforce-tool-row {
   &.is-open {
@@ -308,6 +279,12 @@
   margin: 4px 0 8px;
   padding-left: 28px;
   border-left: 2px solid var(--color-border);
+}
+
+.workforce-tool-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .workforce-tool-resource {

@@ -214,7 +214,7 @@ export function WorkforceList() {
                 </p>
                 <div className="ds-resource-list-meta">
                   <span>{t('metaKbs', { count: agent.knowledge_base_count })}</span>
-                  <span>{t('metaSkills', { count: agent.agent_skills?.length ?? 0 })}</span>
+                  <span>{t('metaSkills', { count: Object.keys(agent.agent_tools ?? {}).length })}</span>
                   <span>{t('metaCredentials', { count: agent.credential_count })}</span>
                 </div>
               </Link>
@@ -247,7 +247,7 @@ export function WorkforceList() {
                     </div>
                   </td>
                   <td>{t('metaKbs', { count: agent.knowledge_base_count })}</td>
-                  <td>{t('metaSkills', { count: agent.agent_skills?.length ?? 0 })}</td>
+                  <td>{t('metaSkills', { count: Object.keys(agent.agent_tools ?? {}).length })}</td>
                   <td>{t('metaCredentials', { count: agent.credential_count })}</td>
                   <td>
                     <AgentRowActions label={t('archiveAgent')} onDelete={() => void remove(agent)} />

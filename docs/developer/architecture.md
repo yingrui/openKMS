@@ -258,7 +258,7 @@ qa-agent/
 │   ├── agent.py             # LangGraph agent: retrieve → generate (with tools) → tools
 │   ├── retriever.py         # Calls backend search API (no DB access)
 │   ├── ontology_client.py   # GET object-types, link-types; POST ontology/explore (Cypher)
-│   ├── tools.py             # get_ontology_schema_tool, run_cypher_tool
+│   ├── tools.py             # get_ontology_schema, run_cypher
 │   └── schemas.py           # AskRequest/AskResponse
 ├── .env.example
 └── README.md

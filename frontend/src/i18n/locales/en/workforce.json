@@ -10,7 +10,7 @@
   "deleteFailed": "Could not delete the agent.",
   "noDescription": "No description",
   "metaKbs": "{{count}} knowledge sources",
-  "metaSkills": "{{count}} skills",
+  "metaSkills": "{{count}} capability",
   "metaCredentials": "{{count}} credentials",
   "cardCreateTitle": "Create a workforce agent",
   "cardCreateHint": "Name it, then bind the knowledge it may answer from.",
@@ -415,5 +415,13 @@
   "pickerAdd": "Add {{count}}",
   "pickerNothingToAdd": "Nothing left to add.",
   "modelAccess_public": "public",
-  "modelAccess_restricted": "restricted"
+  "modelAccess_restricted": "restricted",
+  "metaSkills_other": "{{count}} capabilities",
+  "toolsParameters": "Parameters ({{count}})",
+  "toolsParamName": "Argument",
+  "toolsParamType": "Type",
+  "toolsParamRequired": "Required",
+  "toolsParamYes": "required",
+  "toolsNoParameters": "This tool takes no arguments.",
+  "toolsParamDescription": "Description"
 }

@@ -34,8 +34,8 @@ class AskRequest(BaseModel):
     access_token: str = ""
     #: Opaque id (e.g. UUID) so Langfuse groups turns under one **Session**; optional.
     session_id: str | None = None
-    #: Skill ids from the KB settings; null/omit → core skills only.
-    agent_skills: list[str] | None = None
+    #: The tool ledger: `{capability_id: "all" | [tool_id, ...]}`. Omitted → the core capabilities.
+    agent_tools: dict[str, Any] | None = None
     #: The KB's agent configuration (`AgentConfig` on the backend, already validated there). Absent → defaults, which are
     #: today's behaviour: top_k 5, `try_anyway` answer policy, no workspace.
     agent_config: dict[str, Any] | None = None
@@ -84,7 +84,7 @@ class AskResponse(BaseModel):
 
 class PromptPreviewRequest(BaseModel):
     knowledge_base_id: str | None = None
-    agent_skills: list[str] | None = None
+    agent_tools: dict[str, Any] | None = None
     agent_config: dict[str, Any] | None = None
     installed_skills: dict[str, str] | None = None
     #: Which registry `installed_skills` ids belong to: `agent` (Agent Project packages) or `workforce`.
@@ -109,7 +109,7 @@ class RetrieveRequest(BaseModel):
     query: str
     access_token: str = ""
     top_k: int = 5
-    agent_skills: list[str] | None = None
+    agent_tools: dict[str, Any] | None = None
     knowledge_base_id: str | None = None
 
 

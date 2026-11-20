@@ -9,11 +9,11 @@ from langchain_core.messages import AIMessage, ToolMessage
 
 from .schemas import SourceItem
 
-PAGE_SECTION_TOOL_NAME = "get_section_content_tool"
-ONTOLOGY_SCHEMA_TOOL_NAME = "get_ontology_schema_tool"
-RUN_CYPHER_TOOL_NAME = "run_cypher_tool"
-QUERY_SEMANTIC_MODEL_TOOL_NAME = "query_semantic_model_tool"
-SQL_SEMANTIC_MODEL_TOOL_NAME = "sql_semantic_model_tool"
+PAGE_SECTION_TOOL_NAME = "read_document_section"
+ONTOLOGY_SCHEMA_TOOL_NAME = "get_ontology_schema"
+RUN_CYPHER_TOOL_NAME = "run_cypher"
+QUERY_SEMANTIC_MODEL_TOOL_NAME = "query_semantic_model"
+SQL_SEMANTIC_MODEL_TOOL_NAME = "run_sql"
 _CATALOG_QUERY_TOOL_NAMES = frozenset(
     {QUERY_SEMANTIC_MODEL_TOOL_NAME, SQL_SEMANTIC_MODEL_TOOL_NAME}
 )
@@ -75,7 +75,7 @@ def _coerce_tool_output(out: Any) -> str:
 
 
 def source_from_page_section_tool(inp: Any, out: Any) -> SourceItem | None:
-    """Build a citation row from a get_section_content_tool call (input + raw output)."""
+    """Build a citation row from a read_document_section call (input + raw output)."""
     if not isinstance(inp, dict):
         return None
     doc_raw = inp.get("document_id")
@@ -130,7 +130,7 @@ def _tool_call_meta_by_id(messages: list[Any]) -> dict[str, tuple[str, dict[str,
 
 
 def sources_from_page_index_tools(messages: list[Any]) -> list[SourceItem]:
-    """Ordered, de-duplicated section sources from successful get_section_content_tool results."""
+    """Ordered, de-duplicated section sources from successful read_document_section results."""
     meta = _tool_call_meta_by_id(messages)
     found: list[SourceItem] = []
     seen_ids: set[str] = set()

@@ -31,8 +31,8 @@ def _kb(agent_config: dict | None = None, agent_skills: list | None = None):
     return SimpleNamespace(agent_config=agent_config, agent_skills=agent_skills)
 
 
-def _agent(agent_config: dict | None = None, agent_skills: list | None = None):
-    return SimpleNamespace(agent_config=agent_config, agent_skills=agent_skills)
+def _agent(agent_config: dict | None = None, agent_tools: dict | None = None):
+    return SimpleNamespace(agent_config=agent_config, agent_tools=agent_tools)
 
 
 class TestConfigSplit:
@@ -231,7 +231,7 @@ class TestPromptPreviewRoute:
             id="agent_1",
             name="量化投研助手",
             description="回答 A 股因子问题。",
-            agent_skills=None,
+            agent_tools=None,
             agent_config=None,
             installed_skills=None,
         )
@@ -280,7 +280,7 @@ class TestPromptPreviewRoute:
         assert sent["url"].endswith("/knowledge-bases/kb_1/prompt-preview")
         # The qa-agent receives the same things the answer path sends: tools, runtime config, installed skills.
         assert set(sent["body"]) == {
-            "agent_skills",
+            "agent_tools",
             "agent_config",
             "installed_skills",
             "agent_name",

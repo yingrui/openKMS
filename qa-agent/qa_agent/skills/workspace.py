@@ -12,7 +12,7 @@ conversation it is writing into.
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
@@ -36,9 +36,11 @@ def _scope(config: RunnableConfig) -> tuple[str, str]:
 
 
 @tool
-def list_workspace_files_tool(_config: RunnableConfig, path: str = "") -> str:
-    """List files in this conversation's workspace. Paths are relative to it (``out/chart.csv``); "" is the root.
-    Use before writing, to see what already exists."""
+def list_files(
+    _config: RunnableConfig,
+    path: Annotated[str, "Directory inside the conversation; empty for the root"] = "",
+) -> str:
+    """ Files in this conversation's directory, as relative paths."""
     try:
         kb_id, session_id = _scope(_config)
         entries = session_fs.list_dir(kb_id, session_id, path)
@@ -54,9 +56,11 @@ def list_workspace_files_tool(_config: RunnableConfig, path: str = "") -> str:
 
 
 @tool
-def read_workspace_file_tool(path: str, _config: RunnableConfig) -> str:
-    """Read one text file from this conversation's workspace. Binary or oversized files return their size only.
-    A user's uploaded data is under ``uploads/``; artifacts you produced are under ``out/``."""
+def read_file(
+    path: Annotated[str, "Path relative to the conversation directory"],
+    _config: RunnableConfig,
+) -> str:
+    """ One text file from this conversation's directory; binary files report their size."""
     try:
         kb_id, session_id = _scope(_config)
         payload = session_fs.read_file(kb_id, session_id, path)
@@ -68,9 +72,12 @@ def read_workspace_file_tool(path: str, _config: RunnableConfig) -> str:
 
 
 @tool
-def write_workspace_file_tool(path: str, content: str, _config: RunnableConfig) -> str:
-    """Write a text file into this conversation's workspace and return its path. Give a bare name to place it in
-    ``out/``. Use this for charts as data tables, CSV, markdown or notes the user should be able to open."""
+def write_file(
+    path: Annotated[str, "Relative path; a bare name lands in out/"],
+    content: Annotated[str, "Text to write"],
+    _config: RunnableConfig,
+) -> str:
+    """ Write a text file into this conversation's directory and return its path."""
     try:
         kb_id, session_id = _scope(_config)
         target = path.strip() or "artifact.txt"
@@ -83,9 +90,9 @@ def write_workspace_file_tool(path: str, content: str, _config: RunnableConfig) 
 
 
 workspace_tools: list[Any] = [
-    list_workspace_files_tool,
-    read_workspace_file_tool,
-    write_workspace_file_tool,
+    list_files,
+    read_file,
+    write_file,
 ]
 
 

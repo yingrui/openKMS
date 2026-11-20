@@ -16,7 +16,8 @@ class WorkforceAgentCreate(BaseModel):
     name: str
     description: str | None = None
     #: Skill ids; null → the qa-agent core defaults.
-    agent_skills: list[str] | None = None
+    #: `{capability_id: "all" | [tool_id, ...]}`.
+    agent_tools: dict[str, object] | None = None
     #: Runtime configuration. `retrieval` is ignored here: depth belongs to the knowledge source.
     agent_config: AgentConfig | None = None
     #: Knowledge sources to bind at creation. Each one is checked against the creator's read access.
@@ -26,7 +27,8 @@ class WorkforceAgentCreate(BaseModel):
 class WorkforceAgentUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
-    agent_skills: list[str] | None = None
+    #: `{capability_id: "all" | [tool_id, ...]}`.
+    agent_tools: dict[str, object] | None = None
     agent_config: AgentConfig | None = None
 
 
@@ -68,7 +70,8 @@ class WorkforceAgentResponse(BaseModel):
     status: str
     owner_sub: str
     owner_name: str | None = None
-    agent_skills: list[str] | None = None
+    #: `{capability_id: "all" | [tool_id, ...]}`.
+    agent_tools: dict[str, object] | None = None
     agent_config: dict[str, Any] | None = None
     #: Set when this agent is a knowledge base's default runtime (its own Q&A resolves it).
     origin_knowledge_base_id: str | None = None

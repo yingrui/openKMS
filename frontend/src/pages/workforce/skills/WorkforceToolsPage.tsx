@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { WorkforceAreaNav } from '../../../components/workforce/WorkforceAreaNav';
+import { ToolParameters } from '../ToolParameters';
 import {
   fetchToolCatalog,
   type ToolCapability,
@@ -123,6 +124,12 @@ function ToolRow({
                   {tool.label ? <code>{tool.name}</code> : null}
                 </dt>
                 <dd>{tool.description}</dd>
+                <dd>
+                  <details className="workforce-tool-params-disclosure">
+                    <summary>{t('toolsParameters', { count: Object.keys(tool.parameters?.properties ?? {}).length })}</summary>
+                    <ToolParameters parameters={tool.parameters} />
+                  </details>
+                </dd>
               </div>
             ))}
           </dl>

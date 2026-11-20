@@ -86,11 +86,11 @@ async def _ask_impl(kb_id: str, request: AskRequest) -> AskResponse:
 
     t0 = time.monotonic()
     logger.info(
-        "POST ask kb=%s history=%d session=%s skills=%s",
+        "POST ask kb=%s history=%d session=%s tools=%s",
         kb_id,
         len(request.conversation_history or []),
         request.session_id or "-",
-        request.agent_skills,
+        request.agent_tools,
     )
     logger.debug("POST ask question=%r", preview_text(request.question, 200))
     result = invoke_agent(
@@ -99,7 +99,7 @@ async def _ask_impl(kb_id: str, request: AskRequest) -> AskResponse:
             conversation_history=request.conversation_history,
             access_token=request.access_token or "",
             session_id=request.session_id,
-            agent_skills=request.agent_skills,
+            agent_tools=request.agent_tools,
         agent_config=request.agent_config,
         installed_skills=request.installed_skills,
         skills_registry=request.skills_registry,
@@ -140,11 +140,11 @@ def _stream_response(kb_id: str, request: AskRequest) -> StreamingResponse:
     from .agent import astream_agent_ndjson
 
     logger.info(
-        "POST ask/stream kb=%s history=%d session=%s skills=%s",
+        "POST ask/stream kb=%s history=%d session=%s tools=%s",
         kb_id,
         len(request.conversation_history or []),
         request.session_id or "-",
-        request.agent_skills,
+        request.agent_tools,
     )
     logger.debug("POST ask/stream question=%r", preview_text(request.question, 200))
     return StreamingResponse(
@@ -154,7 +154,7 @@ def _stream_response(kb_id: str, request: AskRequest) -> StreamingResponse:
             conversation_history=request.conversation_history,
             access_token=request.access_token or "",
             session_id=request.session_id,
-            agent_skills=request.agent_skills,
+            agent_tools=request.agent_tools,
             agent_config=request.agent_config,
             system_prompt=request.system_prompt,
             prompt_version=request.prompt_version,
@@ -176,13 +176,11 @@ def _prompt_preview_impl(kb_id: str, request: PromptPreviewRequest) -> PromptPre
     from .backend_defaults import fetch_skill_prompts
 
     config = request.agent_config
-    skills = request.agent_skills
     base = agent_config_module.system_prompt(config)
     # The same call the answer path makes, with the retrieved passages replaced by a marker: they depend on the
     # question, and inventing sample passages would misrepresent what the model sees.
     sections = prompt_sections(
         context=[],
-        skills=skills,
         policy=agent_config_module.answer_policy(config),
         state_prompt=base,
         agents_md=agent_config_module.agents_md(config),

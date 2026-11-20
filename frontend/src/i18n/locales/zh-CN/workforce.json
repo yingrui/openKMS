@@ -414,5 +414,12 @@
   "pickerAdd": "添加 {{count}} 个",
   "pickerNothingToAdd": "没有可添加的了。",
   "modelAccess_public": "公开",
-  "modelAccess_restricted": "受限"
+  "modelAccess_restricted": "受限",
+  "toolsParameters": "参数（{{count}} 个）",
+  "toolsParamName": "参数",
+  "toolsParamType": "类型",
+  "toolsParamRequired": "必填",
+  "toolsParamYes": "必填",
+  "toolsNoParameters": "这个工具没有参数。",
+  "toolsParamDescription": "说明"
 }

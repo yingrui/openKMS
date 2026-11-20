@@ -4,7 +4,7 @@ RAG-based question answering agent for openKMS knowledge bases, built with FastA
 
 ## Architecture
 
-- **FastAPI** web server with path-scoped **`POST /knowledge-bases/{kb_id}/ask`** (JSON answer), **`…/ask/stream`** (NDJSON: `delta` {`t`}, optional **`tool_start` / `tool_end` / `tool_error`** like the wiki copilot stream, then `done` with `answer` and `sources`), and **`…/retrieve`**. Response **`sources`**: hybrid retrieval hits unless **Page Index** (`get_section_content_tool` → **`document_section`**) or **ontology** (successful **`run_cypher_tool`** → **`ontology`** rows listing object types + query summaries). Optional body field **`session_id`** is forwarded as Langfuse **`langfuse_session_id`** so multi-turn Q&A groups under one **Session**. Body **`agent_skills`** selects which skills bind (null/omit → core only).
+- **FastAPI** web server with path-scoped **`POST /knowledge-bases/{kb_id}/ask`** (JSON answer), **`…/ask/stream`** (NDJSON: `delta` {`t`}, optional **`tool_start` / `tool_end` / `tool_error`** like the wiki copilot stream, then `done` with `answer` and `sources`), and **`…/retrieve`**. Response **`sources`**: hybrid retrieval hits unless **Page Index** (`read_document_section` → **`document_section`**) or **ontology** (successful **`run_cypher`** → **`ontology`** rows listing object types + query summaries). Optional body field **`session_id`** is forwarded as Langfuse **`langfuse_session_id`** so multi-turn Q&A groups under one **Session**. Body **`agent_skills`** selects which skills bind (null/omit → core only).
 - **LangGraph** agent with nodes: `retrieve` (KB search), `generate` (LLM with tools for selected skills), `tools` (skill tools)
 - **RAG**: `POST /api/knowledge-bases/{id}/search` (semantic search over chunks and FAQs)
 - **LangGraph skills** (in `qa_agent/skills/`): ontology (Cypher/graph, optionally scoped to KB-linked groups), page_index (document TOC navigation), **catalog** (linked semantic models → query API); optional `workspace` (file tools over the conversation directory)
@@ -19,8 +19,8 @@ Skills are modules in `qa_agent/skills/` that provide tools. The agent binds onl
 ### Ontology skill
 
 For coverage/relationship questions (e.g. "Which insurance products cover heart attack?"):
-- **get_ontology_schema_tool** – Fetches object types and link types from the backend (restricted to linked ontology groups when the KB has any)
-- **run_cypher_tool** – Executes read-only Cypher against Neo4j
+- **get_ontology_schema** – Fetches object types and link types from the backend (restricted to linked ontology groups when the KB has any)
+- **run_cypher** – Executes read-only Cypher against Neo4j
 
 ### Catalog skill
 
@@ -31,9 +31,9 @@ For numeric / metric questions grounded in Catalog:
 ### Page Index skill
 
 For document-depth questions when search chunks are insufficient:
-1. **read_table_of_contents_tool** – Get document structure (sections with start_line, end_line)
+1. **read_document_toc** – Get document structure (sections with start_line, end_line)
 2. **select section** – LLM chooses relevant section by title
-3. **get_section_content_tool** – Fetch markdown content for the section
+3. **read_document_section** – Fetch markdown content for the section
 4. **determine information-sufficient** – If yes → generate answer; if no → try another section
 5. **generate answer** – Use extracted content, cite the section
 

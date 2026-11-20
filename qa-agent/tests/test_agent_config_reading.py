@@ -275,7 +275,7 @@ class TestPromptPreview:
         out = _prompt_preview_impl(
             "kb1",
             PromptPreviewRequest(
-                agent_skills=["ontology"],
+                agent_tools={"ontology": "all"},
                 agent_config={
                     "prompts": {"agents_md": "# 规则\n只回答人事制度"},
                     "answer_policy": {"unknown_measure": "refuse"},
@@ -349,7 +349,7 @@ class TestInstalledSkills:
         out = _prompt_preview_impl(
             "kb1",
             PromptPreviewRequest(
-                agent_skills=["ontology"],
+                agent_tools={"ontology": "all"},
                 agent_config={},
                 installed_skills={},  # the fetch is exercised by the endpoint; this pins the ordering
             ),
@@ -362,7 +362,6 @@ class TestInstalledSkills:
 
         prompt = _build_system_prompt(
             context=[],
-            skills=["ontology"],
             policy=None,
             state_prompt=None,
             agents_md=None,
@@ -396,7 +395,7 @@ class TestIdentityIsInThePrompt:
     def test_description_alone_still_names_the_service(self):
         from qa_agent.agent import _build_system_prompt
 
-        prompt = _build_system_prompt(context=[], skills=[], policy=None, agent_name="客服助手")
+        prompt = _build_system_prompt(context=[], policy=None, agent_name="客服助手")
         assert prompt.startswith("You are 客服助手.\n\n")
 
     def test_no_identity_no_line(self):

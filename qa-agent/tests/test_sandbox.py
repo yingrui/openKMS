@@ -29,7 +29,7 @@ class TestConfig:
     def test_a_kb_may_add_commands_but_the_builtins_remain(self):
         allowed = sandbox.allowed_commands({"allow_commands": ["csvkit"]})
         assert "csvkit" in allowed
-        assert "python" in allowed and "cat" in allowed
+        assert "cat" in allowed and "ls" in allowed
 
 
 class TestCommandPolicy:
@@ -215,3 +215,39 @@ class TestMemoryCeiling:
             kb_id="kb1", session_id="mem", settings={"enabled": True, "memory_mb": 1024, "timeout_seconds": 60},
         )
         assert result.ok and result.stdout.strip() == "100000"
+
+
+class TestTheBuiltinListIsInspectionOnly:
+    """The check sees the program name, never the arguments, so anything that starts another program is a way around it."""
+
+    def test_default_allows_inspection(self):
+        from qa_agent.sandbox import ALLOWED_COMMANDS, check_command
+
+        for command in ("ls -la", "cat out/a.csv | head", "grep -r revenue .", "find . -name '*.py'"):
+            check_command(command, ALLOWED_COMMANDS)
+
+    def test_default_refuses_anything_that_starts_or_changes(self):
+        from qa_agent.sandbox import ALLOWED_COMMANDS, CommandNotAllowed, check_command
+
+        for command in (
+            "python -c 'print(1)'",
+            "pip install evil",
+            "awk 'BEGIN{system(\"id\")}'",
+            "sed -n 1p f",
+            "git status",
+            "make",
+            "rm -rf /tmp/x",
+            "mv a b",
+            "tar -xf a.tar",
+            "xargs rm",
+        ):
+            with pytest.raises(CommandNotAllowed):
+                check_command(command, ALLOWED_COMMANDS)
+
+    def test_find_may_look_but_not_run(self):
+        from qa_agent.sandbox import ALLOWED_COMMANDS, CommandNotAllowed, check_command
+
+        check_command("find . -name '*.py'", ALLOWED_COMMANDS)
+        for action in ("-exec", "-delete", "-execdir"):
+            with pytest.raises(CommandNotAllowed):
+                check_command(f"find . {action} rm {{}} \\;", ALLOWED_COMMANDS)

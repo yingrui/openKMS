@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Annotated, Any
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
@@ -13,9 +13,8 @@ from ..request_context import get_tool_access_token
 
 
 @tool
-def list_semantic_models_tool(_config: RunnableConfig) -> str:
-    """List the Catalog semantic models you can read (name, description, ai_context).
-    Use this before querying numbers. If empty, no model is readable with this caller's access."""
+def list_semantic_models(_config: RunnableConfig) -> str:
+    """ The semantic models you may read. Call it before any number."""
     try:
         token = get_tool_access_token(_config)
         items = catalog_client.list_semantic_models(token)
@@ -88,12 +87,11 @@ def _model_tables(token: str, model: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 @tool
-def get_semantic_model_tool(model_id: str, _config: RunnableConfig) -> str:
-    """Get one readable semantic model: its metrics, fields and physical tables.
-
-    Metrics carry the definition, `ai_context` (synonyms, examples, what it is not for), `depends_on` and any data
-    `assertions`. The `tables` list is the allowlist for `sql_semantic_model_tool`; a model with `data_resources` is
-    restricted and each query must name one. `model_id` must come from `list_semantic_models_tool`."""
+def get_semantic_model(
+    model_id: Annotated[str, "Model id from list_semantic_models"],
+    _config: RunnableConfig,
+) -> str:
+    """One model's metrics, fields, tables, data assertions and `ai_context`."""
     try:
         token = get_tool_access_token(_config)
         model = catalog_client.get_semantic_model(token, model_id)
@@ -170,29 +168,22 @@ def get_semantic_model_tool(model_id: str, _config: RunnableConfig) -> str:
 
 
 @tool
-def query_semantic_model_tool(
-    model_id: str,
+def query_semantic_model(
+    model_id: Annotated[str, "Model id from list_semantic_models"],
     _config: RunnableConfig,
-    metric: str | None = None,
-    expression: str | None = None,
-    base_dataset: str | None = None,
-    joins: list[str] | None = None,
-    group_by: list[dict[str, Any]] | None = None,
-    filters: list[dict[str, Any]] | None = None,
-    where: str | None = None,
-    having: str | None = None,
-    order_by: list[dict[str, Any]] | None = None,
-    limit: int | None = 100,
-    resource_id: str | None = None,
+    metric: Annotated[str | None, "Saved metric name; preferred over expression"] = None,
+    expression: Annotated[str | None, "Aggregate expression (e.g. SUM(amount)) when no saved metric fits"] = None,
+    base_dataset: Annotated[str | None, "Dataset id the expression runs on"] = None,
+    joins: Annotated[list[str] | None, "Relationship ids to join"] = None,
+    group_by: Annotated[list[dict[str, Any]] | None, "Dimensions: [{field, ...}]"] = None,
+    filters: Annotated[list[dict[str, Any]] | None, "Row filters: [{field, op, value}]"] = None,
+    where: Annotated[str | None, "Boolean SQL fragment AND-ed into the query"] = None,
+    having: Annotated[str | None, "Boolean SQL fragment on the aggregate"] = None,
+    order_by: Annotated[list[dict[str, Any]] | None, "Ordering: [{field, direction}]"] = None,
+    limit: Annotated[int | None, "Maximum rows"] = 100,
+    resource_id: Annotated[str | None, "Granted data resource; required when the model is restricted"] = None,
 ) -> str:
-    """Run one Catalog metric query (not a full SELECT). Prefer a saved metric name; otherwise pass
-    an aggregate expression fragment (e.g. SUM(amount)) with base_dataset (dataset id) and optional
-    joins (relationship ids). filters: [{field, op, value}] on model fields. where/having: boolean
-    SQL fragments AND-ed in. For ad-hoc SELECT/JOIN use sql_semantic_model_tool instead.
-    resource_id: which granted data resource to query — required in effect when the model is
-    restricted (the resource decides the row scope, which you cannot widen). Defaults to the first
-    resource granted to the caller.
-    model_id must be linked to this KB."""
+    """One governed metric query: a saved metric or an aggregate expression. Never sum a `non_additive` metric — query it at the needed grain; pass `resource_id` when the model is restricted."""
     try:
         token = get_tool_access_token(_config)
         body: dict[str, Any] = {
@@ -221,20 +212,14 @@ def query_semantic_model_tool(
 
 
 @tool
-def sql_semantic_model_tool(
-    model_id: str,
-    sql: str,
+def run_sql(
+    model_id: Annotated[str, "Model id from list_semantic_models"],
+    sql: Annotated[str, "One SELECT or WITH…SELECT over this model's tables"],
     _config: RunnableConfig,
-    limit: int | None = 100,
-    resource_id: str | None = None,
+    limit: Annotated[int | None, "Maximum rows"] = 100,
+    resource_id: Annotated[str | None, "Granted data resource; required when the model is restricted"] = None,
 ) -> str:
-    """Run one read-only SQL Lab SELECT against tables in this semantic model.
-    Use when a saved metric / expression query is awkward (multi-table JOIN, window functions,
-    row samples, custom projections). sql must be a single SELECT or WITH…SELECT; only tables
-    listed under get_semantic_model_tool.tables (prefer schema.table) are allowed. Do not write
-    INSERT/UPDATE/DELETE or multiple statements. resource_id selects the granted data
-    resource (required in effect for a restricted model; it fixes which rows you may read).
-    model_id must be linked to this KB."""
+    """One read-only SELECT over this model's tables, when a metric query cannot express it. `resource_id` when restricted."""
     try:
         token = get_tool_access_token(_config)
         resource_id = _resolve_resource(token, model_id, resource_id)
@@ -247,9 +232,9 @@ def sql_semantic_model_tool(
 
 
 catalog_tools = [
-    list_semantic_models_tool,
-    get_semantic_model_tool,
-    query_semantic_model_tool,
-    sql_semantic_model_tool,
+    list_semantic_models,
+    get_semantic_model,
+    query_semantic_model,
+    run_sql,
 ]
 

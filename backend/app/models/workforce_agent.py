@@ -42,15 +42,17 @@ class WorkforceAgent(Base):
         String(16), nullable=False, default=AGENT_STATUS_ACTIVE, server_default=AGENT_STATUS_ACTIVE
     )
 
-    #: Which skills are enabled. `null` → the qa-agent core defaults, same rule as a knowledge base.
-    agent_skills: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    #: The tool ledger: `{capability_id: "all" | [tool_id, ...]}`. A missing key means the capability is off; `"all"`
+    #: follows the capability as the runtime grows it; a list is an explicit subset ("shell but not python" is
+    #: `{"code_execution": ["exec.shell"]}`). `null` → the core capabilities, same rule as a knowledge base.
+    agent_tools: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     #: The agent's runtime configuration minus `retrieval` — retrieval depth is a property of the
     #: knowledge source (`knowledge_bases.agent_config.retrieval`) and is merged in at request time.
     agent_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
-    #: Installed skill packages, `{"<skill_id>": "<version>"}`. Skills are instruction packages from the global
-    #: registry (`agent_skills`), not tool switches: installing one adds its SKILL.md to the prompt, while a tool is a
-    #: capability the runtime enforces. `agent_skills` above keeps the tool switches for that reason.
+    #: Installed skill packages, `{"<skill_id>": "<version>"}`. Skills are instruction packages from the workforce
+    #: registry, not tool switches: installing one adds its SKILL.md to the prompt, while a tool is a capability the
+    #: runtime enforces. `agent_tools` above keeps the tool ledger for that reason.
     installed_skills: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     #: Set when the agent was created as a knowledge base's default runtime, so the knowledge base's

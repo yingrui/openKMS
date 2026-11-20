@@ -78,8 +78,7 @@ from app.services.identity.acl.resource_guard import resource_allowed
 from app.services.identity.permissions.permission_resolution import jwt_realm_role_names
 from app.services.workforce.agent_config import (
     agent_config_payload,
-    agent_skills_for,
-    resolve_skills,
+    agent_tools_for,
     runtime_config,
 )
 from app.services.workforce.credentials import mint_credential
@@ -207,7 +206,7 @@ async def create_agent(
         owner_sub=sub,
         owner_name=name,
         status=AGENT_STATUS_ACTIVE,
-        agent_skills=body.agent_skills,
+        agent_tools=body.agent_tools,
         agent_config=agent_config_payload(body.agent_config),
     )
     db.add(agent)
@@ -252,8 +251,8 @@ async def update_agent(
         agent.name = str(sent["name"]).strip()
     if "description" in sent:
         agent.description = sent["description"]
-    if "agent_skills" in sent:
-        agent.agent_skills = sent["agent_skills"]
+    if "agent_tools" in sent:
+        agent.agent_tools = sent["agent_tools"]
     if "agent_config" in sent:
         agent.agent_config = agent_config_payload(body.agent_config)
     await db.commit()
@@ -433,7 +432,7 @@ async def agent_prompt_preview(
         runtime["prompts"] = prompts
 
     request_body = {
-        "agent_skills": agent_skills_for(kb, agent),
+        "agent_tools": agent_tools_for(agent),
         "agent_config": runtime,
         "installed_skills": dict(agent.installed_skills or {}),
         "agent_name": agent.name,
@@ -803,7 +802,7 @@ async def ask_agent(
         conversation_history=body.conversation_history,
         access_token=token,
         session_id=body.session_id,
-        agent_skills=resolve_skills(agent.agent_skills),
+        agent_tools=agent_tools_for(agent),
         agent_config=runtime,
         # The author's base instruction; without it the qa-agent uses its built-in text.
         system_prompt=base_instruction_for(runtime),

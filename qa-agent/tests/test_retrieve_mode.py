@@ -94,5 +94,5 @@ class TestOnDemandEvidence:
 
         from qa_agent.kb_answer_sources import sources_from_kb_search_tools
 
-        other = ToolMessage(content='{"passages":[{"content":"x"}]}', tool_call_id="c2", name="run_cypher_tool")
+        other = ToolMessage(content='{"passages":[{"content":"x"}]}', tool_call_id="c2", name="run_cypher")
         assert sources_from_kb_search_tools([other]) is None

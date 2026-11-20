@@ -54,18 +54,27 @@ DEFAULT_MEMORY_MB = 2048
 #: Captured output is truncated here, per stream.
 MAX_OUTPUT_BYTES = 64_000
 
-#: What a shell command may start with. Python is separate (`run_python`); this list is for the shell tool, where a wrong
-#: command is a wrong *program*, not a wrong expression. Anything not here is refused before it runs.
+#: What a shell command may start with, out of the box: programs that inspect the conversation's own files.
+#:
+#: Everything that can reach further is left out on purpose, because this list is checked by **program name only** — it
+#: never sees the arguments, so each of these was a way around it:
+#:
+#: * `awk` (`system()`), `sed` (`e`), `find -exec`, `xargs`, `git` (`!alias`), `make` (recipes), `python -c` and
+#:   `pip install` all start other programs or fetch code;
+#: * `rm`, `mv`, `cp`, `mkdir`, `ln`, `touch`, `tar`, `zip`, `unzip` change or extract files at any path, not just here.
+#:
+#: An author who needs one adds it per agent (`sandbox.allow_commands`); that is a decision, not a default. This is still
+#: a guard rail, not a boundary: `cat /etc/passwd` remains readable, because the subprocess runs as the service user.
 ALLOWED_COMMANDS: frozenset[str] = frozenset(
     """
-    python python3 pip pip3
-    ls cat head tail wc sort uniq cut tr grep find xargs
-    mkdir cp mv rm rmdir touch ln
-    echo printf pwd seq date basename dirname realpath
-    awk sed jq
-    git make tar gzip gunzip unzip zip
+    ls cat head tail wc sort uniq cut tr grep jq
+    date basename dirname pwd realpath echo printf seq
+    find
     """.split()
 )
+
+#: `find` is allowed for locating files, not for running them: these actions start a program or delete.
+_FIND_ACTIONS = frozenset({"-exec", "-execdir", "-delete", "-ok", "-okdir"})
 
 #: Shell separators: a command starts after each of them, so the check looks at positions rather than substrings.
 _SEPARATORS = frozenset({"&&", "||", ";", "|", "&", "\n", ";;", "(", ")"})
@@ -161,6 +170,8 @@ def check_command(command: str, allowed: frozenset[str]) -> None:
             head = tokens[0]
         if head not in allowed:
             raise CommandNotAllowed(head, allowed)
+        if head == "find" and _FIND_ACTIONS.intersection(tokens[1:]):
+            raise CommandNotAllowed("find " + sorted(_FIND_ACTIONS.intersection(tokens[1:]))[0], allowed)
         if head in _INLINE_EXECUTORS and len(tokens) >= 3 and tokens[1] == "-c":
             check_command(tokens[2], allowed)
 

@@ -14,14 +14,6 @@ from app.schemas.kb_agent_config import parse_agent_config
 CORE_AGENT_SKILLS = ("ontology", "catalog", "page_index")
 
 
-def resolve_agent_skills(kb: KnowledgeBase) -> list[str]:
-    """Skills forwarded to qa-agent; null KB field → core defaults."""
-    raw = kb.agent_skills
-    if isinstance(raw, list) and raw:
-        return [str(s) for s in raw if isinstance(s, str) and s.strip()]
-    return list(CORE_AGENT_SKILLS)
-
-
 def resolve_agent_url(kb: KnowledgeBase) -> str | None:
     """Where this deployment's qa-agent lives.
 
@@ -38,6 +30,12 @@ def agent_kb_path(agent_url: str, kb_id: str, suffix: str) -> str:
     return f"{base}/knowledge-bases/{kb_id}/{s}"
 
 
+def _kb_tools(kb: KnowledgeBase) -> dict[str, Any]:
+    from app.services.workforce.agent_config import kb_tools_for
+
+    return kb_tools_for(kb)
+
+
 def ask_agent_body(
     *,
     kb: KnowledgeBase,
@@ -47,7 +45,7 @@ def ask_agent_body(
     session_id: str | None = None,
     system_prompt: str | None = None,
     prompt_version: str | None = None,
-    agent_skills: list[str] | None = None,
+    agent_tools: dict[str, Any] | None = None,
     agent_config: dict[str, Any] | None = None,
     agent_name: str | None = None,
     agent_description: str | None = None,
@@ -56,15 +54,14 @@ def ask_agent_body(
 ) -> dict[str, Any]:
     """The qa-agent request body.
 
-    ``agent_skills`` / ``agent_config`` default to the knowledge base's own values, which is exactly
-    the pre-Workforce payload. A workforce agent passes its own: the same knowledge source can answer
-    as different services.
+    ``agent_tools`` / ``agent_config`` default to the knowledge base's own values, which is exactly the
+    pre-Workforce payload. A workforce agent passes its own: the same knowledge source can answer as different services.
     """
     body: dict[str, Any] = {
         "question": question,
         "conversation_history": conversation_history,
         "access_token": access_token,
-        "agent_skills": resolve_agent_skills(kb) if agent_skills is None else agent_skills,
+        "agent_tools": _kb_tools(kb) if agent_tools is None else agent_tools,
     }
     # The published prompt version, resolved by the caller (it has the session). Absent means the built-in text.
     if system_prompt:
@@ -112,13 +109,13 @@ async def ask_agent_body_for_kb(db: Any, *, kb: KnowledgeBase, **kwargs: Any) ->
     knowledge base's copy) is what makes the agent the single source: editing the agent changes the
     knowledge base's answers, and the legacy Agent tab writes through to the same row.
     """
-    from app.services.workforce.agent_config import agent_skills_for, runtime_config
+    from app.services.workforce.agent_config import agent_tools_for, runtime_config
     from app.services.workforce.read import default_agent_for_kb
 
     agent = await default_agent_for_kb(db, kb.id)
     return ask_agent_body(
         kb=kb,
-        agent_skills=agent_skills_for(kb, agent),
+        agent_tools=agent_tools_for(agent) if agent is not None else _kb_tools(kb),
         agent_config=runtime_config(kb, agent),
         **kwargs,
     )
@@ -135,7 +132,7 @@ def retrieve_agent_body(
         "query": query,
         "access_token": access_token,
         "top_k": top_k,
-        "agent_skills": resolve_agent_skills(kb),
+        "agent_tools": _kb_tools(kb),
     }
 
 

@@ -1,22 +1,19 @@
 """LangGraph skill: ontology (Neo4j graph schema + Cypher), scoped by KB-linked groups."""
 import json
+from typing import Annotated
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from .. import catalog_client
-from ..ontology_client import get_ontology_schema, run_cypher
+from ..ontology_client import get_ontology_schema as fetch_ontology_schema
+from ..ontology_client import run_cypher as execute_cypher
 from ..request_context import get_tool_access_token, get_tool_knowledge_base_id
 
 
 @tool
-def list_ontology_groups_tool(_config: RunnableConfig) -> str:
-    """List the ontology groups linked to this knowledge base.
-
-    Each group is a slice of the graph with its own object and link types (insurance products, claims, org units).
-    Call this first when the question is about relationships or coverage ("which products cover X", "past claims of
-    this kind"), because Cypher only works against a group's schema. Returns an empty list when the knowledge base
-    links no group — in that case say so instead of querying the full graph."""
+def list_ontology_groups(_config: RunnableConfig) -> str:
+    """ The ontology groups linked to this knowledge base. Call it before any graph query."""
     try:
         token = get_tool_access_token(_config)
         kb_id = get_tool_knowledge_base_id(_config)
@@ -37,14 +34,15 @@ def list_ontology_groups_tool(_config: RunnableConfig) -> str:
 
 
 @tool
-def get_ontology_schema_tool(_config: RunnableConfig, group_id: str = "") -> str:
-    """Get the ontology schema: object types (node labels) and link types (relationships).
-    If group_id is set, it must be linked to this KB; schema is limited to that group's object types
-    and link types that touch them. Call list_ontology_groups_tool first for domain questions."""
+def get_ontology_schema(
+    _config: RunnableConfig,
+    group_id: Annotated[str, "Group id from list_ontology_groups; empty for every linked group"] = "",
+) -> str:
+    """ One group's object types and link types — the exact labels Cypher must use."""
     try:
         token = get_tool_access_token(_config)
         kb_id = get_tool_knowledge_base_id(_config)
-        schema = get_ontology_schema(token)
+        schema = fetch_ontology_schema(token)
         if not (group_id or "").strip():
             if kb_id:
                 linked = catalog_client.list_kb_ontology_groups(token, kb_id)
@@ -53,7 +51,7 @@ def get_ontology_schema_tool(_config: RunnableConfig, group_id: str = "") -> str
                         {
                             "message": (
                                 "This knowledge base links ontology groups — pass group_id "
-                                "from list_ontology_groups_tool instead of the full schema."
+                                "from list_ontology_groups instead of the full schema."
                             ),
                             "linked_groups": linked,
                         },
@@ -69,7 +67,7 @@ def get_ontology_schema_tool(_config: RunnableConfig, group_id: str = "") -> str
         if group_id not in allowed:
             return (
                 f"Error: ontology group '{group_id}' is not linked to this knowledge base. "
-                "Call list_ontology_groups_tool first."
+                "Call list_ontology_groups first."
             )
         related = catalog_client.get_ontology_group_related(token, group_id)
         ot_ids = {str(x) for x in (related.get("object_type_ids") or [])}
@@ -102,19 +100,23 @@ def get_ontology_schema_tool(_config: RunnableConfig, group_id: str = "") -> str
 
 
 @tool
-def run_cypher_tool(cypher: str, _config: RunnableConfig) -> str:
-    """Execute a read-only Cypher query against the Neo4j knowledge graph.
-    Use MATCH, RETURN, WHERE. No CREATE, MERGE, DELETE, SET.
-    First call get_ontology_schema_tool (with a linked group_id when the KB has groups)."""
-    if not cypher or not cypher.strip():
+def run_cypher(
+    query: Annotated[
+        str,
+        "Read-only Neo4j Cypher: MATCH / RETURN / WHERE, using the schema's exact labels",
+    ],
+    _config: RunnableConfig,
+) -> str:
+    """Run one read-only Cypher query on Neo4j: MATCH / RETURN / WHERE only, with the schema's exact labels and relationship types."""
+    if not query or not query.strip():
         return "Error: Cypher query cannot be empty."
     try:
         token = get_tool_access_token(_config)
-        result = run_cypher(token, cypher.strip())
+        result = execute_cypher(token, query.strip())
         return json.dumps(result, indent=2, default=str)
     except Exception as e:
         return f"Error executing Cypher: {e}"
 
 
-ontology_tools = [list_ontology_groups_tool, get_ontology_schema_tool, run_cypher_tool]
+ontology_tools = [list_ontology_groups, get_ontology_schema, run_cypher]
 

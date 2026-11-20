@@ -7,6 +7,8 @@ and the graph disagree, trust neither without a second query") belong in install
 """
 from __future__ import annotations
 
+from typing import Any
+
 from .catalog import catalog_tools
 from .ontology import ontology_tools
 from .kb_search import kb_search_tools
@@ -18,6 +20,7 @@ __all__ = [
     "CORE_SKILL_IDS",
     "ALL_SKILL_IDS",
     "normalize_skill_ids",
+    "tools_for",
     "ontology_tools",
     "catalog_tools",
     "page_index_tools",
@@ -45,6 +48,38 @@ _SKILL_TOOLS: dict[str, list] = {
     "_kb_search": kb_search_tools,
     "_sandbox": sandbox_tools,
 }
+
+
+def tools_for(agent_tools: dict[str, Any] | None) -> list:
+    """The tool objects one request may use.
+
+    `agent_tools` is the ledger: `{capability_id: "all" | [tool_id, ...]}`. A missing key means the capability is off;
+    `"all"` means everything it currently provides (a new tool reaches every agent that said "all"); a list is an
+    explicit subset — "shell but not python" is `{"code_execution": ["exec.shell"]}`.
+
+    Unknown ids are ignored rather than fatal: the catalogue moves forward with the code, and a stored selection from
+    an older deploy should not break an answer.
+    """
+    from .sandbox import sandbox_tools
+    from ..tool_catalog import TOOL_IDS
+
+    selected = agent_tools or {}
+    if not selected:
+        return get_all_skill_tools(list(CORE_SKILL_IDS))
+
+    tools: list = []
+    for capability_id, choice in selected.items():
+        group = sandbox_tools if capability_id == "code_execution" else _SKILL_TOOLS.get(capability_id, [])
+        if not group:
+            continue
+        if choice == "all" or choice is None:
+            tools.extend(group)
+            continue
+        if isinstance(choice, str):
+            choice = [choice]
+        wanted = {str(item) for item in choice}
+        tools.extend(tool for tool in group if TOOL_IDS.get(tool.name, tool.name) in wanted)
+    return tools or get_all_skill_tools(list(CORE_SKILL_IDS))
 
 
 def normalize_skill_ids(skills: list[str] | None) -> list[str]:

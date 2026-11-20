@@ -17,13 +17,13 @@ _SQL_OUT = (
 
 def test_sql_tool_registered():
     names = {getattr(t, "name", None) for t in catalog_tools}
-    assert "sql_semantic_model_tool" in names
-    assert "query_semantic_model_tool" in names
+    assert "run_sql" in names
+    assert "query_semantic_model" in names
 
 
 def test_source_from_catalog_tool_stream_path():
     src = source_from_catalog_tool(
-        "sql_semantic_model_tool",
+        "run_sql",
         {"model_id": "m1", "sql": "SELECT 1 AS n", "limit": 10},
         _SQL_OUT,
         index=0,
@@ -35,7 +35,7 @@ def test_source_from_catalog_tool_stream_path():
 
 def test_select_display_sources_prefers_streamed_catalog():
     cat = source_from_catalog_tool(
-        "sql_semantic_model_tool",
+        "run_sql",
         {"model_id": "m1", "sql": "SELECT 1"},
         _SQL_OUT,
     )
@@ -50,7 +50,7 @@ def test_sources_from_sql_lab_tool():
         tool_calls=[
             {
                 "id": "c1",
-                "name": "sql_semantic_model_tool",
+                "name": "run_sql",
                 "args": {"model_id": "m1", "sql": "SELECT 1 AS n", "limit": 10},
             }
         ],
@@ -58,7 +58,7 @@ def test_sources_from_sql_lab_tool():
     tool = ToolMessage(
         content=_SQL_OUT,
         tool_call_id="c1",
-        name="sql_semantic_model_tool",
+        name="run_sql",
     )
     sources = sources_from_catalog_tools([ai, tool])
     assert sources is not None
@@ -77,7 +77,7 @@ def test_sources_from_sql_lab_tool():
 def test_metric_mode_source_keeps_the_arguments_it_was_asked_with():
     """In metric mode the SQL is generated and its values are parameterised, so the arguments are the judgeable record."""
     src = source_from_catalog_tool(
-        "query_semantic_model_tool",
+        "query_semantic_model",
         {
             "model_id": "m1",
             "metric": "平均市盈率",

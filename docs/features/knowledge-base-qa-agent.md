@@ -170,8 +170,17 @@ bearer every tool call already carries — while the agent's own secrets (model 
 
 `run_command` starts no program outside an allow list (`ALLOWED_COMMANDS` in `qa_agent/sandbox.py`; a KB may **add** to it,
 never narrow it). Matching is **by position**, like the project's policy: `grep docker notes.md` is ordinary work, `ls && docker ps`
-is not, and `sudo`/`env`/`nohup` wrappers and `sh -c "…"` are looked through. `run_python` needs no list — there is no command
-to allow — which is why the list guards the shell tool and the prompt steers to Python.
+is not, and `sudo`/`env`/`nohup` wrappers and `sh -c "…"` are looked through.
+
+The built-in set is **inspection only** — twenty programs that read files (`ls`, `cat`, `grep`, `jq`, `find`, …). Everything
+that starts another program or writes at an arbitrary path is left out, because the check sees the program name and never
+its arguments: `awk` (`system()`), `sed` (`e`), `find -exec`, `xargs`, `git` (`!alias`), `make`, `python -c` and
+`pip install` were all ways around the list, and `rm`/`mv`/`tar` wrote wherever the process could. An author who needs one
+adds it per agent; that is a decision, not a default. `find` is allowed for locating files only: `-exec`, `-execdir`,
+`-delete` and `-ok` are refused.
+
+`run_python` needs no list — there is no command to allow — so the list guards the shell tool, and turning on `exec.python`
+is itself the decision to allow arbitrary code.
 
 ### Skills, now that execution exists
 
@@ -182,7 +191,7 @@ to allow — which is why the list guards the shell tool and the prompt steers t
 
 ### Shipped
 
-`qa_agent/sandbox.py` (runner), `qa_agent/skills/sandbox.py` (`run_python_tool`, `run_command_tool`),
+`qa_agent/sandbox.py` (runner), `qa_agent/skills/sandbox.py` (`run_python`, `run_command`),
 `session_fs.kb_skills_dir`. Off unless `sandbox.enabled`, which the **Agent tab** now offers (with the time limit and the
 extra commands) rather than leaving it to an API call. Verified live: the agent computed a prime sum and wrote it to `out/`,
 ran `ls` in the session folder, and reported that `docker ps` was **refused by the allow list** with no output.
@@ -239,7 +248,7 @@ POST /knowledge-bases/{kb_id}/ask
 | System prompt | `qa_agent/agent.py` (`_build_system_prompt`) | RAG context + installed skill text + *"If the context or skills don't provide enough information, say so honestly."* Tool usage is **not** restated here: the tool definitions carry it |
 | Tool usage | the tools' own docstrings (`qa_agent/skills/*.py`) | `@tool` docstrings become the function descriptions the model receives — what it does, when to use it, parameters, limits. One copy, exported for the configuration screen by `qa_agent/tool_catalog.py` (`GET /tools`) |
 | Installed skills | registry text, fetched via `/internal-api/skills/{registry}/{id}/{version}/prompt` | procedures and judgement the author installed; nothing here describes a tool signature |
-| Tools | `qa_agent/skills/{catalog,ontology,page_index}.py` | `list_semantic_models_tool`, `get_semantic_model_tool` (metrics + fields + tables), `query_semantic_model_tool`, `sql_semantic_model_tool` |
+| Tools | `qa_agent/skills/{catalog,ontology,page_index}.py` | `list_semantic_models`, `get_semantic_model` (metrics + fields + tables), `query_semantic_model`, `run_sql` |
 | Evidence | `qa_agent/kb_answer_sources.py:459` (`select_display_sources`) | Page Index → Catalog → ontology → RAG chunks, **first non-empty wins**; a catalog entry is created from **any successful** query tool call |
 | LLM config | `qa_agent/backend_defaults.py` | resolved from the backend's model registry unless env overrides it |
 
@@ -258,8 +267,8 @@ Three places, and they are not the same kind of thing:
 | Surface | Where | Scope | Examples |
 |---|---|---|---|
 | **Agent process env** | `qa_agent/config.py` (`.env`) | whole deployment | backend URL, OIDC client, LLM overrides, rerank/BM25/hybrid knobs, port, Langfuse |
-| **Per-KB columns** | `knowledge_bases` | one KB | `agent_url`, `agent_skills` (JSONB list of enabled skills), `judge_model_id`, `embedding_model_id`, `faq_prompt` |
-| **Per-KB skill set** | `agent_skills` → `normalize_skill_ids()` | one KB | `core = ontology, catalog, page_index`; optional `workspace` |
+| **Per-KB columns** | `knowledge_bases` | one KB | `agent_url`, `agent_tools` (JSONB list of enabled skills), `judge_model_id`, `embedding_model_id`, `faq_prompt` |
+| **Per-KB skill set** | `agent_tools` → `normalize_skill_ids()` | one KB | `core = ontology, catalog, page_index`; optional `workspace` |
 
 Notable gaps:
 
@@ -283,7 +292,7 @@ new columns.
 | Group | Fields |
 |---|---|
 | **Prompts** | `system_prompt` (versioned text), `prompt_version_id`, `agents_md` (KB-wide rules: terminology, definitions, what must be refused) |
-| **Tools and skills** | `tools_enabled` (`catalog` / `ontology` / `page_index` — the meaning `agent_skills` has today), `skills_installed` (instructional `SKILL.md` packages), `tool_bindings.search_connector_id` (optional web search) |
+| **Tools and skills** | `tools_enabled` (`catalog` / `ontology` / `page_index` — the meaning `agent_tools` has today), `skills_installed` (instructional `SKILL.md` packages), `tool_bindings.search_connector_id` (optional web search) |
 | **Retrieval** | `top_k`, `rerank`, `hybrid_weights`, `min_score` — today `top_k=5` is hard-coded in `agent.py` |
 | **Answer policy** | `unknown_measure`, `require_grounded_numbers`, `evidence_labels`, `require_schema_lookup` (see "policies" below) |
 | **Orchestration** | `profile` (`rag_only` / `rag_tools` / `agent_loop` — an enum, not a graph), `max_tool_rounds`, `recursion_limit`, `retrieve` (`always` / `never` / `on_miss`) |
@@ -307,7 +316,7 @@ an acceptable answer is.
 
 ### 1a. The tool can say what the model measures
 
-`get_semantic_model_tool` already returns metrics, fields and tables as JSON. What is missing is a **compact, explicit**
+`get_semantic_model` already returns metrics, fields and tables as JSON. What is missing is a **compact, explicit**
 statement of what can be answered, e.g.
 
 ```json
@@ -343,7 +352,7 @@ the query exists, the answer did not use it.
 
 | Piece | Where | What it does |
 |---|---|---|
-| 1a | `qa_agent/skills/catalog.py` | `get_semantic_model_tool` returns `available_measures` / `available_metrics` beside the full catalogue |
+| 1a | `qa_agent/skills/catalog.py` | `get_semantic_model` returns `available_measures` / `available_metrics` beside the full catalogue |
 | 1b | `qa_agent/grounding.py` | `traceable_numbers(answer, results)` → `{traceable, total, ratio, untraced}` |
 | 1c | `qa_agent/evidence.py` | each Catalog source gets `usage` (`used` / `consulted`) and `traceable_numbers`; the answer carries `grounding` |
 
@@ -385,7 +394,7 @@ stance for both is the mistake in the first draft of this note.
 | `unknown_measure` | `refuse` / `try_anyway` | `try_anyway` | when the asked measure is not in `available_measures` |
 | `require_grounded_numbers` | `off` / `mark` / `enforce` | `off` | what 1b's ratio does: nothing, label the answer, or drop the answer's unsourced evidence |
 | `evidence_labels` | `flat` / `used+consulted` | `flat` | whether 1c's labels are exposed |
-| `require_schema_lookup` | `on` / `off` | `off` | force `get_semantic_model_tool` before any query |
+| `require_schema_lookup` | `on` / `off` | `off` | force `get_semantic_model` before any query |
 
 Each is measurable on the same test set: run both values, compare. That is the only honest way to pick a default — see
 "Open questions".
@@ -483,7 +492,7 @@ a different question"). Those must not vary per knowledge base; they belong in c
 |---|---|---|
 | Session workspace + file tools | `qa_agent/session_fs.py`, `skills/workspace.py` | one directory per conversation; `AGENTS.md` from the KB, `.openkms/` read-only, quota, TTL reaping |
 | Workspace reachable by the user | `qa_agent/main.py`, backend proxy, `KbQaFilesPanel` | list + download, scoped to the conversation's session id. A rail on the right, docked and collapsed exactly as the project agent's — one shared head (`src/styles/files-rail.scss`), refresh because files appear while the conversation runs. Its chip lives in the chat's top-right and is hidden while the Sources drawer is open — that corner is the drawer's |
-| `agent_config` + Agent tab | `app/schemas/kb_agent_config.py`, `KbAgentSettings` | validated JSONB; every default equals the old behaviour. The tab renders a subset and **merges** its edit onto the stored object (`KbAgentSettings.utils.ts`) — the API replaces `agent_config` wholesale, so building it from the form alone silently cleared the keys the form does not draw (`sandbox`, the Langfuse credential). `agent_url` and `agent_skills` are edited **only** here — the General settings tab stopped offering them, because two screens for one field is how they end up disagreeing |
+| `agent_config` + Agent tab | `app/schemas/kb_agent_config.py`, `KbAgentSettings` | validated JSONB; every default equals the old behaviour. The tab renders a subset and **merges** its edit onto the stored object (`KbAgentSettings.utils.ts`) — the API replaces `agent_config` wholesale, so building it from the form alone silently cleared the keys the form does not draw (`sandbox`, the Langfuse credential). `agent_url` and `agent_tools` are edited **only** here — the General settings tab stopped offering them, because two screens for one field is how they end up disagreeing |
 | `retrieve` modes, tool-round budget + `finalize` | `qa_agent/agent.py` | see 1d above; wrapping up beats an empty answer |
 | Answer policies | `_policy_fragments`, `evidence.py` | `unknown_measure`, `require_schema_lookup`, `require_grounded_numbers` |
 | Trace id and scores | `langfuse_client.py`, `evaluations/scores.py` | `/ask` names its trace; an evaluation posts `data_query_pass` / `data_query_coverage` onto it |
@@ -548,7 +557,7 @@ memory design question, and it changes what a conversation *is*; out of scope fo
 
 - Hiding intermediate queries. They stay; the labels in 1c are additive.
 - A free-text prompt field that changes behaviour with no test and no attribution.
-- Narrowing `agent_skills` for the quant KB — it genuinely needs the catalog skill; that was a wrong idea in an earlier draft.
+- Narrowing `agent_tools` for the quant KB — it genuinely needs the catalog skill; that was a wrong idea in an earlier draft.
 - Treating "replace the framework" and "move KB Q&A into the project runtime" as the same question. They are not: the first
   keeps the product and swaps the graph builder (§ above), the second changes what the service is for.
 - Judging the returned numbers anywhere in this design. Data moves; the query does not.
