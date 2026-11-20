@@ -214,7 +214,7 @@ Two tools do the same kind of act — look something up — across two different
 
 | Capability | Tool | Reads | Default |
 |---|---|---|---|
-| Knowledge search | `search_knowledge_base` | this knowledge base, through the same retriever the answer node uses | off |
+| Knowledge search | `search_knowledge_base` | this knowledge base, through the same retriever the answer path uses | **on** (core: a service over a corpus that cannot read it is a configuration nobody means to choose) |
 | Web search | `search_web` | the public web, through a provider the deployment configures | off, and unavailable until configured |
 
 One switch for both would let "search our documents" also mean "reach the internet". The per-tool checkbox inside a

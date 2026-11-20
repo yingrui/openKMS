@@ -33,12 +33,12 @@ __all__ = [
     "get_union_skill_tools",
 ]
 
-CORE_SKILL_IDS: tuple[str, ...] = ("ontology", "catalog", "page_index")
+#: What an agent gets when it enables nothing. `knowledge_search` belongs here because a workforce agent is a service over
+#: a knowledge base: one that cannot read its corpus is a configuration nobody means to choose.
+CORE_SKILL_IDS: tuple[str, ...] = ("knowledge_search", "ontology", "catalog", "page_index")
 ALL_SKILL_IDS: tuple[str, ...] = (
     *CORE_SKILL_IDS,
-    #: Retrieval an agent may switch on. Neither is core: pre-retrieval already covers the corpus, and the web leaves
-    #: the tenant's boundary, so both are decisions.
-    "knowledge_search",
+    #: The web leaves the tenant's boundary, so it is a decision, never a default.
     "web_search",
     #: Opt-in per KB: file tools over this conversation's own directory. Not core — a KB that does not want the agent
     #: touching files should not have to turn anything off.

@@ -153,9 +153,10 @@ def test_retrieval_is_two_capabilities_not_one():
     ids = {capability["id"] for capability in CATALOG["capabilities"]}
     assert {"knowledge_search", "web_search"} <= ids
     for capability_id in ("knowledge_search", "web_search"):
-        capability = _capability(capability_id)
-        assert capability["group"] == "retrieval"
-        assert capability["core"] is False
+        assert _capability(capability_id)["group"] == "retrieval"
+    # Reading our own corpus is what a knowledge service does by default; reaching the internet is not.
+    assert _capability("knowledge_search")["core"] is True
+    assert _capability("web_search")["core"] is False
 
 
 def test_the_request_carries_every_field_the_answer_path_reads():

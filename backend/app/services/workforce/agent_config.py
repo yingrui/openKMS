@@ -19,7 +19,7 @@ from app.schemas.kb_agent_config import parse_agent_config
 
 #: qa-agent core skills, mirroring `qa_agent_proxy.CORE_AGENT_SKILLS`. Kept here so a model module
 #: never imports an API module.
-CORE_AGENT_SKILLS = ("ontology", "catalog", "page_index")
+CORE_AGENT_SKILLS = ("knowledge_search", "ontology", "catalog", "page_index")
 
 
 def agent_config_payload(raw: object) -> dict[str, Any] | None:
