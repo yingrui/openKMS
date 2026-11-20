@@ -180,6 +180,9 @@ class WorkforcePromptPreviewResponse(BaseModel):
 
     #: The assembled prompt the model receives (base instruction + skills + policy + retrieval slot).
     system_prompt: str
+    #: The same prompt as labelled pieces (`key` names the owner: identity / instruction / conventions / skills /
+    #: tools / policy / context), so the reader can tell which tab to change.
+    sections: list[dict[str, Any]] = []
     #: The base instruction alone: the part an author writes. None means the built-in text is in use.
     base_instruction: str | None = None
     #: The text that becomes `AGENTS.md` in the session workspace; None when the agent wrote none.

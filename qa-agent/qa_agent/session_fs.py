@@ -11,7 +11,6 @@ in `docs/features/knowledge-base-qa-agent.md`, and it is why file tools can ship
 Shape::
 
     {sessions_root}/{kb_id}/{session_id}/
-      AGENTS.md          KB-wide rules, copied in at session creation
       .openkms/skills/   the KB's instructional skills — read-only
       uploads/           data the user attached
       out/               artifacts the agent produced
@@ -135,8 +134,13 @@ def kb_skills_dir(kb_id: str) -> Path:
     return path
 
 
-def ensure_session_dir(kb_id: str, session_id: str, *, agents_md: str | None = None) -> Path:
-    """Create the session directory and its subdirectories. Idempotent; never overwrites AGENTS.md."""
+def ensure_session_dir(kb_id: str, session_id: str) -> Path:
+    """Create the session directory and its subdirectories. Idempotent.
+
+    It holds only what the conversation produces — `out/`, `uploads/`, `tmp/`. Conventions are not copied in: they are
+    part of the system prompt, and a per-conversation copy would be a second source of truth that a model edit cannot
+    persist (each conversation has its own directory).
+    """
     root = session_root(kb_id, session_id)
     for name in SCAFFOLD_DIRS:
         (root / name).mkdir(parents=True, exist_ok=True)
@@ -145,10 +149,6 @@ def ensure_session_dir(kb_id: str, session_id: str, *, agents_md: str | None = N
     # `resolve_session_path`, and that guard is worth more than the convenience. Sharing happens through `PYTHONPATH`
     # (`sandbox._env`), where the same scripts are importable in every session of the KB.
     kb_skills_dir(kb_id)
-    if agents_md:
-        path = root / "AGENTS.md"
-        if not path.exists():
-            path.write_text(agents_md, encoding="utf-8")
     return root
 
 

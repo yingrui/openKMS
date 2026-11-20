@@ -213,9 +213,17 @@ export async function revokeWorkforceCredential(
   });
 }
 
+export interface WorkforcePromptSection {
+  /** Which tab owns this block: identity / instruction / conventions / skills / tools / policy / context / guidance. */
+  key: string;
+  content: string;
+}
+
 export interface WorkforcePromptPreview {
   /** The assembled prompt the model receives. */
   system_prompt: string;
+  /** The same prompt as labelled pieces, so each block can name the tab it comes from. */
+  sections: WorkforcePromptSection[];
   /** The base instruction alone — the part an author writes; null means the built-in text. */
   base_instruction: string | null;
   agents_md: string | null;
@@ -229,7 +237,7 @@ export interface WorkforcePromptPreview {
 export async function fetchPromptPreview(
   agentId: string,
   kbId: string,
-  draft: { systemPrompt: string; agentsMd: string }
+  draft: { systemPrompt: string | null; agentsMd: string | null }
 ): Promise<WorkforcePromptPreview> {
   return request<WorkforcePromptPreview>(
     `/api/workforce/agents/${agentId}/prompt-preview?kb_id=${encodeURIComponent(kbId)}`,

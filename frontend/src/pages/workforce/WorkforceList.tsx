@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Plus, Users } from 'lucide-react';
+import { Plus, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   createWorkforceAgent,
+  deleteWorkforceAgent,
   fetchWorkforceAgents,
   type WorkforceAgentResponse,
 } from '../../data/workforceApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import {
   Dialog,
   EmptyState,
@@ -15,6 +17,9 @@ import {
   ListPage,
   Pagination,
   ResourceViewToggle,
+  TableRowActionButton,
+  TableRowActionCell,
+  TableRowActions,
 } from '../../styles/design-system';
 import {
   CARD_PREVIEW_LIMIT,
@@ -34,6 +39,7 @@ const VIEW_STORAGE_KEY = 'workforce-list-view';
  */
 export function WorkforceList() {
   const { t } = useTranslation('workforce');
+  const confirm = useConfirm();
   const { t: tc } = useTranslation('common');
   const [viewMode, setViewMode] = useStoredViewMode<CardListViewMode>(VIEW_STORAGE_KEY, 'card');
   const [agents, setAgents] = useState<WorkforceAgentResponse[]>([]);
@@ -84,6 +90,27 @@ export function WorkforceList() {
     setShowCreate(false);
     setName('');
     setDescription('');
+  };
+
+  /** Ending a service is a decision about the list, so it lives here rather than inside one agent's settings. */
+  const remove = async (agent: WorkforceAgentResponse) => {
+    if (
+      !(await confirm({
+        title: t('archiveAgent'),
+        message: t('archiveConfirm', { name: agent.name }),
+        confirmLabel: t('archiveAgent'),
+        danger: true,
+      }))
+    ) {
+      return;
+    }
+    try {
+      await deleteWorkforceAgent(agent.id);
+      toast.success(t('deleted'));
+      await load();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('deleteFailed'));
+    }
   };
 
   const handleCreate = async () => {
@@ -152,22 +179,27 @@ export function WorkforceList() {
       {!loading && total > 0 && isCardView ? (
         <div className="ds-resource-list-grid">
           {agents.map((agent) => (
-            <Link key={agent.id} to={`/workforce/${agent.id}`} className="ds-resource-list-card">
-              <div className="ds-resource-list-card-top">
-                <div className="ds-resource-list-icon">
-                  <Users size={28} strokeWidth={1.5} />
+            <div key={agent.id} className="ds-resource-list-card workforce-card">
+              <Link to={`/workforce/${agent.id}`} className="workforce-card__body">
+                <div className="ds-resource-list-card-top">
+                  <div className="ds-resource-list-icon">
+                    <Users size={28} strokeWidth={1.5} />
+                  </div>
                 </div>
+                <h3>{agent.name}</h3>
+                <p className="ds-resource-list-desc" title={agent.description?.trim() || undefined}>
+                  {agent.description || t('noDescription')}
+                </p>
+                <div className="ds-resource-list-meta">
+                  <span>{t('metaKbs', { count: agent.knowledge_base_count })}</span>
+                  <span>{t('metaSkills', { count: agent.agent_skills?.length ?? 0 })}</span>
+                  <span>{t('metaCredentials', { count: agent.credential_count })}</span>
+                </div>
+              </Link>
+              <div className="workforce-card__actions">
+                <AgentRowActions label={t('archiveAgent')} onDelete={() => void remove(agent)} />
               </div>
-              <h3>{agent.name}</h3>
-              <p className="ds-resource-list-desc" title={agent.description?.trim() || undefined}>
-                {agent.description || t('noDescription')}
-              </p>
-              <div className="ds-resource-list-meta">
-                <span>{t('metaKbs', { count: agent.knowledge_base_count })}</span>
-                <span>{t('metaSkills', { count: agent.agent_skills?.length ?? 0 })}</span>
-                <span>{t('metaCredentials', { count: agent.credential_count })}</span>
-              </div>
-            </Link>
+            </div>
           ))}
         </div>
       ) : null}
@@ -181,6 +213,7 @@ export function WorkforceList() {
                 <th>{t('knowledgeTitle')}</th>
                 <th>{t('skills')}</th>
                 <th>{t('credentialsTitle')}</th>
+                <th aria-label={t('rowActions')} />
               </tr>
             </thead>
             <tbody>
@@ -197,6 +230,9 @@ export function WorkforceList() {
                   <td>{t('metaKbs', { count: agent.knowledge_base_count })}</td>
                   <td>{t('metaSkills', { count: agent.agent_skills?.length ?? 0 })}</td>
                   <td>{t('metaCredentials', { count: agent.credential_count })}</td>
+                  <td>
+                    <AgentRowActions label={t('archiveAgent')} onDelete={() => void remove(agent)} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -255,5 +291,23 @@ export function WorkforceList() {
         </FormField>
       </Dialog>
     </ListPage>
+  );
+}
+
+
+/** One destructive action per agent, built once and placed by the caller (card overlay or table cell). */
+function AgentRowActions({ label, onDelete }: { label: string; onDelete: () => void }) {
+  return (
+    <TableRowActionCell>
+      <TableRowActions>
+        <TableRowActionButton
+          variant="danger"
+          title={label}
+          aria-label={label}
+          icon={<Trash2 size={16} />}
+          onClick={onDelete}
+        />
+      </TableRowActions>
+    </TableRowActionCell>
   );
 }

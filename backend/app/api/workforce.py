@@ -425,6 +425,7 @@ async def agent_prompt_preview(
 
     return WorkforcePromptPreviewResponse(
         system_prompt=str(data.get("system_prompt") or ""),
+        sections=list(data.get("sections") or []),
         base_instruction=data.get("base_instruction"),
         agents_md=data.get("agents_md"),
     )

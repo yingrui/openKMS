@@ -167,12 +167,49 @@
   word-break: break-word;
 }
 
-/* Identity fields sit side by side when there is room; the prompt editors below span the panel. */
-.workforce-identity {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+/* A view switch above content, the same shape the list pages use for Cards/List. No rule under it: the header
+   already draws one. */
+.workforce-view-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+/* Name above description: they are two halves of one identity, read top to bottom. */
+.workforce-stack {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
-  align-items: start;
+  max-width: 720px;
+}
+
+/* A list card with its own actions: the body navigates, the action cell sits outside the link. */
+.workforce-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+
+  .workforce-card__body {
+    display: block;
+    flex: 1;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .workforce-card__actions {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  &:hover .workforce-card__actions,
+  &:focus-within .workforce-card__actions {
+    opacity: 1;
+  }
 }
 
 .workforce-editor {

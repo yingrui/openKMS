@@ -92,6 +92,8 @@ class PromptPreviewResponse(BaseModel):
     """What the model is actually given, before a question arrives."""
 
     system_prompt: str
+    #: The same prompt as labelled pieces, so the UI can say which tab each one comes from.
+    sections: list[dict[str, Any]] = []
     #: The base instruction alone: the part an author writes. None means the built-in text is in use.
     base_instruction: str | None = None
     #: The text that becomes `AGENTS.md` in the session workspace; None when the agent wrote none.

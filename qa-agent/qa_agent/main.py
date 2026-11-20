@@ -158,14 +158,14 @@ def _stream_response(kb_id: str, request: AskRequest) -> StreamingResponse:
 
 def _prompt_preview_impl(kb_id: str, request: PromptPreviewRequest) -> PromptPreviewResponse:
     from . import agent_config as agent_config_module
-    from .agent import _build_system_prompt
+    from .agent import prompt_sections
 
     config = request.agent_config
     skills = request.agent_skills
     base = agent_config_module.system_prompt(config)
     # The same call the answer path makes, with the retrieved passages replaced by a marker: they depend on the
     # question, and inventing sample passages would misrepresent what the model sees.
-    system_prompt = _build_system_prompt(
+    sections = prompt_sections(
         context=[],
         skills=skills,
         policy=agent_config_module.answer_policy(config),
@@ -174,12 +174,21 @@ def _prompt_preview_impl(kb_id: str, request: PromptPreviewRequest) -> PromptPre
         installed_skills=request.installed_skills,
         agent_name=request.agent_name,
         agent_description=request.agent_description,
-    ).replace(
+    )
+    # The retrieved passages depend on the question; the marker says where they go instead of inventing samples.
+    rendered = "\n\n".join(text for _key, text in sections)
+    system_prompt = rendered.replace(
         "Context from the knowledge base:\n\n",
         "Context from the knowledge base:\n<passages retrieved for this question>\n",
     )
+    preview_sections = [
+        {"key": key, "content": text}
+        for key, text in sections
+        if key != "context" or text.strip()
+    ]
     return PromptPreviewResponse(
         system_prompt=system_prompt,
+        sections=preview_sections,
         base_instruction=base,
         agents_md=agent_config_module.agents_md(config),
     )

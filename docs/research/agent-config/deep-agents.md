@@ -42,7 +42,7 @@ class MemoryMiddleware(AgentMiddleware[MemoryState, ContextT, ResponseT]):
 |---|---|
 | `deepagents` 的 `MemoryMiddleware` | **记忆**，注入 system prompt |
 | pi（我们的开发用 harness） | **项目指令** |
-| 我们的 KB agent（`qa-agent/session_fs.py`） | **KB 规则**，会话创建时拷进工作区 |
+| 我们的 KB agent | **KB 规则**，注入系统提示词的 `<workspace_conventions>` 段（2026-11-20 起不再拷进会话工作区：每个会话目录不同，拷贝会是第二个真相） |
 
 同一个文件名，三种角色。跨这三个系统搬运 `AGENTS.md` 时，内容会被当成不同的东西。
 

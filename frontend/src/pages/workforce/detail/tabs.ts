@@ -8,7 +8,8 @@ import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
  *
  * The split follows what each setting *is*: prompt text (Profile), request parameters (Model), what it answers
  * from (Knowledge), capability switches (Skills), what it may reach (Tools), what the runtime enforces
- * (Behavior), and who may call (Credentials — which also says where).
+ * (Behavior), what all of that assembles into (Prompt preview, read-only), and who may call (Credentials — which also
+ * says where).
  *
  * Knowledge is separate from Tools on purpose: binding a corpus decides *what the answer is drawn from*,
  * granting a lookup decides *what the agent may consult*. They were one tab and it read as one dimension.
@@ -57,6 +58,11 @@ export const WORKFORCE_TABS: WorkforceTab[] = [
     Component: lazy(() =>
       import('./BehaviorTab').then((m) => ({ default: m.WorkforceBehaviorTab }))
     ),
+  },
+  {
+    segment: 'prompt',
+    labelKey: 'navPrompt',
+    Component: lazy(() => import('./PromptTab').then((m) => ({ default: m.WorkforcePromptTab }))),
   },
   {
     segment: 'credentials',

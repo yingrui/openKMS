@@ -31,10 +31,11 @@ class TestLayout:
     def test_two_kbs_do_not_share_a_directory(self):
         assert session_fs.session_root("kb1", "s1") != session_fs.session_root("kb2", "s1")
 
-    def test_agents_md_is_written_once(self):
-        session_fs.ensure_session_dir("kb1", "s1", agents_md="# rules")
-        session_fs.ensure_session_dir("kb1", "s1", agents_md="# changed")
-        assert (session_fs.session_root("kb1", "s1") / "AGENTS.md").read_text() == "# rules"
+    def test_no_conventions_file_is_written(self):
+        """Conventions travel in the system prompt; a per-conversation copy would be a second source of truth."""
+        root = session_fs.ensure_session_dir("kb1", "s1")
+        assert not (root / "AGENTS.md").exists()
+        assert sorted(p.name for p in root.iterdir()) == [".openkms", "out", "tmp", "uploads"]
 
 
 class TestEscapes:
