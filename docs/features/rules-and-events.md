@@ -283,9 +283,9 @@ The interval is the only thing a period has beyond a filter, and it comes from t
 
 | field | value | predicate | interval |
 |---|---|---|---|
-| `trade_date` (`Date`, `period_kind: week`) | `2026-W46` | `>= 2026-11-09 AND <= 2026-11-15` | derived by the calendar |
-| `cycle` (`String`, `period_kind: week`) | `2026-W46` | `cycle = '2026-W46'` (a key, not a date) | derived by the calendar |
-| a field with `period_kind: custom` | anything | equality only | **none** — so it cannot be the period (a 400 at save time) |
+| `trade_date` (`Date`, temporal by type) | `2026-W46` | `>= 2026-11-09 AND <= 2026-11-15` | derived by the calendar |
+| `cycle` (`String`, `time_format: %G-W%V`) | `2026-W46` | `cycle >= '2026-11-09' AND cycle <= '2026-11-15'`, compared as dates | derived from the column's format |
+| a column whose format names no unit (`custom`) | anything | equality only | **none** — so it cannot be the period (a 400 at save time) |
 
 There is no metric-level time mode any more. `time_mode` used to say `period` / `snapshot` / `none`, but each
 of those was already said by something else: `period` restated the field, `none` meant "no field", and

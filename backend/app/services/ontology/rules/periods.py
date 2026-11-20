@@ -46,17 +46,6 @@ DAY = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
 DATE_DATATYPES = {"date", "datetime", "datetimetz", "timestamp", "timestamptz"}
 
 
-#: The formats the retired `period_kind` values imply, so existing rows keep working without a rewrite.
-_FORMAT_FOR_KIND = {
-    "day": "%Y-%m-%d",
-    "week": "%G-W%V",
-    "month": "%Y-%m",
-    "quarter": "%Y-Q%q",
-    "half": "%Y-H",
-    "year": "%Y",
-}
-
-
 class PeriodError(ValueError):
     """The label is not a period of this calendar."""
 
@@ -66,19 +55,14 @@ def kind_of_dimension(
 ) -> str:
     """The calendar a time dimension holds, derived from its value's format.
 
-    The format is the only source: `period_kind` used to be stored beside it, and the two could disagree.
-    The format normally lives on the **column** (`dataset_columns.time_format`), so callers that can read it
-    must pass it — a text column holding `%G-W%V` is a week, not a custom cycle. A field that predates
-    `time_format` anywhere is read through its old `period_kind` once, by turning it into the format it implies.
+    The format is the only source, and it lives on the **column** (`dataset_columns.time_format`), so callers
+    that can read it must pass it — a text column holding `%G-W%V` is a week, not a custom cycle. A field's
+    `dimension` is an override only; it cannot declare a calendar (no row carries one).
     """
-    declared = (dimension or {}).get("period_kind")
-    fmt = time_format or (dimension or {}).get("time_format") or _FORMAT_FOR_KIND.get(str(declared or ""))
-    is_time, kind = resolve_time_role(datatype=datatype, time_format=fmt, field_dimension=dimension)
-    if not is_time:
-        return "custom"
-    if isinstance(declared, str) and declared in PERIOD_KINDS and not fmt:
-        return declared
-    return kind
+    is_time, kind = resolve_time_role(
+        datatype=datatype, time_format=time_format, field_dimension=dimension
+    )
+    return kind if is_time else "custom"
 
 
 def parse_period(label: str, kind: str = "week") -> tuple[str, str]:

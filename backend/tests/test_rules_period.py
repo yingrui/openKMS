@@ -26,12 +26,13 @@ def test_a_label_of_the_wrong_calendar_is_rejected_with_the_expected_format():
         parse_period("2026-W46", "day")
 
 
-def test_the_calendar_is_declared_then_inferred_then_a_key():
-    assert kind_of_dimension({"period_kind": "week"}, "Date") == "week"
+def test_the_calendar_comes_from_the_column_then_the_datatype():
     assert kind_of_dimension(None, "Date") == "day"
-    # A key column (`cycle` text) declares its calendar explicitly; without one it is a custom cycle.
-    assert kind_of_dimension({"period_kind": "week", "is_time": True}, "String") == "week"
+    # A text key column (`cycle`) is a week only because its column says how the value is written.
+    assert kind_of_dimension(None, "String", "%G-W%V") == "week"
     assert kind_of_dimension(None, "String") == "custom"
+    # An override can still take a temporal column off the time axis.
+    assert kind_of_dimension({"is_time": False}, "Date") == "custom"
 
 
 # --- how the period reaches an operand ----------------------------------------------------------
@@ -40,7 +41,7 @@ def test_the_calendar_is_declared_then_inferred_then_a_key():
 def _period(datatype: str) -> RulePeriod:
     return RulePeriod(
         field="cycle", label="2026-W46", start="2026-11-09", end="2026-11-15",
-        kind="week", datatype=datatype, dimension={"period_kind": "week"},
+        kind="week", datatype=datatype, dimension=None,
     )
 
 

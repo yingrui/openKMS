@@ -196,7 +196,7 @@ export function ModelDatasetsSection() {
 
   /** The spec models the *role* (`is_time`); the calendar is ours, and it is what a period is written in. */
   const dimensionLabel = (f: SemanticModelFieldResponse) =>
-    fieldTimeLabel(f, t('dataModel.dimensionYes'), t('dataModel.dimensionTimeByType'), t('datasets.dash'));
+    fieldTimeLabel(f, t('dataModel.dimensionYes'), t('datasets.dash'));
 
   const openCreate = (datasetId: string) => {
     setEditing(null);

@@ -271,7 +271,6 @@
     "fieldDimension": "时间维度",
     "dimensionTimeLabel": "时间维度",
     "dimensionAuto": "跟随列",
-    "dimensionTimeByType": "是（按类型）",
     "fieldLabel": "显示名",
     "fieldDatatypeHint": "字段的逻辑类型，取 Ossie DataType 枚举之一。",
     "dimensionYes": "是",

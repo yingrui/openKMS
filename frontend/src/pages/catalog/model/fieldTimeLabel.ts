@@ -1,10 +1,10 @@
 /**
  * How a field's time role reads in a table: `是 · 周`, `是（按类型）`, `—`.
  *
- * The calendar (`period_kind`) is ours, not the spec's, and it is what a run's period is written in — so it
- * belongs next to the role rather than hidden in the edit form.
+ * The calendar is what a run's period is written in, so it belongs next to the role rather than hidden in the
+ * edit form. Both values come from the server (`is_time` / `period_kind`), which resolves them from the field's
+ * override, the datatype and the column's `time_format` — deriving them here would be a second answer.
  */
-import { isTemporalDatatype } from '../../../data/semanticModelFieldsApi';
 
 const KIND_LABELS: Record<string, string> = {
   day: '日',
@@ -16,17 +16,11 @@ const KIND_LABELS: Record<string, string> = {
 };
 
 export function fieldTimeLabel(
-  field: {
-    dimension: { is_time?: boolean; period_kind?: string | null } | null;
-    datatype?: string | null;
-  },
+  field: { is_time?: boolean; period_kind?: string | null },
   yes: string,
-  byType: string,
   dash: string,
 ): string {
-  const kind = field.dimension?.period_kind ?? null;
-  const suffix = kind ? ` · ${KIND_LABELS[kind] ?? kind}` : '';
-  if (field.dimension?.is_time === true) return `${yes}${suffix}`;
-  if (field.dimension?.is_time === false) return dash;
-  return isTemporalDatatype(field.datatype) ? `${byType}${suffix}` : dash;
+  if (field.is_time !== true) return dash;
+  const kind = field.period_kind ?? null;
+  return kind ? `${yes} · ${KIND_LABELS[kind] ?? kind}` : yes;
 }

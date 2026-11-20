@@ -271,7 +271,6 @@
     "fieldDimension": "Time dimension",
     "dimensionTimeLabel": "Time dimension",
     "dimensionAuto": "Follow the column",
-    "dimensionTimeByType": "Yes (from data type)",
     "fieldLabel": "Label",
     "fieldDatatypeHint": "The field’s logical type. One of the Ossie DataType values.",
     "dimensionYes": "Yes",

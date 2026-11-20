@@ -118,24 +118,29 @@ time. A metric therefore carries only `time_dimension` — the *field* it is mea
 rule's period argument points at — which travels in `custom_extensions` on export, because the spec has no
 place for it. Whether a run filters by it, and which period it filters, is the rule's decision.
 
-**A time dimension declares a calendar.** `dimension.is_time` says *that* a field is a time dimension; it does
-not say what one period is. The field now also carries `period_kind` — `day` / `week` / `month` / `quarter` /
-`year` / `custom` — and, for `custom`, a `period_format` (the label's shape). A **period** is one instance of
-that calendar, and a run's filter is compiled in the field's own vocabulary:
+**The calendar belongs to the column, not to the field.** `dimension.is_time` says *that* a field is a time
+dimension; what one period *is* comes from the value's own format — `dataset_columns.time_format`, written once
+on the column, and read by everything that needs a calendar:
 
-| field | calendar | a run for 2026-W46 filters |
-|---|---|---|
-| `trade_date` (Date) | `week` | `trade_date >= 2026-11-09 AND <= 2026-11-15` (ISO week, Monday) |
-| `cycle` (String) | `custom` | `cycle = '2026-W46'` — the label *is* the period; converting it to dates would compare incomparable values |
-| `month_id` (Integer) | `month` | `month_id = 202611` |
+| column | `time_format` | calendar (derived) | a run for 2026-W46 filters |
+|---|---|---|---|
+| `trade_date` (Date) | — (temporal by type) | `day` | `trade_date >= 2026-11-09 AND <= 2026-11-15` |
+| `cycle` (String) | `%G-W%V` | `week` | same, because the label names an ISO week |
+| `month_id` (String) | `%Y-%m` | `month` | `month_id = '2026-11'` — the label *is* the period |
+| `period` (String) | `双月-2026-11` (no unit) | `custom` | `period = '双月-2026-11'` |
 
-Labels are validated against the calendar before they reach SQL, so `2026-11-09` against a week dimension is
-a 422 naming the expected format, not an empty result. `custom` is explicit about what we do not know: no
-derived previous period, no arithmetic — a fiscal or allocation cycle needs a calendar table, which we do not
-have yet.
+The granularity is the smallest unit the format names (`%V` → week, `%m` → month, `%Y` → year); there is no
+stored `period_kind` that could disagree with it, and a field cannot declare one — writing `period_kind` is
+refused. A field's `dimension` says only what a model wants *differently*: `{"is_time": false}` keeps an audit
+timestamp off the time axis.
 
-Since the spec's `dimension` allows only `is_time`, `period_kind`/`period_format` travel in the field's
-`custom_extensions` and are read back on import.
+Labels are validated against the calendar before they reach SQL, so `2026-11-09` against a week dimension is a
+422 naming the expected format, not an empty result. `custom` is explicit about what we do not know: no derived
+previous period, no arithmetic — a fiscal or allocation cycle needs a calendar table, and the calendar table is
+the application's (see `tmp/plan/catalog-next.md`).
+
+Since the spec's `dimension` allows only `is_time`, the derived `period.format` / `period.kind` travel in
+`custom_extensions` on export and are rebuilt on import.
 
 **Worked example (分货, 2026-W46).** Three metrics on one base dataset (`allocation_lines`) say more than a paragraph:
 

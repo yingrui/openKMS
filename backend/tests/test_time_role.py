@@ -1,5 +1,7 @@
 """The calendar granularity is derived from the value's format, not declared beside it."""
 
+import pytest
+
 from app.services.data.time_role import kind_of_format, resolve_time_role
 from app.services.ontology.rules.periods import kind_of_dimension
 
@@ -40,12 +42,16 @@ def test_a_field_may_opt_out_of_the_time_axis():
     ) == (False, "custom")
 
 
-def test_legacy_period_kind_still_reads():
-    """Rows written before `time_format` keep their calendar through the format that kind implies."""
-    assert kind_of_dimension({"period_kind": "week"}, "String") == "week"
-    assert kind_of_dimension({"period_kind": "month"}, "String") == "month"
+def test_a_field_cannot_declare_its_calendar():
+    """`period_kind` on a field is retired: it is neither written nor read any more."""
+    from app.services.data.semantic_model_fields import FieldError, validate_dimension
+
+    assert kind_of_dimension({"period_kind": "week"}, "String") == "custom"
+    assert kind_of_dimension({"period_kind": "week"}, "String", "%G-W%V") == "week"
     assert kind_of_dimension(None, "Date") == "day"
     assert kind_of_dimension(None, "String") == "custom"
+    with pytest.raises(FieldError):
+        validate_dimension({"period_kind": "week"})
 
 
 def test_the_field_role_agrees_with_the_column_for_a_text_period():

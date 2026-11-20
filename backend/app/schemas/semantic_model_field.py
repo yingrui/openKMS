@@ -14,10 +14,6 @@ class SemanticModelFieldCreate(BaseModel):
     label: str | None = None
     description: str | None = None
     dimension: dict[str, Any] | None = None
-    #: Effective role, derived from the override, the datatype and the column's `time_format` —
-    #: so a `%G-W%V` text column reads as a week without the client re-implementing the rule.
-    is_time: bool = False
-    period_kind: str | None = None
     ai_context: dict[str, Any] | None = None
     ordinal: int | None = None
 
@@ -30,10 +26,6 @@ class SemanticModelFieldUpdate(BaseModel):
     label: str | None = None
     description: str | None = None
     dimension: dict[str, Any] | None = None
-    #: Effective role, derived from the override, the datatype and the column's `time_format` —
-    #: so a `%G-W%V` text column reads as a week without the client re-implementing the rule.
-    is_time: bool = False
-    period_kind: str | None = None
     ai_context: dict[str, Any] | None = None
     ordinal: int | None = None
 
