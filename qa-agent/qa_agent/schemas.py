@@ -45,6 +45,9 @@ class AskRequest(BaseModel):
     prompt_version: str | None = None
     #: Optional; must match path kb_id when both are set. Prefer path.
     knowledge_base_id: str | None = None
+    #: Skill packages installed on the agent, `{skill_id: version}`, and which registry they come from.
+    installed_skills: dict[str, str] | None = None
+    skills_registry: str | None = None
 
 
 class GroundingReport(BaseModel):
@@ -84,6 +87,8 @@ class PromptPreviewRequest(BaseModel):
     agent_skills: list[str] | None = None
     agent_config: dict[str, Any] | None = None
     installed_skills: dict[str, str] | None = None
+    #: Which registry `installed_skills` ids belong to: `agent` (Agent Project packages) or `workforce`.
+    skills_registry: str | None = None
     agent_name: str | None = None
     agent_description: str | None = None
 

@@ -89,12 +89,3 @@ workspace_tools: list[Any] = [
 ]
 
 
-WORKSPACE_PROMPT = (
-    "**Workspace skill** – This conversation has its own directory; you may read and write files in it:\n"
-    "1. **list_workspace_files_tool** to see what is there (a user's attachment is under `uploads/`).\n"
-    "2. **read_workspace_file_tool** to read text; binary or large files report their size instead.\n"
-    "3. **write_workspace_file_tool** to save something the user should be able to open — a table, CSV, markdown or "
-    "notes. A bare filename lands in `out/`.\n"
-    "Files are scoped to this conversation: never reference a path outside it, and do not claim to have run code — "
-    "writing a file is not executing one.\n"
-)

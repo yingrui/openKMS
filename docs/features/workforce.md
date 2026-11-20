@@ -150,6 +150,20 @@ claim otherwise ("controlled execution", never "sandbox"). Skills carry no execu
 `entrypoint` / `subcommands` are metadata for validation and for telling the model how to call the script, the same
 shape Claude Code, pi and deepagents use.
 
+## One area, three lists
+
+The Workforce area has one tab strip — **Agents / Skills / Tools** — and the three lists share one page shape, the same
+one Agent Projects uses: the design system's `ListPage` (h1 naming the area **and** the section, e.g. `Workforce – Skills`;
+the zh agent list needs no prefix because the area and its agents share one name), one primary action on the header row,
+the tab strip directly below it, then cards or a table. Every button on those headers is the shared `.btn`, so sizes and
+spacing come from the design system rather than from a page-local override — the Agent Projects header used to carry its
+own `font-size: 16px` and compact padding, which is why its buttons stood a few pixels taller than Workforce's. A reader who learned the agents list does not have to learn the skills list. Agent cards carry two shortcuts in
+their top row (open a chat, retire the agent); the destructive one is on the list, not on the detail page.
+
+**Tools** is the read-only one: capabilities, the tools each puts in the model's hands, and the code-execution policy
+including the command allowlist. Nothing on it can be edited — enabling a tool is a decision about one agent and
+lives on that agent's Tools tab — so it has no create action and no switches.
+
 ## Tools are described once
 
 A capability switch (`ontology`, `catalog`, `page_index`, `workspace`) exists to put that capability's tools into the

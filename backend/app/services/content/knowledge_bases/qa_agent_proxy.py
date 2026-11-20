@@ -52,6 +52,7 @@ def ask_agent_body(
     agent_name: str | None = None,
     agent_description: str | None = None,
     installed_skills: dict[str, str] | None = None,
+    skills_registry: str | None = None,
 ) -> dict[str, Any]:
     """The qa-agent request body.
 
@@ -86,6 +87,10 @@ def ask_agent_body(
         body["agent_description"] = agent_description
     if installed_skills:
         body["installed_skills"] = installed_skills
+        # Which registry those ids belong to: Agent Project packages or workforce skills. The two are separate
+        # assets and a slug can exist in both, so the reader must be told rather than left to guess.
+        if skills_registry:
+            body["skills_registry"] = skills_registry
     return body
 
 

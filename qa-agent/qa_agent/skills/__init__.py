@@ -1,15 +1,18 @@
-"""LangGraph skills: ontology, catalog, page_index, optional insurance demos."""
+"""The runtime's tools, grouped by the capability that switches them on.
+
+A capability here is a **tool switch**: enabling it puts its tools in the request's `tools` array, and each tool's own
+description says what it does, when to use it and what it cannot do. There is deliberately no prose block per
+capability: the schema is the description, and a second copy drifts from it. Workflows and judgement ("when the number
+and the graph disagree, trust neither without a second query") belong in installable skill packages instead.
+"""
 from __future__ import annotations
 
 from .catalog import catalog_tools
-from .insurance_calculator import calculator_tools
 from .ontology import ontology_tools
 from .kb_search import kb_search_tools
-from .sandbox import SANDBOX_PROMPT, sandbox_tools
+from .sandbox import sandbox_tools
 from .page_index import page_index_tools
 from .workspace import workspace_tools
-from .premium_estimator import premium_tools
-from .product_comparator import comparator_tools
 
 __all__ = [
     "CORE_SKILL_IDS",
@@ -21,12 +24,8 @@ __all__ = [
     "kb_search_tools",
     "sandbox_tools",
     "workspace_tools",
-    "calculator_tools",
-    "premium_tools",
-    "comparator_tools",
     "get_all_skill_tools",
     "get_union_skill_tools",
-    "get_skill_prompt_fragments",
 ]
 
 CORE_SKILL_IDS: tuple[str, ...] = ("ontology", "catalog", "page_index")
@@ -35,9 +34,6 @@ ALL_SKILL_IDS: tuple[str, ...] = (
     #: Opt-in per KB: file tools over this conversation's own directory. Not core — a KB that does not want the agent
     #: touching files should not have to turn anything off.
     "workspace",
-    "insurance_calculator",
-    "premium_estimator",
-    "product_comparator",
 )
 
 _SKILL_TOOLS: dict[str, list] = {
@@ -48,9 +44,6 @@ _SKILL_TOOLS: dict[str, list] = {
     # Not selectable skills: `ToolNode` must be able to execute them, while binding is a config decision.
     "_kb_search": kb_search_tools,
     "_sandbox": sandbox_tools,
-    "insurance_calculator": calculator_tools,
-    "premium_estimator": premium_tools,
-    "product_comparator": comparator_tools,
 }
 
 
@@ -86,27 +79,3 @@ def get_union_skill_tools() -> list:
     for group in _SKILL_TOOLS.values():
         tools.extend(group)
     return tools
-
-
-def get_skill_prompt_fragments(skills: list[str] | None = None) -> str:
-    """Prompt fragments for the selected skills only."""
-    from .catalog import CATALOG_PROMPT
-    from .insurance_calculator import CALCULATOR_PROMPT
-    from .ontology import ONTOLOGY_PROMPT
-    from .page_index import PAGE_INDEX_PROMPT
-    from .workspace import WORKSPACE_PROMPT
-    from .premium_estimator import PREMIUM_PROMPT
-    from .product_comparator import COMPARATOR_PROMPT
-
-    prompts = {
-        "ontology": ONTOLOGY_PROMPT,
-        "catalog": CATALOG_PROMPT,
-        "page_index": PAGE_INDEX_PROMPT,
-        "workspace": WORKSPACE_PROMPT,
-        "sandbox": SANDBOX_PROMPT,
-        "insurance_calculator": CALCULATOR_PROMPT,
-        "premium_estimator": PREMIUM_PROMPT,
-        "product_comparator": COMPARATOR_PROMPT,
-    }
-    ids = normalize_skill_ids(skills)
-    return "\n\n".join(prompts[s] for s in ids if s in prompts)

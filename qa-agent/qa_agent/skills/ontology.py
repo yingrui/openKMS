@@ -11,7 +11,12 @@ from ..request_context import get_tool_access_token, get_tool_knowledge_base_id
 
 @tool
 def list_ontology_groups_tool(_config: RunnableConfig) -> str:
-    """List ontology groups linked to this knowledge base. Use before schema/Cypher for domain questions."""
+    """List the ontology groups linked to this knowledge base.
+
+    Each group is a slice of the graph with its own object and link types (insurance products, claims, org units).
+    Call this first when the question is about relationships or coverage ("which products cover X", "past claims of
+    this kind"), because Cypher only works against a group's schema. Returns an empty list when the knowledge base
+    links no group — in that case say so instead of querying the full graph."""
     try:
         token = get_tool_access_token(_config)
         kb_id = get_tool_knowledge_base_id(_config)
@@ -113,15 +118,3 @@ def run_cypher_tool(cypher: str, _config: RunnableConfig) -> str:
 
 ontology_tools = [list_ontology_groups_tool, get_ontology_schema_tool, run_cypher_tool]
 
-ONTOLOGY_PROMPT = (
-    "**Ontology skill** – For coverage/relationship questions (e.g. \"哪些产品保障X\"、\"过往同类理赔案例\"):\n"
-    "1. Call **list_ontology_groups_tool** when this KB links groups; pick a group_id.\n"
-    "2. Call **get_ontology_schema_tool** with that group_id (required if groups are linked).\n"
-    "3. Write Cypher using **exact** `neo4j_label` and `neo4j_rel_type` strings from that JSON "
-    "(case-sensitive). Copy them verbatim — do **not** uppercase relationship types, do **not** rename "
-    "object/link `name` fields, and do **not** invent labels that are not in the schema.\n"
-    "4. Properties: use each object type's `key_property` and names listed under `properties`.\n"
-    "5. Call **run_cypher_tool** (MATCH/RETURN/WHERE only; no CREATE/MERGE/DELETE/SET).\n"
-    "If the first query returns no rows, try alternate property keywords or a related link type from "
-    "the schema before reporting empty. If no groups are linked, say so instead of querying the full graph."
-)

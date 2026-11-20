@@ -55,10 +55,3 @@ def get_section_content_tool(
 
 page_index_tools = [read_table_of_contents_tool, get_section_content_tool]
 
-PAGE_INDEX_PROMPT = """**Page Index skill** – For document-depth questions when chunks are insufficient:
-1. read-table-of-contents: Call read_table_of_contents_tool(document_id) to get sections (title, start_line, end_line).
-2. select section: Choose the most relevant section(s) by title for the question.
-3. extract-relevant-information: Call get_section_content_tool(document_id, start_line, end_line) to fetch content.
-4. determine information-sufficient: If the section answers the question → generate answer. If not → try another section or say insufficient.
-5. generate answer: Use extracted content, cite the section when possible.
-Use document_id from context (search results include it)."""

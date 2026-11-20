@@ -19,5 +19,7 @@ class TestOverride:
     def test_the_skills_and_rules_survive_an_override(self):
         text = _build_system_prompt([], ["catalog"], {"unknown_measure": "refuse"}, "Custom base.")
         assert "Custom base." in text
-        assert "Catalog skill" in text          # tool descriptions are assembled here, not in the prompt
+        # Tool usage is not restated in the prompt: the tool definitions carry it.
+        assert "Sources you may use" in text
+        assert "Catalog skill" not in text
         assert "available_measures" in text     # a policy rule cannot be talked away by a prompt edit

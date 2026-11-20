@@ -89,8 +89,11 @@ def _model_tables(token: str, model: dict[str, Any]) -> list[dict[str, Any]]:
 
 @tool
 def get_semantic_model_tool(model_id: str, _config: RunnableConfig) -> str:
-    """Get one readable semantic model plus metrics, fields, and physical tables (for query or SQL Lab).
-    model_id must be from list_semantic_models_tool."""
+    """Get one readable semantic model: its metrics, fields and physical tables.
+
+    Metrics carry the definition, `ai_context` (synonyms, examples, what it is not for), `depends_on` and any data
+    `assertions`. The `tables` list is the allowlist for `sql_semantic_model_tool`; a model with `data_resources` is
+    restricted and each query must name one. `model_id` must come from `list_semantic_models_tool`."""
     try:
         token = get_tool_access_token(_config)
         model = catalog_client.get_semantic_model(token, model_id)
@@ -250,28 +253,3 @@ catalog_tools = [
     sql_semantic_model_tool,
 ]
 
-CATALOG_PROMPT = (
-    "**Catalog skill** – For numeric / tabular questions against readable semantic models:\n"
-    "1. Call **list_semantic_models_tool** (the models this caller can read).\n"
-    "2. Call **get_semantic_model_tool** for metrics, fields, and **tables** "
-    "(``schema.table`` allowlist for SQL Lab).\n"
-    "3. Prefer **query_semantic_model_tool** with `metric=<saved name>` (or `expression` + "
-    "`base_dataset` / joins / filters) when a metric-style aggregate fits. "
-    "A metric marked ``additivity: non_additive`` is a ratio or a rate: ask the query for it "
-    "at the grain you need (group_by) and never add up its values — summing parts of a ratio "
-    "is wrong even when the parts are correct.\n"
-    "3b. Use each metric's ``ai_context`` (synonyms / examples / not_for) to resolve what the user "
-    "called it, and ``depends_on`` when asked **why** a number moved: query the components at the "
-    "same grain and compare, instead of guessing a cause.\n"
-    "3c. When a metric has ``assertions`` and one has ``health: fail``, the number is **not verified** "
-    "right now: answer with it only alongside that fact, naming the identity (e.g. 分货额度 = 方案累计"
-    "额度 ±1) and the rule. Do not raise it for a passing or absent assertion.\n"
-    "4. Use **sql_semantic_model_tool** for ad-hoc analysis: one SELECT/WITH against "
-    "``tables[].qualified_name`` only (JOINs, windows, samples, custom columns). "
-    "Never mutate data; never query tables outside the model.\n"
-    "4b. When ``data_resources`` is non-empty the model is **restricted**: pass the chosen "
-    "``resource_id`` on every query / sql call. The resource fixes the rows you can read; "
-    "you cannot widen it, and a missing grant is an error, not a fallback.\n"
-    "5. Cite the metric name, expression, or SQL + a short row preview. "
-    "If the KB has no linked models, say so."
-)

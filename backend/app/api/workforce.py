@@ -24,8 +24,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import authenticate_request, jwt_payload_is_admin, require_auth
 from app.config import settings
 from app.database import get_db
-from app.models.agent_skill import AgentSkill
 from app.models.knowledge_base import KnowledgeBase
+from app.models.workforce_skill import (
+    SKILL_VERSION_PUBLISHED,
+    WorkforceSkill,
+    WorkforceSkillVersion,
+)
 from app.models.workforce_agent import (
     AGENT_STATUS_ACTIVE,
     AGENT_STATUS_ARCHIVED,
@@ -278,11 +282,11 @@ async def archive_agent(
 
 @router.get("/agents/{agent_id}/skills", response_model=list[WorkforceInstalledSkill])
 async def list_agent_skills(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    """The skill packages installed on this agent, resolved against the global registry."""
+    """The workforce skills installed on this agent, resolved against that registry."""
     agent = await _scoped(db, request, agent_id, write=False)
     installed = dict(agent.installed_skills or {})
     rows = (
-        await db.execute(select(AgentSkill).where(AgentSkill.id.in_(installed.keys())))
+        await db.execute(select(WorkforceSkill).where(WorkforceSkill.id.in_(installed.keys())))
     ).scalars().all() if installed else []
     by_id = {skill.id: skill for skill in rows}
     out: list[WorkforceInstalledSkill] = []
@@ -291,7 +295,7 @@ async def list_agent_skills(agent_id: str, request: Request, db: AsyncSession = 
         out.append(
             WorkforceInstalledSkill(
                 skill_id=skill_id,
-                display_name=skill.display_name if skill else skill_id,
+                display_name=skill.name if skill else skill_id,
                 version=str(version or ""),
                 # A registry entry can disappear while an agent still names it; say so instead of hiding the row.
                 available=skill is not None,
@@ -302,24 +306,38 @@ async def list_agent_skills(agent_id: str, request: Request, db: AsyncSession = 
 
 @router.get("/agents/{agent_id}/skills/available", response_model=list[WorkforceAvailableSkill])
 async def list_available_skills(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    """Skill packages in the global registry that this agent has not installed yet.
+    """Skills in the workforce registry that have at least one installable version.
 
-    Read with the agent's own permission rather than the projects permission: a workforce owner does not necessarily
-    manage projects, and the registry is shared.
+    `versions` lists published releases only: a deprecated one is history, and a draft is not a
+    thing anyone can install.
     """
     await _scoped(db, request, agent_id, write=False)
-    installed = (
-        await db.execute(select(AgentSkill).order_by(AgentSkill.display_name))
+    skills = (
+        await db.execute(select(WorkforceSkill).order_by(WorkforceSkill.name))
     ).scalars().all()
-    return [
-        WorkforceAvailableSkill(
-            skill_id=skill.id,
-            display_name=skill.display_name,
-            default_version=skill.default_version,
-            versions=[v.version for v in skill.versions],
+    out: list[WorkforceAvailableSkill] = []
+    for skill in skills:
+        versions = (
+            await db.execute(
+                select(WorkforceSkillVersion.version)
+                .where(
+                    WorkforceSkillVersion.skill_id == skill.id,
+                    WorkforceSkillVersion.status == SKILL_VERSION_PUBLISHED,
+                )
+                .order_by(WorkforceSkillVersion.created_at.desc())
+            )
+        ).scalars().all()
+        if not versions:
+            continue
+        out.append(
+            WorkforceAvailableSkill(
+                skill_id=skill.id,
+                display_name=skill.name,
+                default_version=versions[0],
+                versions=list(versions),
+            )
         )
-        for skill in installed
-    ]
+    return out
 
 
 @router.post("/agents/{agent_id}/skills", response_model=list[WorkforceInstalledSkill], status_code=201)
@@ -329,17 +347,26 @@ async def install_agent_skill(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Install a skill package from the registry. The version defaults to the registry's default."""
+    """Install a published version of a workforce skill. An explicit version matters: upgrading is a decision."""
     agent = await _scoped(db, request, agent_id, write=True)
-    skill = await db.get(AgentSkill, body.skill_id)
+    skill = await db.get(WorkforceSkill, body.skill_id)
     if skill is None:
         raise HTTPException(status_code=404, detail="Skill not found")
-    version = body.version or skill.default_version
-    if not version:
-        latest = sorted((v.version for v in skill.versions), reverse=True)
-        if not latest:
-            raise HTTPException(status_code=400, detail="Skill has no versions")
-        version = latest[0]
+    published = (
+        await db.execute(
+            select(WorkforceSkillVersion)
+            .where(
+                WorkforceSkillVersion.skill_id == skill.id,
+                WorkforceSkillVersion.status == SKILL_VERSION_PUBLISHED,
+            )
+            .order_by(WorkforceSkillVersion.created_at.desc())
+        )
+    ).scalars().all()
+    if not published:
+        raise HTTPException(status_code=400, detail="Skill has no published version")
+    version = body.version or published[0].version
+    if all(row.version != version for row in published):
+        raise HTTPException(status_code=400, detail="Version is not published")
     installed = dict(agent.installed_skills or {})
     installed[skill.id] = version
     agent.installed_skills = installed
@@ -782,6 +809,7 @@ async def ask_agent(
         system_prompt=base_instruction_for(runtime),
         # Skill packages installed on this agent; the qa-agent fetches their text with its own service credentials.
         installed_skills=dict(agent.installed_skills or {}),
+        skills_registry="workforce",
         agent_name=agent.name,
         agent_description=agent.description,
     )

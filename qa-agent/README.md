@@ -7,14 +7,14 @@ RAG-based question answering agent for openKMS knowledge bases, built with FastA
 - **FastAPI** web server with path-scoped **`POST /knowledge-bases/{kb_id}/ask`** (JSON answer), **`…/ask/stream`** (NDJSON: `delta` {`t`}, optional **`tool_start` / `tool_end` / `tool_error`** like the wiki copilot stream, then `done` with `answer` and `sources`), and **`…/retrieve`**. Response **`sources`**: hybrid retrieval hits unless **Page Index** (`get_section_content_tool` → **`document_section`**) or **ontology** (successful **`run_cypher_tool`** → **`ontology`** rows listing object types + query summaries). Optional body field **`session_id`** is forwarded as Langfuse **`langfuse_session_id`** so multi-turn Q&A groups under one **Session**. Body **`agent_skills`** selects which skills bind (null/omit → core only).
 - **LangGraph** agent with nodes: `retrieve` (KB search), `generate` (LLM with tools for selected skills), `tools` (skill tools)
 - **RAG**: `POST /api/knowledge-bases/{id}/search` (semantic search over chunks and FAQs)
-- **LangGraph skills** (in `qa_agent/skills/`): ontology (Cypher/graph, optionally scoped to KB-linked groups), page_index (document TOC navigation), **catalog** (linked semantic models → query API); optional insurance demos when opted in on the KB
+- **LangGraph skills** (in `qa_agent/skills/`): ontology (Cypher/graph, optionally scoped to KB-linked groups), page_index (document TOC navigation), **catalog** (linked semantic models → query API); optional `workspace` (file tools over the conversation directory)
 - **OpenAI-compatible** LLM for answer generation, with the same **`extra_body` / `enable_thinking` / `reasoning_content` shim** behavior as wiki copilot (see **Configuration** below and `docs/features/configuration.md`).
 
 The backend forwards the user's access token and the KB's **`agent_skills`** when calling the agent. The agent uses that token to call the backend APIs (search, ontology, Catalog) against the path `kb_id`. KB-linked semantic models and ontology groups are **tool scope only** (not RAG).
 
 ## LangGraph Skills
 
-Skills are modules in `qa_agent/skills/` that provide tools and prompt fragments. The agent binds only the skills listed in **`agent_skills`** (from KB Settings). Known ids: `ontology`, `catalog`, `page_index`, `insurance_calculator`, `premium_estimator`, `product_comparator`.
+Skills are modules in `qa_agent/skills/` that provide tools. The agent binds only the skills listed in **`agent_skills`** (from KB Settings). Known ids: `ontology`, `catalog`, `page_index`, `workspace`. Each tool's own docstring is its description to the model; `qa_agent/tool_catalog.py` exports the same text for the configuration screen (`GET /tools`).
 
 ### Ontology skill
 

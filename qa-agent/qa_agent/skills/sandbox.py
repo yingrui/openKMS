@@ -94,16 +94,5 @@ def run_command_tool(command: str, _config: RunnableConfig) -> str:
     return _render(result)
 
 
-SANDBOX_PROMPT = (
-    "**Code skill** – You can run Python and shell commands in this conversation's workspace:\n"
-    "1. **run_python_tool** for computation. The working directory is the conversation's folder; write artifacts to `out/`.\n"
-    "2. **run_command_tool** only for command-line tools — every program it starts must be on this knowledge base's allow "
-    "list, and anything else is refused before it runs.\n"
-    "3. Skills of this knowledge base are on `PYTHONPATH`, and `OPENKMS_API_KEY` is the asking user's token: code acts with "
-    "**their** permissions, never more.\n"
-    "4. Print what you want to report — stdout is the evidence. Do not state a number the run did not print or a cited "
-    "source did not contain.\n"
-    "5. A non-zero exit or a timeout is information: fix the code and run it again, or say what could not be computed.\n"
-)
 
 sandbox_tools: list[Any] = [run_python_tool, run_command_tool]

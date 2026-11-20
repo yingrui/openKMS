@@ -63,6 +63,17 @@ async def health():
     return {"status": "ok"}
 
 
+@app.get("/tools")
+async def tools():
+    """The runtime's tools and their policy, so a configuration screen shows what the model is actually given.
+
+    Deployment-wide, not per knowledge base: which tools exist is a property of this service, not of a caller.
+    """
+    from .tool_catalog import tool_catalog
+
+    return tool_catalog()
+
+
 def _kb_or_400(path_kb_id: str | None, body_kb_id: str | None) -> str:
     try:
         return resolve_kb_id(path_kb_id, body_kb_id)
@@ -91,6 +102,7 @@ async def _ask_impl(kb_id: str, request: AskRequest) -> AskResponse:
             agent_skills=request.agent_skills,
         agent_config=request.agent_config,
         installed_skills=request.installed_skills,
+        skills_registry=request.skills_registry,
         agent_name=request.agent_name,
         agent_description=request.agent_description,
         system_prompt=request.system_prompt,
@@ -146,6 +158,8 @@ def _stream_response(kb_id: str, request: AskRequest) -> StreamingResponse:
             agent_config=request.agent_config,
             system_prompt=request.system_prompt,
             prompt_version=request.prompt_version,
+            installed_skills=request.installed_skills,
+            skills_registry=request.skills_registry,
         ),
         media_type="application/x-ndjson",
         headers={
@@ -173,7 +187,9 @@ def _prompt_preview_impl(kb_id: str, request: PromptPreviewRequest) -> PromptPre
         state_prompt=base,
         agents_md=agent_config_module.agents_md(config),
         # The request carries `{skill_id: version}`; the prompt needs their SKILL.md text.
-        installed_skills=fetch_skill_prompts(settings, request.installed_skills or {}),
+        installed_skills=fetch_skill_prompts(
+            settings, request.installed_skills or {}, request.skills_registry or "agent"
+        ),
         agent_name=request.agent_name,
         agent_description=request.agent_description,
     )

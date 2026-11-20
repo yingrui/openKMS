@@ -46,7 +46,6 @@ from .retriever import retrieve
 from .schemas import SourceItem
 from .skills import (
     get_all_skill_tools,
-    get_skill_prompt_fragments,
     get_union_skill_tools,
     normalize_skill_ids,
 )
@@ -211,8 +210,6 @@ def prompt_sections(
         f"[{s.source_type}] {s.source_name or 'FAQ'} (relevance: {s.score:.0%}){_source_ref(s)}:\n{s.content}"
         for s in context
     )
-    skill_ids = normalize_skill_ids(skills)
-    skill_prompt = get_skill_prompt_fragments(skill_ids)
     rules = _policy_fragments(policy)
 
     sections: list[tuple[str, str]] = []
@@ -260,8 +257,8 @@ def prompt_sections(
             "tools",
             "Sources you may use:\n"
             "1. **Knowledge base** – Document chunks and FAQs (context below).\n"
-            "2. **Enabled skills** – described next (only these tools are available).\n\n"
-            f"{skill_prompt}",
+            "2. **Tools** – only the enabled ones are available; each definition says what it does and when to use it.\n"
+            "3. **Installed skills** – procedures above, when any are installed.",
         )
     )
 
@@ -354,8 +351,6 @@ def _build_system_prompt(
         f"[{s.source_type}] {s.source_name or 'FAQ'} (relevance: {s.score:.0%}){_source_ref(s)}:\n{s.content}"
         for s in context
     )
-    skill_ids = normalize_skill_ids(skills)
-    skill_prompt = get_skill_prompt_fragments(skill_ids)
     rules = _policy_fragments(policy)
     # A KB's published prompt replaces the *base instruction* only: the skill descriptions, the policy rules and the
     # retrieved context are assembled here and cannot be talked away by a prompt edit.
@@ -400,8 +395,8 @@ def _build_system_prompt(
         f"{packages}"
         "Sources you may use:\n"
         "1. **Knowledge base** – Document chunks and FAQs (context below).\n"
-        "2. **Enabled skills** – described next (only these tools are available).\n\n"
-        f"{skill_prompt}\n\n"
+        "2. **Tools** – only the enabled ones are available; each definition says what it does and when to use it.\n"
+        "3. **Installed skills** – procedures above, when any are installed.\n\n"
         + (f"{rules}\n\n" if rules else "")
         + "Context from the knowledge base:\n"
         f"{context_text}\n\n"
@@ -634,6 +629,7 @@ def invoke_agent(
     system_prompt: str | None = None,
     prompt_version: str | None = None,
     installed_skills: dict[str, str] | None = None,
+    skills_registry: str | None = None,
     agent_name: str | None = None,
     agent_description: str | None = None,
 ) -> dict[str, Any]:
@@ -642,7 +638,9 @@ def invoke_agent(
 
     skill_ids = normalize_skill_ids(agent_skills)
     llm_cfg = _llm_for_model(agent_config_module.model_id(agent_config))
-    installed_skill_packages = fetch_skill_prompts(settings, installed_skills or {})
+    installed_skill_packages = fetch_skill_prompts(
+        settings, installed_skills or {}, skills_registry or "agent"
+    )
     retrieve_k = agent_config_module.top_k(agent_config)
     retrieve_mode = agent_config_module.retrieve_mode(agent_config)
     sandbox_settings = sandbox_runner.sandbox_config(agent_config)
@@ -1000,6 +998,7 @@ async def astream_agent_ndjson(
     system_prompt: str | None = None,
     prompt_version: str | None = None,
     installed_skills: dict[str, str] | None = None,
+    skills_registry: str | None = None,
     agent_name: str | None = None,
     agent_description: str | None = None,
 ) -> AsyncIterator[bytes]:
@@ -1008,7 +1007,9 @@ async def astream_agent_ndjson(
 
     skill_ids = normalize_skill_ids(agent_skills)
     llm_cfg = _llm_for_model(agent_config_module.model_id(agent_config))
-    installed_skill_packages = fetch_skill_prompts(settings, installed_skills or {})
+    installed_skill_packages = fetch_skill_prompts(
+        settings, installed_skills or {}, skills_registry or "agent"
+    )
     retrieve_k = agent_config_module.top_k(agent_config)
     retrieve_mode = agent_config_module.retrieve_mode(agent_config)
     sandbox_settings = sandbox_runner.sandbox_config(agent_config)

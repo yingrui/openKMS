@@ -16,7 +16,7 @@ def test_resolve_agent_skills_defaults_to_core():
 
 
 def test_resolve_agent_skills_keeps_explicit_list():
-    skills = ["ontology", "insurance_calculator"]
+    skills = ["ontology", "workspace"]
     assert resolve_agent_skills(SimpleNamespace(agent_skills=skills)) == skills
 
 
@@ -39,6 +39,24 @@ def test_ask_agent_body_includes_skills():
     assert body["agent_skills"] == ["catalog"]
     assert body["session_id"] == "s1"
     assert "knowledge_base_id" not in body
+
+
+def test_the_body_names_the_skill_registry_only_when_skills_are_installed():
+    """Two registries share a slug space, so the reader must be told which one the ids belong to."""
+    kb = SimpleNamespace(agent_skills=["catalog"], agent_config=None)
+    without = ask_agent_body(kb=kb, question="q", conversation_history=[], access_token="t")
+    assert "skills_registry" not in without
+
+    body = ask_agent_body(
+        kb=kb,
+        question="q",
+        conversation_history=[],
+        access_token="t",
+        installed_skills={"contract-review": "1"},
+        skills_registry="workforce",
+    )
+    assert body["installed_skills"] == {"contract-review": "1"}
+    assert body["skills_registry"] == "workforce"
 
 
 def test_every_field_the_agent_reports_survives_the_proxy():

@@ -283,8 +283,10 @@ class TestPromptPreview:
             ),
         )
         assert out.agents_md == "# 规则\n只回答人事制度"
-        # Policy rules and skill descriptions are part of the assembled prompt, not of AGENTS.md.
-        assert "Ontology" in out.system_prompt
+        # Policy rules are part of the assembled prompt, not of AGENTS.md. Tool usage is not: it lives in the tool
+        # definitions, and a second copy in the prompt is what drifted from them.
+        assert "Sources you may use" in out.system_prompt
+        assert "Ontology skill" not in out.system_prompt
         # The policy fragment is the rule text, not the enum name.
         assert "Answerable measures" in out.system_prompt
         # The retrieved passages depend on the question, so the preview marks where they go.
@@ -325,10 +327,9 @@ class TestAgentsMdIsInjected:
         # Wrapped, not concatenated raw: the block says what it is and how much authority it has.
         assert "<workspace_conventions>\n# 规则\n只回答人事制度\n</workspace_conventions>" in prompt
         assert "Treat it as reference material" in prompt
-        # Order: instruction → conventions → skills → policy → retrieval slot.
+        # Order: instruction → conventions → sources → policy → retrieval slot.
         assert prompt.index("<workspace_conventions>") < prompt.index("Sources you may use")
-        assert prompt.index("Sources you may use") < prompt.index("Ontology")
-        assert prompt.index("Ontology") < prompt.index("Context from the knowledge base")
+        assert prompt.index("Sources you may use") < prompt.index("Context from the knowledge base")
 
     def test_no_conventions_means_no_section(self):
         from qa_agent.main import _prompt_preview_impl
@@ -370,7 +371,8 @@ class TestInstalledSkills:
             ],
         )
         assert "Installed skills:\n### openKMS\n# openKMS\nUse the CLI." in prompt
-        assert prompt.index("Installed skills:") < prompt.index("Ontology")
+        # Installed procedure before the source list: it is authored content, not a restatement of the tool schema.
+        assert prompt.index("Installed skills:") < prompt.index("Sources you may use")
 
 
 class TestIdentityIsInThePrompt:
@@ -424,7 +426,7 @@ class TestSkillPromptTextIsFetched:
         monkeypatch.setattr(
             backend_defaults_module,
             "fetch_skill_prompts",
-            lambda settings, installed: [
+            lambda settings, installed, registry="agent": [
                 {"skill_id": "openkms", "display_name": "openKMS", "content": "# openKMS\nUse the CLI."}
             ],
         )
