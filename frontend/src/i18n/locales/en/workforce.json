@@ -383,5 +383,7 @@
   "toolsCatalogTitle": "Workforce – Tools",
   "toolsCatalogLead": "What the runtime provides, what each tool does, and what code execution may start. Read-only: which agent enables a tool is decided on that agent’s Tools tab.",
   "toolsCatalogEnvLead": "The two code-execution tools and their bounds: run in the conversation directory, one writable folder, allowlisted commands only.",
-  "toolsCount_other": "{{count}} tools"
+  "toolsCount_other": "{{count}} tools",
+  "toolsCatalogAllowSummary": "{{count}} built-in commands · {{timeout}}s per run",
+  "toolsCatalogAllowHint": "Shared by every agent. An individual agent’s own list can only add to them."
 }

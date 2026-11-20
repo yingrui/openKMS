@@ -51,3 +51,18 @@ def test_no_capability_ships_prose_of_its_own():
     for item in CATALOG["capabilities"]:
         assert "prompt" not in item
         assert "description" not in item
+
+
+def test_the_environment_tools_carry_a_display_name():
+    """`Python` and `Shell` read better than `run_python_tool`, but the callable name has to stay: it is what a tool
+    call and a trace contain."""
+    labels = {t["name"]: t.get("label") for t in CATALOG["environment"]["tools"]}
+    assert labels == {"run_python_tool": "Python", "run_command_tool": "Shell"}
+
+
+def test_descriptions_are_not_shown_with_their_source_indentation():
+    """A docstring's folded lines are joined; only paragraph breaks survive, so a paragraph does not arrive with a
+    ragged four-space gutter down its left side."""
+    for capability in CATALOG["capabilities"]:
+        for tool in capability["tools"]:
+            assert "\n    " not in tool["description"], tool["name"]

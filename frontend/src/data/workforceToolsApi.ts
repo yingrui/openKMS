@@ -12,7 +12,10 @@ export interface ToolParameterSchema {
 }
 
 export interface RuntimeTool {
+  /** The callable name — what appears in a tool call and in a trace. */
   name: string;
+  /** A display name when the callable name is not the clearest heading (e.g. `Python` for `run_python_tool`). */
+  label?: string;
   description: string;
   parameters: ToolParameterSchema;
 }

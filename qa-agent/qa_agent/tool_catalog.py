@@ -28,6 +28,13 @@ CAPABILITY_NAMES: dict[str, str] = {
     "workspace": "Workspace files",
 }
 
+#: The two environment tools read better by what they run than by their callable name. The callable name stays: it is
+#: what appears in a tool call and in a trace, so the label is a display name, not a rename.
+ENVIRONMENT_TOOL_LABELS: dict[str, str] = {
+    "run_python_tool": "Python",
+    "run_command_tool": "Shell",
+}
+
 CAPABILITY_TOOLS: dict[str, list[Any]] = {
     "ontology": ontology_tools,
     "catalog": catalog_tools,
@@ -48,11 +55,25 @@ def _parameters(tool: Any) -> dict[str, Any]:
     return json_schema
 
 
-def _tool(tool: Any) -> dict[str, Any]:
+def _prose(text: str) -> str:
+    """A docstring's folded lines become one paragraph per blank line.
+
+    The words are the ones the model receives; only the wrapping goes. Without this the screen shows the indentation
+    the source has — a paragraph with a ragged four-space gutter down its left side.
+    """
+    paragraphs = [block for block in text.strip().split("\n\n") if block.strip()]
+    return "\n\n".join(
+        " ".join(line.strip() for line in block.splitlines() if line.strip()) for block in paragraphs
+    )
+
+
+def _tool(tool: Any, label: str | None = None) -> dict[str, Any]:
     return {
         "name": tool.name,
-        # The same string the model receives as the function description — one copy, so they cannot disagree.
-        "description": (tool.description or "").strip(),
+        # A display name when the callable name is not the clearest heading; the callable name stays in `name`.
+        **({"label": label} if label else {}),
+        # The same words the model receives as the function description — one copy, so they cannot disagree.
+        "description": _prose(tool.description or ""),
         "parameters": _parameters(tool),
     }
 
@@ -79,7 +100,9 @@ def tool_catalog() -> dict[str, Any]:
         "environment": {
             "id": "sandbox",
             "name": "Code execution",
-            "tools": [_tool(tool) for tool in sandbox_tools],
+            "tools": [
+                _tool(tool, ENVIRONMENT_TOOL_LABELS.get(tool.name)) for tool in sandbox_tools
+            ],
             "policy": {
                 # Where a command runs and what it may write. The model's container is the conversation directory,
                 # so `out/` is where artifacts land and everything else is read-only by convention.

@@ -49,25 +49,33 @@ export function WorkforceToolsPage() {
               <Terminal size={18} aria-hidden /> {catalog.data.environment.name}
             </h2>
             <p className="page-subtitle">{t('toolsCatalogEnvLead')}</p>
-            {catalog.data.environment.tools.map((tool) => (
-              <div key={tool.name} className="workforce-tools-policy__tool">
-                <code>{tool.name}</code>
-                <p>{tool.description}</p>
-              </div>
-            ))}
-            <p className="ds-field__hint">
-              {t('sandboxPolicy', {
-                count: catalog.data.environment.policy.builtin_allow.length,
-                timeout: catalog.data.environment.policy.timeout_seconds,
-              })}
-            </p>
-            <ul className="workforce-tools-policy__commands">
-              {catalog.data.environment.policy.builtin_allow.map((command) => (
-                <li key={command}>
-                  <code>{command}</code>
-                </li>
+            <dl className="workforce-tools-policy__tools">
+              {catalog.data.environment.tools.map((tool) => (
+                <div key={tool.name}>
+                  <dt>
+                    <span className="workforce-tools-policy__label">{tool.label ?? tool.name}</span>
+                    {tool.label ? <code>{tool.name}</code> : null}
+                  </dt>
+                  <dd>{tool.description}</dd>
+                </div>
               ))}
-            </ul>
+            </dl>
+            <details className="workforce-tools-policy__allow">
+              <summary>
+                {t('toolsCatalogAllowSummary', {
+                  count: catalog.data.environment.policy.builtin_allow.length,
+                  timeout: catalog.data.environment.policy.timeout_seconds,
+                })}
+              </summary>
+              <p className="ds-field__hint">{t('toolsCatalogAllowHint')}</p>
+              <ul>
+                {catalog.data.environment.policy.builtin_allow.map((command) => (
+                  <li key={command}>
+                    <code>{command}</code>
+                  </li>
+                ))}
+              </ul>
+            </details>
           </section>
         </>
       ) : null}

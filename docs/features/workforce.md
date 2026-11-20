@@ -161,7 +161,10 @@ own `font-size: 16px` and compact padding, which is why its buttons stood a few 
 their top row (open a chat, retire the agent); the destructive one is on the list, not on the detail page.
 
 **Tools** is the read-only one: capabilities, the tools each puts in the model's hands, and the code-execution policy
-including the command allowlist. Nothing on it can be edited — enabling a tool is a decision about one agent and
+including the command allowlist. The two environment tools read as **Python** and **Shell** — a display label from the
+catalogue, with the callable name (`run_python_tool`) beside it, because that is what a tool call and a trace contain.
+Their descriptions arrive with the docstring's wrapping joined: only paragraph breaks survive, so a paragraph does not
+carry a four-space gutter down its left side. Nothing on it can be edited — enabling a tool is a decision about one agent and
 lives on that agent's Tools tab — so it has no create action and no switches.
 
 ## Tools are described once

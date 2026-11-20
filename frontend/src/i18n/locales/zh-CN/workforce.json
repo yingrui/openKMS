@@ -382,5 +382,7 @@
   "sandboxPolicy": "内置白名单 {{count}} 个命令，单次执行上限 {{timeout}} 秒；下面追加的只能加，不能减。",
   "toolsCatalogTitle": "数字员工 – 工具",
   "toolsCatalogLead": "运行时提供哪些工具、它们能做什么、命令执行允许什么。只读：给哪个数字员工开启，在那个员工的「工具」页决定。",
-  "toolsCatalogEnvLead": "代码执行的两个工具与它们的边界：在对话目录内运行，只有一个目录可写，只允许白名单里的命令。"
+  "toolsCatalogEnvLead": "代码执行的两个工具与它们的边界：在对话目录内运行，只有一个目录可写，只允许白名单里的命令。",
+  "toolsCatalogAllowSummary": "内置允许的命令（{{count}} 个），单次执行上限 {{timeout}} 秒",
+  "toolsCatalogAllowHint": "这些是所有数字员工共有的；某个员工自己追加的只能加，不能减。"
 }
