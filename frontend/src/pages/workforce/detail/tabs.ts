@@ -6,13 +6,13 @@ import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
  * One list for both consumers: the route table in `App.tsx` renders it, and the shell's rail builds its
  * `navItems` from it. Two lists is how a tab ends up reachable from the URL but missing from the rail.
  *
- * The split follows what each setting *is*: prompt text (Profile), request parameters (Model), what it answers
- * from (Knowledge), capability switches (Skills), what it may reach (Tools), what the runtime enforces
- * (Behavior), what all of that assembles into (Prompt preview, read-only), and who may call (Credentials — which also
- * says where).
+ * The split follows what each setting *is*: prompt text (Profile), request parameters (Model), what it may read
+ * (Resources — corpora, semantic models, ontology groups), skill packages (Skills), what it may do (Tools),
+ * what the runtime enforces (Behavior), what all of that assembles into (Prompt preview, read-only), and who may call
+ * (Credentials — which also says where).
  *
- * Knowledge is separate from Tools on purpose: binding a corpus decides *what the answer is drawn from*,
- * granting a lookup decides *what the agent may consult*. They were one tab and it read as one dimension.
+ * Knowledge and Tools are separate axes: knowledge is data the agent may read, a capability is something it may do.
+ * They meet only in a reference — "Catalog needs a semantic model" — never in one list.
  */
 export type WorkforceTab = {
   /** URL segment under `/workforce/:agentId`; empty for the tab at the root. */

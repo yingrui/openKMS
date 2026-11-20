@@ -1,7 +1,7 @@
 """Reading the KB's agent configuration: every field defaults to today's behaviour."""
 import pytest
 
-from qa_agent.agent_config import top_k, unknown_measure_policy, workspace_enabled
+from qa_agent.agent_config import top_k, unknown_measure_policy
 
 
 class TestTopK:
@@ -29,12 +29,12 @@ class TestPolicy:
 
 
 class TestWorkspace:
-    def test_off_unless_asked_for(self):
-        assert workspace_enabled(None) is False
-        assert workspace_enabled({"workspace": {}}) is False
+    def test_the_switch_is_the_capability_not_a_config_key(self):
+        """`agent_config.workspace.enabled` was written by the UI and read by nobody. The file tools are switched by the
+        `workspace` capability id, so the config key that claimed otherwise is gone."""
+        import qa_agent.agent_config as agent_config_module
 
-    def test_enabled(self):
-        assert workspace_enabled({"workspace": {"enabled": True}}) is True
+        assert not hasattr(agent_config_module, "workspace_enabled")
 
 
 class TestToolRoundBudget:

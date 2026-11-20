@@ -25,7 +25,6 @@ export interface BehaviourDraft {
   schemaLookup: boolean;
   retrieve: 'always' | 'never' | 'on_miss';
   maxToolRounds: string;
-  workspace: boolean;
   sandbox: boolean;
 }
 
@@ -47,7 +46,6 @@ export function draftFromConfig(cfg: KbAgentConfig | null | undefined): Behaviou
     maxToolRounds: c.orchestration?.max_tool_rounds
       ? String(c.orchestration.max_tool_rounds)
       : '',
-    workspace: Boolean(c.workspace?.enabled),
     sandbox: Boolean(c.sandbox?.enabled),
   };
 }
@@ -84,7 +82,6 @@ export function draftToConfig(d: BehaviourDraft): Omit<KbAgentConfig, 'retrieval
       retrieve: d.retrieve,
       max_tool_rounds: Number.isFinite(rounds) && rounds > 0 ? rounds : null,
     },
-    workspace: { enabled: d.workspace },
     sandbox: { enabled: d.sandbox },
   };
 }

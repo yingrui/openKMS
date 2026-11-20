@@ -161,10 +161,15 @@ def tool_catalog() -> dict[str, Any]:
                 # so `out/` is where artifacts land and everything else is read-only by convention.
                 "cwd": "conversation directory",
                 "writable": "out/",
-                "builtin_allow": sorted(ALLOWED_COMMANDS),
                 "timeout_seconds": DEFAULT_TIMEOUT_SECONDS,
-                # The allowlist is additive: an agent may extend it, never shrink the built-in set.
-                "allowlist": "additive",
+                # The allow list constrains exactly one tool. `run_python_tool` runs code, not a command line, so it
+                # bypasses it — saying "the allowlist limits code execution" would be a claim the runtime does not keep.
+                "allowlist": {
+                    "tools": ["run_command_tool"],
+                    "builtin_allow": sorted(ALLOWED_COMMANDS),
+                    # Additive: an agent may extend the built-in set, never shrink it.
+                    "additive": True,
+                },
             },
         }
     )

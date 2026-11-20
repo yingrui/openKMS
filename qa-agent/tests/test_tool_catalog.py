@@ -40,11 +40,19 @@ def test_code_execution_carries_its_policy():
     env = _capability("code_execution")
     assert [t["name"] for t in env["tools"]] == ["run_python_tool", "run_command_tool"]
     policy = env["policy"]
-    assert "python" in policy["builtin_allow"]
-    assert "curl" not in policy["builtin_allow"]
+    allow = policy["allowlist"]
+    assert "python" in allow["builtin_allow"]
+    assert "curl" not in allow["builtin_allow"]
     assert policy["writable"] == "out/"
-    assert policy["allowlist"] == "additive"
+    assert allow["additive"] is True
     assert policy["timeout_seconds"] > 0
+
+
+def test_the_allow_list_names_the_one_tool_it_constrains():
+    """`run_python_tool` runs code, not a command line: the allow list cannot constrain it, so the catalogue says which
+    tool it does constrain rather than implying it covers the capability."""
+    allow = _capability("code_execution")["policy"]["allowlist"]
+    assert allow["tools"] == ["run_command_tool"]
 
 
 def test_no_capability_ships_prose_of_its_own():

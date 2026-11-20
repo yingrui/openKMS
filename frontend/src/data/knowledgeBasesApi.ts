@@ -24,7 +24,6 @@ export interface KbAgentConfig {
     require_grounded_numbers?: 'off' | 'mark' | 'enforce';
     require_schema_lookup?: boolean;
   };
-  workspace?: { enabled?: boolean; disk_mb?: number | null; session_ttl_minutes?: number | null; artifact_max_mb?: number | null };
   orchestration?: {
     profile?: 'rag_only' | 'rag_tools' | 'agent_loop';
     max_tool_rounds?: number | null;

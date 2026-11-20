@@ -89,17 +89,6 @@ class AnswerPolicy(BaseModel):
     require_schema_lookup: bool = False
 
 
-class WorkspaceConfig(BaseModel):
-    """The per-session directory. Off by default: the file layer is a capability a KB opts into."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    enabled: bool = False
-    disk_mb: int | None = Field(None, ge=0)
-    session_ttl_minutes: int | None = Field(None, ge=0)
-    artifact_max_mb: int | None = Field(None, ge=0)
-
-
 class SandboxConfig(BaseModel):
     """Code execution for this KB — off by default, and the only capability that runs code.
 
@@ -138,7 +127,6 @@ class AgentConfig(BaseModel):
     prompts: PromptsConfig = PromptsConfig()
     retrieval: RetrievalConfig = RetrievalConfig()
     answer_policy: AnswerPolicy = AnswerPolicy()
-    workspace: WorkspaceConfig = WorkspaceConfig()
     orchestration: OrchestrationConfig = OrchestrationConfig()
     sandbox: SandboxConfig = SandboxConfig()
     #: No `observability` key: the three fields it held were never read. Tracing is a deployment concern

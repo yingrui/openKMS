@@ -9,7 +9,6 @@ class TestDefaults:
     def test_an_empty_config_changes_nothing(self):
         config = parse_agent_config(None)
         assert config.retrieval.top_k == 5           # the value that used to be hard-coded in the agent
-        assert config.workspace.enabled is False
         assert config.answer_policy.unknown_measure == "try_anyway"
         assert config.answer_policy.require_grounded_numbers == "off"
         assert config.orchestration.retrieve == "always"
@@ -46,8 +45,11 @@ class TestValidation:
         with pytest.raises(ValidationError):
             parse_agent_config({"answer_policy": {"unknown_measure": "maybe"}})
 
-    def test_workspace_is_opt_in(self):
-        assert parse_agent_config({"workspace": {"enabled": True}}).workspace.enabled is True
+    def test_the_workspace_object_is_gone(self):
+        """The per-session folder is the `workspace` capability, not a config object. Four fields were stored and none
+        were read; `extra="forbid"` is what makes that a validation error rather than quiet dead data."""
+        with pytest.raises(ValidationError):
+            parse_agent_config({"workspace": {"enabled": True}})
 
 
 class TestSandbox:

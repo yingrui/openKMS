@@ -139,13 +139,13 @@ function ToolRow({
               <details>
                 <summary>
                   {t('toolsCatalogAllowSummary', {
-                    count: capability.policy.builtin_allow.length,
+                    count: capability.policy.allowlist.builtin_allow.length,
                     timeout: capability.policy.timeout_seconds,
                   })}
                 </summary>
                 <p className="ds-field__hint">{t('toolsCatalogAllowHint')}</p>
                 <ul>
-                  {capability.policy.builtin_allow.map((command) => (
+                  {capability.policy.allowlist.builtin_allow.map((command) => (
                     <li key={command}>
                       <code>{command}</code>
                     </li>

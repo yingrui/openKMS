@@ -46,10 +46,15 @@ export interface ToolCapability {
 export interface CodeExecutionPolicy {
   cwd: string;
   writable: string;
-  builtin_allow: string[];
   timeout_seconds: number;
-  /** `additive`: an agent may extend the built-in allow list, never shrink it. */
-  allowlist: 'additive' | string;
+  /** The command allow list constrains exactly the tools named here, not the whole capability. */
+  allowlist: {
+    /** `run_command_tool` — `run_python_tool` runs code, so no command allow list can constrain it. */
+    tools: string[];
+    builtin_allow: string[];
+    /** An agent may extend the built-in set, never shrink it. */
+    additive: boolean;
+  };
 }
 
 export interface ToolCatalog {

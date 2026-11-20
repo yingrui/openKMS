@@ -32,10 +32,6 @@ def unknown_measure_policy(config: dict[str, Any] | None) -> str:
     return value if value in ("refuse", "try_anyway") else "try_anyway"
 
 
-def workspace_enabled(config: dict[str, Any] | None) -> bool:
-    return bool(((config or {}).get("workspace") or {}).get("enabled"))
-
-
 def max_tool_rounds(config: dict[str, Any] | None) -> int | None:
     """How many tool rounds this request may use. `None` keeps the old behaviour: only `recursion_limit` stops a loop."""
     raw = ((config or {}).get("orchestration") or {}).get("max_tool_rounds")

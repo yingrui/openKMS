@@ -91,10 +91,10 @@ class TestConfigSplit:
         }
 
     def test_runtime_config_without_agent_is_the_old_payload(self):
-        kb = _kb({"retrieval": {"top_k": 7}, "workspace": {"enabled": True}})
+        kb = _kb({"retrieval": {"top_k": 7}, "sandbox": {"enabled": True}})
         runtime = runtime_config(kb, None)
         assert runtime["retrieval"]["top_k"] == 7
-        assert runtime["workspace"]["enabled"] is True
+        assert runtime["sandbox"]["enabled"] is True
 
 
 class TestSkills:

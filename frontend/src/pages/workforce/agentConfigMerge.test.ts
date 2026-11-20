@@ -8,10 +8,10 @@ import { mergeAgentConfig } from './agentConfigMerge';
 describe('mergeAgentConfig', () => {
   it('keeps a group the form does not render', () => {
     const base = { prompts: { agents_md: '# rules' }, retrieval: { top_k: 9 } };
-    const merged = mergeAgentConfig(base, { workspace: { enabled: true } });
+    const merged = mergeAgentConfig(base, { sandbox: { enabled: true } });
     expect(merged.prompts).toEqual({ agents_md: '# rules' });
     expect(merged.retrieval).toEqual({ top_k: 9 });
-    expect(merged.workspace).toEqual({ enabled: true });
+    expect(merged.sandbox).toEqual({ enabled: true });
   });
 
   it('keeps fields inside a rendered group that the form does not draw', () => {
@@ -37,11 +37,11 @@ describe('mergeAgentConfig', () => {
   });
 
   it('leaves a key alone when the patch omits it', () => {
-    const base = { model_id: 'model-1', workspace: { enabled: false } };
-    expect(mergeAgentConfig(base, { workspace: { enabled: true } }).model_id).toBe('model-1');
+    const base = { model_id: 'model-1', sandbox: { enabled: false } };
+    expect(mergeAgentConfig(base, { sandbox: { enabled: true } }).model_id).toBe('model-1');
   });
 
   it('works with no stored config at all', () => {
-    expect(mergeAgentConfig(null, { workspace: { enabled: true } })).toEqual({ workspace: { enabled: true } });
+    expect(mergeAgentConfig(null, { sandbox: { enabled: true } })).toEqual({ sandbox: { enabled: true } });
   });
 });

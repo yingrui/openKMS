@@ -221,7 +221,8 @@
 
 .workforce-tool-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  /* The meta column is fixed: the rows are a list, and a list whose right edge moves with its text is hard to scan. */
+  grid-template-columns: minmax(0, 1fr) 200px;
   align-items: start;
   gap: 4px 12px;
   margin-bottom: 8px;
@@ -230,9 +231,35 @@
 .workforce-tool-row__toggle {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 4px;
   white-space: nowrap;
   justify-self: end;
+}
+
+.workforce-tool-needs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+}
+
+.workforce-tool-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.workforce-tool-policy-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
 }
 
 .workforce-tool-definitions {
@@ -261,3 +288,44 @@
   }
 }
 
+.workforce-tool-row {
+  &.is-open {
+    padding-bottom: 8px;
+  }
+}
+
+.workforce-tool-row__detail {
+  grid-column: 1 / -1;
+  margin: 4px 0 8px;
+  padding-left: 28px;
+  border-left: 2px solid var(--color-border);
+}
+
+.workforce-tool-resource {
+  margin: 8px 0 16px;
+
+  h4 {
+    margin: 0 0 2px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+}
+
+
+.workforce-tool-commands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+
+  code {
+    font-size: 0.72rem;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-elevated);
+    color: var(--color-text-secondary);
+  }
+}
