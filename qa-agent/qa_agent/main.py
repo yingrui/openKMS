@@ -159,6 +159,7 @@ def _stream_response(kb_id: str, request: AskRequest) -> StreamingResponse:
 def _prompt_preview_impl(kb_id: str, request: PromptPreviewRequest) -> PromptPreviewResponse:
     from . import agent_config as agent_config_module
     from .agent import prompt_sections
+    from .backend_defaults import fetch_skill_prompts
 
     config = request.agent_config
     skills = request.agent_skills
@@ -171,7 +172,8 @@ def _prompt_preview_impl(kb_id: str, request: PromptPreviewRequest) -> PromptPre
         policy=agent_config_module.answer_policy(config),
         state_prompt=base,
         agents_md=agent_config_module.agents_md(config),
-        installed_skills=request.installed_skills,
+        # The request carries `{skill_id: version}`; the prompt needs their SKILL.md text.
+        installed_skills=fetch_skill_prompts(settings, request.installed_skills or {}),
         agent_name=request.agent_name,
         agent_description=request.agent_description,
     )

@@ -14,6 +14,7 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 from typing_extensions import TypedDict
 
+from .backend_defaults import fetch_skill_prompts
 from .config import settings
 from .llm_config import get_effective_llm_config, get_llm_config
 from .logging_config import preview_text
@@ -95,14 +96,8 @@ class AgentState(TypedDict):
     agent_description: str | None
 
 
-def _llm_for(state: dict[str, Any]):
-    """The model this turn uses: the agent's choice, else the deployment default.
-
-    A named model that no longer resolves (deleted, or its provider lost its key) falls back to the default with an
-    error in the log. Failing every answer over a stale reference is worse, and answering silently would make
-    "which model answered" unknowable — the response carries the model name.
-    """
-    model_id = state.get("model_id")
+def _llm_for_model(model_id: str | None):
+    """The model this turn uses: the agent's choice, else the deployment default."""
     if not model_id:
         return get_effective_llm_config()
     try:
@@ -110,6 +105,16 @@ def _llm_for(state: dict[str, Any]):
     except Exception:
         logger.exception("model_id=%s could not be resolved; falling back to the deployment model", model_id)
         return get_effective_llm_config()
+
+
+def _llm_for(state: dict[str, Any]):
+    """The model this turn uses: the agent's choice, else the deployment default.
+
+    A named model that no longer resolves (deleted, or its provider lost its key) falls back to the default with an
+    error in the log. Failing every answer over a stale reference is worse, and answering silently would make
+    "which model answered" unknowable — the response carries the model name.
+    """
+    return _llm_for_model(state.get("model_id"))
 
 
 def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
@@ -659,6 +664,7 @@ def invoke_agent(
     from .langfuse_client import build_langgraph_trace_config, current_trace_id
 
     skill_ids = normalize_skill_ids(agent_skills)
+    llm_cfg = _llm_for_model(agent_config_module.model_id(agent_config))
     installed_skill_packages = fetch_skill_prompts(settings, installed_skills or {})
     retrieve_k = agent_config_module.top_k(agent_config)
     retrieve_mode = agent_config_module.retrieve_mode(agent_config)
@@ -1023,6 +1029,7 @@ async def astream_agent_ndjson(
     from .langfuse_client import build_langgraph_trace_config, current_trace_id, get_langfuse_callback
 
     skill_ids = normalize_skill_ids(agent_skills)
+    llm_cfg = _llm_for_model(agent_config_module.model_id(agent_config))
     installed_skill_packages = fetch_skill_prompts(settings, installed_skills or {})
     retrieve_k = agent_config_module.top_k(agent_config)
     retrieve_mode = agent_config_module.retrieve_mode(agent_config)

@@ -406,3 +406,28 @@ class TestIdentityIsInThePrompt:
         out = _prompt_preview_impl("kb1", PromptPreviewRequest(agent_config={}))
         # Without an identity the prompt opens with the built-in instruction, not an invented name.
         assert out.system_prompt.startswith(DEFAULT_BASE_INSTRUCTION)
+
+
+class TestSkillPromptTextIsFetched:
+    """`installed_skills` arrives as `{skill_id: version}`; the prompt needs the SKILL.md text.
+
+    The preview used to pass the mapping straight into the prompt builder, which iterates entries expecting dicts — a
+    crash waiting for the first agent with a skill installed.
+    """
+
+    def test_the_preview_resolves_versions_to_text(self, monkeypatch):
+        from qa_agent import backend_defaults as backend_defaults_module
+        from qa_agent.main import _prompt_preview_impl
+        from qa_agent.schemas import PromptPreviewRequest
+
+        # The function imports from `backend_defaults`, so that is the module to patch.
+        monkeypatch.setattr(
+            backend_defaults_module,
+            "fetch_skill_prompts",
+            lambda settings, installed: [
+                {"skill_id": "openkms", "display_name": "openKMS", "content": "# openKMS\nUse the CLI."}
+            ],
+        )
+
+        out = _prompt_preview_impl("kb1", PromptPreviewRequest(installed_skills={"openkms": "1.0"}))
+        assert any("Installed skills:" in section["content"] for section in out.sections)

@@ -10,17 +10,15 @@ Open items only. Closed work lives in git history.
 
 ## Medium priority
 
-### The qa-agent has no CI, and its venv had no pytest
+### The qa-agent has no CI, but it now has a check script
 
-`qa-agent/` is a separate service with its own `pyproject.toml`, and it is in **no** workflow (`.github/workflows/` has
-backend, frontend and docs). Its tests ran only when someone remembered to run them.
+`qa-agent/check.sh` runs `ruff --select F821` (undefined names) and `pytest`. That narrow rule is not tidiness: two
+undefined names (`fetch_skill_prompts`, `llm_cfg`) reached a running process, because pytest cannot see a code path no
+test exercises and nothing else looked. The full ruff ruleset has 60+ findings in this package — fixing them is its own
+task; a gate that fails on day one gets deleted instead of fixed.
 
-Worse, `uv run pytest` in that directory silently used a **global anaconda pytest** with a different interpreter, so
-`import bm25s` — installed in the project venv — failed at collection. pytest is a dev dependency of the project now, and the
-suite (102 tests) runs in its own environment; but nothing enforces that it runs at all.
-
-The fix is one workflow file mirroring the backend's: `uv sync --group dev && uv run pytest`. Until then a qa-agent change
-is verified by whoever made it and nobody else.
+Still missing: a workflow that runs this script. Until then the check is "whoever remembers", which is how the first two
+got through.
 
 ### `services/` and `pages/` describe a layer, not an area
 
