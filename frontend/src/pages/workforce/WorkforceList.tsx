@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Plus, Trash2, Users } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   createWorkforceAgent,
@@ -10,6 +10,7 @@ import {
   type WorkforceAgentResponse,
 } from '../../data/workforceApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { WorkforceAreaNav } from '../../components/workforce/WorkforceAreaNav';
 import {
   Dialog,
   EmptyState,
@@ -153,6 +154,7 @@ export function WorkforceList() {
         </>
       }
     >
+      <WorkforceAreaNav />
       {loading && <p className="ds-resource-list-loading">{t('loading')}</p>}
 
       {!loading && total === 0 && (
@@ -197,7 +199,18 @@ export function WorkforceList() {
                 </div>
               </Link>
               <div className="workforce-card__actions">
-                <AgentRowActions label={t('archiveAgent')} onDelete={() => void remove(agent)} />
+                <Link
+                  to={`/workforce/${agent.id}/chat`}
+                  className="workforce-card__chat"
+                  title={t('chatOpen')}
+                  aria-label={t('chatOpen')}
+                >
+                  <MessageSquare size={16} aria-hidden />
+                </Link>
+                <AgentRowActions
+                  label={t('archiveAgent')}
+                  onDelete={() => void remove(agent)}
+                />
               </div>
             </div>
           ))}

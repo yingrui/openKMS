@@ -236,8 +236,9 @@ POST /knowledge-bases/{kb_id}/ask
 | Piece | Where | What it decides |
 |---|---|---|
 | Graph | `qa_agent/agent.py:160` | `retrieve → generate →(loop) tools` — three nodes, no refusal path |
-| System prompt | `qa_agent/agent.py:78` (`_build_system_prompt`) | RAG context + skill prompt fragments + *"If the context or skills don't provide enough information, say so honestly."* |
-| Skill prompts | `qa_agent/skills/*.py` (`CATALOG_PROMPT` at `catalog.py:257`) | per-skill instructions, e.g. *"5. Cite the metric name, expression, or SQL + a short row preview."* |
+| System prompt | `qa_agent/agent.py` (`_build_system_prompt`) | RAG context + installed skill text + *"If the context or skills don't provide enough information, say so honestly."* Tool usage is **not** restated here: the tool definitions carry it |
+| Tool usage | the tools' own docstrings (`qa_agent/skills/*.py`) | `@tool` docstrings become the function descriptions the model receives — what it does, when to use it, parameters, limits. One copy, exported for the configuration screen by `qa_agent/tool_catalog.py` (`GET /tools`) |
+| Installed skills | registry text, fetched via `/internal-api/skills/{registry}/{id}/{version}/prompt` | procedures and judgement the author installed; nothing here describes a tool signature |
 | Tools | `qa_agent/skills/{catalog,ontology,page_index}.py` | `list_semantic_models_tool`, `get_semantic_model_tool` (metrics + fields + tables), `query_semantic_model_tool`, `sql_semantic_model_tool` |
 | Evidence | `qa_agent/kb_answer_sources.py:459` (`select_display_sources`) | Page Index → Catalog → ontology → RAG chunks, **first non-empty wins**; a catalog entry is created from **any successful** query tool call |
 | LLM config | `qa_agent/backend_defaults.py` | resolved from the backend's model registry unless env overrides it |

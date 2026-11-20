@@ -12,7 +12,8 @@ import {
 import { fetchSemanticModels, type SemanticModelResponse } from '../../../data/semanticModelsApi';
 import { fetchOntologyGroups, type OntologyGroupResponse } from '../../../data/ontologyGroupsApi';
 import { CheckRow, FormField } from '../../../styles/design-system';
-import { CORE_AGENT_SKILLS, OPTIONAL_AGENT_SKILLS } from '../../../data/kbAgentSkills';
+import { fetchToolCatalog, type ToolCapability } from '../../../data/workforceToolsApi';
+import { useAsyncData } from '../../../hooks/useAsyncData';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { configFromDraft, draftFromConfig } from '../workforceConfigDraft';
 import { useWorkforceDetail } from './workforceDetailContext';
@@ -29,8 +30,11 @@ import { useWorkforceDetail } from './workforceDetailContext';
  */
 export function WorkforceToolsTab() {
   const { t } = useTranslation('workforce');
-  const { t: tk } = useTranslation('knowledgeBase');
   const { agent, reload } = useWorkforceDetail();
+  // The capability list and every tool description come from the service that owns them, so the screen cannot
+  // describe a tool the model no longer has — or miss one it gained.
+  const catalog = useAsyncData(() => fetchToolCatalog(), []);
+  const [openCapability, setOpenCapability] = useState<string | null>(null);
   const [models, setModels] = useState<SemanticModelResponse[]>([]);
   const [groups, setGroups] = useState<OntologyGroupResponse[]>([]);
   const [modelPick, setModelPick] = useState('');
@@ -224,17 +228,24 @@ export function WorkforceToolsTab() {
       </EntityViewPanel>
 
       <EntityViewPanel title={t('toolsSwitchesTitle')} description={t('toolsSwitchesLead')}>
-        {[...CORE_AGENT_SKILLS, ...OPTIONAL_AGENT_SKILLS].map((tool) => (
-          <CheckRow
-            key={tool.id}
-            checked={tools.includes(tool.id)}
-            onChange={() =>
+        {catalog.error ? <p className="ds-field__hint">{t('toolsCatalogFailed')}</p> : null}
+        {catalog.loading ? <p className="ds-field__hint">{t('loading')}</p> : null}
+        {(catalog.data?.capabilities ?? []).map((capability) => (
+          <CapabilityRow
+            key={capability.id}
+            capability={capability}
+            enabled={tools.includes(capability.id)}
+            expanded={openCapability === capability.id}
+            onToggle={() =>
               setTools((prev) =>
-                prev.includes(tool.id) ? prev.filter((id) => id !== tool.id) : [...prev, tool.id]
+                prev.includes(capability.id)
+                  ? prev.filter((id) => id !== capability.id)
+                  : [...prev, capability.id]
               )
             }
-            title={tk(`detail.${tool.labelKey}`)}
-            hint={tk(`detail.${tool.helpKey}`)}
+            onExpand={() =>
+              setOpenCapability((current) => (current === capability.id ? null : capability.id))
+            }
           />
         ))}
         <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void saveTools()}>
@@ -255,6 +266,23 @@ export function WorkforceToolsTab() {
           title={t('sandbox')}
           hint={t('sandboxHint')}
         />
+        {catalog.data ? (
+          <div className="workforce-tool-details">
+            <p className="ds-field__hint">
+              {t('sandboxPolicy', {
+                count: catalog.data.environment.policy.builtin_allow.length,
+                timeout: catalog.data.environment.policy.timeout_seconds,
+              })}
+            </p>
+            <ul>
+              {catalog.data.environment.policy.builtin_allow.map((command) => (
+                <li key={command}>
+                  <code>{command}</code>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {draft.sandbox ? (
           <FormField label={t('sandboxAllowCommands')} hint={t('sandboxAllowCommandsHint')}>
             <textarea
@@ -277,5 +305,54 @@ export function WorkforceToolsTab() {
         </button>
       </EntityViewPanel>
     </>
+  );
+}
+
+/** One capability: a switch, and the tools it puts in the model's hands. */
+function CapabilityRow({
+  capability,
+  enabled,
+  expanded,
+  onToggle,
+  onExpand,
+}: {
+  capability: ToolCapability;
+  enabled: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+  onExpand: () => void;
+}) {
+  const { t } = useTranslation('workforce');
+
+  return (
+    <div className="workforce-tool-row">
+      <CheckRow
+        checked={enabled}
+        onChange={onToggle}
+        title={`${capability.name}${capability.core ? t('toolsCoreTag') : ''}`}
+        hint={t('toolsCount', { count: capability.tools.length })}
+      />
+      <button
+        type="button"
+        className="btn btn-ghost workforce-tool-row__toggle"
+        aria-expanded={expanded}
+        onClick={onExpand}
+      >
+        {expanded ? t('toolsHideDefinition') : t('toolsShowDefinition')}
+      </button>
+      {expanded ? (
+        <dl className="workforce-tool-definitions">
+          {capability.tools.map((tool) => (
+            <div key={tool.name}>
+              <dt>
+                <code>{tool.name}</code>
+              </dt>
+              <dd>{tool.description}</dd>
+            </div>
+          ))}
+          <p className="ds-field__hint">{t('toolsDefinitionNote')}</p>
+        </dl>
+      ) : null}
+    </div>
   );
 }

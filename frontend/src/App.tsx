@@ -108,16 +108,7 @@ const KnowledgeBaseDetail = lazy(() =>
 const KbSection = lazy(() =>
   import('./pages/knowledge-bases/detail/KbSection').then((m) => ({ default: m.KbSection })),
 );
-const WorkforceList = lazy(() =>
-  import('./pages/workforce/WorkforceList').then((m) => ({ default: m.WorkforceList })),
-);
-const WorkforceDetail = lazy(() =>
-  import('./pages/workforce/WorkforceDetail').then((m) => ({ default: m.WorkforceDetail })),
-);
-const WorkforceChat = lazy(() =>
-  import('./pages/workforce/WorkforceChat').then((m) => ({ default: m.WorkforceChat })),
-);
-import { WORKFORCE_TABS } from './pages/workforce/detail/tabs';
+import { WORKFORCE_DETAIL_ROUTE, WORKFORCE_ROUTES } from './pages/workforce/workforceRoutes';
 const Pipelines = lazy(() => import('./pages/pipelines/Pipelines').then((m) => ({ default: m.Pipelines })));
 const JobRuns = lazy(() => import('./pages/jobs/JobRuns').then((m) => ({ default: m.JobRuns })));
 const SchedulesPage = lazy(() => import('./pages/jobs/SchedulesPage').then((m) => ({ default: m.SchedulesPage })));
@@ -474,9 +465,7 @@ function App() {
             <Route path="view/:id" element={<MediaDetail />} />
           </Route>
           <Route path="knowledge-bases" element={<KnowledgeBaseList />} />
-          <Route path="workforce" element={<WorkforceList />} />
-          <Route path="workforce/:agentId/chat" element={<WorkforceChat />} />
-          <Route path="workforce/:agentId/chat/:conversationId" element={<WorkforceChat />} />
+          {WORKFORCE_ROUTES}
           <Route path="agents" element={<FeatureGate feature="agents"><ProjectList /></FeatureGate>} />
           <Route path="agents/skills/:skillId/settings" element={<FeatureGate feature="agents"><AgentSkillSettings /></FeatureGate>} />
           <Route path="agents/skills" element={<FeatureGate feature="agents"><AgentSkillsPage /></FeatureGate>} />
@@ -529,16 +518,7 @@ function App() {
               <Route path="sharing" element={<ModelSharingTab />} />
               <Route path="settings" element={<ModelSettingsTab />} />
             </Route>
-            <Route path="workforce/:agentId" element={<WorkforceDetail />}>
-              {/* One tab list, shared with the shell's rail — see `pages/workforce/detail/tabs.ts`. */}
-              {WORKFORCE_TABS.map(({ segment, Component }, i) => (
-                <Route
-                  key={segment || 'index'}
-                  {...(i === 0 ? { index: true } : { path: segment })}
-                  element={<Component />}
-                />
-              ))}
-            </Route>
+            {WORKFORCE_DETAIL_ROUTE}
             <Route path="data-rules/new" element={<RuleNewPage />} />
             <Route path="data-rules/:ruleId" element={<RuleDetailPage />}>
               <Route index element={<RuleOverviewTab />} />

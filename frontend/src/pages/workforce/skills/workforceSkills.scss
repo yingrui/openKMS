@@ -1,0 +1,336 @@
+@use '../../../styles/design-system/tokens' as ds;
+@use '../../../styles/design-system/mixins' as *;
+
+.workforce-skills-page {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+
+
+
+
+
+.workforce-skill-chip {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+
+.workforce-skill-chip--muted {
+  color: var(--color-text-muted);
+}
+
+.workforce-skill-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  min-height: var(--tap-min);
+
+  &:hover {
+    color: var(--color-text);
+  }
+}
+
+.workforce-skill-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.workforce-skill-header__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.workforce-skill-editor {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 220px;
+  gap: 16px;
+  margin-top: 16px;
+  align-items: start;
+}
+
+.workforce-skill-files,
+.workforce-skill-versions {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  padding: 12px;
+}
+
+.workforce-skill-files__head,
+.workforce-skill-versions__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+
+.workforce-skill-files ul,
+.workforce-skill-versions ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.workforce-skill-file-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.workforce-skill-file__remove {
+  padding: 2px;
+  color: var(--color-text-muted);
+
+  &:hover {
+    color: var(--color-danger, var(--color-text));
+  }
+}
+
+.workforce-skill-file {
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border: none;
+  background: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-family: var(--font-mono, monospace);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--color-bg-muted);
+    color: var(--color-text);
+  }
+
+  &.active {
+    background: var(--color-bg-muted);
+    color: var(--color-text);
+    font-weight: 600;
+  }
+}
+
+.workforce-skill-version {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.workforce-skill-version__name {
+  font-weight: 600;
+}
+
+.workforce-skill-version__action {
+  font-size: 0.75rem;
+  padding: 2px 4px;
+}
+
+.workforce-binding-version {
+  width: auto;
+  min-width: 72px;
+}
+
+.workforce-skill-versions__empty {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.workforce-skill-canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.workforce-skill-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.workforce-skill-body {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.workforce-skill-code {
+  height: 420px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.workforce-skill-report {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: var(--color-bg-muted);
+}
+
+.workforce-skill-report__item {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.workforce-skill-report__item.is-blocking {
+  color: var(--color-danger, var(--color-text));
+}
+
+.workforce-skill-report__note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+@include max-width(ds.$bp-wide-max) {
+  .workforce-skill-editor {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+
+  .workforce-skill-versions {
+    grid-column: 1 / -1;
+  }
+}
+
+@include max-width(ds.$bp-sm-min) {
+  .workforce-skills-page {
+    padding: 16px;
+  }
+
+  .workforce-skill-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workforce-skill-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.workforce-tools-card {
+  align-items: flex-start;
+}
+
+.workforce-tools-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+  min-height: var(--tap-min);
+}
+
+.workforce-tools-card__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.workforce-tools-card__definitions {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+
+  code {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+  }
+
+  p {
+    margin: 4px 0 12px;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+    white-space: pre-wrap;
+  }
+}
+
+.workforce-tools-policy {
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    margin: 0 0 4px;
+  }
+}
+
+.workforce-tools-policy__tool {
+  margin-top: 12px;
+
+  code {
+    font-size: 0.78rem;
+  }
+
+  p {
+    margin: 4px 0 0;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+    white-space: pre-wrap;
+  }
+}
+
+.workforce-tools-policy__commands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+
+  code {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-muted);
+    color: var(--color-text-secondary);
+  }
+}
+
+.workforce-skill-card {
+  text-decoration: none;
+  color: inherit;
+}

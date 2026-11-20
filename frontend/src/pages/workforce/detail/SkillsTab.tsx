@@ -59,6 +59,9 @@ export function WorkforceSkillsTab() {
 
   const installedIds = new Set(installed.map((s) => s.skill_id));
   const available = registry.filter((s) => !installedIds.has(s.skill_id));
+  /** Published versions of a skill this agent already carries, so switching one is a single choice. */
+  const versionsOf = (skillId: string) =>
+    registry.find((entry) => entry.skill_id === skillId)?.versions ?? [];
 
   return (
     <>
@@ -73,7 +76,32 @@ export function WorkforceSkillsTab() {
               <li key={skill.skill_id}>
                 <span className="workforce-binding-name">
                   <Package size={14} aria-hidden /> {skill.display_name}
-                  {skill.version ? <span className="workforce-binding-meta">v{skill.version}</span> : null}
+                  {versionsOf(skill.skill_id).length > 1 ? (
+                    <select
+                      className="ds-control workforce-binding-version"
+                      aria-label={t('skillVersion')}
+                      value={skill.version}
+                      disabled={busy}
+                      onChange={(e) =>
+                        void run(() =>
+                          installWorkforceSkill(agent.id, skill.skill_id, e.target.value),
+                        )
+                      }
+                    >
+                      {/* A version that is no longer published stays listed: the control has to keep
+                          showing what the agent actually runs. */}
+                      {versionsOf(skill.skill_id).includes(skill.version) ? null : (
+                        <option value={skill.version}>v{skill.version}</option>
+                      )}
+                      {versionsOf(skill.skill_id).map((version) => (
+                        <option key={version} value={version}>
+                          v{version}
+                        </option>
+                      ))}
+                    </select>
+                  ) : skill.version ? (
+                    <span className="workforce-binding-meta">v{skill.version}</span>
+                  ) : null}
                   {skill.available ? null : (
                     <span className="workforce-binding-meta is-warning">{t('skillMissing')}</span>
                   )}

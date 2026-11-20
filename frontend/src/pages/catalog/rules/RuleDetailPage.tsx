@@ -79,6 +79,8 @@ export function RuleDetailPage() {
   const [trial, setTrial] = useState<RulesEvaluateResponse | null>(null);
   const [busyEventId, setBusyEventId] = useState<string | null>(null);
   const [paramCandidates, setParamCandidates] = useState<string[]>([]);
+  /** Model field name → its label, for the grouping sentence. */
+  const [fieldLabels, setFieldLabels] = useState<Record<string, string>>({});
   /** The metric list failed to load: an editor without options would look like a broken rule. */
   const [pickersMissing, setPickersMissing] = useState(false);
 
@@ -96,7 +98,7 @@ export function RuleDetailPage() {
     return (id: string) => byId.get(id) ?? id.slice(0, 8);
   }, [datasets]);
 
-  /** Fields a group-by can use: the model fields of the metric this rule watches. */
+  /** Fields a group-by can use — and their labels, which is the word a grouping sentence wants. */
   useEffect(() => {
     let cancelled = false;
     const metric = metrics.find((entry) => entry.id === form.metricId);
@@ -112,6 +114,13 @@ export function RuleDetailPage() {
         if (!cancelled) {
           setParamCandidates(
             fields.items.map((field: SemanticModelFieldResponse) => field.name),
+          );
+          setFieldLabels(
+            Object.fromEntries(
+              fields.items
+                .filter((field: SemanticModelFieldResponse) => field.label)
+                .map((field: SemanticModelFieldResponse) => [field.name, field.label as string]),
+            ),
           );
         }
       } catch {
@@ -235,9 +244,11 @@ export function RuleDetailPage() {
     setBusyEventId,
   });
 
-  // The author's own word for what a run picks ("方案") makes the sentence concrete; without one the
-  // sentence stays domain-neutral ("one object at a time"). Neither ever says "scenario".
-  const groupLabel = rule?.group_by?.label ?? null;
+  // The model's own label for the grouping field ("方案") makes the sentence concrete; without one the sentence
+  // stays domain-neutral ("one object at a time"). The rule used to carry its own `group_by.label`, a second
+  // place to write the same word — it is gone.
+  const groupField = rule?.group_by?.field ?? '';
+  const groupLabel = groupField ? (fieldLabels[groupField] ?? null) : null;
   const joiners = {
     and: t("rules.joinAnd"),
     or: t("rules.joinOr"),

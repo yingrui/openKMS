@@ -186,31 +186,6 @@
 }
 
 /* A list card with its own actions: the body navigates, the action cell sits outside the link. */
-.workforce-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-
-  .workforce-card__body {
-    display: block;
-    flex: 1;
-    color: inherit;
-    text-decoration: none;
-  }
-
-  .workforce-card__actions {
-    position: absolute;
-    top: var(--space-2);
-    right: var(--space-2);
-    opacity: 0;
-    transition: opacity 0.15s;
-  }
-
-  &:hover .workforce-card__actions,
-  &:focus-within .workforce-card__actions {
-    opacity: 1;
-  }
-}
 
 .workforce-editor {
   display: flex;
@@ -241,5 +216,64 @@
 
   &.is-over {
     color: var(--color-error);
+  }
+}
+
+.workforce-tool-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 4px 12px;
+  margin-bottom: 8px;
+}
+
+.workforce-tool-row__toggle {
+  font-size: 0.8rem;
+  white-space: nowrap;
+  justify-self: end;
+}
+
+.workforce-tool-definitions {
+  grid-column: 1 / -1;
+  margin: 4px 0 12px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+
+  dt {
+    margin-bottom: 4px;
+  }
+
+  dt code {
+    font-size: 0.78rem;
+    color: var(--color-text-secondary);
+  }
+
+  dd {
+    margin: 0 0 12px;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+    white-space: pre-wrap;
+  }
+}
+
+.workforce-tool-details {
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+  }
+
+  code {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-muted);
+    color: var(--color-text-secondary);
   }
 }

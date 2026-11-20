@@ -363,12 +363,12 @@ The rule is **evaluated per group**, declared once on the rule — the field is 
 the dataset can be filtered by, so the choice belongs to whoever writes the rule:
 
 ```json
-{"group_by": {"field": "scenario_id", "label": "方案"}}
+{"group_by": {"field": "scenario_id"}}
 ```
 
 One run then covers **every** group and reports which ones fail, with one event per failing group
-(`方案 5 · 本期分货额度错配…`). `label` is the author's word for it (a 方案, a stock, a region) and only
-affects the sentence. There is no run parameter: nothing has to be supplied before the rule can be
+(`方案 5 · 本期分货额度错配…`). The word for a group ("方案", a stock, a region) is the **model field's**
+`label`, not a copy stored on the rule: a second place to write it is a second answer. There is no run parameter: nothing has to be supplied before the rule can be
 judged, and a missing group is `undetermined` rather than a number computed over everything.
 
 `evaluate(rule, scope=…)` appends `scenario_id = <scope>` to that operand's filters. Without a scope the
