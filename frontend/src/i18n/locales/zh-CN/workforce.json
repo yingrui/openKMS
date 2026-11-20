@@ -389,5 +389,17 @@
   "toolsRequires_semantic_model": "已绑定语义模型",
   "toolsRequires_ontology_group": "已绑定本体分组",
   "toolsHasPolicy": "有策略",
-  "toolsPolicyLine": "在{{cwd}}内运行，只有 {{writable}} 可写，单次上限 {{timeout}} 秒。"
+  "toolsPolicyLine": "在{{cwd}}内运行，只有 {{writable}} 可写，单次上限 {{timeout}} 秒。",
+  "toolsModelsTitle": "语义模型",
+  "toolsModelsLead": "数字只能来自这里绑定的模型。绑定一个，等于允许它读那个模型的指标与表。",
+  "toolsGroupsTitle": "本体分组",
+  "toolsGroupsLead": "图谱类问题只能沿这里绑定的分组走。",
+  "toolsPickModel": "绑定模型",
+  "toolsPickModelPlaceholder": "选择语义模型…",
+  "toolsPickGroup": "绑定分组",
+  "toolsPickGroupPlaceholder": "选择本体分组…",
+  "toolsNothingLeftToBind": "可读的已经全部绑定。",
+  "toolsNoneSelected": "没有选任何能力时使用默认组合；勾选一个即改为显式指定。",
+  "toolsSeeCatalogue": "各个工具做什么",
+  "sandboxAllowCommandsHintWithBuiltin": "每行一个命令。始终允许 {{count}} 个内置命令，这里只能追加。"
 }

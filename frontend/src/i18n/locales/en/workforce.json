@@ -390,5 +390,17 @@
   "toolsRequires_semantic_model": "a bound semantic model",
   "toolsRequires_ontology_group": "a bound ontology group",
   "toolsHasPolicy": "policy",
-  "toolsPolicyLine": "Runs in the {{cwd}}; only {{writable}} is writable; {{timeout}}s per run."
+  "toolsPolicyLine": "Runs in the {{cwd}}; only {{writable}} is writable; {{timeout}}s per run.",
+  "toolsModelsTitle": "Semantic models",
+  "toolsModelsLead": "Numbers can only come from the models bound here. Binding one grants reading its metrics and tables.",
+  "toolsGroupsTitle": "Ontology groups",
+  "toolsGroupsLead": "Graph questions can only walk the groups bound here.",
+  "toolsPickModel": "Bind a model",
+  "toolsPickModelPlaceholder": "Choose a semantic model…",
+  "toolsPickGroup": "Bind a group",
+  "toolsPickGroupPlaceholder": "Choose an ontology group…",
+  "toolsNothingLeftToBind": "Everything readable is already bound.",
+  "toolsNoneSelected": "No capability selected — the defaults are used instead. Tick one to choose explicitly.",
+  "toolsSeeCatalogue": "What the tools do",
+  "sandboxAllowCommandsHintWithBuiltin": "One command per line. {{count}} commands are always allowed; this list only adds to them."
 }

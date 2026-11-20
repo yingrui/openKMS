@@ -228,7 +228,9 @@
 }
 
 .workforce-tool-row__toggle {
-  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   white-space: nowrap;
   justify-self: end;
 }
@@ -259,21 +261,3 @@
   }
 }
 
-.workforce-tool-details {
-  ul {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    list-style: none;
-    margin: 8px 0 0;
-    padding: 0;
-  }
-
-  code {
-    font-size: 0.75rem;
-    padding: 2px 6px;
-    border-radius: var(--radius-sm);
-    background: var(--color-bg-muted);
-    color: var(--color-text-secondary);
-  }
-}

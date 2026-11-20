@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ChevronDown, ChevronRight, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   addWorkforceOntologyGroup,
@@ -21,9 +22,10 @@ import { useWorkforceDetail } from './workforceDetailContext';
 /**
  * What the agent may *reach* — not what it knows.
  *
- * - **lookup tools** (Catalog models, ontology groups) are what it may *consult* when an answer needs numbers
- *   or objects;
- * - **environment** is what it may *run*: a folder for the session, and code execution in it.
+ * Four decisions, one panel each: which semantic models it may query, which ontology groups it may walk, which
+ * capabilities it carries, and what it may run. Switches save themselves, because a switch that needs a Save button
+ * is a switch whose state you cannot see; only the allow list is a form, and it says so by carrying the only Save on
+ * the page.
  *
  * Knowledge sources used to live here and moved out: binding a corpus is a different decision from granting a
  * lookup, and mixing them made "Tools" mean two things (`KnowledgeTab`).
@@ -35,9 +37,9 @@ export function WorkforceToolsTab() {
   // describe a tool the model no longer has — or miss one it gained.
   const catalog = useAsyncData(() => fetchToolCatalog(), []);
   // The policy lives on the capability that enforces it, so this tab reads it from there rather than from a second copy.
-  const sandboxPolicy = catalog.data?.capabilities.find(
+  const codeExecution = catalog.data?.capabilities.find(
     (capability) => capability.id === 'code_execution',
-  )?.policy;
+  );
   const [openCapability, setOpenCapability] = useState<string | null>(null);
   const [models, setModels] = useState<SemanticModelResponse[]>([]);
   const [groups, setGroups] = useState<OntologyGroupResponse[]>([]);
@@ -82,28 +84,27 @@ export function WorkforceToolsTab() {
     }
   };
 
-  const saveTools = async () => {
-    setBusy(true);
+  /** A switch writes itself: the state on screen is the state stored. */
+  const saveTools = async (next: string[]) => {
+    setTools(next);
     try {
-      await updateWorkforceAgent(agent.id, { agent_skills: tools });
+      await updateWorkforceAgent(agent.id, { agent_skills: next });
       await reload();
-      toast.success(t('saved'));
     } catch (e: unknown) {
+      setTools(tools);
       toast.error(e instanceof Error ? e.message : t('saveFailed'));
-    } finally {
-      setBusy(false);
     }
   };
 
-  const saveEnvironment = async () => {
+  const saveEnvironment = async (next = draft, commandsText = allowCommands) => {
     setBusy(true);
     try {
-      const commands = allowCommands
+      const commands = commandsText
         .split('\n')
         .map((line) => line.trim())
         .filter(Boolean);
       await updateWorkforceAgent(agent.id, {
-        agent_config: configFromDraft(agent.agent_config, draft, {
+        agent_config: configFromDraft(agent.agent_config, next, {
           sandbox: { allow_commands: commands.length ? commands : null },
         }),
       });
@@ -116,6 +117,24 @@ export function WorkforceToolsTab() {
     }
   };
 
+  /** A boolean environment switch: write it, keep the control honest if the write fails. */
+  const toggleEnvironment = async (key: 'workspace' | 'sandbox', checked: boolean) => {
+    const next = { ...draft, [key]: checked };
+    setDraft(next);
+    try {
+      await updateWorkforceAgent(agent.id, {
+        agent_config: configFromDraft(agent.agent_config, next),
+      });
+      await reload();
+    } catch (e: unknown) {
+      setDraft(draft);
+      toast.error(e instanceof Error ? e.message : t('saveFailed'));
+    }
+  };
+
+  const allowCommandsDirty =
+    allowCommands.trim() !== (agent.agent_config?.sandbox?.allow_commands ?? []).join('\n').trim();
+
   const boundModelIds = new Set(agent.semantic_models.map((b) => b.semantic_model_id));
   const boundGroupIds = new Set(agent.ontology_groups.map((b) => b.ontology_group_id));
 
@@ -123,172 +142,134 @@ export function WorkforceToolsTab() {
     <>
       <EntityViewHeader title={t('toolsTitle')} subtitle={t('toolsLead')} />
 
-      <EntityViewPanel title={t('dataTitle')} description={t('dataLead')}>
-        <h3 className="account-card-title">{t('addModel')}</h3>
-        <p className="ds-field__hint">{t('modelBound')}</p>
-        {agent.semantic_models.length === 0 ? (
-          <p className="ds-field__hint">{t('noModels')}</p>
-        ) : (
-          <ul className="workforce-bindings">
-            {agent.semantic_models.map((binding) => (
-              <li key={binding.id}>
-                <span>{binding.name}</span>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  disabled={busy}
-                  onClick={() => void run(() => removeWorkforceSemanticModel(agent.id, binding.id))}
-                >
-                  <X size={14} aria-hidden />
-                  {t('unbind')}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="workforce-inline-form">
-          <select
-            className="ds-control"
-            value={modelPick}
-            onChange={(e) => setModelPick(e.target.value)}
-          >
-            <option value="">—</option>
-            {models
-              .filter((m) => !boundModelIds.has(m.id))
-              .map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-          </select>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            disabled={busy || !modelPick}
-            onClick={() =>
-              void run(async () => {
-                await addWorkforceSemanticModel(agent.id, modelPick);
-                setModelPick('');
-              })
-            }
-          >
-            <Plus size={16} aria-hidden />
-            {t('bind')}
-          </button>
-        </div>
+      <EntityViewPanel
+        title={t('toolsModelsTitle')}
+        description={t('toolsModelsLead')}
+        actions={
+          <Link className="btn btn-link btn-sm" to="/workforce/tools">
+            {t('toolsSeeCatalogue')}
+          </Link>
+        }
+      >
+        <BindingList
+          empty={t('noModels')}
+          rows={agent.semantic_models.map((binding) => ({
+            id: binding.id,
+            label: binding.name,
+            onRemove: () => removeWorkforceSemanticModel(agent.id, binding.id),
+          }))}
+          busy={busy}
+          addLabel={t('addModel')}
+          pickLabel={t('toolsPickModel')}
+          pickPlaceholder={t('toolsPickModelPlaceholder')}
+          pick={modelPick}
+          onPick={setModelPick}
+          options={models
+            .filter((model) => !boundModelIds.has(model.id))
+            .map((model) => ({ id: model.id, label: model.name }))}
+          onAdd={async () => {
+            await addWorkforceSemanticModel(agent.id, modelPick);
+            setModelPick('');
+          }}
+          run={run}
+        />
+      </EntityViewPanel>
 
-        <h3 className="account-card-title">{t('addGroup')}</h3>
-        <p className="ds-field__hint">{t('groupBound')}</p>
-        {agent.ontology_groups.length === 0 ? (
-          <p className="ds-field__hint">{t('noGroups')}</p>
-        ) : (
-          <ul className="workforce-bindings">
-            {agent.ontology_groups.map((binding) => (
-              <li key={binding.id}>
-                <span>{binding.display_name}</span>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  disabled={busy}
-                  onClick={() => void run(() => removeWorkforceOntologyGroup(agent.id, binding.id))}
-                >
-                  <X size={14} aria-hidden />
-                  {t('unbind')}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="workforce-inline-form">
-          <select
-            className="ds-control"
-            value={groupPick}
-            onChange={(e) => setGroupPick(e.target.value)}
-          >
-            <option value="">—</option>
-            {groups
-              .filter((g) => !boundGroupIds.has(g.id))
-              .map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.display_name}
-                </option>
-              ))}
-          </select>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            disabled={busy || !groupPick}
-            onClick={() =>
-              void run(async () => {
-                await addWorkforceOntologyGroup(agent.id, groupPick);
-                setGroupPick('');
-              })
-            }
-          >
-            <Plus size={16} aria-hidden />
-            {t('bind')}
-          </button>
-        </div>
+      <EntityViewPanel title={t('toolsGroupsTitle')} description={t('toolsGroupsLead')}>
+        <BindingList
+          empty={t('noGroups')}
+          rows={agent.ontology_groups.map((binding) => ({
+            id: binding.id,
+            label: binding.display_name,
+            onRemove: () => removeWorkforceOntologyGroup(agent.id, binding.id),
+          }))}
+          busy={busy}
+          addLabel={t('addGroup')}
+          pickLabel={t('toolsPickGroup')}
+          pickPlaceholder={t('toolsPickGroupPlaceholder')}
+          pick={groupPick}
+          onPick={setGroupPick}
+          options={groups
+            .filter((group) => !boundGroupIds.has(group.id))
+            .map((group) => ({ id: group.id, label: group.display_name }))}
+          onAdd={async () => {
+            await addWorkforceOntologyGroup(agent.id, groupPick);
+            setGroupPick('');
+          }}
+          run={run}
+        />
       </EntityViewPanel>
 
       <EntityViewPanel title={t('toolsSwitchesTitle')} description={t('toolsSwitchesLead')}>
         {catalog.error ? <p className="ds-field__hint">{t('toolsCatalogFailed')}</p> : null}
         {catalog.loading ? <p className="ds-field__hint">{t('loading')}</p> : null}
-        {(catalog.data?.capabilities ?? []).map((capability) => (
-          <CapabilityRow
-            key={capability.id}
-            capability={capability}
-            enabled={tools.includes(capability.id)}
-            expanded={openCapability === capability.id}
-            onToggle={() =>
-              setTools((prev) =>
-                prev.includes(capability.id)
-                  ? prev.filter((id) => id !== capability.id)
-                  : [...prev, capability.id]
-              )
-            }
-            onExpand={() =>
-              setOpenCapability((current) => (current === capability.id ? null : capability.id))
-            }
-          />
-        ))}
-        <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void saveTools()}>
-          {busy ? t('saving') : t('save')}
-        </button>
+        {(catalog.data?.capabilities ?? [])
+          .filter((capability) => capability.id !== 'code_execution')
+          .map((capability) => (
+            <CapabilityRow
+              key={capability.id}
+              capability={capability}
+              enabled={tools.includes(capability.id)}
+              expanded={openCapability === capability.id}
+              onToggle={() =>
+                void saveTools(
+                  tools.includes(capability.id)
+                    ? tools.filter((id) => id !== capability.id)
+                    : [...tools, capability.id],
+                )
+              }
+              onExpand={() =>
+                setOpenCapability((current) => (current === capability.id ? null : capability.id))
+              }
+            />
+          ))}
+        {tools.length === 0 ? (
+          <p className="ds-field__hint">{t('toolsNoneSelected')}</p>
+        ) : null}
       </EntityViewPanel>
 
-      <EntityViewPanel title={t('toolsEnvSection')} description={t('toolsEnvHint')}>
+      <EntityViewPanel
+        title={t('toolsEnvSection')}
+        description={t('toolsEnvHint')}
+        actions={
+          // The only form on the page: the switches save themselves, so this action appears exactly when there is
+          // something a switch could not have saved.
+          draft.sandbox && allowCommandsDirty ? (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              disabled={busy}
+              onClick={() => void saveEnvironment()}
+            >
+              {busy ? t('saving') : t('save')}
+            </button>
+          ) : null
+        }
+      >
         <CheckRow
           checked={draft.workspace}
-          onChange={(checked) => setDraft({ ...draft, workspace: checked })}
+          onChange={(checked) => void toggleEnvironment('workspace', checked)}
           title={t('workspace')}
           hint={t('workspaceHint')}
         />
         <CheckRow
           checked={draft.sandbox}
-          onChange={(checked) => setDraft({ ...draft, sandbox: checked })}
+          onChange={(checked) => void toggleEnvironment('sandbox', checked)}
           title={t('sandbox')}
           hint={t('sandboxHint')}
         />
-        {sandboxPolicy ? (
-          <div className="workforce-tool-details">
-            <p className="ds-field__hint">
-              {t('sandboxPolicy', {
-                count: sandboxPolicy.builtin_allow.length,
-                timeout: sandboxPolicy.timeout_seconds,
-              })}
-            </p>
-            <ul>
-              {sandboxPolicy.builtin_allow.map((command) => (
-                <li key={command}>
-                  <code>{command}</code>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
         {draft.sandbox ? (
-          <FormField label={t('sandboxAllowCommands')} hint={t('sandboxAllowCommandsHint')}>
+          <FormField
+            label={t('sandboxAllowCommands')}
+            hint={
+              codeExecution?.policy
+                ? t('sandboxAllowCommandsHintWithBuiltin', {
+                    count: codeExecution.policy.builtin_allow.length,
+                    timeout: codeExecution.policy.timeout_seconds,
+                  })
+                : t('sandboxAllowCommandsHint')
+            }
+          >
             <textarea
               className="ds-control"
               rows={4}
@@ -299,20 +280,101 @@ export function WorkforceToolsTab() {
             />
           </FormField>
         ) : null}
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={busy}
-          onClick={() => void saveEnvironment()}
-        >
-          {busy ? t('saving') : t('save')}
-        </button>
       </EntityViewPanel>
     </>
   );
 }
 
-/** One capability: a switch, and the tools it puts in the model's hands. */
+/**
+ * One binding list: what is already bound, and the control that adds another.
+ *
+ * The two lists on this tab are the same widget — a deliberate shape, so the model list and the group list cannot
+ * drift apart the way two hand-written copies would.
+ */
+function BindingList({
+  rows,
+  empty,
+  busy,
+  addLabel,
+  pickLabel,
+  pickPlaceholder,
+  pick,
+  onPick,
+  options,
+  onAdd,
+  run,
+}: {
+  rows: { id: string; label: string; onRemove: () => Promise<unknown> }[];
+  empty: string;
+  busy: boolean;
+  addLabel: string;
+  pickLabel: string;
+  pickPlaceholder: string;
+  pick: string;
+  onPick: (value: string) => void;
+  options: { id: string; label: string }[];
+  onAdd: () => Promise<void>;
+  run: (action: () => Promise<unknown>) => Promise<void>;
+}) {
+  const { t } = useTranslation('workforce');
+
+  return (
+    <>
+      {rows.length === 0 ? (
+        <p className="ds-field__hint">{empty}</p>
+      ) : (
+        <ul className="workforce-bindings">
+          {rows.map((row) => (
+            <li key={row.id}>
+              <span>{row.label}</span>
+              <button
+                type="button"
+                className="btn btn-link btn-sm is-danger"
+                disabled={busy}
+                onClick={() => void run(row.onRemove)}
+              >
+                <X size={14} aria-hidden />
+                {t('unbind')}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <FormField
+        label={addLabel}
+        hint={options.length === 0 ? t('toolsNothingLeftToBind') : undefined}
+      >
+        <div className="workforce-inline-form">
+          <select
+            className="ds-control"
+            value={pick}
+            aria-label={pickLabel}
+            onChange={(e) => onPick(e.target.value)}
+          >
+            <option value="">{pickPlaceholder}</option>
+            {options.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={busy || !pick}
+            onClick={() => void run(onAdd)}
+          >
+            <Plus size={16} aria-hidden />
+            {t('bind')}
+          </button>
+        </div>
+      </FormField>
+    </>
+  );
+}
+
+/** One capability: a switch that saves itself, and the tools it puts in the model's hands. */
 function CapabilityRow({
   capability,
   enabled,
@@ -333,16 +395,17 @@ function CapabilityRow({
       <CheckRow
         checked={enabled}
         onChange={onToggle}
-        title={`${capability.name}${capability.core ? t('toolsCoreTag') : ''}`}
-        hint={t('toolsCount', { count: capability.tools.length })}
+        title={capability.name}
+        hint={capability.summary}
       />
       <button
         type="button"
-        className="btn btn-ghost workforce-tool-row__toggle"
+        className="btn btn-link btn-sm workforce-tool-row__toggle"
         aria-expanded={expanded}
         onClick={onExpand}
       >
         {expanded ? t('toolsHideDefinition') : t('toolsShowDefinition')}
+        {expanded ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
       </button>
       {expanded ? (
         <dl className="workforce-tool-definitions">
