@@ -32,6 +32,7 @@ import app.models.kb_document  # noqa: F401 - register models with Base.metadata
 import app.models.kb_wiki_space  # noqa: F401 - register models with Base.metadata
 import app.models.workforce_agent  # noqa: F401 - register models with Base.metadata
 import app.models.workforce_skill  # noqa: F401 - register models with Base.metadata
+import app.models.workforce_issue  # noqa: F401 - register models with Base.metadata
 import app.models.semantic_model_query_run  # noqa: F401 - register models with Base.metadata
 import app.models.faq  # noqa: F401 - register models with Base.metadata
 import app.models.chunk  # noqa: F401 - register models with Base.metadata
@@ -95,12 +96,41 @@ target_metadata = Base.metadata
 # Use database URL from app config
 config.set_main_option("sqlalchemy.url", settings.database_url_sync)
 
-EXCLUDE_TABLES = {"procrastinate_jobs", "procrastinate_events",
-                  "procrastinate_periodic_defers", "procrastinate_workers"}
+# Tables this schema does not own: created at runtime by the job queue and the LangGraph checkpointer, then left in
+# the database. Autogenerate would otherwise propose dropping them — a migration that deletes the agent's session
+# state is not a schema change, it is data loss with a version number.
+EXCLUDE_TABLES = {
+    "procrastinate_jobs",
+    "procrastinate_events",
+    "procrastinate_periodic_defers",
+    "procrastinate_workers",
+    "checkpoints",
+    "checkpoint_blobs",
+    "checkpoint_writes",
+    "checkpoint_migrations",
+}
+
+# Indexes that a migration created with raw SQL or with a shape metadata cannot express (GIN, partial unique). They
+# are not missing from the models by accident — autogenerate cannot see them there, so every probe proposes dropping
+# them. Silence them here rather than losing them to a "cleanup" migration.
+EXCLUDE_INDEXES = {
+    "ix_agent_prompts_kb",
+    "uq_agent_prompts_version",
+    "uq_agent_prompts_one_published",
+    "ix_chunks_doc_metadata",
+    "ix_faqs_doc_metadata",
+    "ix_content_comments_resource_lookup",
+    "uq_datasets_table_identity",
+    "uq_document_versions_document_version",
+    "ix_evaluation_run_items_evaluation_dataset_item_id",
+    "ix_evaluation_runs_evaluation_created",
+}
 
 
 def include_name(name, type_, parent_names):
     if type_ == "table" and name in EXCLUDE_TABLES:
+        return False
+    if type_ == "index" and name in EXCLUDE_INDEXES:
         return False
     return True
 

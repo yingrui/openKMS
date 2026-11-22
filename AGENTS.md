@@ -120,11 +120,12 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 
 ## Alembic
 
-- 改 `backend/app/models/`：`alembic revision --autogenerate` → review → `upgrade head`。  
+- 改 `backend/app/models/`：`alembic revision --autogenerate` → **逐条复核** → `upgrade head`。  
+  **复核的判据：这条 op 是不是你这次改的？** autogenerate 会比对“模型 vs 库”，凡是库里有、模型没声明的都会被提议删除 —— 包括运行时创建的表（LangGraph `checkpoint*`、Procrastinate）和迁移里用 SQL 建的索引（GIN、partial unique）。这类对象由 `backend/alembic/env.py` 的 `EXCLUDE_TABLES` / `EXCLUDE_INDEXES` 负责声明，**不要靠每次手删**：新增运行时表或 SQL 建索引时，同一处登记。一条生成出来的迁移里出现与本任务无关的 `drop_table` / `drop_index`，说明过滤清单缺项，先补清单再重生成。  
 - 改 **`permission_default_patterns.py`**：另加一条 **refresh migration** 重刷 `security_permissions`（参考 `c3d4e5f6a7b8_*`、`j1k2l3m4n5o6_*`）。只改 Python 默认值不会更新已有库。  
 - API 启动时不建表。本地用 `backend/dev.sh`（先 pgvector，再 Alembic）；Docker 的 CMD 先跑 Alembic 再起 uvicorn。
 - **openKMS backend 一律由用户执行 `backend/dev.sh` 启动，agent 不要手工起 uvicorn。** 手工启动会跳过 pgvector 与 Alembic 检查，也失去 `--reload`。需要重启时提醒用户，不要自己拉起或杀掉进程。  
-- 新 model 要注册到 `backend/alembic/env.py`；Procrastinate 的表排除在外。  
+- 新 model 要注册到 `backend/alembic/env.py`；Procrastinate 与 LangGraph checkpoint 的表在 `EXCLUDE_TABLES` 里排除。  
 
 > **维护：** 细则（refresh migration 模板、env 注册清单等）日后可迁至 `docs/`，本节只留外链和要点。
 
@@ -141,6 +142,22 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 - 动 `backend/**` → **`cd backend && ./check.sh`**（ruff → noqa 检查 → pytest）。脚本内部用 `uv run`，所以一定用项目 `.venv`
 - CI 跑同一条命令：`.github/workflows/backend.yml`
 - 具体规则见 `pyproject.toml` 的 `[tool.ruff]` 与 `check.sh`
+
+## 其它验证
+
+```bash
+# qa-agent / openkms-skill / 分货应用
+cd qa-agent && ./check.sh                      # ruff(E9/F/B/BLE) + pytest
+cd openkms-skill && python -m pytest tests -q
+cd ~/workspace/capacity-allocation/backend && ./check.sh
+
+# 技能与路由真相
+python <skill>/scripts/cli.py ping
+python <skill>/scripts/cli.py api spec --path /api/<area>     # 路由以 /openapi.json 为准
+cd backend && uv run python scripts/audit_dataset_joins.py    # 关系库健康，有问题退出码 1
+```
+
+改了 `openkms-skill/` 之后要跑它的 `./install.sh`：仓库里是**源**，`~/.pi/agent/skills/openkms/` 是**安装副本**，不重装就还是旧命令。
 
 ## Apps（module / 托管 Service）
 
