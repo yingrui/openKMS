@@ -53,7 +53,9 @@
 .ds-resource-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--text-sm);
+  /* Body text at the body scale: this table's first column is the row's subject (the name), and at `--text-sm` every
+     list read a size below the rest of the app. The header stays small — it labels, it does not compete. */
+  font-size: var(--text-md);
 }
 
 .ds-resource-table th,
@@ -65,6 +67,7 @@
 }
 
 .ds-resource-table th {
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-secondary);
   background: var(--color-bg-muted);
@@ -78,10 +81,21 @@
   background: var(--color-bg-subtle);
 }
 
+/* The row's subject, one step above the row: a card says the same thing at `--text-lg`, and the two views of one list
+   should not disagree by four points about what the name is. */
 .ds-resource-table__link {
+  font-size: var(--text-base);
   color: var(--color-text);
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
+}
+
+/* A description inside a row is the row's second line, not a page lead: `.page-subtitle` is sized for prose under a
+   page title (16px) and, used as-is here, it came out **larger** than the name it describes. */
+.ds-resource-table td .page-subtitle {
+  font-size: var(--text-md);
+  line-height: var(--text-md--line);
+  margin-top: 2px;
 }
 
 .ds-resource-table__link:hover {

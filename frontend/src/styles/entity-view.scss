@@ -273,11 +273,13 @@ body:has(.app-page-pane > .entity-view) .app-main {
   border-bottom: none;
 }
 
+/* The rail names the object, the header names the view: both name the page you are on, so they are one size. At
+   `--text-2xl` the view shouted louder than the thing it belongs to ("Usage" above "Operations"). */
 .entity-view__main .page-header h1 {
   margin: 0;
-  font-size: var(--text-2xl);
+  font-size: var(--text-xl);
   font-weight: var(--font-weight-semibold);
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 .entity-view__main .page-header .page-subtitle {

@@ -1,7 +1,10 @@
 {
   "area": {
     "title": "运维",
-    "lead": "需要人来处理的问题：答得不好的、被拒答的，以及以后 Guardrails 发现的违规与风控。"
+    "leadIssues": "需要人来处理的问题：答得不好的、被拒答的，以及以后 Guardrails 发现的违规与风控。",
+    "leadUsage": "这些服务被用得多少、答得如何。数字来自审计记录。",
+    "backToAgents": "数字员工",
+    "meta": "同一批服务的两个视角"
   },
   "status": {
     "active": "服务中",
@@ -54,6 +57,31 @@
     "saveFailed": "更新失败",
     "loadFailed": "加载失败",
     "agentFilter": "按数字员工筛选",
-    "allAgents": "全部数字员工"
+    "allAgents": "全部数字员工",
+    "statusFilter": "按状态筛选",
+    "agent": "数字员工"
+  },
+  "nav": {
+    "areaLabel": "运维分区",
+    "issues": "问题",
+    "usage": "使用情况"
+  },
+  "usage": {
+    "name": "数字员工",
+    "status": "状态",
+    "activity": "近 {{days}} 天调用",
+    "votes": "评价",
+    "calls_one": "{{count}} 次调用",
+    "calls_other": "{{count}} 次调用",
+    "failed": " · {{count}} 次失败",
+    "lastCall": "最近调用 {{when}}",
+    "neverCalled": "还没有调用",
+    "voteCounts": "{{up}} 赞 / {{down}} 踩",
+    "empty": "还没有数字员工。请先在「数字员工」里创建。",
+    "loadFailed": "加载使用情况失败",
+    "summary_one": "近 {{days}} 天 {{count}} 次调用 · {{errors}} 次失败",
+    "summary_other": "近 {{days}} 天 {{count}} 次调用 · {{errors}} 次失败",
+    "title": "使用情况",
+    "lead": "这些服务被用得多少、答得如何。数字来自审计记录。"
   }
 }

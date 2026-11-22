@@ -82,13 +82,6 @@ class WorkforceAgentResponse(BaseModel):
     ontology_group_count: int = 0
     #: Keys still valid (revoked ones are not counted: a list that includes them reads as "already rotated").
     credential_count: int = 0
-    #: Activity over the last 7 days, read from the audit trail — see `services/workforce/usage.py` for why the
-    #: window is 7 days here and all-time for votes.
-    calls_7d: int = 0
-    errors_7d: int = 0
-    last_call_at: datetime | None = None
-    upvotes: int = 0
-    downvotes: int = 0
     created_at: datetime
     updated_at: datetime
 
@@ -148,6 +141,28 @@ class WorkforceCredentialListItem(BaseModel):
     revoked_at: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+
+class WorkforceAgentUsage(BaseModel):
+    """How one agent is being used. Its own endpoint, not a field on the list: this needs the audit trail, and paying
+    for it on every browse of the agents made the list slower to answer a question it does not ask."""
+
+    agent_id: str
+    agent_name: str = ""
+    status: str
+    #: Last 7 days, from `audit_events` (a caller's question is a POST, so it is already recorded).
+    calls_7d: int = 0
+    errors_7d: int = 0
+    last_call_at: datetime | None = None
+    #: All time: votes arrive slowly, and a 7-day window would read as "nobody uses it".
+    upvotes: int = 0
+    downvotes: int = 0
+
+
+class WorkforceAgentUsageResponse(BaseModel):
+    items: list[WorkforceAgentUsage]
+    #: The window the call counts cover, so the screen does not have to hard-code "7 days" twice.
+    activity_window_days: int
 
 
 class WorkforceCredentialListResponse(BaseModel):

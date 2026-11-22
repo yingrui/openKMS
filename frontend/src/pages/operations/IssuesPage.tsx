@@ -10,19 +10,14 @@ import {
   type WorkforceAgentResponse,
   type WorkforceIssue,
 } from '../../data/workforceApi';
-import {
-  Dialog,
-  FormField,
-  ListPage,
-  StatusChip,
-} from '../../styles/design-system';
-import { EntityViewPanel } from '../shared/EntityViewShell';
+import { Dialog, FilterSelect, FormField, ListToolbar, StatusChip } from '../../styles/design-system';
+import { EntityViewHeader, EntityViewPanel } from '../shared/EntityViewShell';
 import './operations.scss';
 
 type StatusFilter = 'open' | 'resolved' | 'ignored';
 
 /**
- * Operations: the problems that need a person.
+ * Operations › Issues: the problems that need a person.
  *
  * Two sources write here today — a reader pressing 👎, and the answer policy refusing a question — and Guardrails will
  * write the third group (violations, risk, prompt-injection attempts). The page is a work queue, not a dashboard: one
@@ -31,7 +26,7 @@ type StatusFilter = 'open' | 'resolved' | 'ignored';
  * The agent table under it is read-only status plus pause and delete: stopping a service is an operational act, and it
  * does not belong on the screen where an agent is configured.
  */
-export function OperationsPage() {
+export function IssuesPage() {
   const { t } = useTranslation('operations');
   const [status, setStatus] = useState<StatusFilter>('open');
   const [agentFilter, setAgentFilter] = useState('');
@@ -105,46 +100,42 @@ export function OperationsPage() {
   const openCount = counts.open ?? 0;
 
   return (
-    <ListPage
-      title={t('area.title')}
-      subtitle={t('area.lead')}
-      actions={
-        <span className="page-subtitle">{t('queue.openCount', { count: openCount })}</span>
-      }
-    >
-      <EntityViewPanel
+    <>
+      <EntityViewHeader
         title={t('queue.title')}
-        description={t('queue.lead')}
+        subtitle={t('queue.lead')}
         actions={
-          <div className="ops-filters">
-            {(['open', 'resolved', 'ignored'] as StatusFilter[]).map((key) => (
-              <button
-                key={key}
-                type="button"
-                className={`ops-filter${status === key ? ' ops-filter--active' : ''}`}
-                aria-pressed={status === key}
-                onClick={() => setStatus(key)}
-              >
-                {t(`queue.status.${key}`)}
-                {counts[key] ? <span className="ops-filter__count">{counts[key]}</span> : null}
-              </button>
-            ))}
-            <select
-              className="ds-control ops-agent-filter"
-              aria-label={t('queue.agentFilter')}
-              value={agentFilter}
-              onChange={(e) => setAgentFilter(e.target.value)}
-            >
-              <option value="">{t('queue.allAgents')}</option>
-              {agents.map((agent) => (
-                <option key={agent.id} value={agent.id}>
-                  {agent.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <span className="page-subtitle">{t('queue.openCount', { count: openCount })}</span>
         }
-      >
+      />
+      {/* Filters narrow the list, so they sit above it — a row of their own, wide enough for Chinese labels. Inside the
+          panel's actions slot they wrapped: three chips and a select do not fit the right-hand corner of a head. */}
+      <ListToolbar>
+        <div className="ops-filters" role="group" aria-label={t('queue.statusFilter')}>
+          {(['open', 'resolved', 'ignored'] as StatusFilter[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              className={`ops-filter${status === key ? ' ops-filter--active' : ''}`}
+              aria-pressed={status === key}
+              onClick={() => setStatus(key)}
+            >
+              {t(`queue.status.${key}`)}
+              {counts[key] ? <span className="ops-filter__count">{counts[key]}</span> : null}
+            </button>
+          ))}
+        </div>
+        <FilterSelect label={t('queue.agent')} value={agentFilter} onChange={setAgentFilter}>
+          <option value="">{t('queue.allAgents')}</option>
+          {agents.map((agent) => (
+            <option key={agent.id} value={agent.id}>
+              {agent.name}
+            </option>
+          ))}
+        </FilterSelect>
+      </ListToolbar>
+
+      <EntityViewPanel>
         {loading ? <p className="ds-resource-list-loading">{t('loading')}</p> : null}
 
         {!loading && issues.length === 0 ? (
@@ -211,7 +202,6 @@ export function OperationsPage() {
           </ul>
         ) : null}
       </EntityViewPanel>
-
       <Dialog
         open={closing !== null}
         onClose={() => setClosing(null)}
@@ -249,7 +239,7 @@ export function OperationsPage() {
           />
         </FormField>
       </Dialog>
-    </ListPage>
+    </>
   );
 }
 

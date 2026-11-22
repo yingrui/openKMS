@@ -70,6 +70,8 @@ from app.schemas.workforce import (
     WorkforceCredentialListResponse,
     WorkforceFeedbackRequest,
     WorkforceFeedbackResponse,
+    WorkforceAgentUsage,
+    WorkforceAgentUsageResponse,
     WorkforceIssueListResponse,
     WorkforceIssueResponse,
     WorkforceIssueUpdate,
@@ -95,7 +97,7 @@ from app.services.workforce.agent_config import (
     runtime_config,
 )
 from app.services.workforce.credentials import mint_credential
-from app.services.workforce.usage import usage_by_agent
+from app.services.workforce.usage import ACTIVITY_WINDOW_DAYS, empty_usage, usage_by_agent
 from app.services.workforce.read import (
     agent_detail,
     agent_to_response,
@@ -198,11 +200,8 @@ async def list_agents(
         .all()
     )
     counts = await counts_by_agent(db, [a.id for a in rows])
-    usage = await usage_by_agent(db, [a.id for a in rows])
     return WorkforceAgentListResponse(
-        items=[
-            agent_to_response(a, counts.get(a.id, _EMPTY_COUNTS), usage.get(a.id)) for a in rows
-        ],
+        items=[agent_to_response(a, counts.get(a.id, _EMPTY_COUNTS)) for a in rows],
         total=total,
         limit=limit,
         offset=offset,
@@ -948,6 +947,35 @@ def _queue_refusals(agent: WorkforceAgent) -> bool:
     """
     policy = (agent.agent_config or {}).get("answer_policy") or {}
     return policy.get("queue_refusals", True) is not False
+
+
+@router.get("/operations/usage", response_model=WorkforceAgentUsageResponse)
+async def agent_usage(request: Request, db: AsyncSession = Depends(get_db)):
+    """How the fleet is being used: calls and failures over the window, votes all-time.
+
+    Separate from `/agents` on purpose. The numbers come from the audit trail, so computing them on every browse of the
+    list made the list pay for a question it does not ask; this runs when someone opens the usage view.
+    """
+    sub, _ = _principal(request)
+    q = select(WorkforceAgent.id, WorkforceAgent.name, WorkforceAgent.status).where(
+        WorkforceAgent.status.in_((AGENT_STATUS_ACTIVE, AGENT_STATUS_PAUSED))
+    )
+    if not jwt_payload_is_admin(request.state.openkms_jwt_payload):
+        q = q.where(WorkforceAgent.owner_sub == sub)
+    rows = (await db.execute(q.order_by(WorkforceAgent.name))).all()
+    usage = await usage_by_agent(db, [str(row[0]) for row in rows])
+    return WorkforceAgentUsageResponse(
+        items=[
+            WorkforceAgentUsage(
+                agent_id=agent_id,
+                agent_name=name or "",
+                status=status,
+                **{k: v for k, v in usage.get(agent_id, empty_usage()).items()},
+            )
+            for agent_id, name, status in ((str(r[0]), r[1], r[2]) for r in rows)
+        ],
+        activity_window_days=ACTIVITY_WINDOW_DAYS,
+    )
 
 
 @router.get("/issues", response_model=WorkforceIssueListResponse)

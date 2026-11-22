@@ -17,7 +17,7 @@
   --a2ui-border: 1px solid var(--a2ui-color-border);
   --a2ui-border-radius: 16px;
   --a2ui-font-family-title: inherit;
-  --a2ui-font-size: 0.9375rem;
+  --a2ui-font-size: var(--text-md);
   --a2ui-color-input: #fff;
   --a2ui-color-on-input: var(--color-text);
   --a2ui-card-background: #fff;
@@ -63,13 +63,13 @@
   .a2uiCaption,
   .caption {
     color: var(--color-text-muted);
-    font-size: 0.8125rem;
+    font-size: var(--text-sm);
     font-weight: 450;
     line-height: 1.4;
   }
 
   .h1 {
-    font-size: 1.5rem;
+    font-size: var(--text-2xl);
     font-weight: 650;
     letter-spacing: -0.02em;
     line-height: 1.25;
@@ -77,20 +77,20 @@
   }
 
   .h2 {
-    font-size: 1.2rem;
+    font-size: var(--text-xl);
     font-weight: 600;
     letter-spacing: -0.015em;
     margin: 0 0 var(--space-2);
   }
 
   .h3 {
-    font-size: 1.05rem;
+    font-size: var(--text-base);
     font-weight: 600;
     margin: 0 0 var(--space-2);
   }
 
   .h4 {
-    font-size: 0.98rem;
+    font-size: var(--text-base);
     font-weight: 600;
     margin: 0;
     line-height: 1.35;
@@ -131,7 +131,7 @@
   label {
     display: block;
     margin: 0 0 var(--space-1);
-    font-size: 0.8125rem;
+    font-size: var(--text-sm);
     font-weight: 550;
     letter-spacing: 0.01em;
     color: var(--color-text-secondary, var(--color-text-muted));
@@ -144,7 +144,7 @@
     box-sizing: border-box;
     margin: 0 0 var(--space-3);
     font: inherit;
-    font-size: 0.9375rem;
+    font-size: var(--text-md);
     line-height: 1.4;
     padding: 0.625rem 0.875rem;
     border-radius: 12px;
@@ -180,7 +180,7 @@
     background: #fff;
     color: var(--color-text);
     font: inherit;
-    font-size: 0.875rem;
+    font-size: var(--text-md);
     font-weight: 560;
     letter-spacing: -0.01em;
     cursor: pointer;

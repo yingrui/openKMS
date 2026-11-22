@@ -332,3 +332,32 @@ class TestPausing:
         assert raised.value.status_code == 503
         assert raised.value.detail["code"] == "AGENT_PAUSED"
         assert raised.value.detail["message"] == "维护中，10:00 恢复"
+
+
+class TestCatalogueRequirementLabels:
+    """`requires` is data from the qa-agent; a value with no label renders the raw key on the Tools page.
+
+    The two sides are in different services, so nothing but a test keeps the vocabulary in step: the catalogue names a
+    requirement, the locale must have a `toolsRequires_<name>` line for it.
+    """
+
+    def test_every_requirement_the_catalogue_emits_has_a_label(self):
+        import json
+        import re
+        from pathlib import Path
+
+        repo = Path(__file__).resolve().parents[2]
+        catalog = (repo / 'qa-agent/qa_agent/tool_catalog.py').read_text()
+        block = catalog[catalog.index('CAPABILITY_REQUIRES') :]
+        block = block[: block.index('}')]
+        # Only the values: the keys of the dict are capability ids, not requirement names.
+        requirements = {
+            name for group in re.findall(r'\(([^)]*)\)', block) for name in re.findall(r'"(\w+)"', group)
+        }
+
+        for locale in ('en', 'zh-CN'):
+            strings = json.loads(
+                (repo / f'frontend/src/i18n/locales/{locale}/workforce.json').read_text()
+            )
+            missing = [r for r in requirements if f'toolsRequires_{r}' not in strings]
+            assert not missing, f'{locale} has no label for {missing}'

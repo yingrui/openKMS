@@ -2,13 +2,17 @@
 
 .ops-filters {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 4px;
 }
 
 .ops-filter {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
   gap: 6px;
+  white-space: nowrap;
   padding: 4px 10px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
@@ -124,7 +128,23 @@
   color: var(--color-text-secondary);
 }
 
-/* The agent filter sits with the status filters: both narrow the same list. */
-.ops-agent-filter {
-  max-width: 200px;
+/* Activity: how busy, and whether it is failing. */
+.ops-activity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.ops-activity__errors {
+  color: var(--color-error);
+}
+
+.ops-activity__when {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs, 12px);
+}
+
+.ops-votes {
+  white-space: nowrap;
 }

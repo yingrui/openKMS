@@ -54,6 +54,40 @@ def load_locales() -> dict[str, dict]:
     return out
 
 
+def key_matches(ns_data: dict | None, key: str) -> bool | None:
+    """True/False, or None when the namespace itself is unknown (cannot judge)."""
+    if ns_data is None:
+        return None
+    node = ns_data
+    for part in key.split("."):
+        if isinstance(node, dict) and part in node:
+            node = node[part]
+        else:
+            parent = node if isinstance(node, dict) else {}
+            if any(f"{part}{s}" in parent for s in PLURAL_SUFFIXES):
+                return True
+            return False
+    return True
+
+
+def resolves_to_section(ns_data: dict | None, key: str) -> bool:
+    """True when the key exists but points at a **group**, not a string.
+
+    `t('skills')` where `skills` is a whole section returned i18next's own sentence —
+    ``key 'skills (en)' returned an object instead of string`` — and it shipped in a table header. The key
+    existed, so the existence check passed.
+    """
+    if ns_data is None:
+        return False
+    node = ns_data
+    for part in key.split("."):
+        if isinstance(node, dict) and part in node:
+            node = node[part]
+        else:
+            return False
+    return isinstance(node, dict)
+
+
 def key_exists(ns_data: dict | None, key: str) -> bool | None:
     """True/False, or None when the namespace itself is unknown (cannot judge)."""
     if ns_data is None:
@@ -110,6 +144,27 @@ def offenders() -> list[str]:
             else:
                 candidates = nss
             verdicts = [key_exists(locales.get(c or DEFAULT_NS), key) for c in candidates]
+            # A key that resolves to a section is not a label: i18next returns its "object instead of
+            # string" sentence and the UI prints that. Plural keys are the one legitimate object: the call
+            # passes `count` and i18next picks the form.
+            call = source[match.start(): source.find(")", match.start()) + 1]
+            if "count" not in call:
+                sections = [
+                    c
+                    for c in candidates
+                    if resolves_to_section(locales.get(c or DEFAULT_NS), key)
+                ]
+                # Only when **every** candidate namespace agrees it is a section: with `t` from a prop the
+                # namespace is unknowable, and one namespace happening to have a `channel` section says
+                # nothing about the one this call uses.
+                if sections and len(sections) == len(candidates):
+                    rel = path.relative_to(ROOT)
+                    line = source.count("\n", 0, match.start()) + 1
+                    out.append(
+                        f"{rel}:{line}: {key} resolves to a section, not a string "
+                        f"(ns: {', '.join(sections)})"
+                    )
+                    continue
             if any(v is True for v in verdicts) or all(v is None for v in verdicts):
                 continue
             rel = path.relative_to(ROOT)

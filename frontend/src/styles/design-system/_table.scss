@@ -184,3 +184,15 @@
   width: 100%;
   min-width: 0;
 }
+
+/* A back link above a list's title: the same row a detail page uses to leave itself.
+ *
+ * The page is a flex column with its own gap, so the link contributes no margin — the detail page's version keeps
+ * one for its sidebar, which is not a flex gap. */
+.ds-page__back {
+  margin: 0;
+}
+
+.ds-page__back .entity-view__back {
+  margin-bottom: 0;
+}

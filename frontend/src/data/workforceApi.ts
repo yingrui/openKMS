@@ -22,14 +22,6 @@ export interface WorkforceAgentResponse {
   semantic_model_count: number;
   ontology_group_count: number;
   credential_count: number;
-  /** Answers a caller asked for in the last 7 days, counted from the audit trail. */
-  calls_7d: number;
-  /** Of those, how many answered 4xx/5xx — what a caller experiences as "it did not work". */
-  errors_7d: number;
-  last_call_at?: string | null;
-  /** All-time: votes arrive slowly, so a 7-day window would read as "nobody uses it". */
-  upvotes: number;
-  downvotes: number;
   created_at: string;
   updated_at: string;
 }
@@ -220,6 +212,27 @@ export async function createWorkforceCredential(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
   });
+}
+
+/** How one agent is being used; asked for by the usage view, not computed on every list. */
+export interface WorkforceAgentUsage {
+  agent_id: string;
+  agent_name: string;
+  status: 'active' | 'paused' | 'archived';
+  calls_7d: number;
+  errors_7d: number;
+  last_call_at?: string | null;
+  upvotes: number;
+  downvotes: number;
+}
+
+export async function fetchWorkforceUsage(): Promise<{
+  items: WorkforceAgentUsage[];
+  activity_window_days: number;
+}> {
+  return request<{ items: WorkforceAgentUsage[]; activity_window_days: number }>(
+    '/api/workforce/operations/usage',
+  );
 }
 
 /** A queue item: something a person should look at and close. */

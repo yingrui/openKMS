@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 export function ListPage({
   className,
   headerClassName,
+  back,
   title,
   subtitle,
   actions,
@@ -19,6 +20,8 @@ export function ListPage({
 }: {
   /** A modifier for the page root (`function-editor-list` and friends). */
   className?: string;
+  /** Where this page sits above: a link back to its parent list, rendered above the title. */
+  back?: ReactNode;
   /** A modifier for the header (`model-page-header` and friends). */
   headerClassName?: string;
   title?: ReactNode;
@@ -34,6 +37,7 @@ export function ListPage({
     <div
       className={className ? `ds-page ${className}` : "ds-page"}
     >
+      {back ? <div className="ds-page__back">{back}</div> : null}
       {title || subtitle || actions ? (
         <header
           className={`page-header${headerClassName ? ` ${headerClassName}` : ""}`}

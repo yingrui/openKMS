@@ -89,15 +89,15 @@
 }
 
 .ds-resource-list-card h3 {
-  font-size: 1.0625rem;
+  font-size: var(--text-lg);
   font-weight: 600;
   margin-bottom: var(--space-2);
 }
 
 .ds-resource-list-desc {
-  font-size: var(--text-base);
+  font-size: var(--text-md);
   color: var(--color-text-secondary);
-  line-height: 1.5;
+  line-height: var(--text-md--line);
   margin: 0 0 var(--space-3);
   flex: 1;
   display: -webkit-box;

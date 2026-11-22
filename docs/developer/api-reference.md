@@ -213,6 +213,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/workforce/agents/{id}/credentials` | List credentials (prefix, last used, revoked — never the secret) |
 | POST | `/api/workforce/agents/{id}/credentials` | Mint a credential (`name`). The `wfks.…` token is in this response only |
 | DELETE | `/api/workforce/agents/{id}/credentials/{credential_id}` | Revoke a credential |
+| GET | `/api/workforce/operations/usage` | Fleet usage: per agent, calls and failures in the last 7 days (from `audit_events`) plus all-time votes. Its own route — the numbers need the audit trail, and computing them on every `/agents` browse made the list pay for a question it does not ask |
 | GET | `/api/workforce/issues` | The Operations queue, owner-scoped: `status` (`open` \| `resolved` \| `ignored` \| `all`), `kind`, `agent_id`. Returns `counts` per status so the filter needs one call |
 | PATCH | `/api/workforce/issues/{id}` | Close an item: `{status, resolution?}`. `resolved` is refused without a `resolution` — "solved, no explanation" is not a closed case |
 | POST | `/api/workforce/agents/{id}/feedback` | Record one reader's verdict on one answer: `{message_id, conversation_id?, vote: "up" \| "down" \| null}`. One row per `(message_id, actor_sub)`: a second vote edits it, `null` withdraws it |

@@ -514,5 +514,7 @@
   "pausedMessageTitle": "While paused",
   "navAnswerPolicy": "Answer policy",
   "assembledPromptTitle": "Assembled prompt",
-  "assembledPromptLead": "What the model is given, block by block — each block names the tab it comes from."
+  "assembledPromptLead": "What the model is given, block by block — each block names the tab it comes from.",
+  "toolsRequires_web_search_connector": "a picked search connector",
+  "colCapabilities": "Capabilities"
 }

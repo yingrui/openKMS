@@ -12,19 +12,6 @@
 
 
 
-.workforce-skill-chip {
-  font-size: 0.7rem;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-bg-muted);
-  color: var(--color-text-secondary);
-  white-space: nowrap;
-}
-
-
-.workforce-skill-chip--muted {
-  color: var(--color-text-muted);
-}
 
 .workforce-skill-back {
   display: inline-flex;
@@ -33,7 +20,7 @@
   margin-bottom: 12px;
   color: var(--color-text-secondary);
   text-decoration: none;
-  font-size: 0.85rem;
+  font-size: var(--text-md);
   min-height: var(--tap-min);
 
   &:hover {
@@ -76,7 +63,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-secondary);
   margin-bottom: 8px;
@@ -114,7 +101,7 @@
   border: none;
   background: none;
   border-radius: var(--radius-sm);
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   font-family: var(--font-mono, monospace);
   color: var(--color-text-secondary);
   cursor: pointer;
@@ -139,7 +126,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
 }
 
 .workforce-skill-version__name {
@@ -147,7 +134,7 @@
 }
 
 .workforce-skill-version__action {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   padding: 2px 4px;
 }
 
@@ -158,7 +145,7 @@
 
 .workforce-skill-versions__empty {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
@@ -177,7 +164,7 @@
 
 .workforce-skill-body {
   font-family: var(--font-mono, monospace);
-  font-size: 0.85rem;
+  font-size: var(--text-md);
   line-height: 1.6;
   resize: vertical;
 }
@@ -198,7 +185,7 @@
 
 .workforce-skill-report__item {
   margin: 0 0 6px;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
 
@@ -208,7 +195,7 @@
 
 .workforce-skill-report__note {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
 
@@ -250,22 +237,12 @@
 
 .workforce-tools-summary {
   margin: 0 0 16px;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
 .workforce-tools-group {
   margin-bottom: 24px;
-
-  h2 {
-    margin: 0 0 8px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--color-text-muted);
-  }
-
   ul {
     list-style: none;
     margin: 0;
@@ -311,11 +288,11 @@
   align-items: center;
   gap: 8px;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: var(--text-md);
 }
 
 .workforce-tool-line__summary {
-  font-size: 0.85rem;
+  font-size: var(--text-md);
   color: var(--color-text-secondary);
   line-height: 1.5;
 }
@@ -324,7 +301,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
   white-space: nowrap;
 }
@@ -352,13 +329,13 @@
   }
 
   dt code {
-    font-size: 0.72rem;
+    font-size: var(--text-xs);
     color: var(--color-text-muted);
   }
 
   dd {
     margin: 0;
-    font-size: 0.85rem;
+    font-size: var(--text-md);
     line-height: 1.65;
     color: var(--color-text-secondary);
   }
@@ -366,7 +343,7 @@
 
 .workforce-tool-line__tool-name {
   font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   color: var(--color-text);
 }
 
@@ -377,7 +354,7 @@
 
   details summary {
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     color: var(--color-text-secondary);
     min-height: var(--tap-min);
     display: flex;
@@ -396,7 +373,7 @@
   }
 
   code {
-    font-size: 0.72rem;
+    font-size: var(--text-xs);
     padding: 2px 6px;
     border-radius: var(--radius-sm);
     background: var(--color-bg-elevated);

@@ -204,7 +204,7 @@ export function WorkforceList() {
               <tr>
                 <th>{t('name')}</th>
                 <th>{t('knowledgeTitle')}</th>
-                <th>{t('skills')}</th>
+                <th>{t('colCapabilities')}</th>
                 <th>{t('credentialsTitle')}</th>
               </tr>
             </thead>

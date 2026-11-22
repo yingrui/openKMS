@@ -118,7 +118,7 @@ body.openkms-agent-chat .agent-chat-shell {
 
 .agent-chat-hero-title {
   margin: 0 0 calc(var(--space-2) + var(--space-1) / 2);
-  font-size: 1.375rem;
+  font-size: var(--text-xl);
   font-weight: 600;
   letter-spacing: -0.03em;
   color: var(--color-text);
@@ -471,11 +471,11 @@ body.openkms-agent-chat .agent-chat-shell {
   max-width: min(100%, 42rem);
   padding: var(--gap-compact) var(--gap-compact);
   border-radius: var(--radius-sm);
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
 }
 
 .agent-chat-assistant-stream .agents-stream__tool-pill-name {
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
 }
 
 .agent-chat-typing {

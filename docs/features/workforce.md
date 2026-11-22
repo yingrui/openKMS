@@ -290,8 +290,14 @@ needs no front-end change.
 
 ## Operations: the problems that need a person
 
-`/workforce/operations` is reached from the agents list header. It is a **work queue**, not a dashboard: one row per
-case, three statuses, and a sentence saying what was done before it closes.
+`/workforce/operations` is reached from the agents list header. It uses the same shell as an agent — identity and
+sections on the left, one view on the right — with two views:
+
+- **Issues** — a **work queue**, not a dashboard: one row per case, three statuses, and a sentence saying what was done
+  before it closes.
+- **Usage** — how much each agent is used and how it answers: calls and failures over 7 days (from the audit trail) plus
+  all-time votes. Its data comes from its own endpoint (`GET /api/workforce/operations/usage`), asked for when the view
+  opens; the agents list does not carry it, because a browse should not pay for a query it never reads.
 
 | Kind | Producer | Recorded today |
 |---|---|---|

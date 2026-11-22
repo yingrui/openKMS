@@ -1,7 +1,10 @@
 {
   "area": {
     "title": "Operations",
-    "lead": "The problems that need a person: bad answers, refusals, and — once Guardrails lands — policy and risk findings."
+    "leadIssues": "The problems that need a person: bad answers, refusals, and — once Guardrails lands — policy and risk findings.",
+    "leadUsage": "How much these services are used, and how they answer. Counted from the audit trail.",
+    "backToAgents": "All agents",
+    "meta": "Two views of the same running services"
   },
   "status": {
     "active": "serving",
@@ -54,6 +57,31 @@
     "saveFailed": "Could not update the item",
     "loadFailed": "Could not load the queue",
     "agentFilter": "Filter by agent",
-    "allAgents": "All agents"
+    "allAgents": "All agents",
+    "statusFilter": "Filter by status",
+    "agent": "Agent"
+  },
+  "nav": {
+    "areaLabel": "Operations sections",
+    "issues": "Issues",
+    "usage": "Usage"
+  },
+  "usage": {
+    "name": "Agent",
+    "status": "Status",
+    "activity": "Activity ({{days}} days)",
+    "votes": "Votes",
+    "calls_one": "{{count}} call",
+    "calls_other": "{{count}} calls",
+    "failed": " · {{count}} failed",
+    "lastCall": "called {{when}}",
+    "neverCalled": "not called yet",
+    "voteCounts": "{{up}} up / {{down}} down",
+    "empty": "No agents yet. Create one under Workforce.",
+    "loadFailed": "Could not load usage",
+    "summary_one": "{{count}} call · {{errors}} failed in {{days}} days",
+    "summary_other": "{{count}} calls · {{errors}} failed in {{days}} days",
+    "title": "Usage",
+    "lead": "How much these services are used, and how they answer. Counted from the audit trail."
   }
 }

@@ -5,7 +5,7 @@
 
   summary {
     cursor: pointer;
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
     color: var(--color-text-muted);
     min-height: var(--tap-min);
     display: flex;
@@ -15,7 +15,7 @@
     /* A `display: flex` summary loses the browser's own marker. */
     &::before {
       content: '▸';
-      font-size: 0.7rem;
+      font-size: var(--text-xs);
     }
   }
 
@@ -24,32 +24,14 @@
   }
 }
 
+/* The function-call schema. It is a `.ds-table` — the header casing, padding and borders are the design system's;
+   only the width is this component's. */
 .workforce-tool-params {
-  width: 100%;
   max-width: 560px;
-  border-collapse: collapse;
-  font-size: 0.78rem;
+  font-size: var(--text-sm);
+}
 
-  th {
-    text-align: left;
-    font-weight: 500;
-    font-size: 0.7rem;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    color: var(--color-text-muted);
-    padding: 6px 8px;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  td {
-    padding: 6px 8px;
-    border-bottom: 1px solid var(--color-border);
-    color: var(--color-text-secondary);
-    vertical-align: top;
-  }
-
-  code {
-    font-size: 0.75rem;
-    color: var(--color-text);
-  }
+.workforce-tool-params code {
+  font-size: var(--text-sm);
+  color: var(--color-text);
 }

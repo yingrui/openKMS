@@ -194,6 +194,17 @@ while IFS= read -r hit; do
   report "$hit sets a px font size; use var(--text-*) from the type scale"
 done < <(rg -n --no-heading 'font-size:[[:space:]]*[0-9]+px' src --glob '*.scss' || true)
 
+# --- 15b. Ad-hoc font sizes in rem (ratchet) ---------------------------------
+# Same rule, the other unit: `0.78rem` is as far off the `--text-*` scale as `13px` is. The files listed in
+# `font-size-rem-baseline.txt` predate the check; the list may only shrink.
+BASELINE_REM="scripts/font-size-rem-baseline.txt"
+while IFS= read -r hit; do
+  [ -z "$hit" ] && continue
+  file="${hit%%:*}"
+  grep -qxF "$file" "$BASELINE_REM" && continue
+  report "$hit sets a rem font size off the type scale; use var(--text-*)"
+done < <(rg -n --no-heading 'font-size:[[:space:]]*[0-9.]+rem' src --glob '*.scss' || true)
+
 # --- 16. Shared-but-local classes (ratchet) -----------------------------------
 # A class used from 2+ routes must not live in one route's SCSS: Vite ships that sheet with
 # the route's lazy chunk, so the class silently loses its styles elsewhere.

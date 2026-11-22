@@ -32,8 +32,12 @@ const WorkforceSkillEditorPage = lazy(() =>
 );
 
 /** Routes that sit directly in the app shell. */
-const OperationsPage = lazy(() =>
-  import('../operations/OperationsPage').then((m) => ({ default: m.OperationsPage })),
+const IssuesPage = lazy(() =>
+  import('../operations/IssuesPage').then((m) => ({ default: m.IssuesPage })),
+);
+const UsagePage = lazy(() => import('../operations/UsagePage').then((m) => ({ default: m.UsagePage })));
+const OperationsLayout = lazy(() =>
+  import('../operations/OperationsLayout').then((m) => ({ default: m.OperationsLayout })),
 );
 
 export const WORKFORCE_ROUTES = (
@@ -42,7 +46,10 @@ export const WORKFORCE_ROUTES = (
     <Route path="workforce/skills" element={<WorkforceSkillsPage />} />
     <Route path="workforce/tools" element={<WorkforceToolsPage />} />
     {/* Operations is a page of this area, not a module of its own: it runs what this area publishes. */}
-    <Route path="workforce/operations" element={<OperationsPage />} />
+    <Route path="workforce/operations" element={<OperationsLayout />}>
+      <Route index element={<IssuesPage />} />
+      <Route path="usage" element={<UsagePage />} />
+    </Route>
     <Route path="workforce/skills/:skillId" element={<WorkforceSkillEditorPage />} />
     <Route path="workforce/:agentId/chat" element={<WorkforceChat />} />
     <Route path="workforce/:agentId/chat/:conversationId" element={<WorkforceChat />} />

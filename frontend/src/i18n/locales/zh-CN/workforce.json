@@ -508,5 +508,7 @@
   "pausedMessageTitle": "暂停期间",
   "navAnswerPolicy": "回答策略",
   "assembledPromptTitle": "拼装后的提示词",
-  "assembledPromptLead": "模型实际拿到的内容，按来源分块——每块都标明来自哪个页签。"
+  "assembledPromptLead": "模型实际拿到的内容，按来源分块——每块都标明来自哪个页签。",
+  "toolsRequires_web_search_connector": "一个已选择的搜索连接器",
+  "colCapabilities": "能力"
 }

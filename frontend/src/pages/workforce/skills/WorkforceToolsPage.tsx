@@ -8,7 +8,7 @@ import {
   type ToolCapability,
   type ToolGroup,
 } from '../../../data/workforceToolsApi';
-import { ListPage } from '../../../styles/design-system';
+import { ListPage, StatusChip } from '../../../styles/design-system';
 import { useAsyncData } from '../../../hooks/useAsyncData';
 import './workforceSkills.scss';
 
@@ -50,7 +50,9 @@ export function WorkforceToolsPage() {
             if (members.length === 0) return null;
             return (
               <section key={group.id} className="workforce-tools-group">
-                <h2>{isZh ? (group.name_zh ?? group.name) : group.name}</h2>
+                <h2 className="ds-eyebrow">
+                  {isZh ? (group.name_zh ?? group.name) : group.name}
+                </h2>
                 <ul>
                   {members.map((capability) => (
                     <ToolRow
@@ -93,9 +95,7 @@ function ToolRow({
       >
         <span className="workforce-tool-line__name">
           {capability.name}
-          {capability.core ? (
-            <span className="workforce-skill-chip">{t('toolsCoreTag')}</span>
-          ) : null}
+          {capability.core ? <StatusChip>{t('toolsCoreTag')}</StatusChip> : null}
         </span>
         <span className="workforce-tool-line__summary">{capability.summary}</span>
         <span className="workforce-tool-line__meta">

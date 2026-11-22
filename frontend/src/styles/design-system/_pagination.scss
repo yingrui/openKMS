@@ -12,13 +12,13 @@
   padding: 10px 14px;
   border-top: 1px solid var(--color-border);
   background: var(--color-bg-muted);
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
 
 .ds-pagination--compact {
   padding: 8px 10px;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
 }
 
 .ds-pagination__info {
@@ -58,7 +58,7 @@
 
 .ds-pagination__status {
   color: var(--color-text-muted);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   white-space: nowrap;
 }
 

@@ -19,7 +19,7 @@ export function ToolParameters({ parameters }: { parameters: ToolParameterSchema
   const required = new Set(parameters.required ?? []);
 
   return (
-    <table className="workforce-tool-params">
+    <table className="ds-table workforce-tool-params">
       <thead>
         <tr>
           <th>{t('toolsParamName')}</th>

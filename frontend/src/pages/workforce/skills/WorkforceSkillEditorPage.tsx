@@ -14,7 +14,7 @@ import {
   type WorkforceSkillDetail,
 } from "../../../data/workforceSkillsApi";
 import { useConfirm } from "../../../contexts/ConfirmContext";
-import { Dialog, FormField } from "../../../styles/design-system";
+import { Dialog, FormField, StatusChip } from "../../../styles/design-system";
 import {
   joinSkillFile,
   splitSkillFile,
@@ -426,17 +426,11 @@ export function WorkforceSkillEditorPage() {
                             version: version.version,
                           })}
                         </span>
-                        <span
-                          className={`workforce-skill-chip${
-                            version.status === "deprecated"
-                              ? " workforce-skill-chip--muted"
-                              : ""
-                          }`}
-                        >
+                        <StatusChip tone={version.status === "published" ? "ok" : "neutral"}>
                           {version.status === "published"
                             ? t("skills.statusPublished")
                             : t("skills.statusDeprecated")}
-                        </span>
+                        </StatusChip>
                       </div>
                       {version.status === "published" ? (
                         <button
