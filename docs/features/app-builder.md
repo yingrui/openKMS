@@ -24,7 +24,9 @@ The **Chamber** app (`/chamber`):
 - Settings (Service binding): `/chamber/{id}/settings`
 - Opening runs one `HEAD` through the proxy first: a `502/504` (Service unreachable), `400` (incomplete binding), `401/403` (not authorized) or `404` (not registered) shows a panel naming the target instead of the iframe, with **Check again** and a link to Settings. A probe that cannot answer does not block the app — the frame loads anyway.
 
-Legacy `/apps` and `/app-builder` routes redirect here. WebSocket is not proxied. Prefer relative assets or a URL subpath. Settings and Delete are shown only to users with **`ontology:write`** (the same gate the API applies).
+**Deep links and WebSocket:** the frame's routes never reach the address bar, so refresh, share and Back return to the app's root, and a WebSocket is not proxied at all. **Open in a new tab** (the ↗ action in the run header) is the escape hatch for both: a real tab carries its own URL and can hold a live connection. The line under the frame says so, because a silently half-working live feature is worse than a plain one.
+
+Legacy `/apps` and `/app-builder` routes redirect here. Prefer relative assets or a URL subpath. Settings and Delete are shown only to users with **`ontology:write`** (the same gate the API applies); opening Settings by URL is allowed, the fields are read-only with a line naming the missing permission.
 
 ## Chamber identity headers {#chamber-identity-headers}
 

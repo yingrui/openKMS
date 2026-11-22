@@ -14,10 +14,12 @@ type K8sBinding = NonNullable<ChamberBindings['k8s']>;
 type Props = {
   initial: K8sBinding | null | undefined;
   saving: boolean;
+  /** A reader can land on this page; the fields are then shown, not offered. */
+  readOnly?: boolean;
   onSave: (k8s: K8sBinding) => void;
 };
 
-export function ModuleServiceBindingEditor({ initial, saving, onSave }: Props) {
+export function ModuleServiceBindingEditor({ initial, saving, readOnly = false, onSave }: Props) {
   const { t } = useTranslation('chamber');
   const [clusterId, setClusterId] = useState(initial?.cluster_id ?? '');
   const [namespace, setNamespace] = useState(initial?.namespace ?? 'default');
@@ -93,7 +95,7 @@ export function ModuleServiceBindingEditor({ initial, saving, onSave }: Props) {
             if (row?.default_namespace) setNamespace(row.default_namespace);
             setService('');
           }}
-          disabled={saving}
+          disabled={saving || readOnly}
         >
           <option value="">{t('settingsServiceSelectCluster')}</option>
           {clusters.map((c) => (
@@ -111,7 +113,7 @@ export function ModuleServiceBindingEditor({ initial, saving, onSave }: Props) {
             type="text"
             value={namespace}
             onChange={(e) => setNamespace(e.target.value)}
-            disabled={saving || !clusterId}
+            disabled={saving || !clusterId || readOnly}
             spellCheck={false}
           />
         ) : (
@@ -122,7 +124,7 @@ export function ModuleServiceBindingEditor({ initial, saving, onSave }: Props) {
               setNamespace(e.target.value);
               setService('');
             }}
-            disabled={saving || !clusterId || namespaces === null}
+            disabled={saving || !clusterId || namespaces === null || readOnly}
           >
             {namespaceOptions.map((n) => (
               <option key={n} value={n}>
@@ -140,7 +142,7 @@ export function ModuleServiceBindingEditor({ initial, saving, onSave }: Props) {
             type="text"
             value={service}
             onChange={(e) => setService(e.target.value)}
-            disabled={saving || !clusterId}
+            disabled={saving || !clusterId || readOnly}
             spellCheck={false}
           />
         ) : (
@@ -154,7 +156,7 @@ export function ModuleServiceBindingEditor({ initial, saving, onSave }: Props) {
               const ports = svc?.port_numbers;
               if (ports?.length) setPort(ports[0]);
             }}
-            disabled={saving || !clusterId || services === null}
+            disabled={saving || !clusterId || services === null || readOnly}
           >
             <option value="">{t('settingsServiceSelectService')}</option>
             {serviceOptions.map((n) => (
@@ -172,7 +174,7 @@ export function ModuleServiceBindingEditor({ initial, saving, onSave }: Props) {
             id="module-svc-port"
             value={port}
             onChange={(e) => setPort(Number(e.target.value))}
-            disabled={saving}
+            disabled={saving || readOnly}
           >
             {!portOptions.includes(port) ? (
               <option value={port}>{port}</option>
@@ -191,7 +193,7 @@ export function ModuleServiceBindingEditor({ initial, saving, onSave }: Props) {
             max={65535}
             value={port}
             onChange={(e) => setPort(Number(e.target.value) || 80)}
-            disabled={saving}
+            disabled={saving || readOnly}
           />
         )}
       </FormField>
@@ -202,7 +204,7 @@ export function ModuleServiceBindingEditor({ initial, saving, onSave }: Props) {
           type="text"
           value={path}
           onChange={(e) => setPath(e.target.value)}
-          disabled={saving}
+          disabled={saving || readOnly}
           spellCheck={false}
           placeholder="/"
         />
@@ -212,7 +214,7 @@ export function ModuleServiceBindingEditor({ initial, saving, onSave }: Props) {
         <button
           type="button"
           className="btn btn-primary"
-          disabled={saving || !canSave}
+          disabled={saving || !canSave || readOnly}
           onClick={() => {
             const trimmedPath = path.trim();
             onSave({

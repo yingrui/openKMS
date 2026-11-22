@@ -280,6 +280,17 @@
   word-break: break-word;
 }
 
+/* The one thing the frame cannot do, said once under it: a WebSocket needs a real tab. */
+.chamber-page__frame-hint {
+  flex-shrink: 0;
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
 /* Why the app did not answer: the same facts the proxy knows, in one panel instead of a JSON body. */
 .chamber-page__probe-note {
   padding: var(--space-4) 0;

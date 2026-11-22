@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Server, Settings } from 'lucide-react';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { PERM_ONTOLOGY_WRITE } from '../../config/permissions';
 import {
   deleteChamberApp,
   listChamberApps,
@@ -28,6 +30,10 @@ export function ChamberSettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation('chamber');
   const confirm = useConfirm();
+  const { hasPermission } = useAuth();
+  // The page is a plain route, so a reader can land here by URL. Say why nothing is editable instead of
+  // letting them type a change and meet a 403 on Save.
+  const canWrite = hasPermission(PERM_ONTOLOGY_WRITE);
   const [app, setApp] = useState<ChamberAppResponse | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -162,6 +168,12 @@ export function ChamberSettingsPage() {
         ))}
       </div>
 
+      {!canWrite ? (
+        <p className="settings-page-hint" role="status">
+          {t('readOnlyHint')}
+        </p>
+      ) : null}
+
       <div className="settings-page-form" role="tabpanel">
         {tab === 'general' ? (
           <section className="settings-page-section">
@@ -175,6 +187,7 @@ export function ChamberSettingsPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="ds-control"
+                disabled={!canWrite}
               />
             </div>
             <div className="settings-page-field">
@@ -184,6 +197,7 @@ export function ChamberSettingsPage() {
                 rows={3}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                disabled={!canWrite}
               />
             </div>
             <div className="settings-page-field">
@@ -196,7 +210,12 @@ export function ChamberSettingsPage() {
               </p>
             ) : null}
             <div className="settings-page-actions">
-              <button type="button" className="btn btn-primary" disabled={saving} onClick={save}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={saving || !canWrite}
+                onClick={save}
+              >
                 {saving ? t('saving') : t('save')}
               </button>
               {saved ? <span className="settings-page-saved">{t('saved')}</span> : null}
@@ -208,7 +227,7 @@ export function ChamberSettingsPage() {
               <button
                 type="button"
                 className="btn btn-danger"
-                disabled={deleting}
+                disabled={deleting || !canWrite}
                 onClick={() => void doDelete()}
               >
                 {deleting ? t('deleting') : t('delete')}
@@ -230,6 +249,7 @@ export function ChamberSettingsPage() {
             <ModuleServiceBindingEditor
               initial={app.bindings?.k8s}
               saving={serviceSaving}
+              readOnly={!canWrite}
               onSave={saveService}
             />
           </section>

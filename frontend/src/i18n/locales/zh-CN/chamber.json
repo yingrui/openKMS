@@ -3,7 +3,7 @@
   "gallerySubtitle": "管理决策系统。",
   "loading": "加载中…",
   "emptyGallery": "还没有应用。",
-  "emptyGalleryHint": "可在「控制台 → Kubernetes」登记，或由智能体登记。",
+  "emptyGalleryHint": "在 Console → Kubernetes → 某个集群 → 选一个 Service → Register in Chamber 注册。需要 console:kubernetes 与 ontology:write。",
   "goToKubernetes": "去登记应用",
   "stale": "过期",
   "backToGallery": "返回议事厅",
@@ -55,5 +55,8 @@
   "probe_auth": "请求未通过认证：确认已登录；该服务也可能要求自己的登录。",
   "probe_missing": "找不到这个应用：可能已注销，或服务在它自己的根路径返回 404。",
   "probe_unknown": "状态检查没拿到结果。",
-  "probeUnknownSoft": "状态检查没有结果，已直接加载应用。"
+  "probeUnknownSoft": "状态检查没有结果，已直接加载应用。",
+  "openInNewTab": "在新标签页打开",
+  "wsHint": "需要 WebSocket 的实时功能不经过代理；这类应用请用右上角“在新标签页打开”。",
+  "readOnlyHint": "修改这个应用需要 ontology:write 权限。"
 }

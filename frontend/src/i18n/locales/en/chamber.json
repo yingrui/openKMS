@@ -3,7 +3,7 @@
   "gallerySubtitle": "Manage decision making systems.",
   "loading": "Loading…",
   "emptyGallery": "No apps yet.",
-  "emptyGalleryHint": "Register an app from Console → Kubernetes, or ask an agent to register one.",
+  "emptyGalleryHint": "Register a Service from Console → Kubernetes → a cluster → a Service → Register in Chamber. Needs console:kubernetes and ontology:write.",
   "goToKubernetes": "Register an app",
   "stale": "Stale",
   "backToGallery": "Back to Chamber",
@@ -55,5 +55,8 @@
   "probe_auth": "The request was not authorized. Check that you are signed in; the Service may also ask for its own login.",
   "probe_missing": "This app is not available. It may have been unregistered, or the Service answers 404 at its own root.",
   "probe_unknown": "The status check failed before it got an answer.",
-  "probeUnknownSoft": "The status check did not finish; the app was loaded anyway."
+  "probeUnknownSoft": "The status check did not finish; the app was loaded anyway.",
+  "openInNewTab": "Open in a new tab",
+  "wsHint": "Live features that need a WebSocket are not proxied here — use “Open in a new tab” for those.",
+  "readOnlyHint": "Changing this app needs the ontology:write permission."
 }

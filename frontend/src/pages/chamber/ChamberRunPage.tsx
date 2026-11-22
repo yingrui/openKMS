@@ -7,7 +7,7 @@ import {
 } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, ArrowLeft, Maximize2, Minimize2, Settings } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ExternalLink, Maximize2, Minimize2, Settings } from 'lucide-react';
 import { fetchChamberRun, chamberAppProxyUrl, type ChamberRunResponse } from '../../data/chamberApi';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDocumentTheme } from '../../hooks/useDocumentTheme';
@@ -259,6 +259,18 @@ export function ChamberRunPage() {
           </Link>
           <span className="chamber-page__run-title">{app.name}</span>
           <div className="chamber-page__run-actions">
+            {/* The frame cannot carry a deep link (its routes never reach the address bar) and cannot carry a
+                WebSocket. A real tab can do both, so the escape hatch is one click, not a paragraph. */}
+            <a
+              href={`${chamberAppProxyUrl(app.id)}?theme=${theme}`}
+              target="_blank"
+              rel="noreferrer"
+              className="chamber-page__icon-btn"
+              title={t('openInNewTab')}
+              aria-label={t('openInNewTab')}
+            >
+              <ExternalLink size={16} aria-hidden />
+            </a>
             {canEdit ? (
               <Link
                 to={`/chamber/${app.id}/settings`}
@@ -347,6 +359,9 @@ export function ChamberRunPage() {
           )
         }
       />
+      {!fullscreen && probe.kind !== 'failed' ? (
+        <p className="chamber-page__frame-hint">{t('wsHint')}</p>
+      ) : null}
     </div>
   );
 }
