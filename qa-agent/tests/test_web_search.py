@@ -8,8 +8,22 @@ from __future__ import annotations
 import json
 from unittest.mock import patch
 
+import pytest
+
 from qa_agent.skills import web_search as module
 from qa_agent.skills.web_search import EXTERNAL_NOTE, search_web
+
+
+@pytest.fixture(autouse=True)
+def _bound_connector():
+    """Most paths assume the agent has a connector bound; the unbound case is its own test."""
+    from qa_agent import request_context
+
+    token = request_context.set_web_search_connector("conn-1")
+    try:
+        yield
+    finally:
+        request_context.reset_web_search_connector(token)
 
 
 def _call(**kwargs) -> str:
@@ -56,3 +70,30 @@ def test_the_limit_is_bounded():
     with patch.object(module, "_post_json", return_value=payload) as post:
         _call(max_results=50)
     assert post.call_args.kwargs["payload"]["limit"] == 10
+
+
+def test_without_a_bound_connector_the_tool_says_so():
+    """The capability can be on before an operator binds a connector; the tool must not go looking for another one."""
+    from qa_agent import request_context
+
+    token = request_context.set_web_search_connector("")
+    try:
+        with patch.object(module, "_post_json", side_effect=AssertionError("must not call the backend")):
+            out = _call()
+    finally:
+        request_context.reset_web_search_connector(token)
+    assert "no search connector is bound" in out
+
+
+def test_the_bound_connector_travels_with_the_request():
+    from qa_agent import request_context
+
+    token = request_context.set_web_search_connector("conn-7")
+    try:
+        with patch.object(
+            module, "_post_json", return_value={"query": "q", "connector": "deepseek", "results": []}
+        ) as post:
+            _call()
+    finally:
+        request_context.reset_web_search_connector(token)
+    assert post.call_args.kwargs["payload"]["connector_id"] == "conn-7"

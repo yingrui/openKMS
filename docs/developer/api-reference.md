@@ -58,7 +58,7 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | PUT | `/internal-api/knowledge-bases/{id}/faqs/batch-embeddings` | **Internal service client only**; bulk update FAQ embeddings |
 | GET | `/internal-api/skills/{registry}/{id}/{version}/prompt` | **Internal service client only**; `registry` is `agent` (Agent Project packages) or `workforce`; the `SKILL.md` text for **qa-agent** |
 | GET | `/internal-api/web-search/available` | **Internal service client only**; `{ available, connector }` — whether an enabled web-search connector exists |
-| POST | `/internal-api/web-search` | **Internal service client only**; body `{ query, limit }`; runs the enabled `zhipu_web_search` connector and returns `{ query, connector, results[{title,url,content,publisher,published_at}] }`; 404 when no connector, 502 when the provider refuses |
+| POST | `/internal-api/web-search` | **Internal service client only**; body `{ query, limit, connector_id? }`; runs that connector (or the deployment's first enabled search connector when the id is absent) and returns `{ query, connector, results[{title,url,content,publisher,published_at}] }`; 404 when nothing is bound, 502 when the provider refuses |
 | GET | `/api/public/system` | No auth: `{ "system_name" }` trimmed from DB (may be `""`; SPA shows `openKMS` when empty after load) |
 | GET | `/api/system/settings` | Authenticated `console:settings` (or admin): `system_name`, `default_timezone`, `api_base_url_note` |
 | PUT | `/api/system/settings` | Authenticated `console:settings` (or admin): update system-wide display settings |

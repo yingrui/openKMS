@@ -33,6 +33,8 @@ from . import sandbox as sandbox_runner
 from .evidence import ground, grounding_warnings, label_sources
 from .llm_chat import build_messages_for_generate, make_qa_chat_openai, text_from_lc_content
 from .request_context import (
+    reset_web_search_connector,
+    set_web_search_connector,
     reset_request_access_token,
     reset_request_knowledge_base_id,
     reset_request_sandbox,
@@ -516,6 +518,7 @@ def invoke_agent(
     prompt_version: str | None = None,
     installed_skills: dict[str, str] | None = None,
     skills_registry: str | None = None,
+    web_search_connector_id: str | None = None,
     agent_name: str | None = None,
     agent_description: str | None = None,
 ) -> dict[str, Any]:
@@ -536,6 +539,7 @@ def invoke_agent(
     # The workspace key. Tools read it from the request context, so a tool call cannot address another conversation.
     h_sess = set_request_session_id(session_id or "")
     h_sbx = set_request_sandbox(sandbox_settings)
+    h_ws = set_web_search_connector(web_search_connector_id or "")
     t0 = time.monotonic()
     logger.info(
         "invoke_agent start kb=%s history=%d session=%s tools=%s top_k=%d",
@@ -634,6 +638,7 @@ def invoke_agent(
         reset_request_knowledge_base_id(h_kb)
         reset_request_session_id(h_sess)
         reset_request_sandbox(h_sbx)
+        reset_web_search_connector(h_ws)
         reset_request_access_token(h)
 
 
@@ -881,6 +886,7 @@ async def astream_agent_ndjson(
     prompt_version: str | None = None,
     installed_skills: dict[str, str] | None = None,
     skills_registry: str | None = None,
+    web_search_connector_id: str | None = None,
     agent_name: str | None = None,
     agent_description: str | None = None,
 ) -> AsyncIterator[bytes]:
@@ -901,6 +907,7 @@ async def astream_agent_ndjson(
     # The workspace key. Tools read it from the request context, so a tool call cannot address another conversation.
     h_sess = set_request_session_id(session_id or "")
     h_sbx = set_request_sandbox(sandbox_settings)
+    h_ws = set_web_search_connector(web_search_connector_id or "")
     t0 = time.monotonic()
     logger.info(
         "astream_agent_ndjson start kb=%s history=%d session=%s tools=%s top_k=%d",
@@ -1058,4 +1065,5 @@ async def astream_agent_ndjson(
         reset_request_knowledge_base_id(h_kb)
         reset_request_session_id(h_sess)
         reset_request_sandbox(h_sbx)
+        reset_web_search_connector(h_ws)
         reset_request_access_token(h)

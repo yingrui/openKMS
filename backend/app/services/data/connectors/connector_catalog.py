@@ -27,6 +27,7 @@ CATEGORY_SEARCH_TOOL = "search_tool"
 
 ZHIPU_API_BASE_URL = "https://open.bigmodel.cn/api/paas/v4"
 ZHIPU_WEB_SEARCH_URL = "https://open.bigmodel.cn/api/paas/v4/web_search"
+DEEPSEEK_API_BASE_URL = "https://api.deepseek.com"
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,6 +168,34 @@ CONNECTOR_KINDS: dict[str, ConnectorKindSpec] = {
             "sync_trade_cal_min_interval_seconds": 0.31,
             "sync_index_codes": "000300.SH,000905.SH,000852.SH,000001.SH,399001.SZ,399006.SZ",
         },
+    ),
+    "deepseek_web_search": ConnectorKindSpec(
+        kind="deepseek_web_search",
+        category=CATEGORY_SEARCH_TOOL,
+        label="DeepSeek web search",
+        description=(
+            "Web search via the DeepSeek Search API (Bearer API key). Used by Agents as an on-demand search tool; "
+            "no dataset outputs."
+        ),
+        secret_keys=frozenset({"DEEPSEEK_API_KEY"}),
+        input_fields=(
+            ConnectorInputField(
+                key="api_base_url",
+                label="API base URL",
+                field_type="url",
+                required=True,
+                default=DEEPSEEK_API_BASE_URL,
+                placeholder=DEEPSEEK_API_BASE_URL,
+            ),
+            ConnectorInputField(
+                key="count",
+                label="Result count",
+                field_type="integer",
+                required=False,
+                default="10",
+            ),
+        ),
+        default_settings={"web_search_url": f"{DEEPSEEK_API_BASE_URL}/v1/tools/search"},
     ),
     "zhipu_web_search": ConnectorKindSpec(
         kind="zhipu_web_search",

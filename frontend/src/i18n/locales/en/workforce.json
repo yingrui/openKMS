@@ -420,5 +420,11 @@
   "toolsParamYes": "required",
   "toolsNoParameters": "This tool takes no arguments.",
   "toolsParamDescription": "Description",
-  "toolsNotConfigured": "Not configured for this deployment"
+  "toolsNotConfigured": "Not configured for this deployment",
+  "webSearchConnectorTitle": "Web search connector",
+  "webSearchConnectorLead": "The one search connector this agent may use when it enables Web search. Two providers answer the same question, so which one is a deployment decision, not the model’s.",
+  "webSearchConnectorPick": "Bind a search connector",
+  "webSearchConnectorNone": "No enabled search connector exists. Add one under Connectors first.",
+  "toolsNeeds_web_search_connector": "Needs a search connector ({{count}} bound)",
+  "webSearchConnectorChoose": "Choose a connector…"
 }

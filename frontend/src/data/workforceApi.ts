@@ -12,6 +12,8 @@ export interface WorkforceAgentResponse {
   /** Enabled skills; null means the qa-agent core set. */
   /** `{capability_id: "all" | [tool_id, ...]}` — which tools this agent may use. */
   agent_tools?: Record<string, 'all' | string[]> | null;
+  /** The one connector that answers `search_web` for this agent. */
+  web_search_connector_id?: string | null;
   /** The agent's half of the runtime configuration. `retrieval` is not here — it belongs to the source. */
   agent_config?: KbAgentConfig | null;
   origin_knowledge_base_id?: string | null;
@@ -99,6 +101,8 @@ export async function createWorkforceAgent(data: {
   description?: string | null;
   /** `{capability_id: "all" | [tool_id, ...]}` — which tools this agent may use. */
   agent_tools?: Record<string, 'all' | string[]> | null;
+  /** The one connector that answers `search_web` for this agent. */
+  web_search_connector_id?: string | null;
   agent_config?: AgentConfigInput | null;
   knowledge_base_ids?: string[];
 }): Promise<WorkforceAgentDetail> {
@@ -116,6 +120,8 @@ export async function updateWorkforceAgent(
     description?: string | null;
     /** `{capability_id: "all" | [tool_id, ...]}` — which tools this agent may use. */
   agent_tools?: Record<string, 'all' | string[]> | null;
+  /** The one connector that answers `search_web` for this agent. */
+  web_search_connector_id?: string | null;
     agent_config?: AgentConfigInput | null;
   },
 ): Promise<WorkforceAgentDetail> {
@@ -296,4 +302,19 @@ export async function uninstallWorkforceSkill(
   return request<WorkforceInstalledSkill[]>(`/api/workforce/agents/${agentId}/skills/${skillId}`, {
     method: 'DELETE',
   });
+}
+
+/** Bind (or clear, with `null`) the single search connector this agent may use. */
+export async function setWorkforceWebSearchConnector(
+  agentId: string,
+  connectorId: string | null,
+): Promise<WorkforceAgentDetail> {
+  return request<WorkforceAgentDetail>(
+    `/api/workforce/agents/${encodeURIComponent(agentId)}/web-search-connector`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connector_id: connectorId }),
+    },
+  );
 }

@@ -83,3 +83,16 @@ def kb_tools_for(kb: KnowledgeBase) -> dict[str, object]:
     if sandbox.get("enabled"):
         ledger["code_execution"] = "all"
     return ledger
+
+
+def web_search_connector_id(agent: WorkforceAgent) -> str | None:
+    """The connector bound to this agent, when it enables the capability.
+
+    One binding, checked at request time rather than trusted from the ledger: an agent can enable `web_search` before
+    an operator binds a connector, and the tool must then say "not configured" instead of searching the internet with
+    whichever key happens to be first in the table.
+    """
+    ledger = agent.agent_tools if isinstance(agent.agent_tools, dict) else {}
+    if "web_search" not in ledger:
+        return None
+    return agent.web_search_connector_id

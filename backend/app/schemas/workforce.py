@@ -72,6 +72,8 @@ class WorkforceAgentResponse(BaseModel):
     owner_name: str | None = None
     #: `{capability_id: "all" | [tool_id, ...]}`.
     agent_tools: dict[str, object] | None = None
+    #: The single web-search connector this agent may use; the screen resolves its name from the connector list.
+    web_search_connector_id: str | None = None
     agent_config: dict[str, Any] | None = None
     #: Set when this agent is a knowledge base's default runtime (its own Q&A resolves it).
     origin_knowledge_base_id: str | None = None
@@ -200,6 +202,11 @@ class WorkforceInstalledSkill(BaseModel):
     version: str = ""
     #: False when the registry entry disappeared while this agent still names it.
     available: bool = True
+
+
+class WorkforceWebSearchConnectorSet(BaseModel):
+    #: `null` clears the binding.
+    connector_id: str | None = None
 
 
 class WorkforceSkillInstall(BaseModel):

@@ -224,10 +224,20 @@ Retrieval is only a tool: there is no node that pre-fetches passages, and `orche
 An agent with `knowledge_search` off simply cannot read its corpus — that is a configuration, not a bug, and the Knowledge
 tab is where its sources are bound.
 
-**Web search configuration** is deployment-level, because which search API an installation may use is a purchase and a
-jurisdiction: `OPENKMS_WEB_SEARCH_PROVIDER` (`tavily` or `searxng`), `OPENKMS_WEB_SEARCH_URL`, `OPENKMS_WEB_SEARCH_API_KEY`,
-and optionally `OPENKMS_WEB_SEARCH_DOMAINS` (hosts results may come from). With no provider the catalogue marks the
-capability "not configured" and its switch is disabled — a switch that cannot do anything is worse than no switch. Results
+**Web search is a connector, and the agent binds one.** The credential, the base URL and the provider settings live in a
+Connectors entry (`zhipu_web_search` or `deepseek_web_search`), managed on the Connectors screen; the qa-agent holds no
+key and asks the backend to run the call. Each agent binds **exactly one** connector on its Knowledge tab
+(`PUT …/agents/{id}/web-search-connector`), because two providers answer the same question: which one is a deployment
+decision, not something a model can weigh.
+
+A switch that cannot do anything is worse than none, so the catalogue marks `web_search` unavailable when the deployment
+has no enabled search connector, and the Tools row says "needs a search connector" with a link to the binding. An agent
+that enables the capability without binding one gets a tool that says so, rather than a search through whichever key
+happened to be first in the table.
+
+DeepSeek's integration uses its **Search API** (`POST /v1/tools/search`, `need_content: true`), not its `deepseek_web_search`
+server tool: the server tool runs inside their chat turn, while the API returns results to us — which is what an answer
+that cites them needs. See `api-docs.deepseek.com/api/search`. Results
 carry a `note` telling the model they are external: citing a web page as if it were a document in the corpus is a false
 citation, and the model copies what it reads.
 

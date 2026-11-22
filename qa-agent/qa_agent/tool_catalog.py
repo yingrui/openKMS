@@ -53,6 +53,7 @@ CAPABILITY_SUMMARIES: dict[str, str] = {
 #: What must be bound on the agent before the capability can do anything. Without it the switch is on and the tool has
 #: nothing to look at — which is the state the Tools tab's bindings exist to avoid.
 CAPABILITY_REQUIRES: dict[str, tuple[str, ...]] = {
+    "web_search": ("web_search_connector",),
     "catalog": ("semantic_model",),
     "ontology": ("ontology_group",),
 }

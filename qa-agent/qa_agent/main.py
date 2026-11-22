@@ -103,6 +103,7 @@ async def _ask_impl(kb_id: str, request: AskRequest) -> AskResponse:
         agent_config=request.agent_config,
         installed_skills=request.installed_skills,
         skills_registry=request.skills_registry,
+        web_search_connector_id=request.web_search_connector_id,
         agent_name=request.agent_name,
         agent_description=request.agent_description,
         system_prompt=request.system_prompt,
@@ -160,6 +161,7 @@ def _stream_response(kb_id: str, request: AskRequest) -> StreamingResponse:
             prompt_version=request.prompt_version,
             installed_skills=request.installed_skills,
             skills_registry=request.skills_registry,
+            web_search_connector_id=request.web_search_connector_id,
         ),
         media_type="application/x-ndjson",
         headers={

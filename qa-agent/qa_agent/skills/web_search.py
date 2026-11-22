@@ -19,6 +19,7 @@ from langchain_core.tools import tool
 
 from ..backend_defaults import _post_json
 from ..config import settings
+from ..request_context import get_web_search_connector
 
 #: Result ceiling for one search. A model that needs more should refine the query, not page through the web.
 DEFAULT_MAX_RESULTS = 5
@@ -41,6 +42,11 @@ def search_web(
     if not base:
         return "Error: web search needs the backend URL, and this deployment has none configured."
     payload = {"query": query, "limit": limit}
+    # The agent's own binding decides which provider answers; the backend refuses to guess when it is absent.
+    connector_id = get_web_search_connector()
+    if not connector_id:
+        return "Error: web search is enabled but no search connector is bound to this agent."
+    payload["connector_id"] = connector_id
     try:
         data = _post_json(f"{base}/internal-api/web-search", what="web search", payload=payload)
     except RuntimeError as exc:

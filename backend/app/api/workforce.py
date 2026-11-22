@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import authenticate_request, jwt_payload_is_admin, require_auth
 from app.config import settings
 from app.database import get_db
+from app.models.connector import Connector
 from app.models.knowledge_base import KnowledgeBase
 from app.models.workforce_skill import (
     SKILL_VERSION_PUBLISHED,
@@ -41,6 +42,7 @@ from app.models.workforce_agent import (
 )
 from app.schemas.workforce import (
     WorkforceAvailableSkill,
+    WorkforceWebSearchConnectorSet,
     WorkforcePromptPreviewRequest,
     WorkforceInstalledSkill,
     WorkforcePromptPreviewResponse,
@@ -79,6 +81,7 @@ from app.services.identity.permissions.permission_resolution import jwt_realm_ro
 from app.services.workforce.agent_config import (
     agent_config_payload,
     agent_tools_for,
+    web_search_connector_id,
     runtime_config,
 )
 from app.services.workforce.credentials import mint_credential
@@ -277,6 +280,38 @@ async def archive_agent(
     agent.status = AGENT_STATUS_ARCHIVED
     await db.commit()
     return None
+
+
+@router.put(
+    "/agents/{agent_id}/web-search-connector", response_model=WorkforceAgentDetailResponse
+)
+async def set_web_search_connector(
+    agent_id: str,
+    body: WorkforceWebSearchConnectorSet,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Bind (or clear) the one connector that answers `search_web` for this agent.
+
+    A single binding: two providers answer the same question, so which one is a deployment decision rather than a model
+    choice. The connector must exist, be enabled, and be a search tool — a sync connector would answer nothing.
+    """
+    agent = await _scoped(db, request, agent_id, write=True)
+    if body.connector_id is None:
+        agent.web_search_connector_id = None
+    else:
+        connector = await db.get(Connector, body.connector_id)
+        from app.services.data.connectors.connector_catalog import CATEGORY_SEARCH_TOOL, get_kind_spec
+
+        spec = get_kind_spec(connector.kind) if connector is not None else None
+        if connector is None or spec is None or spec.category != CATEGORY_SEARCH_TOOL:
+            raise HTTPException(status_code=400, detail="Not a web search connector")
+        if not connector.enabled:
+            raise HTTPException(status_code=400, detail="Connector is disabled")
+        agent.web_search_connector_id = connector.id
+    await db.commit()
+    await db.refresh(agent)
+    return await agent_detail(db, agent)
 
 
 @router.get("/agents/{agent_id}/skills", response_model=list[WorkforceInstalledSkill])
@@ -809,6 +844,7 @@ async def ask_agent(
         # Skill packages installed on this agent; the qa-agent fetches their text with its own service credentials.
         installed_skills=dict(agent.installed_skills or {}),
         skills_registry="workforce",
+        web_search_connector_id=web_search_connector_id(agent),
         agent_name=agent.name,
         agent_description=agent.description,
     )

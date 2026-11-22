@@ -27,19 +27,17 @@ def test_not_configured_is_a_404_not_an_empty_list():
 
 
 def test_results_are_normalised_to_title_url_content():
-    provider = {
-        "results": [
-            {
-                "title": "Rates",
-                "link": "https://example.com/r",
-                "content": "5.5%",
-                "media": "Example",
-                "publish_date": "2026-11-01",
-            }
-        ]
-    }
+    provider = [
+        {
+            "title": "Rates",
+            "url": "https://example.com/r",
+            "content": "5.5%",
+            "publisher": "Example",
+            "published_at": "2026-11-01",
+        }
+    ]
     with patch.object(module, "web_search_connector", AsyncMock(return_value=_connector())):
-        with patch.object(module, "run_zhipu_web_search", AsyncMock(return_value=provider)):
+        with patch.object(module, "run_web_search", AsyncMock(return_value=provider)):
             out = asyncio.run(module.web_search(module.WebSearchRequest(query="rates", limit=3), db=None))
     assert out["connector"] == "zhipu-search"
     assert out["results"] == [
@@ -56,7 +54,8 @@ def test_results_are_normalised_to_title_url_content():
 def test_a_provider_failure_is_a_502_with_the_reason():
     with patch.object(module, "web_search_connector", AsyncMock(return_value=_connector())):
         with patch.object(
-            module, "run_zhipu_web_search", AsyncMock(side_effect=ValueError("Zhipu web search failed (401)"))
+            module,
+            "run_web_search", AsyncMock(side_effect=ValueError("DeepSeek web search failed (401)"))
         ):
             with pytest.raises(HTTPException) as raised:
                 asyncio.run(module.web_search(module.WebSearchRequest(query="rates"), db=None))
@@ -65,8 +64,31 @@ def test_a_provider_failure_is_a_502_with_the_reason():
 
 
 def test_the_limit_is_capped():
-    payload = {"results": [{"title": str(i), "link": f"https://e/{i}", "content": "x"} for i in range(20)]}
+    payload = [{"title": str(i), "url": f"https://e/{i}", "content": "x"} for i in range(20)]
     with patch.object(module, "web_search_connector", AsyncMock(return_value=_connector())):
-        with patch.object(module, "run_zhipu_web_search", AsyncMock(return_value=payload)):
+        with patch.object(module, "run_web_search", AsyncMock(return_value=payload)):
             out = asyncio.run(module.web_search(module.WebSearchRequest(query="q", limit=99), db=None))
+    # Providers may ignore the count they were given; the endpoint cuts anyway.
     assert len(out["results"]) == module.MAX_RESULTS
+
+
+class TestEverySearchHandlerTakesTheSameContract:
+    """Both callers (the connector preview and the Agent Project `web_search` tool) call a handler with
+    `param_overrides`; a handler that does not accept it fails only at run time, in production, for one provider."""
+
+    def test_both_kinds_accept_param_overrides_and_return_the_common_shape(self):
+        import inspect
+
+        from app.services.data.connectors.deepseek import run_deepseek_web_search
+        from app.services.data.connectors.zhipu import run_zhipu_web_search
+
+        for handler in (run_zhipu_web_search, run_deepseek_web_search):
+            params = inspect.signature(handler).parameters
+            assert "param_overrides" in params and "include_debug" in params, handler.__name__
+
+    def test_the_catalogue_lists_every_handler_and_vice_versa(self):
+        from app.services.data.connectors.connector_catalog import CONNECTOR_KINDS, CATEGORY_SEARCH_TOOL
+        from app.services.data.connectors.web_search import _HANDLERS
+
+        kinds_with_handler = {k for k, spec in CONNECTOR_KINDS.items() if spec.category == CATEGORY_SEARCH_TOOL}
+        assert kinds_with_handler == set(_HANDLERS)

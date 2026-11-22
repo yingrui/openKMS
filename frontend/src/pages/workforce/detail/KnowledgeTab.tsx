@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  setWorkforceWebSearchConnector,
   addWorkforceKb,
   addWorkforceOntologyGroup,
   addWorkforceSemanticModel,
@@ -14,6 +15,8 @@ import {
 import { fetchKnowledgeBases } from '../../../data/knowledgeBasesApi';
 import { fetchSemanticModels } from '../../../data/semanticModelsApi';
 import { fetchOntologyGroups } from '../../../data/ontologyGroupsApi';
+import { fetchConnectors } from '../../../data/connectorsApi';
+import { FormField } from '../../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { ResourcePickerDialog, type PickableResource } from './ResourcePickerDialog';
 import { useWorkforceDetail } from './workforceDetailContext';
@@ -40,15 +43,17 @@ export function WorkforceKnowledgeTab() {
   const [kbs, setKbs] = useState<PickableResource[]>([]);
   const [models, setModels] = useState<PickableResource[]>([]);
   const [groups, setGroups] = useState<PickableResource[]>([]);
+  const [searchConnectors, setSearchConnectors] = useState<{ id: string; label: string }[]>([]);
   const [open, setOpen] = useState<'kb' | 'model' | 'group' | null>(null);
   const [busy, setBusy] = useState(false);
 
   const loadOptions = useCallback(async () => {
     try {
-      const [kbRes, modelRes, groupRes] = await Promise.all([
+      const [kbRes, modelRes, groupRes, connectorRes] = await Promise.all([
         fetchKnowledgeBases({ limit: 200, offset: 0 }),
         fetchSemanticModels(),
         fetchOntologyGroups(),
+        fetchConnectors('search_tool'),
       ]);
       setKbs(
         kbRes.items.map((kb) => ({ id: kb.id, name: kb.name, meta: kb.description ?? undefined })),
@@ -61,6 +66,11 @@ export function WorkforceKnowledgeTab() {
             .filter(Boolean)
             .join(' · '),
         })),
+      );
+      setSearchConnectors(
+        connectorRes.items
+          .filter((connector) => connector.enabled)
+          .map((connector) => ({ id: connector.id, label: connector.name })),
       );
       setGroups(
         groupRes.map((group) => ({
@@ -178,6 +188,54 @@ export function WorkforceKnowledgeTab() {
           <Plus size={16} aria-hidden />
           {t('addModel')}
         </button>
+      </EntityViewPanel>
+
+      <EntityViewPanel
+        id="web-search-connector"
+        title={t('webSearchConnectorTitle')}
+        description={t('webSearchConnectorLead')}
+      >
+        {agent.web_search_connector_id ? (
+          <ul className="workforce-bindings">
+            <li>
+              <span>
+                {searchConnectors.find((c) => c.id === agent.web_search_connector_id)?.label ??
+                  agent.web_search_connector_id}
+              </span>
+              <button
+                type="button"
+                className="btn btn-link btn-sm is-danger"
+                disabled={busy}
+                onClick={() => void run(() => setWorkforceWebSearchConnector(agent.id, null))}
+              >
+                <X size={14} aria-hidden />
+                {t('unbind')}
+              </button>
+            </li>
+          </ul>
+        ) : null}
+        <FormField
+          label={t('webSearchConnectorPick')}
+          hint={searchConnectors.length === 0 ? t('webSearchConnectorNone') : undefined}
+        >
+          <div className="workforce-inline-form">
+            <select
+              className="ds-control"
+              value={agent.web_search_connector_id ?? ''}
+              aria-label={t('webSearchConnectorPick')}
+              onChange={(e) =>
+                void run(() => setWorkforceWebSearchConnector(agent.id, e.target.value || null))
+              }
+            >
+              <option value="">{t('webSearchConnectorChoose')}</option>
+              {searchConnectors.map((connector) => (
+                <option key={connector.id} value={connector.id}>
+                  {connector.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </FormField>
       </EntityViewPanel>
 
       <EntityViewPanel

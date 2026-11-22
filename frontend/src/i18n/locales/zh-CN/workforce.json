@@ -418,5 +418,11 @@
   "toolsParamYes": "必填",
   "toolsNoParameters": "这个工具没有参数。",
   "toolsParamDescription": "说明",
-  "toolsNotConfigured": "这个部署还没有配置"
+  "toolsNotConfigured": "这个部署还没有配置",
+  "webSearchConnectorTitle": "联网搜索连接器",
+  "webSearchConnectorLead": "这个数字员工开启「联网搜索」时使用的那个连接器。两家搜索结果回答同一个问题，所以用哪家是部署决策，不是模型的选择。",
+  "webSearchConnectorPick": "绑定搜索连接器",
+  "webSearchConnectorNone": "还没有启用的搜索连接器。先到「连接器」里添加一个。",
+  "toolsNeeds_web_search_connector": "需要搜索连接器（已绑定 {{count}} 个）",
+  "webSearchConnectorChoose": "选择连接器…"
 }

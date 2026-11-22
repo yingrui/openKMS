@@ -144,6 +144,7 @@ export function WorkforceToolsTab() {
                   counts={{
                     semantic_model: agent.semantic_models.length,
                     ontology_group: agent.ontology_groups.length,
+                    web_search_connector: agent.web_search_connector_id ? 1 : 0,
                   }}
                 />
               ) : null}
@@ -356,7 +357,7 @@ function CapabilityNeeds({
 }: {
   agentId: string;
   capability: ToolCapability;
-  counts: { semantic_model: number; ontology_group: number };
+  counts: { semantic_model: number; ontology_group: number; web_search_connector: number };
 }) {
   const { t } = useTranslation('workforce');
 
@@ -364,7 +365,12 @@ function CapabilityNeeds({
     <section className="workforce-tool-resource">
       {capability.requires.map((requirement) => {
         const bound = counts[requirement as keyof typeof counts] ?? 0;
-        const anchor = requirement === 'semantic_model' ? 'semantic-models' : 'ontology-groups';
+        const anchor =
+          requirement === 'semantic_model'
+            ? 'semantic-models'
+            : requirement === 'ontology_group'
+              ? 'ontology-groups'
+              : 'web-search-connector';
         return (
           <p key={requirement} className="workforce-tool-needs">
             <span>{t(`toolsNeeds_${requirement}`, { count: bound })}</span>

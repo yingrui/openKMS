@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 from typing import Any
 
 _access_token: ContextVar[str] = ContextVar("qa_agent_access_token", default="")
@@ -119,3 +119,21 @@ def get_tool_sandbox(config: dict[str, Any] | None = None) -> dict:
     if isinstance(c, dict) and isinstance(c.get("sandbox"), dict):
         return dict(c["sandbox"])
     return {}
+
+
+_WEB_SEARCH_CONNECTOR: ContextVar[str] = ContextVar(
+    "web_search_connector", default=""
+)
+
+
+def set_web_search_connector(connector_id: str) -> Token:
+    """Which connector answers `search_web` for this request; empty means the agent bound none."""
+    return _WEB_SEARCH_CONNECTOR.set(connector_id or "")
+
+
+def reset_web_search_connector(token: Token) -> None:
+    _WEB_SEARCH_CONNECTOR.reset(token)
+
+
+def get_web_search_connector() -> str:
+    return _WEB_SEARCH_CONNECTOR.get()

@@ -51,6 +51,7 @@ def ask_agent_body(
     agent_description: str | None = None,
     installed_skills: dict[str, str] | None = None,
     skills_registry: str | None = None,
+    web_search_connector_id: str | None = None,
 ) -> dict[str, Any]:
     """The qa-agent request body.
 
@@ -82,6 +83,9 @@ def ask_agent_body(
         body["agent_name"] = agent_name
     if agent_description:
         body["agent_description"] = agent_description
+    # Which connector answers `search_web` for this agent. Absent means the capability is off or unbound.
+    if web_search_connector_id:
+        body["web_search_connector_id"] = web_search_connector_id
     if installed_skills:
         body["installed_skills"] = installed_skills
         # Which registry those ids belong to: Agent Project packages or workforce skills. The two are separate

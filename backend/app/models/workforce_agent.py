@@ -55,6 +55,15 @@ class WorkforceAgent(Base):
     #: runtime enforces. `agent_tools` above keeps the tool ledger for that reason.
     installed_skills: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
+    #: The one web-search connector this agent may use, if it enables the `web_search` capability. A single binding on
+    #: purpose: two providers answer the same question, so "which one" is a deployment decision, not a model choice.
+    web_search_connector_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey("connectors.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     #: Set when the agent was created as a knowledge base's default runtime, so the knowledge base's
     #: own Q&A resolves one agent instead of keeping a second copy of the same configuration.
     origin_knowledge_base_id: Mapped[str | None] = mapped_column(

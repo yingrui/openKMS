@@ -48,6 +48,8 @@ class AskRequest(BaseModel):
     #: Skill packages installed on the agent, `{skill_id: version}`, and which registry they come from.
     installed_skills: dict[str, str] | None = None
     skills_registry: str | None = None
+    #: Which search connector answers `search_web` for this agent; absent means the capability is off or unbound.
+    web_search_connector_id: str | None = None
     #: Identity, part of the prompt rather than decoration on a list row.
     agent_name: str | None = None
     agent_description: str | None = None
