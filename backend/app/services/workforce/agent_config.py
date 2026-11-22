@@ -68,12 +68,13 @@ def resolve_tools(raw: dict | None) -> dict[str, object]:
 
 
 def agent_tools_for(agent: WorkforceAgent) -> dict[str, object]:
-    """The ledger for one workforce agent."""
-    ledger = resolve_tools(agent.agent_tools)
-    sandbox = (agent.agent_config or {}).get("sandbox") or {}
-    if sandbox.get("enabled"):
-        ledger.setdefault("code_execution", "all")
-    return ledger
+    """The ledger for one workforce agent.
+
+    The ledger is the only place code execution is turned on for an agent. `sandbox.enabled` still exists on a knowledge
+    base (its own Q&A predates the ledger), but nothing writes it for an agent any more — reading it here would let a
+    key with no control behind it switch a capability on.
+    """
+    return resolve_tools(agent.agent_tools)
 
 
 def kb_tools_for(kb: KnowledgeBase) -> dict[str, object]:

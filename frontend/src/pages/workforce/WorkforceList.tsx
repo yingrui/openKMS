@@ -1,15 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { MessageSquare, Plus, Trash2, Users } from 'lucide-react';
+import { Activity, MessageSquare, Plus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   createWorkforceAgent,
-  deleteWorkforceAgent,
   fetchWorkforceAgents,
   type WorkforceAgentResponse,
 } from '../../data/workforceApi';
-import { useConfirm } from '../../contexts/ConfirmContext';
 import { WorkforceAreaNav } from '../../components/workforce/WorkforceAreaNav';
 import {
   Dialog,
@@ -17,10 +15,8 @@ import {
   FormField,
   ListPage,
   Pagination,
+  StatusChip,
   ResourceViewToggle,
-  TableRowActionButton,
-  TableRowActionCell,
-  TableRowActions,
 } from '../../styles/design-system';
 import {
   CARD_PREVIEW_LIMIT,
@@ -41,7 +37,6 @@ const VIEW_STORAGE_KEY = 'workforce-list-view';
  */
 export function WorkforceList() {
   const { t } = useTranslation('workforce');
-  const confirm = useConfirm();
   const { t: tc } = useTranslation('common');
   const [viewMode, setViewMode] = useStoredViewMode<CardListViewMode>(VIEW_STORAGE_KEY, 'card');
   const [agents, setAgents] = useState<WorkforceAgentResponse[]>([]);
@@ -94,27 +89,6 @@ export function WorkforceList() {
     setDescription('');
   };
 
-  /** Ending a service is a decision about the list, so it lives here rather than inside one agent's settings. */
-  const remove = async (agent: WorkforceAgentResponse) => {
-    if (
-      !(await confirm({
-        title: t('archiveAgent'),
-        message: t('archiveConfirm', { name: agent.name }),
-        confirmLabel: t('archiveAgent'),
-        danger: true,
-      }))
-    ) {
-      return;
-    }
-    try {
-      await deleteWorkforceAgent(agent.id);
-      toast.success(t('deleted'));
-      await load();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('deleteFailed'));
-    }
-  };
-
   const handleCreate = async () => {
     if (!name.trim()) return;
     setSaving(true);
@@ -143,6 +117,10 @@ export function WorkforceList() {
           {!loading ? (
             <ResourceViewToggle modes={['card', 'list']} value={viewMode} onChange={switchView} />
           ) : null}
+          <Link className="btn btn-secondary" to="/workforce/operations">
+            <Activity size={16} aria-hidden />
+            <span className="ds-compact-label">{t('operationsLink')}</span>
+          </Link>
           <button
             type="button"
             className="btn btn-primary"
@@ -188,8 +166,8 @@ export function WorkforceList() {
                   <div className="ds-resource-list-icon">
                     <Users size={28} strokeWidth={1.5} />
                   </div>
-                  {/* The card's two shortcuts: open a chat, or retire the agent. Visible without hovering — a
-                      control nobody finds is not an affordance. */}
+                  {/* Opening a chat is the card's shortcut. Lifecycle actions are not here: a card is for
+                      recognising an agent, and stopping one lives in the row menu on the table view. */}
                   <div className="workforce-card__actions">
                     <Link
                       to={`/workforce/${agent.id}/chat`}
@@ -199,13 +177,6 @@ export function WorkforceList() {
                     >
                       <MessageSquare size={16} aria-hidden />
                     </Link>
-                    <TableRowActionButton
-                      variant="danger"
-                      title={t('archiveAgent')}
-                      aria-label={t('archiveAgent')}
-                      icon={<Trash2 size={16} />}
-                      onClick={() => void remove(agent)}
-                    />
                   </div>
                 </div>
                 <h3>{agent.name}</h3>
@@ -213,6 +184,9 @@ export function WorkforceList() {
                   {agent.description || t('noDescription')}
                 </p>
                 <div className="ds-resource-list-meta">
+                  {agent.status === 'paused' ? (
+                    <StatusChip tone="warn">{t('status_paused')}</StatusChip>
+                  ) : null}
                   <span>{t('metaKbs', { count: agent.knowledge_base_count })}</span>
                   <span>{t('metaSkills', { count: Object.keys(agent.agent_tools ?? {}).length })}</span>
                   <span>{t('metaCredentials', { count: agent.credential_count })}</span>
@@ -232,7 +206,6 @@ export function WorkforceList() {
                 <th>{t('knowledgeTitle')}</th>
                 <th>{t('skills')}</th>
                 <th>{t('credentialsTitle')}</th>
-                <th aria-label={t('rowActions')} />
               </tr>
             </thead>
             <tbody>
@@ -242,6 +215,9 @@ export function WorkforceList() {
                     <Link to={`/workforce/${agent.id}`} className="ds-resource-table__link">
                       {agent.name}
                     </Link>
+                    {agent.status === 'paused' ? (
+                      <StatusChip tone="warn">{t('status_paused')}</StatusChip>
+                    ) : null}
                     <div className="page-subtitle">
                       {agent.description || t('noDescription')}
                     </div>
@@ -249,9 +225,6 @@ export function WorkforceList() {
                   <td>{t('metaKbs', { count: agent.knowledge_base_count })}</td>
                   <td>{t('metaSkills', { count: Object.keys(agent.agent_tools ?? {}).length })}</td>
                   <td>{t('metaCredentials', { count: agent.credential_count })}</td>
-                  <td>
-                    <AgentRowActions label={t('archiveAgent')} onDelete={() => void remove(agent)} />
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -310,23 +283,5 @@ export function WorkforceList() {
         </FormField>
       </Dialog>
     </ListPage>
-  );
-}
-
-
-/** One destructive action per agent, built once and placed by the caller (card overlay or table cell). */
-function AgentRowActions({ label, onDelete }: { label: string; onDelete: () => void }) {
-  return (
-    <TableRowActionCell>
-      <TableRowActions>
-        <TableRowActionButton
-          variant="danger"
-          title={label}
-          aria-label={label}
-          icon={<Trash2 size={16} />}
-          onClick={onDelete}
-        />
-      </TableRowActions>
-    </TableRowActionCell>
   );
 }

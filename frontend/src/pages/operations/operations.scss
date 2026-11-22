@@ -1,0 +1,130 @@
+/* The queue: one case per row, its evidence, and the two ways to close it. */
+
+.ops-filters {
+  display: flex;
+  gap: 4px;
+}
+
+.ops-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm, 13px);
+  cursor: pointer;
+}
+
+.ops-filter--active {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.ops-filter__count {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.ops-queue {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ops-queue__item {
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.ops-queue__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: var(--text-xs, 12px);
+  color: var(--color-text-muted);
+}
+
+.ops-queue__kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.ops-queue__when {
+  margin-left: auto;
+}
+
+.ops-queue__summary {
+  margin: 8px 0 0;
+  color: var(--color-text);
+}
+
+.ops-queue__detail {
+  margin: 10px 0 0;
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--color-bg-muted);
+  border-radius: var(--radius-sm);
+
+  div {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    gap: 10px;
+  }
+
+  dt {
+    color: var(--color-text-muted);
+    font-size: var(--text-xs, 12px);
+  }
+
+  dd {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    /* A long answer is evidence, not the subject: four lines is enough to recognise it. */
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+.ops-queue__resolution {
+  margin: 10px 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm, 13px);
+}
+
+.ops-queue__actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+/* An empty section inside a panel: one line, not a 200px illustration. */
+.ops-empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm, 13px);
+}
+
+.ops-queue__agent a {
+  color: var(--color-text-secondary);
+}
+
+/* The agent filter sits with the status filters: both narrow the same list. */
+.ops-agent-filter {
+  max-width: 200px;
+}

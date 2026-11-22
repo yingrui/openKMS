@@ -25,6 +25,8 @@ export interface AgentMessageItem {
   content: string;
   tool_calls?: unknown;
   attachments?: AgentAttachment[] | null;
+  /** The reader's own verdict on this answer, so the thumb renders pressed after a reload. */
+  feedback?: 'up' | 'down' | null;
   created_at: string;
 }
 

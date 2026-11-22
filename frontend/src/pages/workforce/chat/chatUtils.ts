@@ -1,7 +1,16 @@
 import type { AgentMessageItem } from '../../../data/agentApi';
 import { KB_QA_SOURCES_V1, type SearchResult } from '../../../data/knowledgeBasesApi';
 import { assistantHistoryStreamParts } from '../../../components/wiki/wikiCopilotStreamParts';
-import type { ChatMessage } from './types';
+import type { ChatFeedbackVote, ChatMessage } from './types';
+
+/** The votes already cast in this thread, keyed the way the thumbs look them up (`replyKey`/`id`). */
+function kbAgentFeedbackFromItems(items: AgentMessageItem[]): Record<string, ChatFeedbackVote> {
+  const out: Record<string, ChatFeedbackVote> = {};
+  for (const m of items) {
+    if (m.feedback === 'up' || m.feedback === 'down') out[m.id] = m.feedback;
+  }
+  return out;
+}
 
 function kbAgentItemsToChatMessages(items: AgentMessageItem[]): ChatMessage[] {
   const out: ChatMessage[] = [];
@@ -125,6 +134,7 @@ export {
   kbAgentItemsToChatMessages,
   chatLineId,
   chatFeedbackKey,
+  kbAgentFeedbackFromItems,
   chatSourceKind,
   isDataEvidenceSource,
   splitQaSources,

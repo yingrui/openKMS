@@ -23,6 +23,7 @@ from app.schemas.workforce import (
     WorkforceAgentResponse,
     WorkforceAgentSemanticModelBinding,
 )
+from app.services.workforce.usage import usage_by_agent
 
 
 async def require_agent(
@@ -72,7 +73,11 @@ async def counts_by_agent(db: AsyncSession, agent_ids: list[str]) -> dict[str, d
     return counts
 
 
-def agent_to_response(agent: WorkforceAgent, counts: dict[str, int]) -> WorkforceAgentResponse:
+def agent_to_response(
+    agent: WorkforceAgent,
+    counts: dict[str, int],
+    usage: dict[str, object] | None = None,
+) -> WorkforceAgentResponse:
     return WorkforceAgentResponse(
         id=agent.id,
         name=agent.name,
@@ -85,6 +90,7 @@ def agent_to_response(agent: WorkforceAgent, counts: dict[str, int]) -> Workforc
         agent_config=dict(agent.agent_config) if isinstance(agent.agent_config, dict) else None,
         origin_knowledge_base_id=agent.origin_knowledge_base_id,
         **counts,
+        **(usage or {}),
         created_at=agent.created_at,
         updated_at=agent.updated_at,
     )
@@ -158,6 +164,9 @@ async def ontology_group_bindings(
 
 async def agent_detail(db: AsyncSession, agent: WorkforceAgent) -> WorkforceAgentDetailResponse:
     counts = (await counts_by_agent(db, [agent.id])).get(agent.id, {})
+    # Computed here too: a field that is populated by `/agents` and zero on `/agents/{id}` is a field the detail
+    # screen would read as "never called".
+    usage = (await usage_by_agent(db, [agent.id])).get(agent.id, {})
     base = agent_to_response(
         agent,
         {
@@ -166,6 +175,7 @@ async def agent_detail(db: AsyncSession, agent: WorkforceAgent) -> WorkforceAgen
             "ontology_group_count": counts.get("ontology_group_count", 0),
             "credential_count": counts.get("credential_count", 0),
         },
+        usage,
     )
     return WorkforceAgentDetailResponse(
         **base.model_dump(),

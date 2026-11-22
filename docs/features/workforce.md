@@ -208,9 +208,9 @@ The grouping is **data**, three fields per capability in `qa-agent/tool_catalog.
 decision about one agent and lives on that agent's Tools tab, which is also where the bound model or ontology group is
 chosen.
 
-## Behaviour: what the runtime refuses, and what a caller reads
+## Answer policy: what the runtime refuses, and what a caller reads
 
-`Behavior` holds what the runtime **decides**, not what the prompt asks for. The distinction is written on the page,
+`Answer policy` holds what the runtime **decides**, not what the prompt asks for. The distinction is written on the page,
 because two of its four original settings — "unknown measure" and "look before you query" — are only prose in the
 prompt: the runtime cannot parse a question for a measure name without guessing. Grounding, citations, the length limit
 and the refusal contract are enforced.
@@ -288,6 +288,38 @@ code-execution policy with its workable command list — so the Tools tab can sh
 it. The qa-agent builds that payload from its own tool objects (`qa_agent/tool_catalog.py`), which is why adding a tool
 needs no front-end change.
 
+## Operations: the problems that need a person
+
+`/workforce/operations` is reached from the agents list header. It is a **work queue**, not a dashboard: one row per
+case, three statuses, and a sentence saying what was done before it closes.
+
+| Kind | Producer | Recorded today |
+|---|---|---|
+| `negative_feedback` | a 👎 on the conversation screen | yes — carries the question, an answer excerpt, and who objected |
+| `refusal` | the answer policy replacing an answer | yes, unless the agent turned `queue_refusals` off |
+| `violation` / `risk` | Guardrails | **reserved**: named, no producer yet |
+| `prompt_injection` | a question that looks like an instruction override | **reserved**, same reason |
+
+**An agent is a filter, not a section.** The page asks "what needs a person", and the agent is one attribute of a case,
+so the fleet lives on the agents list; the queue offers an agent filter rather than a second table over the same rows.
+
+**Three statuses, and `resolved` needs a sentence.** `open → resolved` is refused without a `resolution`
+(`services/workforce/issues.py`), because "solved, no explanation" cannot be told apart from "waved through" by the next
+reader. `ignored` may carry one, and should when it says something ("vote withdrawn").
+
+**Withdrawing a 👎 closes the case it opened.** A queue item for a verdict nobody holds any more sends someone to fix
+an answer the reader has already accepted. Re-pressing 👎 reopens a new case.
+
+**Pause and delete have their own tab, `Service`**, after Credentials: both decide whether the service answers at all,
+which is not a setting of the answer. The status chip also stays in the identity row, so "is it live?" is answered
+without a click; the tab holds the two actions that change it, with the irreversible one on its own panel.
+
+**`queue_refusals` is on by default.** A new agent refuses a lot and most of those refusals are wrong — exactly what
+someone has to look at. Once the answers settle, the same switch (Behavior → Refusal) is how the noise stops.
+
+**Guardrails findings arrive as rows, not as a new section.** The five kinds share one shape, so a policy or risk
+finding from Guardrails is a producer writing `open_issue(...)` — the page does not change.
+
 ## Not in this version
 
 | Item | Trigger to build it |
@@ -301,11 +333,33 @@ needs no front-end change.
 
 ## Verification
 
-- `cd backend && ./check.sh` — includes `tests/test_workforce.py` (config split, skills, credential shape, read-only rule)
-  and `tests/test_workforce_skills.py` (the `SKILL.md` contract: name/description/entrypoint/limits/secrets).
+- `cd backend && ./check.sh` — includes `tests/test_workforce.py` (config split, skills, credential shape, read-only rule),
+  `tests/test_workforce_skills.py` (the `SKILL.md` contract: name/description/entrypoint/limits/secrets) and
+  `tests/test_workforce_feedback.py` (one vote per reader per answer; usage reads the path a caller actually takes).
 - `cd frontend && npm run check` — typecheck, style guards, the draft round-trip test, build.
 - `cd backend && uv run alembic upgrade head` — creates the tables and seeds one agent per existing knowledge base;
   `wf7skills` adds the skill registry and drops `installed_skills` bindings that pointed at the Agent Project registry.
 - Sweep a locale for the new surface: `npm run screenshot -- --path /workforce --check-overflow`.
 - `cd qa-agent && ./check.sh` — includes `tests/test_tool_catalog.py` (every capability lists its tools, descriptions
   are the tools', the code-execution policy carries the real allowlist).
+
+### The agent's tabs
+
+| Tab | Question | Notes |
+|---|---|---|
+| Profile | Who is it, and how does it talk? | Identity, instruction, AGENTS.md, and the **assembled prompt** as a collapsed panel |
+| Model | Which model, how sampling? | |
+| Knowledge | What may it read? | Corpora, semantic models, ontology groups, the one web-search connector |
+| Skills | Which packaged procedures? | Text (SKILL.md), not callables |
+| Tools | What may it do, and how deep? | Capability switches, per-tool narrowing, the command allow list, the tool-round ceiling |
+| Answer policy | What makes an answer acceptable? | Grounding, citations, length, refusal contract |
+| Credentials | Who may call, and how? | Keys and the endpoint |
+| Service | Does it answer at all? | Pause / resume, the paused message, delete |
+
+Three things that used to be misfiled and now are not: the **paused message** is read by callers because the agent is
+paused, so it is edited on Service next to the switch; the **tool-round ceiling** limits a capability, so it is on Tools;
+and the **prompt preview** is a projection, not a subject, so it is a collapsed panel on Profile — where the three fields
+it starts from are, and it follows them as they are typed (the endpoint previews what it is given).
+
+`sandbox.enabled` on an agent is gone: the tool ledger is the only place code execution is switched on. A key that can
+turn a capability on but has no control that writes it is a switch nobody can find.

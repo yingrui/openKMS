@@ -22,6 +22,14 @@ export interface WorkforceAgentResponse {
   semantic_model_count: number;
   ontology_group_count: number;
   credential_count: number;
+  /** Answers a caller asked for in the last 7 days, counted from the audit trail. */
+  calls_7d: number;
+  /** Of those, how many answered 4xx/5xx — what a caller experiences as "it did not work". */
+  errors_7d: number;
+  last_call_at?: string | null;
+  /** All-time: votes arrive slowly, so a 7-day window would read as "nobody uses it". */
+  upvotes: number;
+  downvotes: number;
   created_at: string;
   updated_at: string;
 }
@@ -212,6 +220,73 @@ export async function createWorkforceCredential(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
   });
+}
+
+/** A queue item: something a person should look at and close. */
+export interface WorkforceIssue {
+  id: string;
+  agent_id: string;
+  agent_name: string;
+  /** negative_feedback | refusal | violation | risk | prompt_injection */
+  kind: string;
+  severity: string;
+  summary: string;
+  detail?: Record<string, unknown> | null;
+  status: 'open' | 'resolved' | 'ignored';
+  resolution?: string | null;
+  resolved_by?: string | null;
+  resolved_at?: string | null;
+  created_at: string;
+}
+
+export interface WorkforceIssueList {
+  items: WorkforceIssue[];
+  total: number;
+  counts: Record<string, number>;
+}
+
+export async function fetchWorkforceIssues(params: {
+  status?: string;
+  kind?: string;
+  agentId?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<WorkforceIssueList> {
+  return request<WorkforceIssueList>('/api/workforce/issues', {
+    query: {
+      status: params.status,
+      kind: params.kind,
+      agent_id: params.agentId,
+      limit: params.limit,
+      offset: params.offset,
+    },
+  });
+}
+
+export async function updateWorkforceIssue(
+  issueId: string,
+  body: { status: 'open' | 'resolved' | 'ignored'; resolution?: string | null },
+): Promise<WorkforceIssue> {
+  return request<WorkforceIssue>(`/api/workforce/issues/${issueId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+/** One reader's verdict on one answer; `vote: null` withdraws it. */
+export async function voteAnswerFeedback(
+  agentId: string,
+  body: { message_id: string; conversation_id?: string | null; vote: 'up' | 'down' | null },
+): Promise<{ message_id: string; vote: 'up' | 'down' | null }> {
+  return request<{ message_id: string; vote: 'up' | 'down' | null }>(
+    `/api/workforce/agents/${agentId}/feedback`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
 }
 
 export async function revokeWorkforceCredential(

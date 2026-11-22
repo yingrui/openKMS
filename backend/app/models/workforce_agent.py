@@ -168,3 +168,40 @@ class WorkforceAgentCredential(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+#: A reader's verdict on one answer.
+FEEDBACK_UP = "up"
+FEEDBACK_DOWN = "down"
+
+
+class WorkforceAnswerFeedback(Base):
+    """One person's thumbs on one answer (`up` / `down`).
+
+    The control has existed on the conversation screen since it shipped, but only as component state: a reload
+    lost every vote, so "is this agent answering well" had no answer. The row points at the message rather than
+    copying its text — the answer already lives in `agent_messages`, and a second copy of a conversation is a
+    second truth to keep in step (and one more place the conversation's content is stored).
+    """
+
+    __tablename__ = "workforce_answer_feedback"
+    __table_args__ = (
+        # One verdict per reader per answer: changing one's mind edits the row instead of adding a second vote.
+        UniqueConstraint("message_id", "actor_sub", name="uq_workforce_feedback_message_voter"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    agent_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("workforce_agents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    #: The conversation the answer belongs to; nullable because a thread may be deleted before its votes.
+    conversation_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    message_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    vote: Mapped[str] = mapped_column(String(4), nullable=False)
+    #: Who voted. A service credential acts for its owner, so this is the owner's subject, not the agent's.
+    actor_sub: Mapped[str] = mapped_column(String(512), nullable=False, index=True)
+    actor_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

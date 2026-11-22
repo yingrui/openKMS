@@ -38,6 +38,7 @@ from app.schemas.agent import (
     AgentMessagePostResponse,
 )
 from app.schemas.knowledge_base import SearchResult
+from app.services.workforce.feedback import votes_for_messages
 from app.services.runtime.agent.assistant_stream_parts import (
     WIKI_ASSISTANT_STREAM_PARTS_KEY,
     AssistantStreamPartsBuilder,
@@ -556,8 +557,14 @@ def build_kb_conversation_router(surface: str, path_segment: str) -> APIRouter:
             .limit(limit)
         )
         rows = list(r.scalars().all())
+        votes = await votes_for_messages(
+            db, [m.id for m in rows], actor_sub=get_jwt_sub(request)
+        )
         return AgentMessageListResponse(
-            items=[_msg_to_out(m) for m in rows],
+            items=[
+                _msg_to_out(m).model_copy(update={"feedback": votes.get(m.id)})
+                for m in rows
+            ],
             total=total_i,
             limit=limit,
             offset=offset,

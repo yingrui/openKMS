@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import "./WorkforceAreaNav.scss";
 
-/** The Workforce area's two halves: the employees, and the skills they can carry. */
+/** The Workforce area: the employees and what they can carry. Running them is a page reached from the list header. */
 export function WorkforceAreaNav() {
   const { t } = useTranslation("workforce");
 

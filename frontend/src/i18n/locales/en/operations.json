@@ -1,0 +1,59 @@
+{
+  "area": {
+    "title": "Operations",
+    "lead": "The problems that need a person: bad answers, refusals, and — once Guardrails lands — policy and risk findings."
+  },
+  "status": {
+    "active": "serving",
+    "paused": "paused",
+    "archived": "deleted"
+  },
+  "loading": "Loading…",
+  "queue": {
+    "title": "Needs handling",
+    "lead": "Newest first. Closing one means saying what was done about it.",
+    "openCount_one": "{{count}} open item",
+    "openCount_other": "{{count}} open items",
+    "status": {
+      "open": "Open",
+      "resolved": "Resolved",
+      "ignored": "Ignored"
+    },
+    "kind": {
+      "negative_feedback": "an answer was marked bad",
+      "refusal": "refused to answer",
+      "violation": "policy violation",
+      "risk": "risk",
+      "prompt_injection": "prompt-injection attempt"
+    },
+    "high": "high",
+    "empty": {
+      "open": "Nothing to handle. Bad answers show up here as soon as someone marks one.",
+      "resolved": "Nothing resolved yet.",
+      "ignored": "Nothing ignored yet."
+    },
+    "question": "Asked",
+    "answer": "Answered",
+    "reason": "Refused because",
+    "voter": "Marked by",
+    "resolve": "Resolve",
+    "ignore": "Ignore",
+    "reopen": "Reopen",
+    "resolveTitle": "Close this item",
+    "ignoreTitle": "Ignore this item",
+    "resolutionLabel": "What did you do",
+    "resolutionHint": "Required: the next person reads this to know whether it was fixed or waved through.",
+    "ignoreHint": "Optional, but a line helps whoever finds it later.",
+    "resolutionPlaceholder": "e.g. the retrieval depth was too low; raised it and re-asked the same question",
+    "resolutionRequired": "Say what was done before closing it",
+    "confirm": "Save",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "resolvedToast": "Closed",
+    "ignoredToast": "Ignored",
+    "saveFailed": "Could not update the item",
+    "loadFailed": "Could not load the queue",
+    "agentFilter": "Filter by agent",
+    "allAgents": "All agents"
+  }
+}

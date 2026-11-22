@@ -1,0 +1,59 @@
+{
+  "area": {
+    "title": "运维",
+    "lead": "需要人来处理的问题：答得不好的、被拒答的，以及以后 Guardrails 发现的违规与风控。"
+  },
+  "status": {
+    "active": "服务中",
+    "paused": "已暂停",
+    "archived": "已删除"
+  },
+  "loading": "加载中…",
+  "queue": {
+    "title": "待处理",
+    "lead": "最新的在最前。关闭一条，要写清楚做了什么处理。",
+    "openCount_one": "{{count}} 条待处理",
+    "openCount_other": "{{count}} 条待处理",
+    "status": {
+      "open": "待处理",
+      "resolved": "已解决",
+      "ignored": "已忽略"
+    },
+    "kind": {
+      "negative_feedback": "答案被点踩",
+      "refusal": "拒答",
+      "violation": "违规",
+      "risk": "风控",
+      "prompt_injection": "疑似提示注入"
+    },
+    "high": "高",
+    "empty": {
+      "open": "没有待处理的问题。有人点踩之后，这里就会出现。",
+      "resolved": "还没有已解决的条目。",
+      "ignored": "还没有被忽略的条目。"
+    },
+    "question": "问题",
+    "answer": "答案",
+    "reason": "拒答原因",
+    "voter": "标记人",
+    "resolve": "已解决",
+    "ignore": "忽略",
+    "reopen": "重新打开",
+    "resolveTitle": "关闭这条",
+    "ignoreTitle": "忽略这条",
+    "resolutionLabel": "做了什么处理",
+    "resolutionHint": "必填：下一个人靠这句话判断是真修好了，还是被放过了。",
+    "ignoreHint": "可以不写，但写一句对后来的人有帮助。",
+    "resolutionPlaceholder": "例如：检索深度太小，调高后重新问了一遍",
+    "resolutionRequired": "关闭前请写清楚做了什么",
+    "confirm": "保存",
+    "cancel": "取消",
+    "saving": "保存中…",
+    "resolvedToast": "已关闭",
+    "ignoredToast": "已忽略",
+    "saveFailed": "更新失败",
+    "loadFailed": "加载失败",
+    "agentFilter": "按数字员工筛选",
+    "allAgents": "全部数字员工"
+  }
+}

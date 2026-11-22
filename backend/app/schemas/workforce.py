@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -80,7 +80,15 @@ class WorkforceAgentResponse(BaseModel):
     knowledge_base_count: int = 0
     semantic_model_count: int = 0
     ontology_group_count: int = 0
+    #: Keys still valid (revoked ones are not counted: a list that includes them reads as "already rotated").
     credential_count: int = 0
+    #: Activity over the last 7 days, read from the audit trail — see `services/workforce/usage.py` for why the
+    #: window is 7 days here and all-time for votes.
+    calls_7d: int = 0
+    errors_7d: int = 0
+    last_call_at: datetime | None = None
+    upvotes: int = 0
+    downvotes: int = 0
     created_at: datetime
     updated_at: datetime
 
@@ -144,6 +152,19 @@ class WorkforceCredentialListItem(BaseModel):
 
 class WorkforceCredentialListResponse(BaseModel):
     items: list[WorkforceCredentialListItem]
+
+
+class WorkforceFeedbackRequest(BaseModel):
+    """A reader's verdict on one answer. `vote = null` withdraws it."""
+
+    message_id: str
+    conversation_id: str | None = None
+    vote: Literal["up", "down"] | None = None
+
+
+class WorkforceFeedbackResponse(BaseModel):
+    message_id: str
+    vote: Literal["up", "down"] | None = None
 
 
 # --- Service plane (ask) ---
@@ -226,3 +247,35 @@ class WorkforceAvailableSkill(BaseModel):
     display_name: str
     default_version: str | None = None
     versions: list[str] = []
+
+
+# --- Operations queue ---
+
+
+class WorkforceIssueResponse(BaseModel):
+    id: str
+    agent_id: str
+    agent_name: str = ""
+    #: negative_feedback | refusal | violation | risk | prompt_injection
+    kind: str
+    severity: str
+    summary: str
+    detail: dict[str, Any] | None = None
+    status: str
+    resolution: str | None = None
+    resolved_by: str | None = None
+    resolved_at: datetime | None = None
+    created_at: datetime
+
+
+class WorkforceIssueListResponse(BaseModel):
+    items: list[WorkforceIssueResponse]
+    total: int
+    #: Counts per status across everything the caller can see, so the filter can show "3 open" without a second call.
+    counts: dict[str, int] = Field(default_factory=dict)
+
+
+class WorkforceIssueUpdate(BaseModel):
+    status: Literal["open", "resolved", "ignored"]
+    #: Required to resolve. "Solved, no idea how" is not a resolution.
+    resolution: str | None = Field(None, max_length=2000)

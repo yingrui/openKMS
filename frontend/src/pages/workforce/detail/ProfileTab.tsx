@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { updateWorkforceAgent } from '../../../data/workforceApi';
 import { EntityViewField, EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { configFromDraft, draftFromConfig } from '../workforceConfigDraft';
+import { AssembledPrompt } from './AssembledPrompt';
 import { useWorkforceDetail } from './workforceDetailContext';
 
 /** The same cap the backend validates against. */
@@ -119,6 +120,16 @@ export function WorkforceProfileTab() {
             <span className="ds-field__hint">{t('agentsMdNote')}</span>
           </div>
         </div>
+      </EntityViewPanel>
+
+      {/* Read-only, and collapsed: the projection of what the three fields above (plus every other tab) assemble into.
+          Each block names the tab it comes from, so "what changed" is answered by opening this rather than by guessing. */}
+      <EntityViewPanel
+        title={t('assembledPromptTitle')}
+        description={t('assembledPromptLead')}
+        defaultCollapsed
+      >
+        <AssembledPrompt systemPrompt={instruction} agentsMd={agentsMd} />
       </EntityViewPanel>
     </>
   );

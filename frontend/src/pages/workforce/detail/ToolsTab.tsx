@@ -11,8 +11,9 @@ import {
   type ToolCapability,
 } from '../../../data/workforceToolsApi';
 import { useAsyncData } from '../../../hooks/useAsyncData';
+import type { Dispatch, SetStateAction } from 'react';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
-import { configFromDraft, draftFromConfig } from '../workforceConfigDraft';
+import { configFromDraft, draftFromConfig, type BehaviourDraft } from '../workforceConfigDraft';
 import { useWorkforceDetail } from './workforceDetailContext';
 
 /**
@@ -38,7 +39,7 @@ export function WorkforceToolsTab() {
   const catalog = useAsyncData(() => fetchToolCatalog(), []);
   const [openCapability, setOpenCapability] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const draft = draftFromConfig(agent.agent_config);
+  const [draft, setDraft] = useState(() => draftFromConfig(agent.agent_config));
   // The ledger: `{capability_id: "all" | [tool_id, ...]}`. A missing key means the capability is off.
   const [ledger, setLedger] = useState<Record<string, 'all' | string[]>>(() =>
     agent.agent_tools ?? {}
@@ -105,7 +106,11 @@ export function WorkforceToolsTab() {
   };
 
   const allowCommandsDirty =
-    allowCommands.trim() !== (agent.agent_config?.sandbox?.allow_commands ?? []).join('\n').trim();
+    allowCommands.trim() !== (agent.agent_config?.sandbox?.allow_commands ?? []).join('\n').trim() ||
+    draft.maxToolRounds !==
+      (agent.agent_config?.orchestration?.max_tool_rounds
+        ? String(agent.agent_config.orchestration.max_tool_rounds)
+        : '');
 
   return (
     <>
@@ -163,6 +168,8 @@ export function WorkforceToolsTab() {
                   policy={capability.policy}
                   allowCommands={allowCommands}
                   onAllowCommands={setAllowCommands}
+                  draft={draft}
+                  setDraft={setDraft}
                   dirty={allowCommandsDirty}
                   busy={busy}
                   onSave={() => void saveAllowCommands()}
@@ -274,6 +281,8 @@ function PolicyBlock({
   policy,
   allowCommands,
   onAllowCommands,
+  draft,
+  setDraft,
   dirty,
   busy,
   onSave,
@@ -282,6 +291,8 @@ function PolicyBlock({
   allowCommands: string;
   onAllowCommands: (value: string) => void;
   dirty: boolean;
+  draft: BehaviourDraft;
+  setDraft: Dispatch<SetStateAction<BehaviourDraft>>;
   busy: boolean;
   onSave: () => void;
 }) {
@@ -301,6 +312,16 @@ function PolicyBlock({
           tool: policy.allowlist.tools.join(', '),
         })}
       </p>
+      <FormField label={t('maxToolRounds')} hint={t('maxToolRoundsHint')}>
+        <input
+          className="ds-control"
+          type="number"
+          min={1}
+          step={1}
+          value={draft.maxToolRounds}
+          onChange={(e) => setDraft((d) => ({ ...d, maxToolRounds: e.target.value }))}
+        />
+      </FormField>
       <FormField
         label={t('sandboxAllowCommands')}
         hint={t('sandboxAllowCommandsHintWithBuiltin', {

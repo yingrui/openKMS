@@ -17,7 +17,7 @@ import logging
 import uuid
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,7 +31,11 @@ from app.models.workforce_skill import (
     WorkforceSkill,
     WorkforceSkillVersion,
 )
+from app.models.agent_models import AgentMessage
+from app.models.workforce_issue import ISSUE_NEGATIVE_FEEDBACK, ISSUE_OPEN, ISSUE_REFUSAL, WorkforceIssue
+from app.services.workforce.issues import apply_status, close_for_source, excerpt, open_issue
 from app.models.workforce_agent import (
+    WorkforceAnswerFeedback,
     AGENT_STATUS_ACTIVE,
     AGENT_STATUS_PAUSED,
     AGENT_STATUS_ARCHIVED,
@@ -64,6 +68,11 @@ from app.schemas.workforce import (
     WorkforceCredentialCreatedResponse,
     WorkforceCredentialListItem,
     WorkforceCredentialListResponse,
+    WorkforceFeedbackRequest,
+    WorkforceFeedbackResponse,
+    WorkforceIssueListResponse,
+    WorkforceIssueResponse,
+    WorkforceIssueUpdate,
 )
 from app.services.content.knowledge_bases.qa_agent_proxy import (
     agent_error,
@@ -86,6 +95,7 @@ from app.services.workforce.agent_config import (
     runtime_config,
 )
 from app.services.workforce.credentials import mint_credential
+from app.services.workforce.usage import usage_by_agent
 from app.services.workforce.read import (
     agent_detail,
     agent_to_response,
@@ -188,8 +198,11 @@ async def list_agents(
         .all()
     )
     counts = await counts_by_agent(db, [a.id for a in rows])
+    usage = await usage_by_agent(db, [a.id for a in rows])
     return WorkforceAgentListResponse(
-        items=[agent_to_response(a, counts.get(a.id, _EMPTY_COUNTS)) for a in rows],
+        items=[
+            agent_to_response(a, counts.get(a.id, _EMPTY_COUNTS), usage.get(a.id)) for a in rows
+        ],
         total=total,
         limit=limit,
         offset=offset,
@@ -890,6 +903,26 @@ async def ask_agent(
         logger.error("Workforce ask could not reach %s: %s", url, e)
         raise HTTPException(status_code=502, detail="Could not reach agent service") from e
 
+    refused = data.get("refused") is True
+    if refused and _queue_refusals(agent):
+        refusal = data.get("refusal") or {}
+        await open_issue(
+            db,
+            agent_id=agent.id,
+            kind=ISSUE_REFUSAL,
+            # A retried question is a new call, but the same case: the id keeps two retries from filling the queue.
+            source_ref=f"ask:{body.question.strip()[:64]}:{refusal.get('reason', '')}",
+            summary=excerpt(body.question) or "A question was refused",
+            detail={
+                "question": excerpt(body.question),
+                "answer": excerpt(str(data.get("answer", "") or "")),
+                "reason": refusal.get("reason"),
+                "contact": refusal.get("contact"),
+                "kb_id": kb.id,
+            },
+        )
+        await db.commit()
+
     return WorkforceAskResponse(
         answer=str(data.get("answer", "") or ""),
         kb_id=kb.id,
@@ -904,6 +937,134 @@ async def ask_agent(
         refusal=data.get("refusal"),
         prompt_version=data.get("prompt_version"),
         model=data.get("model"),
+    )
+
+
+def _queue_refusals(agent: WorkforceAgent) -> bool:
+    """Whether this agent's refusals go into the queue. On unless the author turned it off.
+
+    On by default because a fresh agent refuses a lot and most of those refusals are wrong — that is what a person
+    needs to look at. Once an agent has settled, the same setting is how the noise stops.
+    """
+    policy = (agent.agent_config or {}).get("answer_policy") or {}
+    return policy.get("queue_refusals", True) is not False
+
+
+@router.get("/issues", response_model=WorkforceIssueListResponse)
+async def list_issues(
+    request: Request,
+    status: str = Query(default=ISSUE_OPEN),
+    kind: str | None = None,
+    agent_id: str | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """The queue: what needs a person, newest first, with the counts the filter needs."""
+    sub, _ = _principal(request)
+    is_admin = jwt_payload_is_admin(request.state.openkms_jwt_payload)
+    scope = [] if is_admin else [WorkforceAgent.owner_sub == sub]
+
+    q = (
+        select(WorkforceIssue, WorkforceAgent.name)
+        .join(WorkforceAgent, WorkforceAgent.id == WorkforceIssue.agent_id)
+        .where(*scope)
+    )
+    count_rows = (
+        await db.execute(
+            select(WorkforceIssue.status, func.count())
+            .join(WorkforceAgent, WorkforceAgent.id == WorkforceIssue.agent_id)
+            .where(*scope)
+            .group_by(WorkforceIssue.status)
+        )
+    ).all()
+    counts = {str(s): int(n) for s, n in count_rows}
+
+    filters = list(scope)
+    if status != "all":
+        filters.append(WorkforceIssue.status == status)
+    if kind:
+        filters.append(WorkforceIssue.kind == kind)
+    if agent_id:
+        filters.append(WorkforceIssue.agent_id == agent_id)
+    total = int(
+        (
+            await db.execute(
+                select(func.count()).select_from(WorkforceIssue).join(
+                    WorkforceAgent, WorkforceAgent.id == WorkforceIssue.agent_id
+                ).where(*filters)
+            )
+        ).scalar_one()
+    )
+    rows = (
+        await db.execute(
+            q.where(*filters)
+            .order_by(WorkforceIssue.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+    ).all()
+    return WorkforceIssueListResponse(
+        items=[
+            WorkforceIssueResponse(
+                id=row.id,
+                agent_id=row.agent_id,
+                agent_name=name or "",
+                kind=row.kind,
+                severity=row.severity,
+                summary=row.summary,
+                detail=dict(row.detail) if isinstance(row.detail, dict) else None,
+                status=row.status,
+                resolution=row.resolution,
+                resolved_by=row.resolved_by,
+                resolved_at=row.resolved_at,
+                created_at=row.created_at,
+            )
+            for row, name in rows
+        ],
+        total=total,
+        counts=counts,
+    )
+
+
+@router.patch("/issues/{issue_id}", response_model=WorkforceIssueResponse)
+async def update_issue(
+    issue_id: str,
+    body: WorkforceIssueUpdate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Close an item. `resolved` needs a sentence: what was done, not just that something was."""
+    sub, name = _principal(request)
+    row = await db.get(WorkforceIssue, issue_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Issue not found")
+    agent = await require_agent(
+        db,
+        row.agent_id,
+        viewer_sub=sub,
+        is_admin=jwt_payload_is_admin(request.state.openkms_jwt_payload),
+    )
+    if not apply_status(row, status=body.status, resolution=body.resolution, resolved_by=name or sub):
+        raise HTTPException(
+            status_code=400,
+            detail="Resolving an issue needs a resolution: what was done about it",
+        )
+    await db.commit()
+    await db.refresh(row)
+    return WorkforceIssueResponse(
+        id=row.id,
+        agent_id=row.agent_id,
+        agent_name=agent.name,
+        kind=row.kind,
+        severity=row.severity,
+        summary=row.summary,
+        detail=dict(row.detail) if isinstance(row.detail, dict) else None,
+        status=row.status,
+        resolution=row.resolution,
+        resolved_by=row.resolved_by,
+        resolved_at=row.resolved_at,
+        created_at=row.created_at,
     )
 
 
@@ -949,3 +1110,118 @@ async def ensure_default_agent(
     return agent
 
 
+
+
+async def _queue_negative_feedback(
+    db: AsyncSession,
+    *,
+    agent_id: str,
+    feedback: WorkforceAnswerFeedback,
+    conversation_id: str | None,
+    voter: str,
+) -> None:
+    """Turn one 👎 into a queue item, with enough context to judge it without opening the conversation."""
+    answer = await db.get(AgentMessage, feedback.message_id)
+    question_text = ""
+    if answer is not None and conversation_id:
+        previous = (
+            await db.execute(
+                select(AgentMessage)
+                .where(
+                    AgentMessage.conversation_id == conversation_id,
+                    AgentMessage.role == "user",
+                    AgentMessage.created_at <= answer.created_at,
+                )
+                .order_by(AgentMessage.created_at.desc())
+                .limit(1)
+            )
+        ).scalars().first()
+        if previous is not None:
+            question_text = previous.content
+    await open_issue(
+        db,
+        agent_id=agent_id,
+        kind=ISSUE_NEGATIVE_FEEDBACK,
+        source_ref=f"feedback:{feedback.id}",
+        summary=excerpt(question_text) or "A reader marked an answer as bad",
+        detail={
+            "question": excerpt(question_text),
+            "answer": excerpt(answer.content if answer is not None else ""),
+            "message_id": feedback.message_id,
+            "conversation_id": conversation_id,
+            "voter": voter,
+        },
+    )
+
+
+@router.post("/agents/{agent_id}/feedback", response_model=WorkforceFeedbackResponse)
+async def record_feedback(
+    agent_id: str,
+    body: WorkforceFeedbackRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Record, change, or withdraw one reader's verdict on one answer.
+
+    Signed-in only: a vote is a person's opinion, and a service credential acts for its owner — the owner's own
+    chat screen is the one place these are cast today.
+    """
+    await _scoped(db, request, agent_id, write=True)
+    sub, name = _principal(request)
+    existing = (
+        await db.execute(
+            select(WorkforceAnswerFeedback).where(
+                WorkforceAnswerFeedback.message_id == body.message_id,
+                WorkforceAnswerFeedback.actor_sub == sub,
+            )
+        )
+    ).scalars().first()
+    if body.vote is None:
+        if existing is not None:
+            # Withdrawing a 👎 withdraws the case it opened: leaving an item queued for a verdict nobody holds any more
+            # would send someone to fix an answer the reader has already accepted.
+            await close_for_source(
+                db,
+                source_ref=f"feedback:{existing.id}",
+                kind=ISSUE_NEGATIVE_FEEDBACK,
+                resolution="vote withdrawn",
+            )
+            await db.delete(existing)
+            await db.commit()
+        return WorkforceFeedbackResponse(message_id=body.message_id, vote=None)
+    if existing is None:
+        existing = WorkforceAnswerFeedback(
+            id=str(uuid.uuid4()),
+            agent_id=agent_id,
+            conversation_id=body.conversation_id,
+            message_id=body.message_id,
+            vote=body.vote,
+            actor_sub=sub,
+            actor_name=name,
+        )
+        db.add(existing)
+        await db.flush()
+    else:
+        existing.vote = body.vote
+        if body.conversation_id:
+            existing.conversation_id = body.conversation_id
+        await db.flush()
+
+    source_ref = f"feedback:{existing.id}"
+    if body.vote == "down":
+        await _queue_negative_feedback(
+            db,
+            agent_id=agent_id,
+            feedback=existing,
+            conversation_id=body.conversation_id,
+            voter=name or sub,
+        )
+    else:
+        await close_for_source(
+            db,
+            source_ref=source_ref,
+            kind=ISSUE_NEGATIVE_FEEDBACK,
+            resolution="vote withdrawn" if body.vote is None else "vote changed to 👎-free",
+        )
+    await db.commit()
+    return WorkforceFeedbackResponse(message_id=body.message_id, vote=body.vote)

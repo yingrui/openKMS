@@ -1,0 +1,68 @@
+// A row's actions folded into one `⋯` (see TableRowMenu.tsx).
+
+.ds-row-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.ds-row-menu__trigger[aria-expanded='true'] {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.ds-row-menu__list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 60;
+  min-width: 180px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--color-bg-elevated, var(--color-bg));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md, 0 8px 24px rgb(0 0 0 / 18%));
+}
+
+.ds-row-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm, 13px);
+  color: var(--color-text);
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.ds-row-menu__item:hover:not(:disabled) {
+  background: var(--color-bg-muted);
+}
+
+.ds-row-menu__item--danger {
+  color: var(--color-error);
+}
+
+.ds-row-menu__item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Portalled out of the row (and out of the detail rail), placed by measurement rather than by CSS. */
+.ds-row-menu__list--floating {
+  position: fixed;
+  right: auto;
+  top: 0;
+  left: 0;
+}
+
+.ds-row-menu__list--floating {
+  max-height: 60vh;
+  overflow-y: auto;
+}

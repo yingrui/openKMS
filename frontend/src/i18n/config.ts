@@ -48,8 +48,10 @@ import enOntology from './locales/en/ontology.json';
 import zhOntology from './locales/zh-CN/ontology.json';
 import enChamber from './locales/en/chamber.json';
 import enWorkforce from './locales/en/workforce.json';
+import enOperations from './locales/en/operations.json';
 import zhChamber from './locales/zh-CN/chamber.json';
 import zhWorkforce from './locales/zh-CN/workforce.json';
+import zhOperations from './locales/zh-CN/operations.json';
 
 export const OPENKMS_LOCALE_STORAGE_KEY = 'openkms_locale';
 
@@ -147,6 +149,7 @@ void i18n
         ontology: enOntology,
         chamber: enChamber,
         workforce: enWorkforce,
+    operations: enOperations,
       },
       'zh-CN': {
         common: zhCommon,
@@ -173,6 +176,7 @@ void i18n
         ontology: zhOntology,
         chamber: zhChamber,
         workforce: zhWorkforce,
+    operations: zhOperations,
       },
     },
   });

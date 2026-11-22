@@ -178,6 +178,7 @@ export function WorkforceCredentialsTab() {
           POST {window.location.origin}/api/workforce/agents/{agent.id}/ask
         </code>
       </EntityViewPanel>
+
     </>
   );
 }

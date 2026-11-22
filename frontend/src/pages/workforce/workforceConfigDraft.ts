@@ -31,8 +31,9 @@ export interface BehaviourDraft {
   refusalContact: string;
   /** What callers read while the agent is paused. Empty = the built-in line. */
   pausedMessage: string;
+  /** Whether a refusal becomes an Operations queue item. */
+  queueRefusals: boolean;
   maxToolRounds: string;
-  sandbox: boolean;
 }
 
 export function draftFromConfig(cfg: KbAgentConfig | null | undefined): BehaviourDraft {
@@ -55,10 +56,10 @@ export function draftFromConfig(cfg: KbAgentConfig | null | undefined): Behaviou
     refusalText: c.answer_policy?.refusal?.text ?? '',
     refusalContact: c.answer_policy?.refusal?.contact ?? '',
     pausedMessage: c.answer_policy?.paused_message ?? '',
+    queueRefusals: c.answer_policy?.queue_refusals !== false,
     maxToolRounds: c.orchestration?.max_tool_rounds
       ? String(c.orchestration.max_tool_rounds)
       : '',
-    sandbox: Boolean(c.sandbox?.enabled),
   };
 }
 
@@ -96,11 +97,11 @@ export function draftToConfig(d: BehaviourDraft): Omit<KbAgentConfig, 'retrieval
       max_answer_chars: maxAnswerChars,
       refusal: { text: d.refusalText.trim() || null, contact: d.refusalContact.trim() || null },
       paused_message: d.pausedMessage.trim() || null,
+      queue_refusals: d.queueRefusals,
     },
     orchestration: {
       max_tool_rounds: Number.isFinite(rounds) && rounds > 0 ? rounds : null,
     },
-    sandbox: { enabled: d.sandbox },
   };
 }
 

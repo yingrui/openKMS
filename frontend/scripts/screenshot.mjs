@@ -186,7 +186,9 @@ function slugFor(path, name) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const executable = chromePath(args.chrome);
-  const profile = mkdtempSync(join(tmpdir(), 'openkms-screenshot-'));
+  const profile = args.keepProfile
+    ? join(tmpdir(), 'openkms-screenshot-kept')
+    : mkdtempSync(join(tmpdir(), 'openkms-screenshot-'));
   mkdirSync(args.out, { recursive: true });
 
   const chrome = spawn(executable, [

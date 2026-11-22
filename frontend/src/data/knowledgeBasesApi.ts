@@ -30,6 +30,8 @@ export interface KbAgentConfig {
     refusal?: { text?: string | null; contact?: string | null };
     /** Returned with the 503 while the agent is paused. */
     paused_message?: string | null;
+    /** Whether a refusal becomes an Operations queue item (on unless turned off). */
+    queue_refusals?: boolean;
   };
   orchestration?: {
     profile?: 'rag_only' | 'rag_tools' | 'agent_loop';

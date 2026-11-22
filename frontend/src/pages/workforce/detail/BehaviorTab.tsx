@@ -120,15 +120,6 @@ export function WorkforceBehaviorTab() {
               onChange={(e) => patch({ refusalText: e.target.value })}
             />
           </FormField>
-          <FormField label={t('pausedMessage')} hint={t('pausedMessageHint')}>
-            <textarea
-              className="ds-control"
-              rows={2}
-              value={draft.pausedMessage}
-              placeholder={t('pausedMessagePlaceholder')}
-              onChange={(e) => patch({ pausedMessage: e.target.value })}
-            />
-          </FormField>
           <FormField label={t('refusalContact')} hint={t('refusalContactHint')}>
             <input
               className="ds-control"
@@ -138,20 +129,16 @@ export function WorkforceBehaviorTab() {
             />
           </FormField>
         </div>
+        <CheckRow
+          checked={draft.queueRefusals}
+          onChange={(v) => patch({ queueRefusals: v })}
+          title={t('queueRefusals')}
+          hint={t('queueRefusalsHint')}
+        />
       </EntityViewPanel>
 
       <EntityViewPanel title={t('orchestration')}>
         <div className="entity-view__form">
-          <FormField label={t('maxToolRounds')} hint={t('maxToolRoundsHint')}>
-            <input
-              className="ds-control"
-              type="number"
-              min={1}
-              max={100}
-              value={draft.maxToolRounds}
-              onChange={(e) => patch({ maxToolRounds: e.target.value })}
-            />
-          </FormField>
         </div>
       </EntityViewPanel>
     </>

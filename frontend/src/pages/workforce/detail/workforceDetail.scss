@@ -479,3 +479,11 @@
     color: var(--color-text-secondary);
   }
 }
+
+/* The Service tab: one state with its switch, then the irreversible action on its own row. */
+.workforce-service {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}

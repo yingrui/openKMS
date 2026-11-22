@@ -18,7 +18,8 @@ import {
 } from '../../../data/knowledgeBasesApi';
 import type { AgentConversationResponse } from '../../../data/agentApi';
 import { applyCopilotStreamEvent } from '../../../components/agents/agentStreamState';
-import { kbAgentItemsToChatMessages, chatLineId } from './chatUtils';
+import { chatLineId, kbAgentFeedbackFromItems, kbAgentItemsToChatMessages } from './chatUtils';
+import { voteAnswerFeedback } from '../../../data/workforceApi';
 import type { ChatMessage, ChatFeedbackVote } from './types';
 
 /**
@@ -96,7 +97,8 @@ export function useAgentChat({
     async (id: string) => {
       const msgs = await listAllKbAgentMessages(kbId, id);
       setChatMessages(kbAgentItemsToChatMessages(msgs));
-      setFeedback({});
+      // Votes come back with the messages: the thumbs have to look the same after a reload as they did before it.
+      setFeedback(kbAgentFeedbackFromItems(msgs));
     },
     [kbId]
   );
@@ -207,14 +209,28 @@ export function useAgentChat({
     }
   };
 
+  /** Record a verdict, or withdraw one by pressing the same thumb again. */
   const setFeedbackVote = (key: string, vote: ChatFeedbackVote) => {
+    const previous = feedback[key];
+    const next: ChatFeedbackVote | null = previous === vote ? null : vote;
+    applyVote(key, next);
+    void voteAnswerFeedback(agentId, {
+      message_id: key,
+      conversation_id: activeConversationId,
+      vote: next,
+    }).catch((e: unknown) => {
+      // The vote is a record, not a decoration: if the server refused it, the thumb has to go back.
+      applyVote(key, previous ?? null);
+      toast.error(e instanceof Error ? e.message : t('chat.toastFeedbackFailed'));
+    });
+  };
+
+  const applyVote = (key: string, vote: ChatFeedbackVote | null) => {
     setFeedback((prev) => {
-      if (prev[key] === vote) {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      }
-      return { ...prev, [key]: vote };
+      const copy = { ...prev };
+      if (vote) copy[key] = vote;
+      else delete copy[key];
+      return copy;
     });
   };
 

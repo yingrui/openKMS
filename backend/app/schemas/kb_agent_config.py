@@ -106,6 +106,9 @@ class AnswerPolicy(BaseModel):
     #: Longest answer a caller may receive, in characters. None = no limit.
     max_answer_chars: int | None = Field(None, ge=100, le=100_000)
     refusal: AnswerRefusal = AnswerRefusal()
+    #: Whether a refusal becomes an Operations queue item. On by default: a new agent refuses a lot, and most of those
+    #: refusals are wrong — that is exactly what someone has to look at. An agent that has settled can turn it off.
+    queue_refusals: bool = True
     #: What a caller reads while the agent is paused. None = the built-in wording.
     paused_message: str | None = Field(None, max_length=2000)
 

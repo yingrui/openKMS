@@ -48,6 +48,9 @@ class AgentMessageItem(BaseModel):
     content: str
     tool_calls: list | dict | None = None
     attachments: list[AgentAttachmentItem] | None = None
+    #: The reader's own verdict on this answer (`up` / `down`), when the surface supports votes. Sent back so the
+    #: thumb renders pressed after a reload — a control that forgets is a control nobody believes.
+    feedback: str | None = None
     created_at: datetime
 
 

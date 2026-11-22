@@ -8,8 +8,9 @@ import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
  *
  * The split follows what each setting *is*: prompt text (Profile), request parameters (Model), what it may read
  * (Resources — corpora, semantic models, ontology groups), skill packages (Skills), what it may do (Tools),
- * what the runtime enforces (Behavior), what all of that assembles into (Prompt preview, read-only), and who may call
- * (Credentials — which also says where).
+ * what the runtime enforces (Answer policy), who may call (Credentials — which also says where), and whether it
+ * answers at all (Service). What all of it assembles into is a panel on Profile, not a tab: it is a projection, and a
+ * tab for a projection costs a click every time someone checks what their edit produced.
  *
  * Knowledge and Tools are separate axes: knowledge is data the agent may read, a capability is something it may do.
  * They meet only in a reference — "Catalog needs a semantic model" — never in one list.
@@ -60,15 +61,15 @@ export const WORKFORCE_TABS: WorkforceTab[] = [
     ),
   },
   {
-    segment: 'prompt',
-    labelKey: 'navPrompt',
-    Component: lazy(() => import('./PromptTab').then((m) => ({ default: m.WorkforcePromptTab }))),
-  },
-  {
     segment: 'credentials',
     labelKey: 'navCredentials',
     Component: lazy(() =>
       import('./CredentialsTab').then((m) => ({ default: m.WorkforceCredentialsTab }))
     ),
+  },
+  {
+    segment: 'service',
+    labelKey: 'navService',
+    Component: lazy(() => import('./ServiceTab').then((m) => ({ default: m.WorkforceServiceTab }))),
   },
 ];

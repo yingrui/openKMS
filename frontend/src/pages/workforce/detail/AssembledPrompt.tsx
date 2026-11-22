@@ -4,17 +4,16 @@ import { Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAsyncData } from '../../../hooks/useAsyncData';
 import { fetchPromptPreview, type WorkforcePromptPreview } from '../../../data/workforceApi';
-import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
+import { EntityViewPanel } from '../../shared/EntityViewShell';
 import { useWorkforceDetail } from './workforceDetailContext';
 
 /**
  * What the model is given, as the qa-agent assembles it — a view of the whole agent, not of one tab.
  *
- * This is why it is a top-level tab rather than a switch inside Profile: the prompt is composed from the profile
- * (identity, instruction, AGENTS.md), the installed skills, the enabled tools, the answer policy and the retrieved
- * passages. Each block names the tab it comes from, so "which field do I change" is answered by looking, not by
- * reading documentation. Trying to show that inside Profile implied the prompt only reflected Profile — which is how
- * the name, description and AGENTS.md were once missing from it.
+ * It is composed from the profile (identity, instruction, AGENTS.md), the installed skills, the enabled tools, the
+ * answer policy and the retrieved passages, so it lives on Profile as a collapsed panel: the three fields that start
+ * it are on the same page, and every block is labelled with the tab it comes from — the label is what keeps "this is
+ * the whole agent" from reading as "this is Profile".
  */
 const EMPTY_PREVIEW: WorkforcePromptPreview = {
   system_prompt: '',
@@ -25,7 +24,14 @@ const EMPTY_PREVIEW: WorkforcePromptPreview = {
 
 type PromptView = 'sections' | 'full';
 
-export function WorkforcePromptTab() {
+export function AssembledPrompt({
+  systemPrompt,
+  agentsMd,
+}: {
+  /** The text on screen, unsaved included: the endpoint previews what it is given, which is the point of a preview. */
+  systemPrompt?: string;
+  agentsMd?: string;
+} = {}) {
   const { t } = useTranslation('workforce');
   const { agent } = useWorkforceDetail();
   const [view, setView] = useState<PromptView>('sections');
@@ -34,37 +40,23 @@ export function WorkforcePromptTab() {
 
   // `useAsyncData` exists for exactly this: it starts the request in the effect and lands the result in a promise,
   // instead of setting state synchronously while rendering.
-  const { data: preview, error, reload } = useAsyncData<WorkforcePromptPreview>(
+  const { data: preview, error } = useAsyncData<WorkforcePromptPreview>(
     () =>
       sourceId
-        ? fetchPromptPreview(agent.id, sourceId, { systemPrompt: null, agentsMd: null })
+        ? fetchPromptPreview(agent.id, sourceId, {
+            systemPrompt: systemPrompt ?? null,
+            agentsMd: agentsMd ?? null,
+          })
         : Promise.resolve(EMPTY_PREVIEW),
-    [agent.id, sourceId]
+    [agent.id, sourceId, systemPrompt, agentsMd]
   );
 
   if (!sourceId) {
-    return (
-      <>
-        <EntityViewHeader title={t('promptTabTitle')} subtitle={t('promptTabLead')} />
-        <EntityViewPanel>
-          <p className="ds-field__hint">{t('previewNeedsSource')}</p>
-        </EntityViewPanel>
-      </>
-    );
+    return <p className="ds-field__hint">{t('previewNeedsSource')}</p>;
   }
 
   return (
     <>
-      <EntityViewHeader
-        title={t('promptTabTitle')}
-        subtitle={t('promptTabLead')}
-        actions={
-          <button type="button" className="btn btn-secondary" onClick={() => reload()}>
-            {t('promptReload')}
-          </button>
-        }
-      />
-
       {/* Two renderings of the same text: grouped by owner (which tab to change), or verbatim (what is actually
           sent, for copying and for checking order and blank lines). AGENTS.md is a block, not a third rendering. */}
       <div className="workforce-view-switch">
