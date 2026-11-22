@@ -41,5 +41,19 @@
   "deleting": "Deleting…",
   "saving": "Saving…",
   "save": "Save",
-  "saved": "Saved"
+  "saved": "Saved",
+  "deletedToast": "Removed {{name}}",
+  "deleteFailed": "Could not remove the app",
+  "cardOwner": "by {{name}}",
+  "probeFailedTitle": "This app did not answer",
+  "probeStatus": "HTTP {{status}}",
+  "probeTarget": "Target",
+  "probeRetry": "Check again",
+  "probeFix": "Fix the binding",
+  "probe_unreachable": "The proxy could not reach the Service. It may be stopped, or its port may have changed.",
+  "probe_bindings": "The Service binding is incomplete. Open Settings → Service and complete it.",
+  "probe_auth": "The request was not authorized. Check that you are signed in; the Service may also ask for its own login.",
+  "probe_missing": "This app is not available. It may have been unregistered, or the Service answers 404 at its own root.",
+  "probe_unknown": "The status check failed before it got an answer.",
+  "probeUnknownSoft": "The status check did not finish; the app was loaded anyway."
 }

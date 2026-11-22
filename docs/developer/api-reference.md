@@ -213,6 +213,9 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/workforce/agents/{id}/credentials` | List credentials (prefix, last used, revoked — never the secret) |
 | POST | `/api/workforce/agents/{id}/credentials` | Mint a credential (`name`). The `wfks.…` token is in this response only |
 | DELETE | `/api/workforce/agents/{id}/credentials/{credential_id}` | Revoke a credential |
+| GET | `/api/workforce/issues` | The Operations queue, owner-scoped: `status` (`open` \| `resolved` \| `ignored` \| `all`), `kind`, `agent_id`. Returns `counts` per status so the filter needs one call |
+| PATCH | `/api/workforce/issues/{id}` | Close an item: `{status, resolution?}`. `resolved` is refused without a `resolution` — "solved, no explanation" is not a closed case |
+| POST | `/api/workforce/agents/{id}/feedback` | Record one reader's verdict on one answer: `{message_id, conversation_id?, vote: "up" \| "down" \| null}`. One row per `(message_id, actor_sub)`: a second vote edits it, `null` withdraws it |
 | POST | `/api/workforce/agents/{id}/ask` | **Service plane.** Authenticated by the agent's `wfks.…` credential, never by a session; `kb_id` names the one bound source. See [Workforce agents](../features/workforce.md) |
 | GET | `/api/knowledge-bases/{id}/wiki-pages-for-index` | Paginated wiki pages with body from linked spaces (`?offset=`, `limit` 1–500); used by `kb-index` |
 | GET | `/api/knowledge-bases/{id}/faqs` | List FAQs (paginated; ?offset=, ?limit=, ?current_for_rag_only=) |
@@ -343,14 +346,11 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/ontology/external-services/by-api-name/{api_name}/resolve` | Runtime-only: `kind` + `transport` (`direct`/`backend`), URL + decrypted secret for `http`, allowed paths (caller token required; recorded by the audit middleware) |
 | POST | `/api/ontology/external-services/by-api-name/{api_name}/call` | Relays a `k8s_service` call through the cluster's kubeconfig: `{method, path, query?, body?}` → `{status, body}`. Allowlist re-checked server-side; credential applied here; **502** when the cluster call fails |
 | GET | `/api/chamber/apps` | List **Chamber** apps (`?status=`); `ontology:read` |
-| POST | `/api/chamber/apps` | Create Chamber app (`bindings.k8s` required; publishes immediately; needs `console:kubernetes` + `ontology:write`) |
-| GET | `/api/chamber/apps/{id}` | Published run document only (404 if draft) |
+| POST | `/api/chamber/apps` | Create Chamber app (`bindings.k8s` required; registration is the only state; needs `console:kubernetes` + `ontology:write`) |
+| GET | `/api/chamber/apps/{id}` | Run document for any registered app (404 when unknown) |
 | GET/POST/PUT/PATCH/DELETE | `/api/chamber/apps/{id}/proxy/{path}` | HTTP proxy to the bound Kubernetes Service (`ontology:read`, session cookie) |
 | PATCH | `/api/chamber/apps/{id}` | Update metadata / `bindings.k8s` |
 | DELETE | `/api/chamber/apps/{id}` | Delete app |
-| POST | `/api/chamber/apps/{id}/publish` | New bindings snapshot |
-| POST | `/api/chamber/apps/{id}/unpublish` | Clear published; status → draft |
-| GET | `/api/chamber/apps/{id}/versions` | List published versions |
 | GET | `/api/data-sources` | List data sources (`limit`, `offset`; `console:data_sources`) |
 | POST | `/api/data-sources` | Create data source (`console:data_sources`) |
 | GET | `/api/data-sources/{id}` | Get data source (`console:data_sources`) |

@@ -356,9 +356,8 @@ Requires **`knowledge_map:read`** (tree, link list) and **`knowledge_map:write`*
 |---|---|---|---|
 | `chamber list` | GET | `/api/chamber/apps` | Chamber apps only. |
 | `chamber get` | GET | `/api/chamber/apps/{id}` | Published run doc. |
-| `chamber create` *(write)* | POST | `/api/chamber/apps` | Requires `bindings.k8s`; publishes immediately. Prefer `kubernetes register-app`. |
+| `chamber create` *(write)* | POST | `/api/chamber/apps` | Requires `bindings.k8s`. Registration is the only state — there is no publish step. Prefer `kubernetes register-app`. |
 | `chamber patch` *(write)* | PATCH | `/api/chamber/apps/{id}` | Metadata / `bindings.k8s`. |
-| `chamber publish` *(write)* | POST | `/api/chamber/apps/{id}/publish` | New bindings snapshot. |
 | `chamber delete` *(write)* | DELETE | `/api/chamber/apps/{id}` | |
 
 ### Kubernetes (`console:kubernetes`)

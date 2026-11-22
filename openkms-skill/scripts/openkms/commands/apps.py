@@ -1,4 +1,4 @@
-"""Chamber apps — list / get / create / patch / publish / delete (hosted Kubernetes Services)."""
+"""Chamber apps — list / get / create / patch / delete (hosted Kubernetes Services)."""
 from __future__ import annotations
 
 import argparse
@@ -74,14 +74,6 @@ def cmd_patch(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
-def cmd_publish(ns: argparse.Namespace) -> None:
-    path = f"/api/chamber/apps/{ns.id}/publish"
-    confirm_or_abort(f"publish app {ns.id}", "POST", path, None, ns.yes, ns.dry_run)
-    with client() as s:
-        r = s.post(path, json={})
-    r.raise_for_status()
-    print_json(r.json())
-
 
 def cmd_delete(ns: argparse.Namespace) -> None:
     path = f"/api/chamber/apps/{ns.id}"
@@ -123,10 +115,6 @@ def add_subparser(sub: _SubParsersAction) -> None:
     add_write_flags(pt)
     pt.set_defaults(fn=cmd_patch)
 
-    pb = sp.add_parser("publish", help="Republish (new version snapshot)")
-    pb.add_argument("id")
-    add_write_flags(pb)
-    pb.set_defaults(fn=cmd_publish)
 
     dl = sp.add_parser("delete", help="Delete app")
     dl.add_argument("id")

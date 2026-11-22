@@ -1,6 +1,8 @@
-# Chamber (decision systems)
+# Chamber (hosted apps)
 
 **Chamber** hosts HTTP UIs registered against a Kubernetes **Service**. They open via an iframe that proxies through the API server. openKMS authenticates the user and forwards identity headers; the Service does not need its own sign-in.
+
+**Registering is the only state.** There is no draft, publish or version step: an app is openable the moment it is registered, and editing its Service binding takes effect on the next open. Any app can be hosted — a decision system is one kind of app, not a platform concept.
 
 Experimental **A2UI App Builder** authoring (Source / Design / OntoObjectList) has been **removed**. Future A2UI experiments belong in **Agent Project** sessions, not this product surface.
 
@@ -11,7 +13,7 @@ Experimental **A2UI App Builder** authoring (Source / Design / OntoObjectList) h
 | Console → Kubernetes → cluster detail | **Register in Chamber** |
 | Skill | `kubernetes register-app …` or `apps create --bindings-json '{"k8s":{…}}'` |
 
-Requires **`console:kubernetes`** and **`ontology:write`**. The app is **published immediately** (`template_id=module`).
+Requires **`console:kubernetes`** and **`ontology:write`** (`template_id=module`).
 
 ## Run
 
@@ -20,8 +22,9 @@ The **Chamber** app (`/chamber`):
 - List / manage: `/chamber`
 - Run: `/chamber/{id}` → iframe → `GET/POST …/api/chamber/apps/{id}/proxy/`
 - Settings (Service binding): `/chamber/{id}/settings`
+- Opening runs one `HEAD` through the proxy first: a `502/504` (Service unreachable), `400` (incomplete binding), `401/403` (not authorized) or `404` (not registered) shows a panel naming the target instead of the iframe, with **Check again** and a link to Settings. A probe that cannot answer does not block the app — the frame loads anyway.
 
-Legacy `/apps` and `/app-builder` routes redirect here. WebSocket is not proxied. Prefer relative assets or a URL subpath.
+Legacy `/apps` and `/app-builder` routes redirect here. WebSocket is not proxied. Prefer relative assets or a URL subpath. Settings and Delete are shown only to users with **`ontology:write`** (the same gate the API applies).
 
 ## Chamber identity headers {#chamber-identity-headers}
 
@@ -40,13 +43,10 @@ Key tenant data by `X-Openkms-User-Id`. Return `401` when it is missing. Do not 
 | Method | Path | Notes |
 |--------|------|--------|
 | GET/POST | `/api/chamber/apps` | List / create Chamber apps |
-| GET/PATCH/DELETE | `/api/chamber/apps/{id}` | Run doc (published) / update / delete |
-| POST | `/api/chamber/apps/{id}/publish` | New bindings snapshot |
-| POST | `/api/chamber/apps/{id}/unpublish` | Unpublish |
-| GET | `/api/chamber/apps/{id}/versions` | Version history |
+| GET/PATCH/DELETE | `/api/chamber/apps/{id}` | Run doc (any registered app) / update / delete |
 | * | `/api/chamber/apps/{id}/proxy[/{path}]` | Session-cookie auth; strip Bearer |
 
-Storage tables: `chamber_apps` and `chamber_published_versions`. The A2UI `app_components` table is dropped.
+Storage: `chamber_apps` only — `chamber_published_versions` was dropped with the version layer (migration `08327ca4c4fe`), and the A2UI `app_components` table is gone too.
 
 ## Related
 

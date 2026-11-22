@@ -41,5 +41,19 @@
   "deleting": "删除中…",
   "saving": "保存中…",
   "save": "保存",
-  "saved": "已保存"
+  "saved": "已保存",
+  "deletedToast": "已移除 {{name}}",
+  "deleteFailed": "无法移除该应用",
+  "cardOwner": "创建人 {{name}}",
+  "probeFailedTitle": "这个应用没有响应",
+  "probeStatus": "HTTP {{status}}",
+  "probeTarget": "目标",
+  "probeRetry": "重新检查",
+  "probeFix": "修绑定",
+  "probe_unreachable": "代理连不上后端服务：服务可能已停止，或端口改过。",
+  "probe_bindings": "服务绑定不完整，去 Settings → Service 补全。",
+  "probe_auth": "请求未通过认证：确认已登录；该服务也可能要求自己的登录。",
+  "probe_missing": "找不到这个应用：可能已注销，或服务在它自己的根路径返回 404。",
+  "probe_unknown": "状态检查没拿到结果。",
+  "probeUnknownSoft": "状态检查没有结果，已直接加载应用。"
 }

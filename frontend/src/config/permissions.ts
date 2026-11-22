@@ -14,4 +14,8 @@ export const PERM_CONSOLE_SETTINGS = 'console:settings';
 export const PERM_CONSOLE_GROUPS = 'console:groups';
 export const PERM_CONSOLE_PERMISSIONS = 'console:permissions';
 export const PERM_PROJECTS_READ = 'projects:read';
+// Ontology operations gate Chamber writes on the backend (`chamber.py`: ontology:write, plus
+// console:kubernetes to register). Same keys, so the UI can ask before a click fails with 403.
+export const PERM_ONTOLOGY_READ = 'ontology:read';
+export const PERM_ONTOLOGY_WRITE = 'ontology:write';
 export const PERM_PROJECTS_WRITE = 'projects:write';

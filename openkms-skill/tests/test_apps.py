@@ -65,14 +65,6 @@ def test_apps_patch(mock_api):
     assert recorded[-1].url.path == "/api/chamber/apps/oa-1"
 
 
-def test_apps_publish(mock_api):
-    recorded, responses = mock_api
-    responses[("POST", "/api/chamber/apps/oa-1/publish")] = (200, {"id": "oa-1"})
-    from openkms.commands.apps import cmd_publish
-
-    cmd_publish(_ns(id="oa-1"))
-    assert recorded[-1].url.path == "/api/chamber/apps/oa-1/publish"
-
 
 def test_apps_delete(mock_api):
     recorded, responses = mock_api

@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LayoutGrid, Settings, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { deleteChamberApp, listChamberApps, type ChamberAppResponse } from '../../data/chamberApi';
+import { PERM_ONTOLOGY_WRITE } from '../../config/permissions';
 import { useAuth } from '../../contexts/AuthContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { EmptyState } from '../../styles/design-system';
@@ -11,8 +13,10 @@ import './ChamberPages.scss';
 export function ChamberGalleryPage() {
   const { t } = useTranslation('chamber');
   const confirm = useConfirm();
-  const { canAccessPath } = useAuth();
-  const canManage = canAccessPath('/chamber');
+  const { hasPermission } = useAuth();
+  // The backend gates update/delete on `ontology:write`; a read-only visitor must not be offered them
+  // (the old check was "can reach /chamber", which is the read gate — every reader saw the buttons).
+  const canManage = hasPermission(PERM_ONTOLOGY_WRITE);
   const [apps, setApps] = useState<ChamberAppResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,12 +29,19 @@ export function ChamberGalleryPage() {
       danger: true,
     });
     if (!ok) return;
-    await deleteChamberApp(app.id);
-    reload();
+    try {
+      await deleteChamberApp(app.id);
+      toast.success(t('deletedToast', { name: app.name }));
+      await reload();
+    } catch (e) {
+      // Silent failure is the worst kind here: the card stays but the reader believes it is gone.
+      toast.error(e instanceof Error ? e.message : t('deleteFailed'));
+    }
   };
 
   const reload = async () => {
-    setApps(await listChamberApps(canManage ? undefined : { status: 'published' }));
+    // Registration is the only state: every listed app can be opened, so there is nothing to filter on.
+    setApps(await listChamberApps());
   };
 
   useEffect(() => {
@@ -93,13 +104,17 @@ export function ChamberGalleryPage() {
                   <h3>{app.name}</h3>
                   <div className="chamber-page__card-badges">
                     <span className="chamber-page__badge chamber-page__badge--kind">{t('kindModule')}</span>
-                    <span className="chamber-page__badge">{app.status}</span>
-                    {app.published_version ? (
-                      <span className="chamber-page__badge">v{app.published_version}</span>
-                    ) : null}
                     {app.bindings_stale ? <span className="chamber-page__badge">{t('stale')}</span> : null}
                   </div>
-                  <span className="chamber-page__card-meta">{app.api_name}</span>
+                  {app.description ? (
+                    <span className="chamber-page__card-desc" title={app.description}>
+                      {app.description}
+                    </span>
+                  ) : null}
+                  <span className="chamber-page__card-meta">
+                    {app.api_name}
+                    {app.created_by_name ? ` · ${t('cardOwner', { name: app.created_by_name })}` : ''}
+                  </span>
                 </Link>
               </div>
             );

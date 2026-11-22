@@ -93,7 +93,6 @@ export function ChamberSettingsPage() {
             ? {
                 ...prev,
                 bindings: updated.bindings,
-                bindings_hash: updated.bindings_hash,
                 bindings_stale: updated.bindings_stale,
                 missing_bindings: updated.missing_bindings,
               }

@@ -267,3 +267,79 @@
   gap: var(--space-3);
   min-width: 0;
 }
+
+/* The card's one-line description: two lines at most, so a row of cards keeps its rhythm. */
+.chamber-page__card-desc {
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+/* Why the app did not answer: the same facts the proxy knows, in one panel instead of a JSON body. */
+.chamber-page__probe-note {
+  padding: var(--space-4) 0;
+  font-size: var(--text-base);
+  color: var(--color-text-muted);
+}
+
+.chamber-page__probe {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 36rem;
+  margin: var(--space-6) auto;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+}
+
+.chamber-page__probe-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-warning, #b45309);
+}
+
+.chamber-page__probe-head h2 {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.chamber-page__probe-status {
+  margin-left: auto;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.chamber-page__probe p {
+  margin: 0;
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.chamber-page__probe-target {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.chamber-page__probe-target dt {
+  color: var(--color-text-muted);
+}
+
+.chamber-page__probe-target dd {
+  margin: 0;
+  font-family: var(--font-mono, monospace);
+  word-break: break-all;
+}

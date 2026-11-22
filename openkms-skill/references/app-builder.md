@@ -17,7 +17,6 @@ Needs **`console:kubernetes`** + **`ontology:write`**.
 | `chamber get <id>` | Published run document |
 | `chamber create …` | Register (requires `bindings.k8s`) |
 | `chamber patch <id> …` | Name / description / `bindings.k8s` |
-| `chamber publish <id>` | New version snapshot |
 | `chamber delete <id>` | Remove registry entry |
 
 ## Do not

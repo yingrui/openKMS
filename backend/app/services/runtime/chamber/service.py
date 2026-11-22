@@ -6,10 +6,10 @@ import uuid
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.chamber import ChamberApp, ChamberPublishedVersion
+from app.models.chamber import ChamberApp
 from app.models.kubernetes_cluster import KubernetesCluster
 from app.schemas.chamber import ChamberBindings, ChamberCreate, ChamberUpdate
 from app.services.runtime.chamber.k8s_binding import normalize_module_bindings
@@ -22,7 +22,7 @@ def new_app_id() -> str:
     return f"{APP_ID_PREFIX}{uuid.uuid4().hex[:ID_HEX]}"
 
 
-def new_version_id() -> str:
+def _unused_new_version_id() -> str:
     return str(uuid.uuid4())
 
 
@@ -41,7 +41,6 @@ def to_response_base(
     *,
     stale: bool = False,
     missing: list[str] | None = None,
-    published_version: int | None = None,
 ) -> dict[str, Any]:
     return {
         "id": app.id,
@@ -51,16 +50,12 @@ def to_response_base(
         "template_id": app.template_id or "module",
         "bindings": app.bindings or {},
         "status": app.status,
-        "bindings_hash": app.bindings_hash,
         "bindings_stale": stale,
         "missing_bindings": list(missing or []),
         "created_by": app.created_by,
         "created_by_name": app.created_by_name,
         "created_at": app.created_at,
         "updated_at": app.updated_at,
-        "published_version": published_version,
-        "has_draft": False,
-        "has_published": app.published_version_id is not None,
     }
 
 
@@ -107,33 +102,6 @@ async def list_apps(
     return list((await db.execute(q)).scalars().all())
 
 
-async def current_published_version(db: AsyncSession, app: ChamberApp) -> int | None:
-    if not app.published_version_id:
-        return None
-    version = await db.get(ChamberPublishedVersion, app.published_version_id)
-    return version.version if version else None
-
-
-async def list_published_versions(db: AsyncSession, app_id: str) -> list[ChamberPublishedVersion]:
-    q = (
-        select(ChamberPublishedVersion)
-        .where(ChamberPublishedVersion.app_id == app_id)
-        .order_by(ChamberPublishedVersion.version.desc())
-    )
-    return list((await db.execute(q)).scalars().all())
-
-
-async def _next_version_number(db: AsyncSession, app_id: str) -> int:
-    current = (
-        await db.execute(
-            select(func.max(ChamberPublishedVersion.version)).where(
-                ChamberPublishedVersion.app_id == app_id
-            )
-        )
-    ).scalar_one_or_none()
-    return (current or 0) + 1
-
-
 async def create_app(
     db: AsyncSession,
     body: ChamberCreate,
@@ -161,28 +129,12 @@ async def create_app(
         description=body.description,
         template_id="module",
         bindings=bindings,
-        published_version_id=None,
-        bindings_hash=None,
-        status="draft",
+        status="registered",
         created_by=created_by,
         created_by_name=created_by_name,
     )
     db.add(app)
     await db.flush()
-
-    version = ChamberPublishedVersion(
-        id=new_version_id(),
-        app_id=app.id,
-        version=1,
-        components=[],
-        bindings=bindings,
-        created_by=created_by,
-        created_by_name=created_by_name,
-    )
-    db.add(version)
-    await db.flush()
-    app.published_version_id = version.id
-    app.status = "published"
 
     await db.commit()
     await db.refresh(app)
@@ -201,57 +153,11 @@ async def update_app(db: AsyncSession, app: ChamberApp, body: ChamberUpdate) -> 
             raise HTTPException(status_code=400, detail=str(e)) from e
         await _require_k8s_cluster(db, bindings)
         app.bindings = bindings
-        app.bindings_hash = None
-        if app.published_version_id:
-            published = await db.get(ChamberPublishedVersion, app.published_version_id)
-            if published is not None:
-                published.bindings = bindings
-    await db.commit()
-    await db.refresh(app)
-    return app
-
-
-async def unpublish_app(db: AsyncSession, app: ChamberApp) -> ChamberApp:
-    app.status = "draft"
-    app.published_version_id = None
-    await db.commit()
-    await db.refresh(app)
-    return app
-
-
-async def republish_app(
-    db: AsyncSession,
-    app: ChamberApp,
-    *,
-    created_by: str | None = None,
-    created_by_name: str | None = None,
-) -> ChamberApp:
-    try:
-        bindings = normalize_module_bindings(app.bindings or {})
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    await _require_k8s_cluster(db, bindings)
-    version = ChamberPublishedVersion(
-        id=new_version_id(),
-        app_id=app.id,
-        version=await _next_version_number(db, app.id),
-        components=[],
-        bindings=bindings,
-        created_by=created_by or app.created_by,
-        created_by_name=created_by_name or app.created_by_name,
-    )
-    db.add(version)
-    await db.flush()
-    app.published_version_id = version.id
-    app.status = "published"
     await db.commit()
     await db.refresh(app)
     return app
 
 
 async def delete_app(db: AsyncSession, app: ChamberApp) -> None:
-    q = select(ChamberPublishedVersion).where(ChamberPublishedVersion.app_id == app.id)
-    for v in (await db.execute(q)).scalars().all():
-        await db.delete(v)
     await db.delete(app)
     await db.commit()

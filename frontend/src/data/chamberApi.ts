@@ -19,16 +19,12 @@ export type ChamberAppResponse = {
   template_id: 'module';
   bindings: ChamberBindings;
   status: string;
-  bindings_hash?: string | null;
   bindings_stale: boolean;
   missing_bindings: string[];
   created_by?: string | null;
   created_by_name?: string | null;
   created_at: string;
   updated_at: string;
-  published_version?: number | null;
-  has_draft: boolean;
-  has_published: boolean;
 };
 
 export type ChamberRunResponse = ChamberAppResponse;
@@ -81,36 +77,4 @@ export async function updateChamberApp(
 
 export async function deleteChamberApp(appId: string): Promise<void> {
   await ontologyFetch<unknown>(`${base}/${appId}`, { method: 'DELETE' }, 'Failed to delete Chamber app');
-}
-
-export async function publishChamberApp(appId: string): Promise<ChamberRunResponse> {
-  return ontologyFetch<ChamberRunResponse>(
-    `${base}/${appId}/publish`,
-    { method: 'POST', body: '{}' },
-    'Failed to publish Chamber app',
-  );
-}
-
-export async function unpublishChamberApp(appId: string): Promise<ChamberAppResponse> {
-  return ontologyFetch<ChamberAppResponse>(
-    `${base}/${appId}/unpublish`,
-    { method: 'POST', body: '{}' },
-    'Failed to unpublish Chamber app',
-  );
-}
-
-export type ChamberVersion = {
-  id: string;
-  version: number;
-  created_at: string;
-  created_by_name?: string | null;
-  is_current: boolean;
-};
-
-export async function listChamberVersions(appId: string): Promise<ChamberVersion[]> {
-  return ontologyFetch<ChamberVersion[]>(
-    `${base}/${appId}/versions`,
-    undefined,
-    'Failed to list Chamber versions',
-  );
 }

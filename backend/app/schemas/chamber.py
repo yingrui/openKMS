@@ -50,24 +50,12 @@ class ChamberResponse(BaseModel):
     template_id: AppKind
     bindings: dict[str, Any]
     status: str
-    bindings_hash: str | None = None
     bindings_stale: bool = False
     missing_bindings: list[str] = Field(default_factory=list)
     created_by: str | None = None
     created_by_name: str | None = None
     created_at: datetime
     updated_at: datetime
-    published_version: int | None = None
-    has_draft: bool = False
-    has_published: bool = False
-
-
-class ChamberVersionOut(BaseModel):
-    id: str
-    version: int
-    created_at: datetime
-    created_by_name: str | None = None
-    is_current: bool = False
 
 
 class ChamberRunResponse(ChamberResponse):

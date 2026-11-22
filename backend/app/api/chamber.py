@@ -14,7 +14,6 @@ from app.schemas.chamber import (
     ChamberResponse,
     ChamberRunResponse,
     ChamberUpdate,
-    ChamberVersionOut,
 )
 from app.services.runtime.chamber import service as chamber_svc
 from app.services.platform.credentials.credential_encryption import decrypt
@@ -39,15 +38,7 @@ _proxy_deps = [Depends(require_any_permission(PERM_ONTOLOGY_READ, session_only=T
 
 async def _to_list_item(db: AsyncSession, app) -> ChamberResponse:
     stale, missing = await chamber_svc.enrich_stale(db, app)
-    published_version = await chamber_svc.current_published_version(db, app)
-    return ChamberResponse(
-        **chamber_svc.to_response_base(
-            app,
-            stale=stale,
-            missing=missing,
-            published_version=published_version,
-        )
-    )
+    return ChamberResponse(**chamber_svc.to_response_base(app, stale=stale, missing=missing))
 
 
 def _register_routes(api: APIRouter) -> None:
@@ -74,13 +65,12 @@ def _register_routes(api: APIRouter) -> None:
 
     @api.get("/{app_id}", response_model=ChamberRunResponse, dependencies=_read_deps)
     async def get_app_run(app_id: str, db: AsyncSession = Depends(get_db)):
-        """Published Chamber app only (404 if draft / unpublished)."""
+        """A registered Chamber app. Registration is the only state — there is no publish step to pass."""
         app = await chamber_svc.get_app(db, app_id)
-        if app.status != "published" or app.template_id != "module":
-            raise HTTPException(status_code=404, detail="Published app not found")
+        if app.template_id != "module":
+            raise HTTPException(status_code=404, detail="Chamber app not found")
         stale, missing = await chamber_svc.enrich_stale(db, app)
-        published_version = await chamber_svc.current_published_version(db, app)
-        base = chamber_svc.to_response_base(app, stale=stale, missing=missing, published_version=published_version)
+        base = chamber_svc.to_response_base(app, stale=stale, missing=missing)
         return ChamberRunResponse(**base)
 
     @api.patch("/{app_id}", response_model=ChamberResponse, dependencies=_read_deps)
@@ -104,58 +94,14 @@ def _register_routes(api: APIRouter) -> None:
         await chamber_svc.delete_app(db, app)
         return None
 
-    @api.post("/{app_id}/publish", response_model=ChamberRunResponse, dependencies=_read_deps)
-    async def publish_app(
-        app_id: str,
-        request: Request,
-        db: AsyncSession = Depends(get_db),
-        _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
-    ):
-        app = await chamber_svc.get_app(db, app_id)
-        uid, uname = jwt_user_from_request(request)
-        app = await chamber_svc.republish_app(db, app, created_by=uid, created_by_name=uname)
-        stale, missing = await chamber_svc.enrich_stale(db, app)
-        published_version = await chamber_svc.current_published_version(db, app)
-        base = chamber_svc.to_response_base(app, stale=stale, missing=missing, published_version=published_version)
-        return ChamberRunResponse(**base)
-
-    @api.post("/{app_id}/unpublish", response_model=ChamberResponse, dependencies=_read_deps)
-    async def unpublish_app(
-        app_id: str,
-        db: AsyncSession = Depends(get_db),
-        _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
-    ):
-        app = await chamber_svc.get_app(db, app_id)
-        app = await chamber_svc.unpublish_app(db, app)
-        return await _to_list_item(db, app)
-
-    @api.get("/{app_id}/versions", response_model=list[ChamberVersionOut], dependencies=_read_deps)
-    async def list_versions(
-        app_id: str,
-        db: AsyncSession = Depends(get_db),
-        _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
-    ):
-        app = await chamber_svc.get_app(db, app_id)
-        rows = await chamber_svc.list_published_versions(db, app.id)
-        return [
-            ChamberVersionOut(
-                id=v.id,
-                version=v.version,
-                created_at=v.created_at,
-                created_by_name=v.created_by_name,
-                is_current=v.id == app.published_version_id,
-            )
-            for v in rows
-        ]
-
     _PROXY_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
 
     async def _proxy_module_app(app_id: str, request: Request, path: str, db: AsyncSession):
         if request.headers.get("upgrade"):
             raise HTTPException(status_code=501, detail="WebSocket proxy is not supported")
         app = await chamber_svc.get_app(db, app_id)
-        if app.template_id != "module" or app.status != "published":
-            raise HTTPException(status_code=404, detail="Published Chamber app not found")
+        if app.template_id != "module":
+            raise HTTPException(status_code=404, detail="Chamber app not found")
         k8s = (app.bindings or {}).get("k8s") if isinstance(app.bindings, dict) else None
         if not isinstance(k8s, dict):
             raise HTTPException(status_code=400, detail="Chamber app is missing bindings.k8s")
