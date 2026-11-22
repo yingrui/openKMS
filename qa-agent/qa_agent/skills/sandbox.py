@@ -94,3 +94,15 @@ def run_command(
 
 
 sandbox_tools: list[Any] = [run_python, run_command]
+
+
+#: The list is appended per request rather than written here: it is per agent, and a model that cannot see it guesses a
+#: program, gets refused, and spends a round learning what it could have read.
+#:
+ALLOW_LIST_PREFIX = "Allowed programs: "
+
+
+def allowed_commands_description(settings: dict[str, Any]) -> str:
+    """The `run_command` description for one request: the base text plus the programs this agent may start."""
+    commands = sorted(sandbox_runner.allowed_commands(settings))
+    return f"{run_command.description.strip()}\n\n{ALLOW_LIST_PREFIX}{', '.join(commands)}."

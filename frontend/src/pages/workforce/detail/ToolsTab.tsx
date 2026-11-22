@@ -313,10 +313,47 @@ function PolicyBlock({
           rows={3}
           spellCheck={false}
           value={allowCommands}
-          placeholder={'rg\ncat\npython'}
+          placeholder={'jq\nfile\nstat'}
           onChange={(e) => onAllowCommands(e.target.value)}
         />
       </FormField>
+      {/* What is worth adding, and what each group gives up. A bare list of names would not tell an author that
+          `git` can start any process. */}
+      <details className="workforce-allow-help">
+        <summary>{t('sandboxAllowCommandsHelp')}</summary>
+        <dl>
+          <div>
+            <dt>{t('sandboxAllowGroupFiles')}</dt>
+            <dd>
+              <code>{t('sandboxAllowGroupFilesCmds')}</code> — {t('sandboxAllowGroupFilesWhy')}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('sandboxAllowGroupArchives')}</dt>
+            <dd>
+              <code>{t('sandboxAllowGroupArchivesCmds')}</code> — {t('sandboxAllowGroupArchivesWhy')}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('sandboxAllowGroupText')}</dt>
+            <dd>
+              <code>{t('sandboxAllowGroupTextCmds')}</code> — {t('sandboxAllowGroupTextWhy')}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('sandboxAllowGroupCode')}</dt>
+            <dd>
+              <code>{t('sandboxAllowGroupCodeCmds')}</code> — {t('sandboxAllowGroupCodeWhy')}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('sandboxAllowGroupVcs')}</dt>
+            <dd>
+              <code>{t('sandboxAllowGroupVcsCmds')}</code> — {t('sandboxAllowGroupVcsWhy')}
+            </dd>
+          </div>
+        </dl>
+      </details>
       <div className="workforce-tool-policy-actions">
         <details>
           <summary>

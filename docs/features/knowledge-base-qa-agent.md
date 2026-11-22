@@ -172,18 +172,29 @@ bearer every tool call already carries — while the agent's own secrets (model 
 never narrow it). Matching is **by position**, like the project's policy: `grep docker notes.md` is ordinary work, `ls && docker ps`
 is not, and `sudo`/`env`/`nohup` wrappers and `sh -c "…"` are looked through.
 
-The built-in set is **inspection only** — twenty programs that read files (`ls`, `cat`, `grep`, `jq`, `find`, …). Everything
-that starts another program or writes at an arbitrary path is left out, because the check sees the program name and never
-its arguments: `awk` (`system()`), `sed` (`e`), `find -exec`, `xargs`, `git` (`!alias`), `make`, `python -c` and
-`pip install` were all ways around the list, and `rm`/`mv`/`tar` wrote wherever the process could. An author who needs one
-adds it per agent; that is a decision, not a default. `find` is allowed for locating files only: `-exec`, `-execdir`,
-`-delete` and `-ok` are refused.
+The list the model sees is the list it is held to: the request binds a **copy** of `run_command` whose description ends
+with `Allowed programs: …` for this agent (built-in set plus its own additions). A shared tool object cannot carry that —
+it would leak one agent's list into a concurrent request — so the copy is made per request, and the module-level tool
+keeps its static description.
 
-`search_knowledge_base` is the retrieval tool (`qa_agent/skills/kb_search.py`): available whenever `retrieve =
-on_miss`, and also whenever an agent's tool ledger enables `knowledge_search`. `search_web`
-(`qa_agent/skills/web_search.py`) is the only tool that leaves the deployment: it posts the agent's bound connector id to
-`/internal-api/web-search`, the backend runs that connector, and the tool reports "no search connector is bound" rather
-than an empty result when there is none.
+The built-in set is **inspection only** — sixteen programs that read the conversation's files:
+
+| Group | Commands |
+|---|---|
+| Look | `ls` `find` `stat` `file` `wc` `pwd` |
+| Read | `cat` `head` `tail` |
+| Reshape | `grep` `sort` `uniq` `cut` `tr` `jq` |
+| Name | `date` |
+
+Everything that starts another program or writes at an arbitrary path is left out, because the check sees the program
+name and never its arguments: `awk` (`system()`), `sed` (`e`), `find -exec`, `xargs`, `git` (`!alias`), `make`,
+`python -c` and `pip install` were all ways around the list, and `rm`/`mv`/`tar` wrote wherever the process could. An
+author adds one per agent (`sandbox.allow_commands`); that is a decision, not a default. `find` may look but not
+`-exec` or `-delete`.
+
+The Tools tab lists the groups worth adding next to the field — moving files, archives, in-place text edits, code and
+version control — and says what each costs, because a bare list of names would not tell an author that `git` can start
+any process.
 
 `run_python` needs no list — there is no command to allow — so the list guards the shell tool, and turning on `exec.python`
 is itself the decision to allow arbitrary code.

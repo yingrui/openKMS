@@ -118,8 +118,8 @@ class TestRunPython:
 
 class TestRunCommand:
     def test_an_allowed_command_runs(self):
-        result = sandbox.run_command("echo hello", kb_id="kb1", session_id="s1", settings={"enabled": True})
-        assert result.ok and result.stdout.strip() == "hello"
+        result = sandbox.run_command("date +%Y", kb_id="kb1", session_id="s1", settings={"enabled": True})
+        assert result.ok and result.stdout.strip().isdigit()
 
     def test_a_denied_command_never_starts(self):
         with pytest.raises(sandbox.CommandNotAllowed):

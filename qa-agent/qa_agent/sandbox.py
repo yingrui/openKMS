@@ -67,9 +67,7 @@ MAX_OUTPUT_BYTES = 64_000
 #: a guard rail, not a boundary: `cat /etc/passwd` remains readable, because the subprocess runs as the service user.
 ALLOWED_COMMANDS: frozenset[str] = frozenset(
     """
-    ls cat head tail wc sort uniq cut tr grep jq
-    date basename dirname pwd realpath echo printf seq
-    find
+    cat head tail ls find grep wc sort uniq cut tr jq date file stat pwd
     """.split()
 )
 

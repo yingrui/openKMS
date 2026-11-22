@@ -435,3 +435,47 @@
     cursor: not-allowed;
   }
 }
+
+/* Suggestions for the additional-command list: each group says what it is for and what it costs, because a bare list
+   of names would not tell an author that `git` can start any process. */
+.workforce-allow-help {
+  margin-top: var(--space-2);
+
+  summary {
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: var(--color-text-secondary);
+    min-height: var(--tap-min);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  dl {
+    margin: var(--space-2) 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  dt {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  dd {
+    margin: 2px 0 0;
+    font-size: 0.78rem;
+    line-height: 1.55;
+    color: var(--color-text-muted);
+  }
+
+  code {
+    font-size: 0.75rem;
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-muted);
+    color: var(--color-text-secondary);
+  }
+}

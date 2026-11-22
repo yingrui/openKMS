@@ -424,5 +424,21 @@
   "webSearchConnectorPick": "绑定搜索连接器",
   "webSearchConnectorNone": "还没有启用的搜索连接器。先到「连接器」里添加一个。",
   "toolsNeeds_web_search_connector": "需要搜索连接器（已绑定 {{count}} 个）",
-  "webSearchConnectorChoose": "选择连接器…"
+  "webSearchConnectorChoose": "选择连接器…",
+  "sandboxAllowCommandsHelp": "值得追加什么（以及各自的代价）",
+  "sandboxAllowGroupFiles": "移动文件",
+  "sandboxAllowGroupFilesWhy": "脚本需要目录结构时。写文件本来就会建父目录，所以这一组是移动与删除。",
+  "sandboxAllowGroupArchives": "压缩包",
+  "sandboxAllowGroupArchivesWhy": "知识库会收到 zip / tar 包时。它们是写入型，且能写到对话目录之外。",
+  "sandboxAllowGroupText": "就地改文本",
+  "sandboxAllowGroupTextWhy": "必须改文件内容时。两者都能自己起 shell（sed -e、awk system()）。",
+  "sandboxAllowGroupCode": "代码",
+  "sandboxAllowGroupCodeWhy": "通常没必要：run_python 已经能跑代码，这一组等于在 shell 里再放一份。",
+  "sandboxAllowGroupVcs": "版本控制",
+  "sandboxAllowGroupVcsWhy": "以 ! 开头的 git 别名可以执行任意命令，所以它比看上去扩得更多。",
+  "sandboxAllowGroupFilesCmds": "mkdir touch cp mv rm",
+  "sandboxAllowGroupArchivesCmds": "unzip tar zip",
+  "sandboxAllowGroupTextCmds": "sed awk",
+  "sandboxAllowGroupCodeCmds": "python pip",
+  "sandboxAllowGroupVcsCmds": "git"
 }

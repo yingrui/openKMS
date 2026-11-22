@@ -305,6 +305,24 @@ DEFAULT_BASE_INSTRUCTION = (
 
 
 
+def _with_allow_list(tools: list, sandbox_settings: dict[str, Any]) -> list:
+    """Copy `run_command` with this agent's programs in its description.
+
+    A copy, not a mutation: the tool objects are module-level singletons shared by concurrent requests, and one agent's
+    allow list must never leak into another's. The model reads the list before it chooses a program instead of after it
+    is refused.
+    """
+    if not sandbox_settings.get("enabled"):
+        return tools
+    from .skills.sandbox import allowed_commands_description
+
+    description = allowed_commands_description(sandbox_settings)
+    return [
+        tool.model_copy(update={"description": description}) if tool.name == "run_command" else tool
+        for tool in tools
+    ]
+
+
 def generate_node(state: dict[str, Any]) -> dict[str, Any]:
     """Generate answer using LLM with RAG context and ontology tools."""
     llm_cfg = _llm_for(state)
@@ -322,7 +340,7 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
         top_p=state.get("top_p"),
         max_tokens=state.get("max_tokens"),
     )
-    tools = tools_for(state.get("agent_tools"))
+    tools = _with_allow_list(tools_for(state.get("agent_tools")), state.get("sandbox") or {})
     llm_with_tools = llm.bind_tools(tools)
 
     messages = build_messages_for_generate(

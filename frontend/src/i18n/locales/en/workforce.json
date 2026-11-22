@@ -426,5 +426,21 @@
   "webSearchConnectorPick": "Bind a search connector",
   "webSearchConnectorNone": "No enabled search connector exists. Add one under Connectors first.",
   "toolsNeeds_web_search_connector": "Needs a search connector ({{count}} bound)",
-  "webSearchConnectorChoose": "Choose a connector…"
+  "webSearchConnectorChoose": "Choose a connector…",
+  "sandboxAllowCommandsHelp": "What is worth adding (and what it costs)",
+  "sandboxAllowGroupFiles": "Moving files",
+  "sandboxAllowGroupFilesWhy": "when a script needs a directory structure. Writing a file already creates its folders, so this is about moving and removing.",
+  "sandboxAllowGroupArchives": "Archives",
+  "sandboxAllowGroupArchivesWhy": "when the knowledge base receives zips or tarballs. They write, and they can write outside the conversation folder.",
+  "sandboxAllowGroupText": "Editing text",
+  "sandboxAllowGroupTextWhy": "when a file must be changed in place. Both can start a shell of their own (sed -e, awk system()).",
+  "sandboxAllowGroupCode": "Code",
+  "sandboxAllowGroupCodeWhy": "usually unnecessary: run_python already runs code, and this only puts it in the shell as well.",
+  "sandboxAllowGroupVcs": "Version control",
+  "sandboxAllowGroupVcsWhy": "a git alias starting with ! runs any command, so this widens the boundary more than it looks.",
+  "sandboxAllowGroupFilesCmds": "mkdir touch cp mv rm",
+  "sandboxAllowGroupArchivesCmds": "unzip tar zip",
+  "sandboxAllowGroupTextCmds": "sed awk",
+  "sandboxAllowGroupCodeCmds": "python pip",
+  "sandboxAllowGroupVcsCmds": "git"
 }
