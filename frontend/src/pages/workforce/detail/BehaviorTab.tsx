@@ -77,11 +77,67 @@ export function WorkforceBehaviorTab() {
             </select>
           </FormField>
         </div>
+        <FormField label={t('requireCitations')} hint={t('requireCitationsHint')}>
+          <select
+            className="ds-control"
+            value={draft.requireCitations}
+            onChange={(e) =>
+              patch({ requireCitations: e.target.value as BehaviourDraft['requireCitations'] })
+            }
+          >
+            <option value="off">{t('requireCitationsOff')}</option>
+            <option value="require">{t('requireCitationsRequire')}</option>
+          </select>
+        </FormField>
+        <FormField label={t('maxAnswerChars')} hint={t('maxAnswerCharsHint')}>
+          <input
+            className="ds-control"
+            type="number"
+            min={100}
+            step={100}
+            value={draft.maxAnswerChars}
+            onChange={(e) => patch({ maxAnswerChars: e.target.value })}
+          />
+        </FormField>
         <CheckRow
           checked={draft.schemaLookup}
           onChange={(checked) => patch({ schemaLookup: checked })}
           title={t('schemaLookup')}
+          hint={t('schemaLookupHint')}
         />
+        <p className="ds-field__hint">{t('answerPolicyPromptOnly')}</p>
+      </EntityViewPanel>
+
+      {/* A refusal is an interface contract: the caller reads this text, not a sentence the model improvised. */}
+      <EntityViewPanel title={t('refusalTitle')} description={t('refusalLead')}>
+        <div className="entity-view__form">
+          <FormField label={t('refusalText')} hint={t('refusalTextHint')}>
+            <textarea
+              className="ds-control"
+              rows={3}
+              value={draft.refusalText}
+              placeholder={t('refusalTextPlaceholder')}
+              onChange={(e) => patch({ refusalText: e.target.value })}
+            />
+          </FormField>
+          <FormField label={t('pausedMessage')} hint={t('pausedMessageHint')}>
+            <textarea
+              className="ds-control"
+              rows={2}
+              value={draft.pausedMessage}
+              placeholder={t('pausedMessagePlaceholder')}
+              onChange={(e) => patch({ pausedMessage: e.target.value })}
+            />
+          </FormField>
+          <FormField label={t('refusalContact')} hint={t('refusalContactHint')}>
+            <input
+              className="ds-control"
+              value={draft.refusalContact}
+              placeholder={t('refusalContactPlaceholder')}
+              onChange={(e) => patch({ refusalContact: e.target.value })}
+            />
+          </FormField>
+        </div>
       </EntityViewPanel>
 
       <EntityViewPanel title={t('orchestration')}>

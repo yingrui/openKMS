@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet, useParams } from 'react-router-dom';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Pause, Play } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchWorkforceAgent, type WorkforceAgentDetail } from '../../data/workforceApi';
+import {
+  fetchWorkforceAgent,
+  pauseWorkforceAgent,
+  resumeWorkforceAgent,
+  type WorkforceAgentDetail,
+} from '../../data/workforceApi';
 import { StatusChip } from '../../styles/design-system';
 import { EntityViewLoading, EntityViewShell } from '../shared/EntityViewShell';
 import { WORKFORCE_TABS } from './detail/tabs';
@@ -63,7 +68,38 @@ export function WorkforceDetail() {
         meta={t('metaKbs', { count: agent.knowledge_base_count })}
         identityAction={
           <>
-            <StatusChip tone="ok">{agent.status}</StatusChip>
+            <StatusChip tone={agent.status === 'paused' ? 'warn' : 'ok'}>
+              {t(`status_${agent.status}`)}
+            </StatusChip>
+            {agent.status === 'paused' ? (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() =>
+                  void resumeWorkforceAgent(agent.id).then(() => {
+                    toast.success(t('resumed'));
+                    void load(true);
+                  })
+                }
+              >
+                <Play size={15} aria-hidden />
+                {t('resumeAgent')}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() =>
+                  void pauseWorkforceAgent(agent.id).then(() => {
+                    toast.success(t('paused'));
+                    void load(true);
+                  })
+                }
+              >
+                <Pause size={15} aria-hidden />
+                {t('pauseAgent')}
+              </button>
+            )}
             {agent.knowledge_base_count > 0 ? (
               <Link className="btn btn-secondary btn-sm" to={`${base}/chat`}>
                 <MessageSquare size={15} aria-hidden />

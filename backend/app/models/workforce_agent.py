@@ -23,6 +23,9 @@ from app.database import Base
 #: Active agents serve; archived agents are hidden and their credentials stop working. Archive,
 #: not delete: the binding rows and the audit trail keep pointing at a row that exists.
 AGENT_STATUS_ACTIVE = "active"
+#: Serves nothing, but keeps its configuration and credentials: maintenance, an audit window, a model switch. Archive
+#: means delete; this means "not right now".
+AGENT_STATUS_PAUSED = "paused"
 AGENT_STATUS_ARCHIVED = "archived"
 
 

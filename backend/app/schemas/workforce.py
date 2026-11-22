@@ -168,6 +168,10 @@ class WorkforceAskResponse(BaseModel):
     #: True only when the answer was checked against an enforced grounding policy and passed. With the policy off
     #: this is False, and `grounding["policy"]` distinguishes "not checked" from "checked and failed".
     verified: bool = False
+    #: True when a configured policy replaced the answer with the agent's refusal text; `answer` then holds that text.
+    refused: bool = False
+    #: `{reason, contact}` — a stable code (`unsourced_numbers` | `no_citations`) and where the caller goes next.
+    refusal: dict[str, Any] | None = None
     prompt_version: str | None = None
     #: The model that answered — an agent may choose one, so the reply names it.
     model: str | None = None

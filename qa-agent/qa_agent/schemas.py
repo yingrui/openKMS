@@ -85,6 +85,10 @@ class AskResponse(BaseModel):
     #: True only when the answer was checked and passed: `enforce` was on and every number traced. "Not
     #: checked" is not "passed" — with the policy off this is False, and `grounding.policy` says why.
     verified: bool = False
+    #: True when a configured policy replaced the answer with the agent's refusal text. `answer` then holds that text.
+    refused: bool = False
+    #: Why it refused, and where the caller goes next. `reason` is a stable code: `unsourced_numbers` | `no_citations`.
+    refusal: dict[str, Any] | None = None
 
 
 class PromptPreviewRequest(BaseModel):

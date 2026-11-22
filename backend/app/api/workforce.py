@@ -33,6 +33,7 @@ from app.models.workforce_skill import (
 )
 from app.models.workforce_agent import (
     AGENT_STATUS_ACTIVE,
+    AGENT_STATUS_PAUSED,
     AGENT_STATUS_ARCHIVED,
     WorkforceAgent,
     WorkforceAgentCredential,
@@ -173,10 +174,10 @@ async def list_agents(
     db: AsyncSession = Depends(get_db),
 ):
     sub, _ = _principal(request)
-    q = select(WorkforceAgent).where(WorkforceAgent.status == AGENT_STATUS_ACTIVE)
-    count_q = select(func.count()).select_from(WorkforceAgent).where(
-        WorkforceAgent.status == AGENT_STATUS_ACTIVE
-    )
+    # Paused rows stay listed: hiding one would leave its owner no way to resume it.
+    serving = WorkforceAgent.status.in_((AGENT_STATUS_ACTIVE, AGENT_STATUS_PAUSED))
+    q = select(WorkforceAgent).where(serving)
+    count_q = select(func.count()).select_from(WorkforceAgent).where(serving)
     if not jwt_payload_is_admin(request.state.openkms_jwt_payload):
         q = q.where(WorkforceAgent.owner_sub == sub)
         count_q = count_q.where(WorkforceAgent.owner_sub == sub)
@@ -309,6 +310,25 @@ async def set_web_search_connector(
         if not connector.enabled:
             raise HTTPException(status_code=400, detail="Connector is disabled")
         agent.web_search_connector_id = connector.id
+    await db.commit()
+    await db.refresh(agent)
+    return await agent_detail(db, agent)
+
+
+@router.post("/agents/{agent_id}/pause", response_model=WorkforceAgentDetailResponse)
+async def pause_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    """Stop serving without losing the configuration or the credentials. Archive means delete; this means "not now"."""
+    agent = await _scoped(db, request, agent_id, write=True)
+    agent.status = AGENT_STATUS_PAUSED
+    await db.commit()
+    await db.refresh(agent)
+    return await agent_detail(db, agent)
+
+
+@router.post("/agents/{agent_id}/resume", response_model=WorkforceAgentDetailResponse)
+async def resume_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    agent = await _scoped(db, request, agent_id, write=True)
+    agent.status = AGENT_STATUS_ACTIVE
     await db.commit()
     await db.refresh(agent)
     return await agent_detail(db, agent)
@@ -800,6 +820,16 @@ async def ask_agent(
     agent = credential_agent
     if agent.id != agent_id:
         raise HTTPException(status_code=403, detail="Credential does not belong to this agent")
+    if agent.status == AGENT_STATUS_PAUSED:
+        # 503: the service exists and is configured, it is just not answering right now. 409 would read as a mistake.
+        paused = (agent.agent_config or {}).get("answer_policy", {}).get("paused_message")
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "AGENT_PAUSED",
+                "message": paused or "This service is temporarily unavailable.",
+            },
+        )
     if agent.status != AGENT_STATUS_ACTIVE:
         raise HTTPException(status_code=409, detail="Workforce agent is archived")
 
@@ -870,6 +900,8 @@ async def ask_agent(
         # Fail closed: an upstream that says nothing about verification has not verified anything. "Not
         # checked" is not "passed" — the qa-agent sends False unless the answer passed an enforced policy.
         verified=data.get("verified") is True,
+        refused=data.get("refused") is True,
+        refusal=data.get("refusal"),
         prompt_version=data.get("prompt_version"),
         model=data.get("model"),
     )

@@ -6,7 +6,8 @@ export interface WorkforceAgentResponse {
   id: string;
   name: string;
   description?: string | null;
-  status: 'active' | 'archived';
+  /** `paused` serves nothing but keeps configuration and credentials. */
+  status: 'active' | 'paused' | 'archived';
   owner_sub: string;
   owner_name?: string | null;
   /** Enabled skills; null means the qa-agent core set. */
@@ -316,5 +317,20 @@ export async function setWorkforceWebSearchConnector(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ connector_id: connectorId }),
     },
+  );
+}
+
+/** Stop serving without losing the configuration: maintenance, an audit window, a model switch. */
+export function pauseWorkforceAgent(agentId: string): Promise<WorkforceAgentDetail> {
+  return request<WorkforceAgentDetail>(
+    `/api/workforce/agents/${encodeURIComponent(agentId)}/pause`,
+    { method: 'POST' },
+  );
+}
+
+export function resumeWorkforceAgent(agentId: string): Promise<WorkforceAgentDetail> {
+  return request<WorkforceAgentDetail>(
+    `/api/workforce/agents/${encodeURIComponent(agentId)}/resume`,
+    { method: 'POST' },
   );
 }

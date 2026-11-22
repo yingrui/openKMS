@@ -23,6 +23,14 @@ export interface BehaviourDraft {
   unknownMeasure: 'try_anyway' | 'refuse';
   grounding: 'off' | 'mark' | 'enforce';
   schemaLookup: boolean;
+  requireCitations: 'off' | 'require';
+  /** Empty = no limit. */
+  maxAnswerChars: string;
+  /** What a refused caller reads, and where they go next. Empty = the built-in wording. */
+  refusalText: string;
+  refusalContact: string;
+  /** What callers read while the agent is paused. Empty = the built-in line. */
+  pausedMessage: string;
   maxToolRounds: string;
   sandbox: boolean;
 }
@@ -41,6 +49,12 @@ export function draftFromConfig(cfg: KbAgentConfig | null | undefined): Behaviou
     unknownMeasure: c.answer_policy?.unknown_measure ?? 'try_anyway',
     grounding: c.answer_policy?.require_grounded_numbers ?? 'off',
     schemaLookup: Boolean(c.answer_policy?.require_schema_lookup),
+    requireCitations: c.answer_policy?.require_citations ?? 'off',
+    maxAnswerChars:
+      c.answer_policy?.max_answer_chars != null ? String(c.answer_policy.max_answer_chars) : '',
+    refusalText: c.answer_policy?.refusal?.text ?? '',
+    refusalContact: c.answer_policy?.refusal?.contact ?? '',
+    pausedMessage: c.answer_policy?.paused_message ?? '',
     maxToolRounds: c.orchestration?.max_tool_rounds
       ? String(c.orchestration.max_tool_rounds)
       : '',
@@ -54,6 +68,9 @@ export function draftToConfig(d: BehaviourDraft): Omit<KbAgentConfig, 'retrieval
   const temperature = Number.parseFloat(d.temperature);
   const topP = Number.parseFloat(d.topP);
   const maxTokens = Number.parseInt(d.maxTokens, 10);
+  const parsedMaxAnswer = Number.parseInt(d.maxAnswerChars, 10);
+  const maxAnswerChars =
+    Number.isFinite(parsedMaxAnswer) && parsedMaxAnswer >= 100 ? parsedMaxAnswer : null;
   return {
     model_id: d.modelId.trim() || null,
     generation: {
@@ -75,6 +92,10 @@ export function draftToConfig(d: BehaviourDraft): Omit<KbAgentConfig, 'retrieval
       unknown_measure: d.unknownMeasure,
       require_grounded_numbers: d.grounding,
       require_schema_lookup: d.schemaLookup,
+      require_citations: d.requireCitations,
+      max_answer_chars: maxAnswerChars,
+      refusal: { text: d.refusalText.trim() || null, contact: d.refusalContact.trim() || null },
+      paused_message: d.pausedMessage.trim() || null,
     },
     orchestration: {
       max_tool_rounds: Number.isFinite(rounds) && rounds > 0 ? rounds : null,

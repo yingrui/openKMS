@@ -134,6 +134,8 @@ async def _ask_impl(kb_id: str, request: AskRequest) -> AskResponse:
         prompt_version=result.get("prompt_version"),
         warnings=list(result.get("warnings") or []),
         verified=bool(result.get("verified", True)),
+        refused=bool(result.get("refused", False)),
+        refusal=result.get("refusal"),
     )
 
 

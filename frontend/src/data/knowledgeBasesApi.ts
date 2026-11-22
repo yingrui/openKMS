@@ -23,6 +23,13 @@ export interface KbAgentConfig {
     unknown_measure?: 'try_anyway' | 'refuse';
     require_grounded_numbers?: 'off' | 'mark' | 'enforce';
     require_schema_lookup?: boolean;
+    /** Refuse an answer with no sources once a tool ran. */
+    require_citations?: 'off' | 'require';
+    /** Characters; a longer answer is cut and marked. */
+    max_answer_chars?: number | null;
+    refusal?: { text?: string | null; contact?: string | null };
+    /** Returned with the 503 while the agent is paused. */
+    paused_message?: string | null;
   };
   orchestration?: {
     profile?: 'rag_only' | 'rag_tools' | 'agent_loop';

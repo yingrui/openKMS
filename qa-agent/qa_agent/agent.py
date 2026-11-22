@@ -279,30 +279,47 @@ def _build_system_prompt(
     )
 
 
-def _policy_fragments(policy: dict[str, Any] | None) -> str:
-    """Rules the KB switched on. Empty when every policy is at its default, so an unconfigured KB reads exactly as before."""
-    parts: list[str] = []
-    if agent_config_module.unknown_measure_policy(policy and {"answer_policy": policy}) == "refuse":
-        parts.append(
-            "**Answerable measures.** Before answering a numeric question, compare what is being asked for against the "
-            "`available_measures` list returned by `get_semantic_model`. If the asked measure is not in that list, do "
-            "**not** substitute a different field and do not answer a related question: say the measure is not in this model, "
-            "list the measures that are, and name the kind of table that would provide it."
+def _apply_answer_policy(
+    answer: str,
+    *,
+    agent_config: dict[str, Any] | None,
+    grounding: Any,
+    ground_mode: str,
+    sources: list[Any],
+    warnings: list[str],
+    tool_ran: bool,
+) -> tuple[str, bool, dict[str, Any] | None, list[str]]:
+    """Refuse in the open when a configured policy fires, and cap the answer when the agent asked for a cap.
+
+    Three triggers, one exit. Each used to end somewhere different: unsourced numbers got a warning appended, an answer
+    with no sources at all was returned as-is, and a long answer was returned in full. A caller cannot branch on any of
+    that, and a *warning* is not a contract — so a policy that fires replaces the answer with the configured refusal and
+    says why in `refusal.reason`.
+
+    Returns `(answer, refused, refusal, warnings)`. The text is unchanged when nothing fires.
+    """
+    reason: str | None = None
+    if ground_mode == "enforce" and grounding.untraced:
+        reason = "unsourced_numbers"
+    elif tool_ran and agent_config_module.require_citations(agent_config) and not sources:
+        reason = "no_citations"
+
+    if reason is not None:
+        text = agent_config_module.refusal_text(agent_config)
+        contact = agent_config_module.refusal_contact(agent_config)
+        return text, True, {"reason": reason, "contact": contact}, [*warnings, f"refused:{reason}"]
+
+    limit = agent_config_module.max_answer_chars(agent_config)
+    if limit is not None and len(answer) > limit:
+        # Truncated and said so: a silently shortened answer reads like the model's own conclusion.
+        return (
+            answer[:limit].rstrip() + "…",
+            False,
+            None,
+            [*warnings, f"answer_truncated:{limit}"],
         )
-    if agent_config_module.require_schema_lookup(policy and {"answer_policy": policy}):
-        parts.append(
-            "**Look before you query.** Call `get_semantic_model` and read its fields and measures before calling "
-            "`query_semantic_model` or `run_sql`."
-        )
-    return "\n\n".join(parts)
 
-
-DEFAULT_BASE_INSTRUCTION = (
-    "You are a helpful assistant answering questions based on **this** knowledge base "
-    "(and only the skills enabled for it). Do not invent a different product domain "
-    "(e.g. insurance) unless the retrieved context or enabled skills are about that domain."
-)
-
+    return answer, False, None, warnings
 
 
 def _with_allow_list(tools: list, sandbox_settings: dict[str, Any]) -> list:
@@ -617,6 +634,15 @@ def invoke_agent(
         ground_mode = agent_config_module.require_grounded_numbers(agent_config)
         grounding.policy = ground_mode
         warnings = grounding_warnings(grounding, ground_mode)
+        answer, refused, refusal, warnings = _apply_answer_policy(
+            answer,
+            agent_config=agent_config,
+            grounding=grounding,
+            ground_mode=ground_mode,
+            sources=display,
+            warnings=warnings,
+            tool_ran=bool(result.get("messages")),
+        )
         msgs = list(result.get("messages") or [])
         logger.info(
             "invoke_agent done kb=%s elapsed=%.2fs answer_chars=%d sources=%d graph_messages=%d",
@@ -634,7 +660,9 @@ def invoke_agent(
             "prompt_version": prompt_version,
             "model": llm_cfg.model_name,
             "warnings": warnings,
-            "verified": ground_mode == "enforce" and not warnings,
+            "refused": refused,
+            "refusal": refusal,
+            "verified": ground_mode == "enforce" and not warnings and not refused,
         }
     except GraphRecursionError:
         logger.error(

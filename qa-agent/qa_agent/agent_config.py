@@ -145,3 +145,36 @@ def enable_thinking(config: dict[str, Any] | None) -> bool:
     """Whether gateways that expose `extra_body.enable_thinking` should think. Off by default, as before."""
     raw = ((config or {}).get("generation") or {}).get("thinking")
     return raw == "on"
+
+
+def require_citations(config: dict[str, Any] | None) -> bool:
+    """Whether an answer with no sources is refused once a tool ran. Off by default: small talk has no sources."""
+    value = answer_policy(config).get("require_citations")
+    return value == "require"
+
+
+def max_answer_chars(config: dict[str, Any] | None) -> int | None:
+    """Longest answer a caller may receive, in characters. None means no limit."""
+    value = answer_policy(config).get("max_answer_chars")
+    return value if isinstance(value, int) and value >= 100 else None
+
+
+def refusal_text(config: dict[str, Any] | None) -> str:
+    """What the caller reads when the agent refuses. The configured text, or the built-in one."""
+    refusal = answer_policy(config).get("refusal") or {}
+    text = str(refusal.get("text") or "").strip()
+    return text or DEFAULT_REFUSAL_TEXT
+
+
+def refusal_contact(config: dict[str, Any] | None) -> str | None:
+    """Where a refused caller goes next, when the agent names somewhere."""
+    refusal = answer_policy(config).get("refusal") or {}
+    contact = str(refusal.get("contact") or "").strip()
+    return contact or None
+
+
+#: Used when an agent configures no text of its own. One wording for every entry point, so the API and the chat say the
+#: same thing — a prompt-written sentence could be argued away by the question.
+DEFAULT_REFUSAL_TEXT = (
+    "这个问题无法按现有资料回答。请补充更具体的问题，或联系服务提供方。"
+)

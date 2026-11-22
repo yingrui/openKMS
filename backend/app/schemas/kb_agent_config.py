@@ -78,6 +78,20 @@ class GenerationConfig(BaseModel):
     reasoning_effort: Literal["low", "high", "max"] | None = None
 
 
+class AnswerRefusal(BaseModel):
+    """What a caller sees when the agent refuses — a contract, not a sentence the model improvises.
+
+    Both fields are optional: an unconfigured agent uses the built-in wording, which is the same in every entry point
+    (API, chat). Free text written into a prompt could be argued away by the question; this cannot.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    text: str | None = Field(None, max_length=2000)
+    #: Where to go next — a support address, a ticket URL, an internal phone number.
+    contact: str | None = Field(None, max_length=500)
+
+
 class AnswerPolicy(BaseModel):
     """What counts as an acceptable answer. Defaults are today's behaviour — the point is that they become *choosable*,
     and measurable, rather than implied."""
@@ -87,6 +101,13 @@ class AnswerPolicy(BaseModel):
     unknown_measure: Literal["try_anyway", "refuse"] = "try_anyway"
     require_grounded_numbers: Literal["off", "mark", "enforce"] = "off"
     require_schema_lookup: bool = False
+    #: Refuse an answer that has no sources at all, once a tool ran. Off by default: small talk must not be refused.
+    require_citations: Literal["off", "require"] = "off"
+    #: Longest answer a caller may receive, in characters. None = no limit.
+    max_answer_chars: int | None = Field(None, ge=100, le=100_000)
+    refusal: AnswerRefusal = AnswerRefusal()
+    #: What a caller reads while the agent is paused. None = the built-in wording.
+    paused_message: str | None = Field(None, max_length=2000)
 
 
 class SandboxConfig(BaseModel):

@@ -292,3 +292,43 @@ class TestPromptPreviewRoute:
 
 async def _async(value):
     return value
+
+
+class TestPausing:
+    """Pause is not archive: the configuration and the credentials survive, and callers get a 503 that says why."""
+
+    def test_a_paused_agent_is_served_by_neither_list_nor_credential(self):
+        from app.models.workforce_agent import (
+            AGENT_STATUS_ACTIVE,
+            AGENT_STATUS_ARCHIVED,
+            AGENT_STATUS_PAUSED,
+        )
+
+        # The management list keeps active and paused — hiding a paused one would leave no way to resume it.
+        listed = (AGENT_STATUS_ACTIVE, AGENT_STATUS_PAUSED)
+        assert AGENT_STATUS_ARCHIVED not in listed
+        assert AGENT_STATUS_PAUSED != AGENT_STATUS_ACTIVE
+
+    def test_the_serve_endpoint_answers_paused_with_the_configured_line(self):
+        import asyncio
+
+        import pytest
+        from fastapi import HTTPException
+
+        from app.api import workforce as module
+        from app.models.workforce_agent import AGENT_STATUS_PAUSED
+
+        agent = SimpleNamespace(
+            id="agent_1",
+            status=AGENT_STATUS_PAUSED,
+            agent_config={"answer_policy": {"paused_message": "维护中，10:00 恢复"}},
+        )
+        body = SimpleNamespace(kb_id="kb_1", question="q", conversation_history=[], session_id=None)
+
+        with pytest.raises(HTTPException) as raised:
+            asyncio.run(
+                module.ask_agent(agent_id="agent_1", body=body, request=None, credential_agent=agent, db=None)
+            )
+        assert raised.value.status_code == 503
+        assert raised.value.detail["code"] == "AGENT_PAUSED"
+        assert raised.value.detail["message"] == "维护中，10:00 恢复"

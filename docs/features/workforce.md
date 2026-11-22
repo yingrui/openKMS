@@ -208,6 +208,32 @@ The grouping is **data**, three fields per capability in `qa-agent/tool_catalog.
 decision about one agent and lives on that agent's Tools tab, which is also where the bound model or ontology group is
 chosen.
 
+## Behaviour: what the runtime refuses, and what a caller reads
+
+`Behavior` holds what the runtime **decides**, not what the prompt asks for. The distinction is written on the page,
+because two of its four original settings — "unknown measure" and "look before you query" — are only prose in the
+prompt: the runtime cannot parse a question for a measure name without guessing. Grounding, citations, the length limit
+and the refusal contract are enforced.
+
+**A refusal is an interface contract.** Three triggers share one exit: an unsourced number under
+`require_grounded_numbers = enforce`, an answer with no sources once a tool ran under `require_citations = require`, and
+(implicitly) any future policy. When one fires, the answer is *replaced* by the agent's refusal text — not annotated —
+and the response carries `refused: true` and `refusal {reason, contact}`. The reason is a stable code
+(`unsourced_numbers` | `no_citations`), so a caller can branch and an operator can count. `answer_policy.refusal.text`
+and `.contact` are optional; empty uses one built-in wording shared by the API and the chat.
+
+**`max_answer_chars`** caps what a caller receives. Over the cap the answer is truncated and `warnings` says so — a
+silently shortened answer reads like the model's own conclusion.
+
+**Pausing** is a third status next to active and archived: it serves nothing (`POST /ask` → 503 `AGENT_PAUSED` with the
+configured `paused_message`) while keeping the configuration, bindings and credentials. Archive means delete; pause means
+"not right now". Paused agents stay listed — hiding one would leave its owner no way to resume it.
+
+**There is no "allow writes" switch, on purpose.** The workforce runtime has no write tools: ontology queries are
+read-only Cypher, catalog queries are read-only SQL, the workspace only writes inside the conversation's own folder, and
+the one way to change anything outside is `exec.*`, which is its own capability with its own allow list. A switch that
+blocks nothing would be a switch that lies.
+
 ## Retrieval is two capabilities, not one
 
 Two tools do the same kind of act — look something up — across two different boundaries, so they are two switches:
