@@ -3,7 +3,6 @@
 # Regenerate: python3 scripts/check-ds-adoption.py --update-baseline
 pages/chamber/ChamberPages.scss 14
 styles/console-forms.scss 10
-pages/ontology/ontology-admin.scss 8
 pages/articles/ArticleDetail.scss 5
 pages/connectors/connectors.scss 5
 pages/console/permissions/ConsoleAccessGroups.scss 5
