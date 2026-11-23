@@ -262,14 +262,14 @@ export function AgentSkillsPage() {
       ) : null}
 
       {hasSkills ? (
-        <div className="agents-grid">
+        <div className="ds-resource-list-grid">
           {skills.map((skill) => (
-            <div key={skill.id} className="agents-card">
-              <div className="agents-card-top">
-                <Link to={`/agents/skills/${skill.id}/settings`} className="agents-card-icon" aria-hidden>
+            <div key={skill.id} className="ds-resource-list-card">
+              <div className="ds-resource-list-card-top">
+                <Link to={`/agents/skills/${skill.id}/settings`} className="ds-resource-list-icon" aria-hidden>
                   <Puzzle size={26} strokeWidth={1.5} />
                 </Link>
-                <div className="agents-card-actions">
+                <div className="ds-resource-list-card-actions">
                   <Link
                     to={`/agents/skills/${skill.id}/settings`}
                     title={t('skills.settings.title')}
@@ -290,10 +290,10 @@ export function AgentSkillsPage() {
               </div>
               <Link to={`/agents/skills/${skill.id}/settings`} className="agents-card-body">
                 <h3>{skill.display_name}</h3>
-                <p className="agents-card-desc">
+                <p className="ds-resource-list-desc">
                   <code>{skill.id}</code>
                 </p>
-                <span className="agents-card-meta">
+                <span className="ds-resource-list-meta">
                   {t('skills.versionCount', { count: skill.versions.length })}
                   {skill.is_default ? ` · ${t('skills.defaultForNewProjects')}` : ''}
                   {skill.created_by_name ? ` · ${t('skills.createdBy', { name: skill.created_by_name })}` : ''}

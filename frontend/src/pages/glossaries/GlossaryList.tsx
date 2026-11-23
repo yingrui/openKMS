@@ -17,6 +17,8 @@ import {
   type CardListViewMode,
 } from '../../hooks/useStoredViewMode';
 import { Dialog, FormField, Pagination, ResourceViewToggle } from '../../styles/design-system';
+import { EmptyState } from '../../styles/design-system/EmptyState';
+import { Loading } from '../../styles/design-system/Loading';
 import './GlossaryList.scss';
 
 const VIEW_STORAGE_KEY = 'glossaries-list-view';
@@ -165,14 +167,11 @@ export function GlossaryList() {
         </div>
       </div>
 
-      {loading && <p className="glossary-loading">{t('shared.loading')}</p>}
+      {loading ? <Loading label={t('shared.loading')} /> : null}
 
-      {!loading && total === 0 && (
-        <div className="glossary-empty">
-          <BookOpen size={48} strokeWidth={1} />
-          <p>{t('glossary.empty')}</p>
-        </div>
-      )}
+      {!loading && total === 0 ? (
+        <EmptyState icon={<BookOpen size={48} strokeWidth={1} />} title={t('glossary.empty')} />
+      ) : null}
 
       {!loading && total > 0 && isCardView && total > glossaries.length ? (
         <p className="ds-card-preview-hint">
@@ -184,14 +183,14 @@ export function GlossaryList() {
       ) : null}
 
       {!loading && total > 0 && isCardView ? (
-        <div className="glossary-grid">
+        <div className="ds-resource-list-grid">
           {glossaries.map((g) => (
-            <Link key={g.id} to={`/glossaries/${g.id}`} className="glossary-card">
-              <div className="glossary-card-top">
-                <div className="glossary-icon">
+            <Link key={g.id} to={`/glossaries/${g.id}`} className="ds-resource-list-card">
+              <div className="ds-resource-list-card-top">
+                <div className="ds-resource-list-icon">
                   <BookOpen size={28} strokeWidth={1.5} />
                 </div>
-                <div className="glossary-card-actions">
+                <div className="ds-resource-list-card-actions">
                   <button type="button" title={t('shared.edit')} aria-label={t('shared.edit')} onClick={(e) => openEdit(g, e)}>
                     <Pencil size={15} />
                   </button>
@@ -201,8 +200,8 @@ export function GlossaryList() {
                 </div>
               </div>
               <h3>{g.name}</h3>
-              <p className="glossary-desc">{g.description || t('shared.noDescription')}</p>
-              <div className="glossary-meta">
+              <p className="ds-resource-list-desc">{g.description || t('shared.noDescription')}</p>
+              <div className="ds-resource-list-meta">
                 <span>{t('glossary.termCount', { count: g.term_count })}</span>
               </div>
             </Link>

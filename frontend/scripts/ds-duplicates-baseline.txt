@@ -1,8 +1,6 @@
 # Page rules that re-declare a design-system skin, frozen so they can only shrink.
 # Each entry is the number of copied blocks in that sheet.
 # Regenerate: python3 scripts/check-ds-duplicates.py --update-baseline
-pages/glossaries/GlossaryList.scss 6
-pages/agents/ProjectList.scss 5
 pages/evaluation/EvaluationDatasetList.scss 4
 pages/knowledge-map/KnowledgeMap.scss 4
 pages/connectors/connectors.scss 3
@@ -10,8 +8,8 @@ pages/console/permissions/ConsolePermissionManagement.scss 3
 pages/models/ModelDetail.scss 3
 pages/models/Models.scss 3
 pages/Home.scss 2
+pages/agents/ProjectList.scss 2
 pages/catalog/dataset-detail.scss 2
-pages/chamber/ChamberPages.scss 2
 pages/console/data/ConsoleStorage.scss 2
 pages/evaluation/EvaluationDatasetDetail.scss 2
 pages/knowledge-bases/detail/dialogs.scss 2
@@ -26,7 +24,6 @@ components/ResourceSharePanel.scss 1
 components/agents/SessionReview.scss 1
 components/agents/_agents-files.scss 1
 components/comments/ContentCommentsRail.scss 1
-pages/agents/AgentSkillsPage.scss 1
 pages/articles/ArticleChannelSettings.scss 1
 pages/catalog/dataset-er-graph.scss 1
 pages/console/operations/ConsoleHealth.scss 1

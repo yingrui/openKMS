@@ -85,19 +85,19 @@ export function ChamberGalleryPage() {
         />
       ) : null}
       {!loading && apps.length > 0 ? (
-        <div className="chamber-page__grid">
+        <div className="ds-resource-list-grid">
           {apps.map((app) => {
             // One state only: every listed app opens. (This used to branch on `published`, which meant that
             // once the status concept was removed every card led to the read-only settings page.)
             const openTo = `/chamber/${app.id}`;
             return (
-              <div key={app.id} className="chamber-page__card">
-                <div className="chamber-page__card-top">
-                  <Link to={openTo} className="chamber-page__card-icon" aria-hidden tabIndex={-1}>
+              <div key={app.id} className="ds-resource-list-card">
+                <div className="ds-resource-list-card-top">
+                  <Link to={openTo} className="ds-resource-list-icon" aria-hidden tabIndex={-1}>
                     <LayoutGrid size={26} strokeWidth={1.5} />
                   </Link>
                   {canManage ? (
-                    <div className="chamber-page__card-actions">
+                    <div className="ds-resource-list-card-actions">
                       <Link
                         to={`/chamber/${app.id}/settings`}
                         title={t('editSettings')}
@@ -123,11 +123,11 @@ export function ChamberGalleryPage() {
                     {app.bindings_stale ? <span className="chamber-page__badge">{t('stale')}</span> : null}
                   </div>
                   {app.description ? (
-                    <span className="chamber-page__card-desc" title={app.description}>
+                    <span className="ds-resource-list-desc" title={app.description}>
                       {app.description}
                     </span>
                   ) : null}
-                  <span className="chamber-page__card-meta">
+                  <span className="ds-resource-list-meta">
                     {app.api_name}
                     {app.created_by_name ? ` · ${t('cardOwner', { name: app.created_by_name })}` : ''}
                   </span>

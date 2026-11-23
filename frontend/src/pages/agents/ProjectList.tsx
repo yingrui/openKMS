@@ -207,17 +207,17 @@ export function ProjectList() {
 
       {!loading && !error && projects.length > 0 ? (
         <>
-        <div className="agents-grid">
+        <div className="ds-resource-list-grid">
           {projects.map((p) => (
             <div
               key={p.id}
-              className={`agents-card${p.id === defaultProjectId ? ' agents-card--home-default' : ''}`}
+              className={`ds-resource-list-card${p.id === defaultProjectId ? ' agents-card--home-default' : ''}`}
             >
-              <div className="agents-card-top">
-                <Link to={`/projects/${p.id}`} className="agents-card-icon" aria-hidden>
+              <div className="ds-resource-list-card-top">
+                <Link to={`/projects/${p.id}`} className="ds-resource-list-icon" aria-hidden>
                   <Bot size={26} strokeWidth={1.5} />
                 </Link>
-                <div className="agents-card-actions">
+                <div className="ds-resource-list-card-actions">
                   {p.id === defaultProjectId ? (
                     <span
                       className="agents-card-home-badge"
@@ -249,12 +249,12 @@ export function ProjectList() {
               <Link to={`/projects/${p.id}`} className="agents-card-body">
                 <h3>{p.name}</h3>
                 <p
-                  className="agents-card-desc"
+                  className="ds-resource-list-desc"
                   title={p.description?.trim() || undefined}
                 >
                   {p.description || t('list.noDescription')}
                 </p>
-                <span className="agents-card-meta">{t('list.updated', { date: formatUpdated(p.updated_at) })}</span>
+                <span className="ds-resource-list-meta">{t('list.updated', { date: formatUpdated(p.updated_at) })}</span>
               </Link>
             </div>
           ))}

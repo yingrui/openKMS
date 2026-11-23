@@ -101,56 +101,13 @@
   border-radius: 0;
 }
 
-.chamber-page__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 320px));
-  gap: var(--space-5);
-  justify-content: start;
-}
-
-.chamber-page__card {
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-6);
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  transition: border-color 0.15s, box-shadow 0.15s;
-  color: var(--color-text);
-}
-
-.chamber-page__card:hover {
-  border-color: var(--color-border-strong);
-  box-shadow: var(--shadow-md);
-}
-
-.chamber-page__card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: calc(var(--space-3) + var(--space-1) / 2);
-}
-
-.chamber-page__card-icon {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-accent-subtle);
-  color: var(--color-accent);
-  border-radius: var(--radius-md);
-  text-decoration: none;
-}
-
-.chamber-page__card-actions {
+.ds-resource-list-card-actions {
   display: flex;
   gap: var(--space-1);
 }
 
-.chamber-page__card-actions a,
-.chamber-page__card-actions button {
+.ds-resource-list-card-actions a,
+.ds-resource-list-card-actions button {
   appearance: none;
   display: flex;
   align-items: center;
@@ -165,13 +122,13 @@
   transition: color 0.15s, background 0.15s;
 }
 
-.chamber-page__card-actions a:hover,
-.chamber-page__card-actions button:hover {
+.ds-resource-list-card-actions a:hover,
+.ds-resource-list-card-actions button:hover {
   background: var(--color-bg-muted);
   color: var(--color-text);
 }
 
-.chamber-page__card-actions button:hover {
+.ds-resource-list-card-actions button:hover {
   color: var(--color-danger, #b91c1c);
 }
 
@@ -195,11 +152,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1);
-}
-
-.chamber-page__card-meta {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
 }
 
 .chamber-page__badge {
@@ -269,17 +221,6 @@
 }
 
 /* The card's one-line description: two lines at most, so a row of cards keeps its rhythm. */
-.chamber-page__card-desc {
-  font-size: var(--text-sm);
-  line-height: 1.4;
-  color: var(--color-text-secondary);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  word-break: break-word;
-}
-
 /* The one thing the frame cannot do, said once under it: a WebSocket needs a real tab. */
 .chamber-page__frame-hint {
   flex-shrink: 0;

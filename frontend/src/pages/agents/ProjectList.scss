@@ -147,49 +147,12 @@
   padding: 11px 16px;
 }
 
-.agents-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 320px));
-  gap: var(--space-5);
-  justify-content: start;
-}
-
-.agents-card {
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-6);
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  transition: border-color 0.15s, box-shadow 0.15s;
-  color: var(--color-text);
-}
-
-.agents-card:hover {
-  border-color: var(--color-border-strong);
-  box-shadow: var(--shadow-md);
-}
-
 .agents-card-body {
   display: flex;
   flex-direction: column;
   flex: 1;
   color: inherit;
   text-decoration: none;
-}
-
-.agents-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: calc(var(--space-3) + var(--space-1) / 2);
-}
-
-.agents-card-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
 }
 
 .agents-card-home-badge {
@@ -210,7 +173,7 @@
   border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
 }
 
-.agents-card-actions a,
+.ds-resource-list-card-actions a,
 .agents-card-action-btn {
   display: flex;
   align-items: center;
@@ -226,46 +189,16 @@
   transition: color 0.15s, background 0.15s;
 }
 
-.agents-card-actions a:hover,
+.ds-resource-list-card-actions a:hover,
 .agents-card-action-btn:hover {
   background: var(--color-bg-muted);
   color: var(--color-text);
-}
-
-.agents-card-icon {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-accent-subtle);
-  color: var(--color-accent);
-  border-radius: var(--radius-md);
-  text-decoration: none;
 }
 
 .agents-card h3 {
   font-size: 1.0625rem;
   font-weight: 600;
   margin: 0 0 var(--space-2);
-}
-
-.agents-card-desc {
-  font-size: var(--text-base);
-  color: var(--color-text-secondary);
-  line-height: 1.5;
-  margin: 0 0 var(--space-3);
-  flex: 1;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  word-break: break-word;
-}
-
-.agents-card-meta {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
 }
 
 .agents-dialog-body input,
@@ -285,44 +218,13 @@
 }
 
 @include max-width(ds.$bp-md-min) {
-  .agents-grid {
-    grid-template-columns: 1fr;
-    gap: var(--space-2);
-  }
-
-  .agents-card {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    column-gap: var(--space-3);
-    align-items: center;
-    padding: var(--space-3);
-    box-shadow: none;
-  }
-
-  .agents-card-top {
-    display: contents;
-  }
-
-  .agents-card-icon {
-    grid-column: 1;
-    grid-row: 1;
-    width: 40px;
-    height: 40px;
-    margin: 0;
-
-    svg {
-      width: 20px;
-      height: 20px;
-    }
-  }
-
-  .agents-card-actions {
+  .ds-resource-list-card-actions {
     grid-column: 3;
     grid-row: 1;
     align-self: center;
   }
 
-  .agents-card-actions a,
+  .ds-resource-list-card-actions a,
   .agents-card-action-btn {
     min-width: var(--tap-min);
     min-height: var(--tap-min);
@@ -335,25 +237,4 @@
     gap: 2px;
   }
 
-  .agents-card h3 {
-    margin: 0;
-    font-size: var(--text-md);
-    line-height: 1.3;
-    @include text-truncate;
-  }
-
-  .agents-card-desc {
-    margin: 0;
-    font-size: var(--text-sm);
-    line-height: 1.35;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
-    overflow: hidden;
-    flex: none;
-  }
-
-  .agents-card-meta {
-    margin: 0;
-  }
 }
