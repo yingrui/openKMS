@@ -7,7 +7,6 @@ import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyAp
 import { ListPage } from '../../styles/design-system/ListPage';
 import { EmptyState } from '../../styles/design-system/EmptyState';
 import { Loading } from '../../styles/design-system/Loading';
-import './ObjectsList.scss';
 
 export function ObjectsList() {
   const { t } = useTranslation('explore');
@@ -37,17 +36,17 @@ export function ObjectsList() {
         <EmptyState icon={<Box size={48} strokeWidth={1} />} title={t('objects.empty')} />
       ) : null}
 
-      <div className="objects-grid">
+      <div className="ds-resource-list-grid">
         {types.map((ot) => (
-          <Link key={ot.id} to={`/object-explorer/objects/${ot.id}`} className="objects-card">
-            <div className="objects-card-top">
-              <div className="objects-icon">
+          <Link key={ot.id} to={`/object-explorer/objects/${ot.id}`} className="ds-resource-list-card">
+            <div className="ds-resource-list-card-top">
+              <div className="ds-resource-list-icon">
                 <Box size={28} strokeWidth={1.5} />
               </div>
             </div>
             <h3>{ot.name}</h3>
-            <p className="objects-desc">{ot.description || t('shared.noDescription')}</p>
-            <div className="objects-meta">
+            <p className="ds-resource-list-desc">{ot.description || t('shared.noDescription')}</p>
+            <div className="ds-resource-list-meta">
               <span>{t('ontology.instanceCount', { count: ot.instance_count })}</span>
               {ot.properties?.length ? (
                 <span>{t('ontology.propertyCount', { count: ot.properties.length })}</span>

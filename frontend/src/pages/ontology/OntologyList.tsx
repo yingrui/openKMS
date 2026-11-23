@@ -151,17 +151,17 @@ export function OntologyList() {
   };
 
   const renderObjectCards = (items: ObjectTypeResponse[]) => (
-    <div className="ontology-grid">
+    <div className="ds-resource-list-grid">
       {items.map((ot) => (
-        <Link key={ot.id} to={`/object-explorer/objects/${ot.id}`} className="ontology-card">
-          <div className="ontology-card-top">
-            <div className="ontology-icon ontology-icon-object">
+        <Link key={ot.id} to={`/object-explorer/objects/${ot.id}`} className="ds-resource-list-card">
+          <div className="ds-resource-list-card-top">
+            <div className="ds-resource-list-icon">
               <Box size={24} strokeWidth={1.5} />
             </div>
           </div>
           <h3>{ot.name}</h3>
-          <p className="ontology-desc">{ot.description || t('shared.noDescription')}</p>
-          <div className="ontology-meta">
+          <p className="ds-resource-list-desc">{ot.description || t('shared.noDescription')}</p>
+          <div className="ds-resource-list-meta">
             <span>{t('ontology.instanceCount', { count: ot.instance_count })}</span>
             {ot.properties?.length ? (
               <span>{t('ontology.propertyCount', { count: ot.properties.length })}</span>
@@ -173,17 +173,17 @@ export function OntologyList() {
   );
 
   const renderLinkCards = (items: LinkTypeResponse[]) => (
-    <div className="ontology-grid">
+    <div className="ds-resource-list-grid">
       {items.map((lt) => (
-        <Link key={lt.id} to={`/object-explorer/links/${lt.id}`} className="ontology-card">
-          <div className="ontology-card-top">
-            <div className="ontology-icon ontology-icon-link">
+        <Link key={lt.id} to={`/object-explorer/links/${lt.id}`} className="ds-resource-list-card">
+          <div className="ds-resource-list-card-top">
+            <div className="ds-resource-list-icon">
               <Link2 size={24} strokeWidth={1.5} />
             </div>
           </div>
           <h3>{lt.name}</h3>
-          <p className="ontology-desc">{lt.description || t('shared.noDescription')}</p>
-          <div className="ontology-meta">
+          <p className="ds-resource-list-desc">{lt.description || t('shared.noDescription')}</p>
+          <div className="ds-resource-list-meta">
             <span className="ontology-type-arrow">
               {lt.source_object_type_name || t('ontology.endpointSource')}
               <ArrowRight size={14} />
@@ -197,17 +197,17 @@ export function OntologyList() {
   );
 
   const renderFunctionCards = (items: OntologyFunctionResponse[]) => (
-    <div className="ontology-grid">
+    <div className="ds-resource-list-grid">
       {items.map((fn) => (
-        <Link key={fn.id} to={`/ontology-manager/functions/${fn.id}`} className="ontology-card">
-          <div className="ontology-card-top">
-            <div className="ontology-icon ontology-icon-function">
+        <Link key={fn.id} to={`/ontology-manager/functions/${fn.id}`} className="ds-resource-list-card">
+          <div className="ds-resource-list-card-top">
+            <div className="ds-resource-list-icon">
               <Code2 size={24} strokeWidth={1.5} />
             </div>
           </div>
           <h3>{fn.display_name}</h3>
-          <p className="ontology-desc">{fn.description || t('shared.noDescription')}</p>
-          <div className="ontology-meta">
+          <p className="ds-resource-list-desc">{fn.description || t('shared.noDescription')}</p>
+          <div className="ds-resource-list-meta">
             <span>{fn.api_name}</span>
             <span>{fn.status}</span>
             {fn.published_version != null ? (
@@ -222,21 +222,21 @@ export function OntologyList() {
   );
 
   const renderActionCards = (items: OntologyActionTypeResponse[]) => (
-    <div className="ontology-grid">
+    <div className="ds-resource-list-grid">
       {items.map((action) => (
         <Link
           key={action.id}
           to={`/ontology-manager/action-types/${action.id}`}
-          className="ontology-card"
+          className="ds-resource-list-card"
         >
-          <div className="ontology-card-top">
-            <div className="ontology-icon ontology-icon-action">
+          <div className="ds-resource-list-card-top">
+            <div className="ds-resource-list-icon">
               <Zap size={24} strokeWidth={1.5} />
             </div>
           </div>
           <h3>{action.display_name}</h3>
-          <p className="ontology-desc">{action.description || t('shared.noDescription')}</p>
-          <div className="ontology-meta">
+          <p className="ds-resource-list-desc">{action.description || t('shared.noDescription')}</p>
+          <div className="ds-resource-list-meta">
             <span>{action.api_name}</span>
             <span>
               {objectTypeNameById.get(action.object_type_id) ?? t('ontology.unknownObjectType')}

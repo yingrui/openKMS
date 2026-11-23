@@ -37,17 +37,17 @@ export function LinksList() {
         <EmptyState icon={<Link2 size={48} strokeWidth={1} />} title={t('links.empty')} />
       ) : null}
 
-      <div className="links-grid">
+      <div className="ds-resource-list-grid">
         {types.map((lt) => (
-          <Link key={lt.id} to={`/object-explorer/links/${lt.id}`} className="links-card">
-            <div className="links-card-top">
-              <div className="links-icon">
+          <Link key={lt.id} to={`/object-explorer/links/${lt.id}`} className="ds-resource-list-card">
+            <div className="ds-resource-list-card-top">
+              <div className="ds-resource-list-icon">
                 <Link2 size={28} strokeWidth={1.5} />
               </div>
             </div>
             <h3>{lt.name}</h3>
-            <p className="links-desc">{lt.description || t('shared.noDescription')}</p>
-            <div className="links-meta">
+            <p className="ds-resource-list-desc">{lt.description || t('shared.noDescription')}</p>
+            <div className="ds-resource-list-meta">
               <span className="links-type-arrow">
                 {lt.source_object_type_name || t('ontology.endpointSource')}
                 <ArrowRight size={14} />
