@@ -236,6 +236,7 @@ nav:
       - Data grid selection: research/data_grid_selection.md
       - Apache Ossie semantic layer: research/ossie_semantic_layer.md
       - Palantir Foundry Rules: research/foundry-rules.md
+      - Palantir LLM functions (AIP Logic): research/palantir-llm-functions.md
       - 指标勾稽（metric reconciliation）: research/metric-reconciliation.md
       - Agent configuration surfaces (research): research/agent-config/README.md
       - AWS Bedrock Agents (vendored): research/agent-config/bedrock-agents.md
