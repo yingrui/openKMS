@@ -1,5 +1,14 @@
 # Palantir's LLM functions (AIP Logic)
 
+## Terminology
+
+| What it is called | Where |
+|---|---|
+| **AIP Logic** | the product: "a no-code development environment for building, testing, and releasing functions powered by LLMs" — [Logic overview](https://www.palantir.com/docs/foundry/logic/overview) |
+| **Logic function** / **LLM-powered function** | the artifact that AIP Logic produces. Same call surface as any platform function; no separate "LLM Function" API exists in the Functions SDK |
+
+Everything below is about that artifact.
+
 **What Palantir means by "LLM function" is not a decorator.** There is no `@llm` in their Functions SDK and no
 `llm` runtime: the LLM-powered function is a **first-class resource type** — an AIP Logic function, built in a
 no-code editor out of blocks, then published so that everything else in the platform calls it like any other
@@ -28,6 +37,10 @@ Authoring | boards on a canvas: inputs · blocks · outputs, with a debugger and
 Storage | a resource in a **project folder** (not a home folder), versioned, branchable |
 Callable as | a Workshop variable/derived property/aggregation, the body of an **Action**, another Logic function, a TypeScript or Python function, an OSDK call, Automate; the Uses tab hands you a `curl` for external calls (not for functions that return edits) |
 Edits | **only applied when the function is called from an Action** — "The Ontology will not be edited unless the Logic function is executed from an action, even if the function contains an Apply action block" |
+
+The overview adds a second, weaker write path worth naming: a Logic function can be wired into **Automate**, where its
+edits are either applied automatically or **staged for human review**. So "propose vs write" is not binary — the same
+function can be trusted with the write in one automation and require approval in another.
 
 That last line is the whole governance model in one sentence: **an LLM function can *propose* ontology changes, but
 the write path is still an Action.** Non-determinism is confined to the body of a step whose inputs and permissions
