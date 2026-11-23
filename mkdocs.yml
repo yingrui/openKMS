@@ -225,6 +225,7 @@ nav:
   - Research:
       - LLM wiki vs openKMS: research/llm_wiki_comparison.md
       - RAGFlow vs openKMS: research/ragflow_vs_openkms.md
+      - Semantica vs openKMS: research/semantica_vs_openkms.md
       - Confluence AI vs openKMS: research/confluence_ai_vs_openkms.md
       - KM dimension — Operational Knowledge Fitness: research/km_dimension_operational_fitness.md
       - Text content evaluation: research/text_content_evaluation.md
