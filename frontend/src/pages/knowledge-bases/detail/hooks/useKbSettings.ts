@@ -50,7 +50,9 @@ export function useKbSettings({
   /* Retrieval depth is a property of the corpus, so its editor is here and not on the agent. */
   const [retrievalTopK, setRetrievalTopK] = useState('5');
   const [retrievalRerank, setRetrievalRerank] = useState<boolean | null>(null);
+  const [retrievalRerankModelId, setRetrievalRerankModelId] = useState('');
   const [embeddingModels, setEmbeddingModels] = useState<ApiModelResponse[]>([]);
+  const [rerankModels, setRerankModels] = useState<ApiModelResponse[]>([]);
   const [llmModels, setLlmModels] = useState<ApiModelResponse[]>([]);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [indexJobSubmitting, setIndexJobSubmitting] = useState(false);
@@ -65,9 +67,14 @@ export function useKbSettings({
     setSettingsChunkOverlap((cc.chunk_overlap as number) || 50);
     setSettingsFaqPrompt(row.faq_prompt || '');
     setSettingsMetadataKeys(Array.isArray(row.metadata_keys) ? row.metadata_keys.join(', ') : '');
-    const retrieval = (row.agent_config as { retrieval?: { top_k?: number; rerank?: boolean | null } })?.retrieval;
+    const retrieval = (
+      row.agent_config as {
+        retrieval?: { top_k?: number; rerank?: boolean | null; rerank_model_id?: string | null };
+      }
+    )?.retrieval;
     setRetrievalTopK(String(retrieval?.top_k ?? 5));
     setRetrievalRerank(retrieval?.rerank ?? null);
+    setRetrievalRerankModelId(retrieval?.rerank_model_id ?? '');
   };
 
   const enqueueIndexJob = useCallback(async () => {
@@ -95,6 +102,7 @@ export function useKbSettings({
       setEmbeddingModels(emb);
       const llm = await fetchAllModels({ api_kind: 'chat-completions' });
       setLlmModels(llm);
+      setRerankModels(await fetchAllModels({ api_kind: 'rerank' }));
     } catch { /* noop */ }
   }, []);
 
@@ -124,6 +132,8 @@ export function useKbSettings({
           retrieval: {
             top_k: parsedTopK,
             rerank: retrievalRerank,
+            // Which reranker, when the switch is on. Empty means the deployment's default model.
+            rerank_model_id: retrievalRerankModelId || null,
           },
         }),
       });
@@ -156,6 +166,9 @@ export function useKbSettings({
     setRetrievalRerank,
     settingsSaving,
     embeddingModels,
+    rerankModels,
+    retrievalRerankModelId,
+    setRetrievalRerankModelId,
     llmModels,
     indexJobSubmitting,
     loadModels,

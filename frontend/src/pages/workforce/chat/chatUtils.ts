@@ -96,14 +96,6 @@ function chatTruncatePreview(text: string, maxLen: number): string {
   return `${n.slice(0, Math.max(0, maxLen - 1))}…`;
 }
 
-function chatShowRetrievalScore(sourceType: string | null | undefined, score: number): boolean {
-  const k = chatSourceKind(sourceType);
-  if (k === 'ontology' || k === 'document_section' || k === 'metric' || k === 'semantic_model') {
-    return false;
-  }
-  return score < 0.999;
-}
-
 function chatSourceChipModifierClass(sourceType: string | null | undefined): string {
   const k = chatSourceKind(sourceType);
   if (k === 'ontology') return 'agent-chat-source-chip--ontology';
@@ -142,7 +134,6 @@ export {
   splitQaSources,
   chatSourceCardModifierClass,
   chatTruncatePreview,
-  chatShowRetrievalScore,
   chatSourceChipModifierClass,
   chipTitle,
   chatExpandedPreviewMaxLen,

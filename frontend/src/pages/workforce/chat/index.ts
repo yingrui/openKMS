@@ -17,7 +17,6 @@ export {
   ChatSourcesPill,
   type ChatSourcesPanelPayload,
 } from './ChatSourcesDrawer';
-export { ChatRetrievalProvenancePanel } from './ChatRetrievalProvenancePanel';
 export { playgroundHrefFromDataQuery } from './chatPlaygroundHref';
 export * from './chatUtils';
 export type { ChatMessage, ChatFeedbackVote } from './types';

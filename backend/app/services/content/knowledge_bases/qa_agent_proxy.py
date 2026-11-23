@@ -131,13 +131,26 @@ def retrieve_agent_body(
     query: str,
     access_token: str,
     top_k: int,
+    rerank: bool | None = None,
+    rerank_model_id: str | None = None,
 ) -> dict[str, Any]:
-    return {
+    """The retrieve call's body.
+
+    `rerank` / `rerank_model_id` are per-query overrides on top of the knowledge base's own setting: the search screen
+    turns reranking on for one query to see what it does, and the qa-agent falls back to the KB's config when they are
+    absent.
+    """
+    body: dict[str, Any] = {
         "query": query,
         "access_token": access_token,
         "top_k": top_k,
         "agent_tools": _kb_tools(kb),
     }
+    if rerank is not None:
+        body["rerank"] = rerank
+    if rerank_model_id:
+        body["rerank_model_id"] = rerank_model_id
+    return body
 
 
 def agent_error(exc: httpx.HTTPStatusError) -> HTTPException:

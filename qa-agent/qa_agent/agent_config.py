@@ -141,6 +141,16 @@ def rerank_override(config: dict[str, Any] | None) -> bool | None:
     return raw if isinstance(raw, bool) else None
 
 
+def rerank_model_id(config: dict[str, Any] | None) -> str | None:
+    """Which registered rerank model this corpus chose, or `None` for the deployment default.
+
+    A name here is a stronger statement than the switch: it says *this* reranker, and `retrieve` honours it even when the
+    deployment's own switch is off.
+    """
+    raw = ((config or {}).get("retrieval") or {}).get("rerank_model_id")
+    return raw if isinstance(raw, str) and raw.strip() else None
+
+
 def enable_thinking(config: dict[str, Any] | None) -> bool:
     """Whether gateways that expose `extra_body.enable_thinking` should think. Off by default, as before."""
     raw = ((config or {}).get("generation") or {}).get("thinking")

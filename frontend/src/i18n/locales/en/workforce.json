@@ -195,7 +195,6 @@
     "replyAria": "Assistant reply",
     "sourcesHeading": "References",
     "sourcesAria": "References used in this answer",
-    "sourceScore": "{{pct}}% match",
     "sourcesPillLabel": "Sources",
     "sourcesPillMixed": "{{evidence}} data · {{references}} references",
     "sourcesPillEvidence_one": "{{count}} data query",

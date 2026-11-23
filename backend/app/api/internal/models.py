@@ -12,6 +12,7 @@ from app.services.runtime.agent.llm import resolve_agent_llm_config
 from app.services.content.models.model_config_by_name import resolve_model_config_by_name
 from app.services.content.documents.document_parse_defaults import get_document_parse_vlm_defaults_for_cli
 from app.services.content.knowledge_bases.kb_embedding_cli_defaults import get_kb_embedding_credentials_for_cli
+from app.services.content.knowledge_bases.rerank import resolve_rerank_model
 
 router = APIRouter(
     prefix="/internal-api/models",
@@ -106,6 +107,32 @@ async def get_model_llm_credentials(model_id: str, db: AsyncSession = Depends(ge
         "api_key": cfg["api_key"] or "",
         "thinking": cfg.get("thinking") or {},
     }
+
+
+@router.get("/rerank-defaults")
+async def get_rerank_defaults(db: AsyncSession = Depends(get_db)):
+    """The deployment's rerank model: endpoint, model name and key.
+
+    A registered model beats an environment variable, because the registry is where someone chose it and the UI can
+    show it. 404 means this deployment has no reranker, and the caller skips the stage.
+    """
+    targets = await resolve_rerank_model(db)
+    if targets is None:
+        raise HTTPException(status_code=404, detail="No rerank model is registered or marked default")
+    return targets.as_response()
+
+
+@router.get("/{model_id}/rerank-credentials")
+async def get_model_rerank_credentials(model_id: str, db: AsyncSession = Depends(get_db)):
+    """Endpoint, model name and key for one registered rerank model.
+
+    Same shape as `/llm-credentials`, for the other kind of model an answer depends on: a knowledge base may name its
+    reranker, and the qa-agent fetches that model's provider credentials itself rather than receiving a key in the body.
+    """
+    targets = await resolve_rerank_model(db, model_id=model_id)
+    if targets is None:
+        raise HTTPException(status_code=404, detail=f"Rerank model {model_id!r} not found")
+    return targets.as_response()
 
 
 @router.get("/kb-embedding-credentials")

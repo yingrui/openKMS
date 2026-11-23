@@ -213,6 +213,8 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/workforce/agents/{id}/credentials` | List credentials (prefix, last used, revoked — never the secret) |
 | POST | `/api/workforce/agents/{id}/credentials` | Mint a credential (`name`). The `wfks.…` token is in this response only |
 | DELETE | `/api/workforce/agents/{id}/credentials/{credential_id}` | Revoke a credential |
+| GET | `/internal-api/models/rerank-defaults` | The deployment's rerank model (base_url, model_name, api_key). 404 = this deployment has no reranker, and the caller skips the stage |
+| GET | `/internal-api/models/{id}/rerank-credentials` | One registered rerank model's endpoint and key. Its own route: `/llm-credentials` resolves chat models only and answers 404 for a reranker |
 | GET | `/api/workforce/operations/usage` | Fleet usage: per agent, calls and failures in the last 7 days (from `audit_events`) plus all-time votes. Its own route — the numbers need the audit trail, and computing them on every `/agents` browse made the list pay for a question it does not ask |
 | GET | `/api/workforce/issues` | The Operations queue, owner-scoped: `status` (`open` \| `resolved` \| `ignored` \| `all`), `kind`, `agent_id`. Returns `counts` per status so the filter needs one call |
 | PATCH | `/api/workforce/issues/{id}` | Close an item: `{status, resolution?}`. `resolved` is refused without a `resolution` — "solved, no explanation" is not a closed case |

@@ -134,6 +134,43 @@ def resolve_llm_for_model(cfg: Settings, model_id: str) -> tuple[str, str, str, 
     )
 
 
+def resolve_rerank_for_model(cfg: Settings, model_id: str) -> tuple[str, str, str]:
+    """Endpoint, model name and key for one registered rerank model.
+
+    Its own route: `/llm-credentials` resolves chat models only, so asking it for a reranker answers 404 and the stage
+    would be skipped silently — which is exactly what happened the first time this was wired.
+    """
+    api = (cfg.openkms_backend_url or "").strip()
+    if not api:
+        raise RuntimeError("OPENKMS_BACKEND_URL is required to resolve a rerank model")
+    data = _fetch_json(
+        f"{api.rstrip('/')}/internal-api/models/{model_id}/rerank-credentials",
+        what=f"rerank-credentials({model_id})",
+    )
+    if not data or not data.get("base_url") or not data.get("model_name"):
+        raise RuntimeError(f"Backend returned no endpoint for rerank model {model_id!r}")
+    return str(data["base_url"]), str(data["model_name"]), str(data.get("api_key") or "")
+
+
+def resolve_rerank_default(cfg: Settings) -> tuple[str, str, str] | None:
+    """The deployment's registered reranker, or None when it has none.
+
+    The registry is the authority, not `OPENKMS_RERANK_*`: those described a host that had one hard-coded endpoint and
+    borrowed the chat model's key. They still work as a fallback, so an older deployment keeps reranking after upgrade.
+    """
+    api = (cfg.openkms_backend_url or "").strip()
+    if not api:
+        return None
+    try:
+        data = _fetch_json(f"{api.rstrip('/')}/internal-api/models/rerank-defaults", what="rerank-defaults")
+    except RuntimeError:
+        # 404 is the honest answer "no reranker here"; anything else is logged by `_fetch_json`.
+        return None
+    if not data or not data.get("base_url") or not data.get("model_name"):
+        return None
+    return str(data["base_url"]), str(data["model_name"]), str(data.get("api_key") or "")
+
+
 def resolve_llm_for_agent(cfg: Settings) -> tuple[str, str, str]:
     """
     Effective (base_url, model_name, api_key) for ChatOpenAI.

@@ -47,6 +47,16 @@ async def semantic_search(
     from app.services.content.knowledge_bases.kb_search import search_knowledge_base
     from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path, retrieve_agent_body
 
+    # The knowledge base owns its retrieval settings; the request may override them for one query. `None` on both
+    # leaves the deployment's own switch in charge.
+    retrieval = ((kb.agent_config or {}).get("retrieval") or {}) if isinstance(kb.agent_config, dict) else {}
+    rerank = body.rerank if body.rerank is not None else retrieval.get("rerank")
+    rerank_model_id = body.rerank_model_id or retrieval.get("rerank_model_id")
+    if not isinstance(rerank, bool):
+        rerank = None
+    if not isinstance(rerank_model_id, str) or not rerank_model_id.strip():
+        rerank_model_id = None
+
     has_filters = bool(
         body.label_filters
         or body.metadata_filters
@@ -64,6 +74,8 @@ async def semantic_search(
                         query=body.query,
                         access_token=token,
                         top_k=body.top_k,
+                        rerank=rerank,
+                        rerank_model_id=rerank_model_id,
                     ),
                 )
                 resp.raise_for_status()

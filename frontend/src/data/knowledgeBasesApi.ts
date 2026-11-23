@@ -18,7 +18,13 @@ export interface KbAgentConfig {
     reasoning_effort?: 'low' | 'high' | 'max' | null;
   };
   prompts?: { system_prompt?: string | null; agents_md?: string | null };
-  retrieval?: { top_k?: number; rerank?: boolean | null; min_score?: number | null };
+  retrieval?: {
+    top_k?: number;
+    rerank?: boolean | null;
+    /** Which registered rerank model; `null` = the deployment's default reranker. */
+    rerank_model_id?: string | null;
+    min_score?: number | null;
+  };
   answer_policy?: {
     unknown_measure?: 'try_anyway' | 'refuse';
     require_grounded_numbers?: 'off' | 'mark' | 'enforce';

@@ -218,6 +218,8 @@ def _retrieve_impl(kb_id: str, request: RetrieveRequest) -> RetrieveResponse:
         query=request.query,
         access_token=request.access_token,
         top_k=request.top_k,
+        rerank=request.rerank,
+        rerank_model_id=request.rerank_model_id,
     )
     return RetrieveResponse(results=items)
 

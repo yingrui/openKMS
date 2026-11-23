@@ -5,7 +5,9 @@ import type { SearchResult } from '../../../../data/knowledgeBasesApi';
 import type { KbSearchRetrievalDiff } from '../../KnowledgeBaseDetail.types';
 import { CheckRow, EmptyState, FormField } from '../../../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from '../../../shared/EntityViewShell';
-import { ChatRetrievalProvenancePanel } from '../../../workforce/chat';
+import { RetrievalLegend } from '../RetrievalLegend';
+import { RetrievalProvenancePanel } from '../RetrievalProvenancePanel';
+import { retrievalScoreLabel } from '../retrievalScoreLabel';
 import './SearchTab.scss';
 
 export type KbSearchType = 'all' | 'chunks' | 'faqs';
@@ -220,7 +222,8 @@ export function SearchTab({
               ) : null}
 
               <ul className="kb-search-results">
-                {results.map((r) => (
+                <RetrievalLegend />
+                {results.map((r, i) => (
                   <li key={r.id} className="kb-search-hit">
                     <div className="kb-search-hit-head">
                       <span className="kb-search-hit-source">
@@ -240,12 +243,12 @@ export function SearchTab({
                           <span>{r.source_name || r.document_id || t('detail.faqSourceFallback')}</span>
                         )}
                       </span>
-                      <span className="kb-search-hit-score">
-                        {t('detail.matchPercent', { pct: (r.score * 100).toFixed(0) })}
-                      </span>
+                      {retrievalScoreLabel(r, t) ? (
+                        <span className="kb-search-hit-score">{retrievalScoreLabel(r, t)}</span>
+                      ) : null}
                     </div>
                     <p className="kb-search-hit-excerpt">{r.content.slice(0, 300)}</p>
-                    <ChatRetrievalProvenancePanel s={r} />
+                    <RetrievalProvenancePanel s={r} rank={i + 1} />
                     {r.source_type === 'chunk' ? (
                       <div className="openkms-flex-row-gap kb-search-hit-actions">
                         <button

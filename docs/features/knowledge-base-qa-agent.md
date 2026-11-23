@@ -582,3 +582,26 @@ memory design question, and it changes what a conversation *is*; out of scope fo
   vendor, not this product. A web answer is reported as unverified rather than scored.
 - Reusing `deep_agents/sandbox.py` for the KB path — it runs as the backend's OS user and injects the caller's bearer token,
   which is acceptable inside a trusted workspace and is remote code execution in an external service.
+
+
+## Rerank
+
+Reranking is a stage of the knowledge base's own retrieval, not a property of the host: **which reranker** is a model in
+the registry (`api_kind = "rerank"`), and **whether to rerank** is a setting on the corpus.
+
+| Where | Setting |
+|---|---|
+| Models | a rerank model: provider (endpoint + key) and `model_name` (`rerank` for Zhipu) |
+| Knowledge base → Settings → Retrieval | `rerank`: follow the deployment / on / off, and `rerank_model_id`: which model (empty = the deployment's default) |
+| `POST /api/knowledge-bases/{id}/search` | `rerank` and `rerank_model_id` override the KB for one query |
+
+Resolution order, once reranking is on: the named model → the deployment's default rerank model → the legacy
+`OPENKMS_RERANK_*` environment variables. A deployment with none of the three skips the stage; the source's
+`retrieval_debug.pipeline_stages` then reads `dense → bm25 → rrf` without `rerank`.
+
+**A registered model's `base_url` is used as given.** Zhipu's rerank endpoint is
+`https://open.bigmodel.cn/api/paas/v4/rerank`, while the environment-variable path assumes an OpenAI-style `/v1`; forcing
+the convention on a registered model produced `…/v4/v1/rerank` and every call 404'd into the silent fallback.
+
+The choice reaches the tool through a request-scoped value (`set_request_rerank`), like the sandbox and the web-search
+connector: LangGraph runs tools in a copied context, so the graph's state dict is not visible to them.

@@ -3,12 +3,11 @@ import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import type { SearchResult } from '../../../data/knowledgeBasesApi';
+import { RetrievalProvenancePanel } from '../../knowledge-bases/detail/RetrievalProvenancePanel';
 import { ChatEvidenceCard } from './ChatDataEvidence';
-import { ChatRetrievalProvenancePanel } from './ChatRetrievalProvenancePanel';
 import {
   chatExpandedPreviewMaxLen,
   chatSourceKind,
-  chatShowRetrievalScore,
   chatSourceCardModifierClass,
   chatTruncatePreview,
 } from './chatUtils';
@@ -37,7 +36,6 @@ function ReferenceCard({
     s.content || '',
     chatExpandedPreviewMaxLen(s.source_type)
   );
-  const showScore = chatShowRetrievalScore(s.source_type, s.score);
   return (
     <div className={`agent-chat-source-card agent-chat-source-card--static agent-chat-sources-drawer__ref ${mod}`}>
       <span className="agent-chat-sources-drawer__index" aria-hidden>
@@ -53,11 +51,6 @@ function ReferenceCard({
           >
             {t(`chat.sourceUsage.${s.usage}`)}
             {s.usage === 'used' && s.traceable_numbers ? ` · ${s.traceable_numbers}` : ''}
-          </span>
-        ) : null}
-        {showScore ? (
-          <span className="agent-chat-source-card__score">
-            {t('chat.sourceScore', { pct: (s.score * 100).toFixed(0) })}
           </span>
         ) : null}
       </div>
@@ -87,7 +80,8 @@ function ReferenceCard({
         )}
       </div>
       {detailPreview ? <p className="agent-chat-source-card__preview">{detailPreview}</p> : null}
-      <ChatRetrievalProvenancePanel s={s} />
+      {/* One line: the mode and where this hit ranked in each recall. The scores live on the search screen. */}
+      <RetrievalProvenancePanel s={s} compact />
     </div>
   );
 }

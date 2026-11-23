@@ -121,6 +121,10 @@ class RetrieveRequest(BaseModel):
     query: str
     access_token: str = ""
     top_k: int = 5
+    #: Override the deployment's rerank switch for this query (`None` = follow it).
+    rerank: bool | None = None
+    #: Which registered rerank model to use (`None` = the deployment default).
+    rerank_model_id: str | None = None
     agent_tools: dict[str, Any] | None = None
     knowledge_base_id: str | None = None
 

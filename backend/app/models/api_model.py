@@ -11,6 +11,9 @@ from app.database import Base
 API_KINDS = [
     ("chat-completions", "Chat completions"),
     ("embeddings", "Embeddings"),
+    # A reranker takes a query and documents and returns scores; it is a model like an embedding model, managed in the
+    # same registry so a knowledge base can name one instead of depending on a deployment env var.
+    ("rerank", "Rerank"),
     ("custom", "Custom endpoint"),
     ("image-generate", "Image generation"),
     ("video-generate", "Video generation"),

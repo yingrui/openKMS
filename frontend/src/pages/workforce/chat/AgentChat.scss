@@ -926,15 +926,6 @@ body.openkms-agent-chat .agent-chat-shell {
   color: var(--color-text-secondary);
 }
 
-.agent-chat-source-card__score {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--color-accent);
-  background: var(--color-accent-subtle);
-  padding: calc(var(--space-1) / 2) var(--space-2);
-  border-radius: var(--radius-pill);
-}
-
 .agent-chat-source-card__title {
   font-size: var(--text-md);
   font-weight: 600;

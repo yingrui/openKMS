@@ -87,7 +87,6 @@
     "metadataKeysEmptyHint": "请在「设置」中配置 metadata_keys，以便按元数据筛选（例如 product = xx）。",
     "placeholderMetaExample": "例如 Alice 或 tag1, tag2",
     "resultsTitle": "结果（{{count}}）",
-    "matchPercent": "{{pct}}% 匹配",
     "searchHitWiki": "· Wiki",
     "faqSourceFallback": "常见问题",
     "noSearchResults": "未找到结果。",
@@ -128,7 +127,29 @@
         "bm25": "关键词",
         "rrf": "融合",
         "rerank": "重排"
-      }
+      },
+      "compactDense": "语义 #{{rank}}",
+      "compactKeyword": "关键词 #{{rank}}",
+      "modeShort": {
+        "hybrid": "混合",
+        "dense": "语义",
+        "bm25_only": "关键词",
+        "dense_fallback": "语义"
+      },
+      "scoreRelevance": "相关度 {{pct}}%",
+      "scoreSimilarity": "相似度 {{value}}",
+      "stage_recall": "召回",
+      "stage_fusion": "融合",
+      "stage_rerank": "重排",
+      "recallNote": "两路召回看的是同一批候选，只是排序方式不同：按语义（向量）与按关键词（BM25）。",
+      "fusionNote": "RRF 把两路名次合成一个顺序：分数 = Σ 1/(60 + 名次 + 1)。它是名次之和，不是相似度，典型值在 0.03 左右。",
+      "rerankNote": "重排模型把问题与每条内容一起读，给出 0–1 的相关度。这个分数会替换掉融合分，成为结果的最终分数。",
+      "finalRank": "结果位置",
+      "glossaryTitle": "这些数字是什么",
+      "glossaryRecall": "名次是这一路召回给出的位置（1 表示最近）。语义相似度是问题与内容的余弦值；关键词分是 BM25 分，量纲不设上限。",
+      "glossaryFusion": "融合分只用来把两路排序放在一起比较，不能当成百分比看：它取决于两路各有多少候选。",
+      "glossaryRerank": "重排分来自重排模型而不是向量索引，因此只在同一次查询内部可比。",
+      "glossaryChunk": "切块序号是这段内容在原文中的位置，用来回到原文件核对。"
     },
     "sources": "来源：",
     "sharingTitle": "共享",
@@ -270,14 +291,17 @@
     "retrievalTopKHelp": "回答前取回多少片段。研报型知识和短问答型知识需要的数字不一样。",
     "retrievalRerank": "重排序",
     "retrievalRerankDefault": "默认",
-    "retrievalRerankOn": "总是重排（需系统提供重排服务）",
+    "retrievalRerankOn": "始终重排",
     "retrievalRerankOff": "不重排",
-    "retrievalRerankHelp": "重排序在召回与融合之后、最终选取之前，用交叉编码器给候选重新打分。选「不重排」时总是关闭；选「总是重排」需要系统提供重排服务，否则不生效。",
+    "retrievalRerankHelp": "重排会在召回与融合之后、最终选择之前，用重排模型对候选重新排序。「从不」关闭；「始终」使用下面的重排模型，或本部署的默认重排模型。若没有注册任何重排模型，「始终」保持融合后的顺序不变。",
     "documentsSubtitle": "已关联到本知识库的文件；关联后其解析文本进入索引。",
     "faqsSubtitle": "人工维护的问答对，检索命中时可直接作为答案返回。",
     "chunksSubtitle": "索引里实际存放的内容，每行一个分块及其来源元数据。",
     "settingsSubtitle": "本知识库的向量化、分块与检索方式；重建索引也在这里。",
     "sharingSubtitle": "谁可以读取本知识库，按用户或分组授权。",
-    "searchTypeAria": "检索范围"
+    "searchTypeAria": "检索范围",
+    "retrievalRerankModel": "重排模型",
+    "retrievalRerankModelHelp": "开启重排时用哪个重排模型。默认使用本部署指定为重排的模型；可在「模型」页按「重排」类型添加。",
+    "retrievalRerankModelDefault": "部署默认"
   }
 }

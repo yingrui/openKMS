@@ -233,6 +233,10 @@ class ChunkListResponse(BaseModel):
 class SearchRequest(BaseModel):
     query: str
     top_k: int = 10
+    #: Override the knowledge base's rerank switch for this query (`None` = follow the KB and the deployment).
+    rerank: bool | None = None
+    #: Override which rerank model this query uses (`None` = the KB's choice, then the deployment default).
+    rerank_model_id: str | None = None
     search_type: str = "all"
     label_filters: dict[str, str | list[str]] | None = None
     metadata_filters: dict[str, Any] | None = None

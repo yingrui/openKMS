@@ -87,7 +87,6 @@
     "metadataKeysEmptyHint": "Configure metadata_keys in Settings to filter search results (e.g. product = xx).",
     "placeholderMetaExample": "e.g. Alice or tag1, tag2",
     "resultsTitle": "Results ({{count}})",
-    "matchPercent": "{{pct}}% match",
     "searchHitWiki": "· Wiki",
     "faqSourceFallback": "FAQ",
     "noSearchResults": "No results found.",
@@ -128,7 +127,29 @@
         "bm25": "Keyword",
         "rrf": "Fusion",
         "rerank": "Rerank"
-      }
+      },
+      "compactDense": "semantic #{{rank}}",
+      "compactKeyword": "keyword #{{rank}}",
+      "modeShort": {
+        "hybrid": "Hybrid",
+        "dense": "Semantic",
+        "bm25_only": "Keyword",
+        "dense_fallback": "Semantic"
+      },
+      "scoreRelevance": "{{pct}}% relevant",
+      "scoreSimilarity": "similarity {{value}}",
+      "stage_recall": "Recall",
+      "stage_fusion": "Fusion",
+      "stage_rerank": "Rerank",
+      "recallNote": "Both recalls search the same candidates, so rank and score describe two ways of ordering them: by meaning (vectors) and by keyword (BM25).",
+      "fusionNote": "Reciprocal Rank Fusion turns the two ranks into one order: score = Σ 1/(60 + rank + 1). It is a sum of positions, not a similarity — a typical value is around 0.03.",
+      "rerankNote": "A reranker reads the question and each passage together and scores their relevance from 0 to 1. This score replaces the fused score as the result's score.",
+      "finalRank": "Result position",
+      "glossaryTitle": "What these numbers mean",
+      "glossaryRecall": "Rank is the position that recall gave the passage (1 = closest). Dense similarity is the cosine between the question and the passage; keyword score is BM25, whose scale is unbounded.",
+      "glossaryFusion": "The fused score only orders the two recalls against each other. Do not read it as a percentage: it depends on how many candidates each list had.",
+      "glossaryRerank": "Rerank scores come from the reranker model, not from the vector index, so they are comparable only within one query.",
+      "glossaryChunk": "Chunk order is the passage's position inside its document, which is how you find it in the original file."
     },
     "sources": "Sources:",
     "sharingTitle": "Sharing",
@@ -270,14 +291,17 @@
     "retrievalTopKHelp": "How many chunks the agent pulls before answering. A dense report and a short FAQ base want different numbers.",
     "retrievalRerank": "Rerank",
     "retrievalRerankDefault": "Default",
-    "retrievalRerankOn": "Always rerank (needs a rerank service)",
+    "retrievalRerankOn": "Always rerank",
     "retrievalRerankOff": "Never rerank",
-    "retrievalRerankHelp": "Reranking reorders the retrieved candidates with a cross-encoder, after recall and fusion and before the final selection. \"Never\" always turns it off; \"Always\" only takes effect when a rerank service is available.",
+    "retrievalRerankHelp": "Reranking reorders the retrieved candidates with a cross-encoder, after recall and fusion and before the final selection. \"Never\" turns it off; \"Always\" uses the model below, or this deployment's default reranker. With no rerank model registered, \"Always\" leaves the fused order as it is.",
     "documentsSubtitle": "Files linked into this knowledge base. Linking one adds its parsed text to the index.",
     "faqsSubtitle": "Curated question/answer pairs the retriever can return as answers.",
     "chunksSubtitle": "What the index holds, one row per chunk, with the metadata it was built from.",
     "settingsSubtitle": "How this base is embedded, chunked and retrieved. The index run is here too.",
     "sharingSubtitle": "Who may read this knowledge base. Access is granted per user or group.",
-    "searchTypeAria": "Search scope"
+    "searchTypeAria": "Search scope",
+    "retrievalRerankModel": "Rerank model",
+    "retrievalRerankModelHelp": "Which reranker to use when reranking is on. The default is the model this deployment marks as its reranker; add one on Models with the Rerank kind.",
+    "retrievalRerankModelDefault": "Deployment default"
   }
 }

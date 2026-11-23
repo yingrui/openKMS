@@ -110,6 +110,42 @@ def reset_request_sandbox(handle: Any) -> None:
     _sandbox.reset(handle)
 
 
+#: This turn's rerank choice: `(switch, model id)`. A ContextVar like the sandbox and the connector, because LangGraph
+#: runs tools in a copied context — the graph's state dict is not visible to them.
+_rerank: ContextVar[tuple[bool | None, str | None]] = ContextVar("qa_agent_rerank", default=(None, None))
+
+
+def set_request_rerank(switch: bool | None, model_id: str | None) -> Any:
+    return _rerank.set(
+        (switch if isinstance(switch, bool) else None, model_id if isinstance(model_id, str) else None)
+    )
+
+
+def reset_request_rerank(handle: Any) -> None:
+    _rerank.reset(handle)
+
+
+def get_tool_rerank(config: dict[str, Any] | None = None) -> tuple[bool | None, str | None]:
+    """`(switch, model id)` for this turn's rerank stage.
+
+    The context first — that is how every other per-request value reaches a tool. `configurable` is checked last, and in
+    the runtime it never carries these keys: the first version of this read only `configurable`, so the choice was
+    silently ignored on every real answer while a hand-built test passed.
+    """
+    switch, model_id = _rerank.get()
+    if switch is not None or model_id is not None:
+        return switch, model_id
+    c = (config or {}).get("configurable") or {}
+    if not isinstance(c, dict):
+        return None, None
+    fallback_switch = c.get("rerank")
+    fallback_model = c.get("rerank_model_id")
+    return (
+        fallback_switch if isinstance(fallback_switch, bool) else None,
+        fallback_model if isinstance(fallback_model, str) and fallback_model.strip() else None,
+    )
+
+
 def get_tool_sandbox(config: dict[str, Any] | None = None) -> dict:
     """The sandbox settings for this request. Read from the context so a tool call cannot widen its own limits."""
     ctx = _sandbox.get()

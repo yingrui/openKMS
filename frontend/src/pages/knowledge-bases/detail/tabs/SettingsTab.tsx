@@ -38,6 +38,9 @@ export function SettingsTab({
   onRetrievalTopKChange,
   retrievalRerank,
   onRetrievalRerankChange,
+  rerankModels,
+  retrievalRerankModelId,
+  onRetrievalRerankModelIdChange,
   saving,
   onSave,
   indexJobSubmitting,
@@ -63,6 +66,9 @@ export function SettingsTab({
   onRetrievalTopKChange: (value: string) => void;
   retrievalRerank: boolean | null;
   onRetrievalRerankChange: (value: boolean | null) => void;
+  rerankModels: ApiModelResponse[];
+  retrievalRerankModelId: string;
+  onRetrievalRerankModelIdChange: (value: string) => void;
   saving: boolean;
   onSave: () => void;
   indexJobSubmitting: boolean;
@@ -156,6 +162,20 @@ export function SettingsTab({
               <option value="default">{t('detail.retrievalRerankDefault')}</option>
               <option value="on">{t('detail.retrievalRerankOn')}</option>
               <option value="off">{t('detail.retrievalRerankOff')}</option>
+            </select>
+          </FormField>
+          <FormField label={t('detail.retrievalRerankModel')} hint={t('detail.retrievalRerankModelHelp')}>
+            <select
+              value={retrievalRerankModelId}
+              disabled={retrievalRerank === false}
+              onChange={(e) => onRetrievalRerankModelIdChange(e.target.value)}
+            >
+              <option value="">{t('detail.retrievalRerankModelDefault')}</option>
+              {rerankModels.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name} ({m.model_name})
+                </option>
+              ))}
             </select>
           </FormField>
         </div>

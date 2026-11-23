@@ -12,7 +12,7 @@ from typing import Annotated, Any
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
-from ..request_context import get_tool_access_token, get_tool_knowledge_base_id
+from ..request_context import get_tool_access_token, get_tool_knowledge_base_id, get_tool_rerank
 from ..retriever import retrieve
 
 #: How many hits a retrieval returns in on-demand mode. The KB's `retrieval.top_k` narrows the pre-retrieval node; a
@@ -31,11 +31,14 @@ def search_knowledge_base(
         kb_id = get_tool_knowledge_base_id(_config)
         if not kb_id:
             return "Error: no knowledge base in scope."
+        rerank, model_id = get_tool_rerank(_config)
         hits = retrieve(
             kb_id,
             query,
             access_token=get_tool_access_token(_config),
             top_k=ON_DEMAND_TOP_K,
+            rerank=rerank,
+            rerank_model_id=model_id,
         )
         if not hits:
             return json.dumps({"query": query, "passages": []}, ensure_ascii=False)

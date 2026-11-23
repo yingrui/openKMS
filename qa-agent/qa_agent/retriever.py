@@ -20,6 +20,7 @@ import httpx
 
 from .bm25_index import score_candidates
 from .config import openai_v1_base, settings
+from .backend_defaults import resolve_rerank_default, resolve_rerank_for_model
 from .llm_config import get_effective_llm_config
 from .schemas import SourceItem
 
@@ -92,26 +93,51 @@ def _rrf_fuse(
     return out
 
 
+def _rerank_endpoint(rerank_model_id: str | None) -> tuple[str, str, str] | None:
+    """`(url, model_name, api_key)` for the reranker this query should use.
+
+    A registered model's `base_url` is the API root its provider documents — `…/api/paas/v4` for Zhipu, `…/v1` for an
+    OpenAI-compatible gateway — so it is used **as given**. Normalising it to `/v1` (which the environment-variable path
+    needs) produced `…/v4/v1/rerank` and every call 404'd into the silent fallback.
+    """
+    if rerank_model_id:
+        try:
+            base_url, model_name, api_key = resolve_rerank_for_model(settings, rerank_model_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("rerank model %s could not be resolved: %s", rerank_model_id, exc)
+            return None
+        return f"{base_url.rstrip('/')}/rerank", model_name, api_key
+    registered = resolve_rerank_default(settings)
+    if registered is not None:
+        base_url, model_name, api_key = registered
+        return f"{base_url.rstrip('/')}/rerank", model_name, api_key
+    if not settings.rerank_enabled:
+        return None
+    base = openai_v1_base(settings.rerank_base_url or get_effective_llm_config().base_url)
+    return f"{base}/rerank", settings.rerank_model_name, get_effective_llm_config().api_key
+
+
 def _rerank(
     query: str,
     candidates: list[dict[str, Any]],
     top_k: int,
     *,
     enabled: bool,
+    rerank_model_id: str | None = None,
 ) -> tuple[list[dict[str, Any]], bool]:
     if not candidates or len(candidates) <= top_k or not enabled:
         return candidates[:top_k], False
-
-    llm_cfg = get_effective_llm_config()
-    base = openai_v1_base(settings.rerank_base_url or llm_cfg.base_url)
-    url = f"{base}/rerank"
+    target = _rerank_endpoint(rerank_model_id)
+    if target is None:
+        return candidates[:top_k], False
+    url, model_name, api_key = target
     headers = {
-        "Authorization": f"Bearer {llm_cfg.api_key}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
     documents = [c.get("content") or "" for c in candidates]
     body = {
-        "model": settings.rerank_model_name,
+        "model": model_name,
         "query": query,
         "documents": documents,
         "top_n": min(top_k, len(documents)),
@@ -232,13 +258,13 @@ def retrieve(
     access_token: str,
     top_k: int = 5,
     rerank: bool | None = None,
+    rerank_model_id: str | None = None,
 ) -> list[SourceItem]:
     """Hybrid retrieve: dense pool → BM25 re-score → RRF → cross-encoder rerank → top-K.
 
-    ``rerank`` is the knowledge source's choice, not the agent's: retrieval depth is a property of the corpus.
-    ``None`` follows the deployment (``OPENKMS_RERANK_ENABLED``); ``False`` turns reranking off for this corpus
-    even when the deployment has it on; ``True`` asks for it, but only a deployment with a rerank endpoint can
-    honour that — without one the fused order stands, which is what the settings screen says in the option's label.
+    ``rerank`` and ``rerank_model_id`` are the knowledge source's choice, not the agent's: how a corpus is searched is a
+    property of the corpus. `None` follows the deployment; naming a model asks for it even when the deployment's own
+    switch is off, because a configured model is a stronger statement than a host default.
     """
     clean_query = _strip_slash_prefix(query)
     recall_k = max(top_k, settings.hybrid_recall_top_k)
@@ -259,7 +285,18 @@ def retrieve(
         candidates = dense or bm25
         retrieval_mode = "dense" if dense else "bm25_only"
 
-    use_rerank = settings.rerank_enabled if rerank is None else (rerank and settings.rerank_enabled)
-    reranked, rerank_applied = _rerank(clean_query, candidates, top_k, enabled=use_rerank)
+    # An explicit `rerank=True` with a named model is a corpus asking for it; only the absence of both leaves the
+    # deployment's switch in charge.
+    if rerank is None:
+        use_rerank = settings.rerank_enabled or bool(rerank_model_id)
+    else:
+        use_rerank = rerank
+    reranked, rerank_applied = _rerank(
+        clean_query,
+        candidates,
+        top_k,
+        enabled=use_rerank,
+        rerank_model_id=rerank_model_id,
+    )
     stages = _pipeline_stages(retrieval_mode, rerank_applied)
     return [_row_to_source_item(r, retrieval_mode=retrieval_mode, pipeline_stages=stages) for r in reranked]

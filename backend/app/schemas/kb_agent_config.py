@@ -46,6 +46,9 @@ class RetrievalConfig(BaseModel):
     top_k: int = Field(DEFAULT_TOP_K, ge=1, le=50)
     rerank: bool | None = None
     """`None` = whatever the deployment has configured; a KB may force it on or off."""
+    rerank_model_id: str | None = Field(None, max_length=64)
+    """Which rerank model, from the registry. `None` = the deployment's default reranker. Ignored when `rerank` is
+    false; a corpus that names a model but leaves the switch alone still reranks only if the deployment enables it."""
     min_score: float | None = Field(None, ge=0.0, le=1.0)
 
 

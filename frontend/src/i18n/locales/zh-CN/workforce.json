@@ -195,7 +195,6 @@
     "replyAria": "助手回复",
     "sourcesHeading": "参考依据",
     "sourcesAria": "本条回答所依据的来源",
-    "sourceScore": "匹配度 {{pct}}%",
     "sourcesPillLabel": "来源",
     "sourcesPillMixed": "{{evidence}} 条数据 · {{references}} 条参考",
     "sourcesPillEvidence_one": "{{count}} 条数据依据",

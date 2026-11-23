@@ -116,6 +116,9 @@ export function KbSection() {
           retrievalTopK={d.retrievalTopK}
           onRetrievalTopKChange={d.setRetrievalTopK}
           retrievalRerank={d.retrievalRerank}
+          rerankModels={d.rerankModels}
+          retrievalRerankModelId={d.retrievalRerankModelId}
+          onRetrievalRerankModelIdChange={d.setRetrievalRerankModelId}
           onRetrievalRerankChange={d.setRetrievalRerank}
           saving={d.settingsSaving}
           onSave={() => void d.handleSaveSettings()}

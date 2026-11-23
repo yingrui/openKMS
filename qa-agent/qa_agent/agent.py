@@ -44,10 +44,12 @@ from .request_context import (
     set_web_search_connector,
     reset_request_access_token,
     reset_request_knowledge_base_id,
+    reset_request_rerank,
     reset_request_sandbox,
     reset_request_session_id,
     set_request_access_token,
     set_request_knowledge_base_id,
+    set_request_rerank,
     set_request_sandbox,
     set_request_session_id,
 )
@@ -582,6 +584,10 @@ def invoke_agent(
     h_sess = set_request_session_id(session_id or "")
     h_sbx = set_request_sandbox(sandbox_settings)
     h_ws = set_web_search_connector(web_search_connector_id or "")
+    h_rr = set_request_rerank(
+        agent_config_module.rerank_override(agent_config),
+        agent_config_module.rerank_model_id(agent_config),
+    )
     t0 = time.monotonic()
     logger.info(
         "invoke_agent start kb=%s history=%d session=%s tools=%s top_k=%d",
@@ -620,7 +626,6 @@ def invoke_agent(
                 "installed_skill_packages": installed_skill_packages,
                 "top_p": agent_config_module.top_p(agent_config),
                 "max_tokens": agent_config_module.max_tokens(agent_config),
-                "rerank": agent_config_module.rerank_override(agent_config),
             },
             config=config,
         )
@@ -692,6 +697,7 @@ def invoke_agent(
         reset_request_session_id(h_sess)
         reset_request_sandbox(h_sbx)
         reset_web_search_connector(h_ws)
+        reset_request_rerank(h_rr)
         reset_request_access_token(h)
 
 
@@ -935,7 +941,6 @@ def _turn_state(
         "agent_description": agent_description,
         "top_p": agent_config_module.top_p(agent_config),
         "max_tokens": agent_config_module.max_tokens(agent_config),
-        "rerank": agent_config_module.rerank_override(agent_config),
     }
 
 
@@ -973,6 +978,10 @@ async def astream_agent_ndjson(
     h_sess = set_request_session_id(session_id or "")
     h_sbx = set_request_sandbox(sandbox_settings)
     h_ws = set_web_search_connector(web_search_connector_id or "")
+    h_rr = set_request_rerank(
+        agent_config_module.rerank_override(agent_config),
+        agent_config_module.rerank_model_id(agent_config),
+    )
     t0 = time.monotonic()
     logger.info(
         "astream_agent_ndjson start kb=%s history=%d session=%s tools=%s top_k=%d",
@@ -1133,4 +1142,5 @@ async def astream_agent_ndjson(
         reset_request_session_id(h_sess)
         reset_request_sandbox(h_sbx)
         reset_web_search_connector(h_ws)
+        reset_request_rerank(h_rr)
         reset_request_access_token(h)
