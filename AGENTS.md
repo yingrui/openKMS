@@ -30,7 +30,7 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 |------|------|
 | Backend | `backend/app/`（FastAPI + async SQLAlchemy） |
 | Frontend | `frontend/src/`（React 19 + Vite） |
-| 议事厅（Chamber） | `backend/app/services/runtime/chamber/`、`backend/app/api/chamber.py`、`frontend/src/pages/chamber/` |
+| 决策中心 / Chamber | `backend/app/services/runtime/chamber/`、`backend/app/api/chamber.py`、`frontend/src/pages/chamber/` |
 | Docker | `docker/`（见 `docker/README.md`） |
 | Docs | `docs/` |
 | VLM | `vlm-server/` |

@@ -1,6 +1,6 @@
-# 议事厅（Chamber）
+# 决策中心（Chamber）
 
-**议事厅**托管登记到 Kubernetes **Service** 的 HTTP UI。用户在议事厅中打开；iframe 经 API 服务器代理。openKMS 负责认证并转发身份头，Service 无需自建登录。
+**决策中心**托管登记到 Kubernetes **Service** 的 HTTP UI。用户在决策中心中打开；iframe 经 API 服务器代理。openKMS 负责认证并转发身份头，Service 无需自建登录。
 
 实验性的 **A2UI 应用构建器**（Source / Design / OntoObjectList）已**移除**。未来若再做 A2UI，应放在 **Agent Project** 会话中，而不是本产品面。
 
@@ -8,14 +8,14 @@
 
 | 路径 | 方式 |
 |------|------|
-| 控制台 → Kubernetes → 集群详情 | **登记到议事厅** |
+| 控制台 → Kubernetes → 集群详情 | **登记到决策中心** |
 | Skill | `kubernetes register-app …` 或 `apps create --bindings-json '{"k8s":{…}}'` |
 
 需要 **`console:kubernetes`** 与 **`ontology:write`**。创建后立即**发布**（`template_id=module`）。
 
 ## 运行
 
-单一 Suite App **议事厅**（`/chamber`）：
+单一 Suite App **决策中心**（`/chamber`）：
 
 - 列表 / 管理：`/chamber`
 - 运行：`/chamber/{id}` → iframe → `…/api/chamber/apps/{id}/proxy/`
@@ -23,7 +23,7 @@
 
 旧路径 `/apps` 与 `/app-builder` 会重定向到这里。不代理 WebSocket。资源宜用相对路径或 URL 子路径。
 
-## 议事厅身份请求头 {#chamber-identity-headers}
+## 决策中心身份请求头 {#chamber-identity-headers}
 
 每次代理请求会带上（UTF-8 percent-encoded）：
 
@@ -39,7 +39,7 @@
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET/POST | `/api/chamber/apps` | 列表 / 创建议事厅应用 |
+| GET/POST | `/api/chamber/apps` | 列表 / 创建决策中心应用 |
 | GET/PATCH/DELETE | `/api/chamber/apps/{id}` | 运行文档（已发布）/ 更新 / 删除 |
 | POST | `/api/chamber/apps/{id}/publish` | 新绑定快照 |
 | POST | `/api/chamber/apps/{id}/unpublish` | 取消发布 |
