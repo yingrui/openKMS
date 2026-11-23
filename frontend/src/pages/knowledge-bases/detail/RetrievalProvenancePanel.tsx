@@ -32,15 +32,21 @@ export function RetrievalProvenancePanel({ s, rank, compact = false }: KbRetriev
   if (!kbHasRetrievalProvenance(s)) return null;
 
   const dbg = s.retrieval_debug;
-  const num = (v: unknown): string | null => {
-    if (typeof v === 'number' && Number.isFinite(v)) return String(v);
-    if (typeof v === 'string' && v.trim() && !Number.isNaN(Number(v))) return v;
-    return null;
+  const asNumber = (v: unknown): number | null => {
+    const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v) : NaN;
+    return Number.isFinite(n) ? n : null;
   };
+  /** Similarities and relevance: three decimals. The fourth never decides which passage is more relevant. */
+  const num = (v: unknown): string | null => {
+    const n = asNumber(v);
+    return n === null ? null : String(Math.round(n * 1000) / 1000);
+  };
+  /** The fusion score lives around 0.03, where the digits that differ are the fourth and fifth. */
+  const numPrecise = (v: unknown): string | null => (asNumber(v) === null ? null : String(asNumber(v)));
   /* Ranks are stored 0-based; a reader counts from one. */
   const asRank = (v: unknown): string | null => {
-    const n = num(v);
-    return n === null ? null : String(Number(n) + 1);
+    const n = asNumber(v);
+    return n === null ? null : String(n + 1);
   };
 
   const modeLabel = s.retrieval_mode
@@ -61,39 +67,30 @@ export function RetrievalProvenancePanel({ s, rank, compact = false }: KbRetriev
     return <p className="retrieval-trace retrieval-trace--compact">{line}</p>;
   }
 
-  /** One stage of the pipeline and the numbers it produced. The words that explain them are printed once, above the list. */
-  const groups: { key: string; values: { label: string; value: string }[] }[] = [];
+  /**
+   * One line per stage, numbers inline: `dense #2 (0.55) · keyword #5 (1.21)`.
+   *
+   * Eight rows of label/value made the trace taller than the passage it describes, which left the content column half
+   * empty beside it. The labels are what the "?" explains; the numbers are what this panel is for.
+   */
+  const lines: { key: string; value: string }[] = [];
 
-  const recallValues: { label: string; value: string }[] = [];
-  if (denseRank !== null) recallValues.push({ label: t('detail.retrieval.denseRank'), value: `#${denseRank}` });
-  const denseSimilarity = num(dbg?.dense_similarity);
-  if (denseSimilarity !== null) {
-    recallValues.push({ label: t('detail.retrieval.denseSimilarity'), value: denseSimilarity });
+  const recallParts: string[] = [];
+  if (denseRank !== null) {
+    const sim = num(dbg?.dense_similarity);
+    recallParts.push(`dense #${denseRank}${sim !== null ? ` (${sim})` : ''}`);
   }
-  if (keywordRank !== null) recallValues.push({ label: t('detail.retrieval.bm25Rank'), value: `#${keywordRank}` });
-  const keywordScore = num(dbg?.bm25_score);
-  if (keywordScore !== null) {
-    recallValues.push({ label: t('detail.retrieval.bm25Score'), value: keywordScore });
+  if (keywordRank !== null) {
+    const score = num(dbg?.bm25_score);
+    recallParts.push(`keyword #${keywordRank}${score !== null ? ` (${score})` : ''}`);
   }
-  if (recallValues.length) {
-    groups.push({ key: 'recall', values: recallValues });
-  }
+  if (recallParts.length) lines.push({ key: 'recall', value: recallParts.join(' · ') });
 
-  const fusionValues: { label: string; value: string }[] = [];
-  const rrf = num(dbg?.rrf_score);
-  if (rrf !== null) fusionValues.push({ label: t('detail.retrieval.rrfScore'), value: rrf });
-  if (fusionValues.length) {
-    groups.push({ key: 'fusion', values: fusionValues });
-  }
+  const rrf = numPrecise(dbg?.rrf_score);
+  if (rrf !== null) lines.push({ key: 'fusion', value: rrf });
 
-  const rerankValues: { label: string; value: string }[] = [];
   const rerankScore = num(dbg?.rerank_score);
-  if (rerankScore !== null) {
-    rerankValues.push({ label: t('detail.retrieval.rerankScore'), value: rerankScore });
-  }
-  if (rerankValues.length) {
-    groups.push({ key: 'rerank', values: rerankValues });
-  }
+  if (rerankScore !== null) lines.push({ key: 'rerank', value: rerankScore });
 
   const facts: { label: string; value: string }[] = [];
   if (rank !== undefined) facts.push({ label: t('detail.retrieval.finalRank'), value: `#${rank}` });
@@ -102,11 +99,28 @@ export function RetrievalProvenancePanel({ s, rank, compact = false }: KbRetriev
     facts.push({ label: t('detail.retrieval.chunkIndex'), value: String(s.chunk_index) });
   }
 
-  if (!groups.length && !facts.length) return null;
+  if (!lines.length && !facts.length) return null;
 
   return (
     <div className="retrieval-trace">
-      <div className="ds-eyebrow">{t('detail.retrieval.panelTitle')}</div>
+      <div className="retrieval-trace__head">
+        <span className="ds-eyebrow">{t('detail.retrieval.panelTitle')}</span>
+        <details className="retrieval-trace__help">
+          <summary aria-label={t('detail.retrieval.glossaryTitle')} title={t('detail.retrieval.glossaryTitle')}>
+            ?
+          </summary>
+          <dl>
+            <dt>{t('detail.retrieval.stage_recall')}</dt>
+            <dd>{t('detail.retrieval.recallNote')}</dd>
+            <dt>{t('detail.retrieval.stage_fusion')}</dt>
+            <dd>{t('detail.retrieval.fusionNote')}</dd>
+            <dt>{t('detail.retrieval.stage_rerank')}</dt>
+            <dd>{t('detail.retrieval.rerankNote')}</dd>
+            <dt>{t('detail.retrieval.chunkIndex')}</dt>
+            <dd>{t('detail.retrieval.glossaryChunk')}</dd>
+          </dl>
+        </details>
+      </div>
 
       {facts.length ? (
         <div className="retrieval-trace__facts">
@@ -118,19 +132,14 @@ export function RetrievalProvenancePanel({ s, rank, compact = false }: KbRetriev
         </div>
       ) : null}
 
-      {groups.map((group) => (
-        <div key={group.key} className="retrieval-trace__group">
-          <div className="retrieval-trace__stage">{t(`detail.retrieval.stage_${group.key}`)}</div>
-          <dl className="retrieval-trace__dl">
-            {group.values.map((row) => (
-              <div key={row.label} className="retrieval-trace__row">
-                <dt>{row.label}</dt>
-                <dd>{row.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      ))}
+      <dl className="retrieval-trace__dl">
+        {lines.map((line) => (
+          <div key={line.key} className="retrieval-trace__row">
+            <dt>{t(`detail.retrieval.stage_${line.key}`)}</dt>
+            <dd>{line.value}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }

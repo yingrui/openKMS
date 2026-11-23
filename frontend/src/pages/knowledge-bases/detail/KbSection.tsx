@@ -78,11 +78,11 @@ export function KbSection() {
               Object.values(d.searchLabelFilters).some(Boolean),
               Object.values(d.searchMetadataFilters).some(Boolean),
               d.searchForceDense,
-              d.searchTopK !== 10,
             ].filter(Boolean).length
           }
           topK={d.searchTopK}
           onTopKChange={d.setSearchTopK}
+          onShowMore={() => void d.showMore()}
           forceDense={d.searchForceDense}
           onForceDenseChange={d.setSearchForceDense}
           metadataKeys={d.kb?.metadata_keys}
@@ -90,7 +90,6 @@ export function KbSection() {
           onMetadataFilterChange={(key, value) =>
             d.setSearchMetadataFilters((prev) => ({ ...prev, [key]: value }))
           }
-          retrievalDiff={d.searchRetrievalDiff}
           onChunkView={(id) => void d.openChunkViewFromId(id)}
           onChunkEdit={(id) => void d.openChunkEditFromId(id)}
         />

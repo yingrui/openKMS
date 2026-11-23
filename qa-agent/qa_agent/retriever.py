@@ -117,6 +117,11 @@ def _rerank_endpoint(rerank_model_id: str | None) -> tuple[str, str, str] | None
     return f"{base}/rerank", settings.rerank_model_name, get_effective_llm_config().api_key
 
 
+#: The reranker's own ceiling (Zhipu: 128 documents per request). A bigger pool is cut here rather than sent and
+#: rejected — the provider answers 400 for the whole request, which reads as "reranking is broken".
+RERANK_MAX_DOCUMENTS = 128
+
+
 def _rerank(
     query: str,
     candidates: list[dict[str, Any]],
@@ -125,7 +130,10 @@ def _rerank(
     enabled: bool,
     rerank_model_id: str | None = None,
 ) -> tuple[list[dict[str, Any]], bool]:
-    if not candidates or len(candidates) <= top_k or not enabled:
+    # One candidate cannot be reordered, and that is the only count that makes reranking pointless. This used to skip
+    # when `len(candidates) <= top_k`, which is exactly what happens when `top_k` is large: asking for 50 results
+    # silently turned reranking off.
+    if len(candidates) <= 1 or not enabled:
         return candidates[:top_k], False
     target = _rerank_endpoint(rerank_model_id)
     if target is None:
@@ -135,7 +143,7 @@ def _rerank(
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
-    documents = [c.get("content") or "" for c in candidates]
+    documents = [c.get("content") or "" for c in candidates[:RERANK_MAX_DOCUMENTS]]
     body = {
         "model": model_name,
         "query": query,
@@ -276,7 +284,9 @@ def retrieve(
 
     if dense and bm25:
         retrieval_mode = "hybrid"
-        fused_top_n = max(top_k, settings.rerank_recall_top_k)
+        # More candidates than we return, or the rerank stage would have nothing to reorder: with `fused_top_n == top_k`
+        # every candidate comes back by definition, and the ranking it produces is the fused one.
+        fused_top_n = max(2 * top_k, settings.rerank_recall_top_k)
         candidates = _rrf_fuse([dense, bm25], k=settings.rrf_k, top_n=fused_top_n)
         _merge_recall_traces(candidates, dense, bm25)
         for c in candidates:

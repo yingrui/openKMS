@@ -40,18 +40,3 @@ export function tabFromPathname(pathname: string): TabId {
   return match ?? 'documents';
 }
 
-export interface KbSearchSnapshot {
-  query: string;
-  searchType: string;
-  topK: number;
-  forceDense: boolean;
-  orderedIds: string[];
-  scores: Record<string, number>;
-}
-
-export interface KbSearchRetrievalDiff {
-  added: string[];
-  removed: string[];
-  moved: { id: string; from: number; to: number }[];
-}
-

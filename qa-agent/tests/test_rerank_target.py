@@ -87,3 +87,82 @@ def test_the_choice_reaches_the_tool_through_the_request_context():
     finally:
         reset_request_rerank(handle)
     assert get_tool_rerank(None) == (None, None)
+
+
+def test_a_large_top_k_still_reranks(monkeypatch):
+    """Asking for 50 results used to switch reranking off.
+
+    `fused_top_n` equalled `top_k` whenever `top_k >= 25`, so the fusor returned exactly as many candidates as the
+    caller wanted and `_rerank`'s `len(candidates) <= top_k` guard skipped the stage — silently, because a skipped stage
+    only changes `pipeline_stages`.
+    """
+    from qa_agent.retriever import _rerank
+
+    candidates = [{"id": f"c{i}", "content": f"passage {i}"} for i in range(50)]
+    calls: list[str] = []
+
+    class _Resp:
+        status_code = 200
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self):
+            return {"results": [{"index": i, "relevance_score": 0.5} for i in range(10)]}
+
+    class _Client:
+        def __init__(self, *_a, **_k) -> None:
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc) -> None:
+            return None
+
+        def post(self, url, json=None, headers=None):  # noqa: A002 - mirroring httpx
+            calls.append(url)
+            return _Resp()
+
+    monkeypatch.setattr(retriever, "httpx", type("m", (), {"Client": _Client}))
+    monkeypatch.setattr(retriever, "_rerank_endpoint", lambda _id: ("https://gw/v1/rerank", "m", "k"))
+
+    out, applied = _rerank("q", candidates, 50, enabled=True)
+    assert applied is True
+    assert calls, "the rerank endpoint was never called"
+    assert len(out) == 10
+
+
+def test_the_document_list_stops_at_the_provider_ceiling(monkeypatch):
+    """Zhipu accepts at most 128 documents; sending 200 fails the whole request."""
+    from qa_agent.retriever import RERANK_MAX_DOCUMENTS, _rerank
+
+    sent: list[int] = []
+
+    class _Resp:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self):
+            return {"results": [{"index": 0, "relevance_score": 0.9}]}
+
+    class _Client:
+        def __init__(self, *_a, **_k) -> None:
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc) -> None:
+            return None
+
+        def post(self, url, json=None, headers=None):  # noqa: A002
+            sent.append(len((json or {}).get("documents") or []))
+            return _Resp()
+
+    monkeypatch.setattr(retriever, "httpx", type("m", (), {"Client": _Client}))
+    monkeypatch.setattr(retriever, "_rerank_endpoint", lambda _id: ("https://gw/v1/rerank", "m", "k"))
+
+    candidates = [{"id": f"c{i}", "content": f"p{i}"} for i in range(300)]
+    _rerank("q", candidates, 10, enabled=True)
+    assert sent == [RERANK_MAX_DOCUMENTS]

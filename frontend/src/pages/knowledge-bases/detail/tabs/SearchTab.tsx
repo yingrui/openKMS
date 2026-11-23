@@ -2,12 +2,9 @@ import { Link } from 'react-router-dom';
 import type { TFunction } from 'i18next';
 import { ChevronDown, ChevronRight, Filter, Search as SearchIcon, Send } from 'lucide-react';
 import type { SearchResult } from '../../../../data/knowledgeBasesApi';
-import type { KbSearchRetrievalDiff } from '../../KnowledgeBaseDetail.types';
 import { CheckRow, EmptyState, FormField } from '../../../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from '../../../shared/EntityViewShell';
-import { RetrievalLegend } from '../RetrievalLegend';
 import { RetrievalProvenancePanel } from '../RetrievalProvenancePanel';
-import { retrievalScoreLabel } from '../retrievalScoreLabel';
 import './SearchTab.scss';
 
 export type KbSearchType = 'all' | 'chunks' | 'faqs';
@@ -33,12 +30,12 @@ export function SearchTab({
   activeFilterCount,
   topK,
   onTopKChange,
+  onShowMore,
   forceDense,
   onForceDenseChange,
   metadataKeys,
   metadataFilters,
   onMetadataFilterChange,
-  retrievalDiff,
   onChunkView,
   onChunkEdit,
 }: {
@@ -56,12 +53,13 @@ export function SearchTab({
   activeFilterCount: number;
   topK: number;
   onTopKChange: (value: number) => void;
+  /** Re-run the same query with a larger cut — the "next page" of a ranked list. */
+  onShowMore: () => void;
   forceDense: boolean;
   onForceDenseChange: (value: boolean) => void;
   metadataKeys: string[] | null | undefined;
   metadataFilters: Record<string, string>;
   onMetadataFilterChange: (key: string, value: string) => void;
-  retrievalDiff: KbSearchRetrievalDiff | null;
   onChunkView: (chunkId: string) => void;
   onChunkEdit: (chunkId: string) => void;
 }) {
@@ -77,7 +75,7 @@ export function SearchTab({
       <EntityViewHeader title={t('detail.searchTitle')} subtitle={t('detail.searchDesc')} />
 
       <EntityViewPanel>
-        <div className="entity-view__form">
+        <div className="kb-search-query">
           <div className="kb-search-types" role="group" aria-label={t('detail.searchTypeAria')}>
             {(['all', 'chunks', 'faqs'] as const).map((type) => (
               <button
@@ -101,6 +99,23 @@ export function SearchTab({
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
             />
+            <label className="kb-search-limit">
+              {t('detail.searchLimitLabel')}
+              <select
+                className="ds-control"
+                value={topK}
+                onChange={(e) => onTopKChange(Number(e.target.value))}
+              >
+                {/* The current cut is always listed: "show more" lands on 20, which is not one of the presets. */}
+                {[...new Set([10, 25, 50, 100, topK])]
+                  .sort((a, b) => a - b)
+                  .map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+              </select>
+            </label>
             <button type="submit" className="btn btn-primary" disabled={searching}>
               <Send size={16} aria-hidden />
               <span className="ds-compact-label">
@@ -131,21 +146,6 @@ export function SearchTab({
 
           {optionsOpen ? (
             <>
-              <FormField label={t('detail.searchTopKLabel')} hint={t('detail.searchAdvancedHint')}>
-                <input
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={topK}
-                  onChange={(e) => {
-                    const n = Number(e.target.value);
-                    onTopKChange(
-                      Number.isFinite(n) ? Math.min(50, Math.max(1, Math.trunc(n))) : 10,
-                    );
-                  }}
-                />
-              </FormField>
-
               <CheckRow
                 checked={forceDense}
                 onChange={onForceDenseChange}
@@ -182,49 +182,19 @@ export function SearchTab({
               description={t('detail.noSearchResults')}
             />
           ) : (
-            <div className="entity-view__form">
-              <h3>{t('detail.resultsTitle', { count: results.length })}</h3>
-
-              {retrievalDiff &&
-              (retrievalDiff.added.length > 0 ||
-                retrievalDiff.removed.length > 0 ||
-                retrievalDiff.moved.length > 0) ? (
-                <div
-                  className="kb-search-diff"
-                  role="region"
-                  aria-label={t('detail.searchDiffAria')}
-                >
-                  <h4>{t('detail.searchDiffTitle')}</h4>
-                  {retrievalDiff.added.length > 0 ? (
-                    <p>
-                      <strong>{t('detail.searchDiffAdded')}</strong> {retrievalDiff.added.length}
-                    </p>
-                  ) : null}
-                  {retrievalDiff.removed.length > 0 ? (
-                    <p>
-                      <strong>{t('detail.searchDiffRemoved')}</strong> {retrievalDiff.removed.length}
-                    </p>
-                  ) : null}
-                  {retrievalDiff.moved.length > 0 ? (
-                    <ul>
-                      {retrievalDiff.moved.slice(0, 20).map((m) => (
-                        <li key={m.id}>
-                          {t('detail.searchDiffMoved', {
-                            id: m.id.length > 24 ? `${m.id.slice(0, 20)}…` : m.id,
-                            from: m.from + 1,
-                            to: m.to + 1,
-                          })}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </div>
-              ) : null}
+            <div className="kb-search-results-wrap">
+              <div className="kb-search-results-head">
+                {/* "Results (10)" read like a page that might have siblings. Retrieval returns a ranked top K; there is
+                    no page two, because the eleventh hit is never withheld — it is simply less relevant. */}
+                <h3>{t('detail.resultsTitle', { count: results.length })}</h3>
+              </div>
 
               <ul className="kb-search-results">
-                <RetrievalLegend />
                 {results.map((r, i) => (
                   <li key={r.id} className="kb-search-hit">
+                    {/* Content on the left, the retrieval trace beside it: stacked, the trace left two thirds of the
+                        card empty and pushed each hit to three screen-heights. */}
+                    <div className="kb-search-hit-main">
                     <div className="kb-search-hit-head">
                       <span className="kb-search-hit-source">
                         [{r.source_type}]
@@ -243,12 +213,10 @@ export function SearchTab({
                           <span>{r.source_name || r.document_id || t('detail.faqSourceFallback')}</span>
                         )}
                       </span>
-                      {retrievalScoreLabel(r, t) ? (
-                        <span className="kb-search-hit-score">{retrievalScoreLabel(r, t)}</span>
-                      ) : null}
                     </div>
-                    <p className="kb-search-hit-excerpt">{r.content.slice(0, 300)}</p>
-                    <RetrievalProvenancePanel s={r} rank={i + 1} />
+                    <p className="kb-search-hit-excerpt">
+                      {r.content.length > 300 ? `${r.content.slice(0, 300).trimEnd()}…` : r.content}
+                    </p>
                     {r.source_type === 'chunk' ? (
                       <div className="openkms-flex-row-gap kb-search-hit-actions">
                         <button
@@ -267,9 +235,24 @@ export function SearchTab({
                         </button>
                       </div>
                     ) : null}
+                    </div>
+                    <RetrievalProvenancePanel s={r} rank={i + 1} />
                   </li>
                 ))}
               </ul>
+              {results.length >= topK && topK < 100 ? (
+                <div className="kb-search-more">
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    disabled={searching}
+                    onClick={onShowMore}
+                  >
+                    {t('detail.searchShowMore', { count: 10 })}
+                  </button>
+                  <span className="ds-field__hint">{t('detail.searchShowMoreHint', { count: topK + 10 })}</span>
+                </div>
+              ) : null}
             </div>
           )}
         </EntityViewPanel>
