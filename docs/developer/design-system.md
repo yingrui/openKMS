@@ -486,6 +486,12 @@ consistent" is not the test. What differs is measurable, and `scripts/check-ds-a
 | **re-skinning** | a page sheet styling `table` / `th` / `td` / `button` / `select` / `input` / `textarea` | paint over a primitive's skin only when the primitive has no such shape; otherwise extend the primitive |
 | **own CSS rules** | a page whose sheet is mostly skin rather than layout | the design system owns appearance; the page owns layout and content |
 
+`scripts/check-ds-duplicates.py` answers the harder version of the same question — *is this a copy of a skin we
+already have?* It compares declaration blocks, not class names, so `.objects-card` ≡ `.ds-resource-list-card`
+(9 identical declarations) is caught even though the names differ. A block counts as a copy when ≥4 declarations
+match, they cover most of the block, and ≥2 are skin properties; `--list` prints the pair, and the per-file count
+is frozen so a new copy fails.
+
 The visible difference appears when the *system* changes, not when a page is migrated: switching the theme, or
 changing the table skin once, reaches every page that borrows instead of copying. That is the point of the
 migration — the page looks the same *because* it now gets its values from the same place as its neighbours, and a

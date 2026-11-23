@@ -20,6 +20,8 @@ report() {
 python3 scripts/check-undefined-tokens.py || status=1
 # 一个页面"是否按设计系统"是组成问题，不是观感问题：颜色字面量（token 说得清）、原语导入、重造皮肤，逐页可数。
 python3 scripts/check-ds-adoption.py || status=1
+# 值对了但类名不同 —— 皮肤被抄了一份（`objects-card` 就是 `.ds-resource-list-card`）。按声明比对，逐页冻结。
+python3 scripts/check-ds-duplicates.py || status=1
 
 # --- 1. Cross-page stylesheet imports -----------------------------------------
 # Anything used by two areas belongs in src/styles/ under a neutral name.

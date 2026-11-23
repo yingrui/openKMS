@@ -1,0 +1,47 @@
+# Page rules that re-declare a design-system skin, frozen so they can only shrink.
+# Each entry is the number of copied blocks in that sheet.
+# Regenerate: python3 scripts/check-ds-duplicates.py --update-baseline
+pages/glossaries/GlossaryList.scss 6
+pages/agents/ProjectList.scss 5
+pages/evaluation/EvaluationDatasetList.scss 4
+pages/knowledge-map/KnowledgeMap.scss 4
+pages/connectors/connectors.scss 3
+pages/console/permissions/ConsolePermissionManagement.scss 3
+pages/models/ModelDetail.scss 3
+pages/models/Models.scss 3
+pages/Home.scss 2
+pages/catalog/dataset-detail.scss 2
+pages/chamber/ChamberPages.scss 2
+pages/console/data/ConsoleStorage.scss 2
+pages/evaluation/EvaluationDatasetDetail.scss 2
+pages/knowledge-bases/detail/dialogs.scss 2
+pages/pipelines/Pipelines.scss 2
+styles/channel-page.scss 2
+styles/channel-tree.scss 2
+styles/document-detail.print.scss 2
+styles/document-detail.scss 2
+styles/rules.scss 2
+components/DataResourceGranteesPanel.scss 1
+components/ResourceSharePanel.scss 1
+components/agents/SessionReview.scss 1
+components/agents/_agents-files.scss 1
+components/comments/ContentCommentsRail.scss 1
+pages/agents/AgentSkillsPage.scss 1
+pages/articles/ArticleChannelSettings.scss 1
+pages/catalog/dataset-er-graph.scss 1
+pages/console/operations/ConsoleHealth.scss 1
+pages/console/permissions/ConsoleAccessGroups.scss 1
+pages/documents/DocumentChannel.scss 1
+pages/function-editor/function-editor.scss 1
+pages/glossaries/GlossaryDetail.scss 1
+pages/jobs/JobDetail.scss 1
+pages/jobs/Jobs.scss 1
+pages/ontology/ObjectExplorer.scss 1
+pages/ontology/ObjectTypeDetail.scss 1
+pages/wiki/WikiPageEditor.scss 1
+pages/workforce/chat/ChatRetrievalProvenancePanel.scss 1
+pages/workforce/skills/workforceSkills.scss 1
+styles/account-page.scss 1
+styles/console-forms.scss 1
+styles/finding-view.scss 1
+styles/list-index.scss 1
