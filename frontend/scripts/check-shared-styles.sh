@@ -18,6 +18,8 @@ report() {
 # --- 0. Undefined custom properties -------------------------------------------
 # `var(--x)` with no definition does not fall back to a theme colour: fill goes black, stroke disappears.
 python3 scripts/check-undefined-tokens.py || status=1
+# 一个页面"是否按设计系统"是组成问题，不是观感问题：颜色字面量（token 说得清）、原语导入、重造皮肤，逐页可数。
+python3 scripts/check-ds-adoption.py || status=1
 
 # --- 1. Cross-page stylesheet imports -----------------------------------------
 # Anything used by two areas belongs in src/styles/ under a neutral name.

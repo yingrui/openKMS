@@ -89,7 +89,7 @@
   width: 220px;
   background: var(--color-bg-elevated);
   border-left: 1px solid var(--color-border);
-  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-md);
 }
 
 .object-explorer-style-panel:not(.open) {
@@ -115,7 +115,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
   transition: color 0.15s, background 0.15s;
 }
 
@@ -459,7 +459,7 @@
 }
 
 .object-explorer-answer-maximize:hover {
-  background: var(--color-bg-subtle, rgba(0, 0, 0, 0.04));
+  background: var(--color-bg-subtle);
   border-color: var(--color-border);
   color: var(--color-text);
 }
@@ -610,7 +610,7 @@
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .object-explorer-layout-controls > *:not(:first-child) {
@@ -656,7 +656,7 @@
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .object-explorer-graph-controls .object-explorer-graph-control-btn {

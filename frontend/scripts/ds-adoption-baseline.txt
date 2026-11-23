@@ -1,0 +1,38 @@
+# Colour literals in page sheets, frozen so they can only shrink.
+# A colour literal is a value the theme cannot reach — use --color-* / --shadow-*.
+# Regenerate: python3 scripts/check-ds-adoption.py --update-baseline
+pages/chamber/ChamberPages.scss 14
+styles/console-forms.scss 10
+pages/ontology/ontology-admin.scss 8
+pages/articles/ArticleDetail.scss 5
+pages/connectors/connectors.scss 5
+pages/console/permissions/ConsoleAccessGroups.scss 5
+pages/console/permissions/ConsolePermissionManagement.scss 5
+components/agents/_agents-files.scss 4
+components/comments/ContentCommentsRail.scss 4
+pages/function-editor/function-editor.scss 4
+pages/workforce/chat/AgentChat.scss 3
+components/agents/ProjectSettings.scss 2
+pages/console/operations/ConsoleHealth.scss 2
+pages/evaluation/EvaluationDatasetDetail.scss 2
+pages/wiki/WikiPageEditor.scss 2
+pages/wiki/WikiSpaceGraph.scss 2
+styles/finding-view.scss 2
+styles/rules.scss 2
+components/ResourceSharePanel.scss 1
+components/agents/AgentsAreaNav.scss 1
+components/agents/AgentsWorkspace.scss 1
+components/agents/_agents-chat.scss 1
+components/jobs/JobsAreaNav.scss 1
+components/workforce/WorkforceAreaNav.scss 1
+pages/Home.scss 1
+pages/articles/ArticleChannelSettings.scss 1
+pages/console/operations/ConsoleOverview.scss 1
+pages/knowledge-map/KnowledgeMap.scss 1
+pages/knowledge-map/KnowledgeMapOverview.scss 1
+pages/media/Media.scss 1
+pages/models/ModelDetail.scss 1
+pages/models/Models.scss 1
+pages/pipelines/Pipelines.scss 1
+styles/channel-page.scss 1
+styles/settings-page.scss 1

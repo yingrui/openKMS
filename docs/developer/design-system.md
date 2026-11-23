@@ -472,3 +472,21 @@ page's Add buttons ended up unstyled). Shared looks belong in `src/styles/design
 ## Updating this doc
 
 When shared SCSS, tokens, guard rules, or cross-route React primitives change, update this file. If **`design-system/`** layout changes, also refresh the frontend section in **[architecture.md](architecture.md)**.
+
+## How you can tell a page follows the system
+
+Two pages can look the same while one borrows the app's parts and the other re-implements them, so "looks
+consistent" is not the test. What differs is measurable, and `scripts/check-ds-adoption.py` counts it per sheet
+(`--list` prints the table; the gate runs it and fails only when a frozen count grows):
+
+| Signal | What it means | Rule |
+|---|---|---|
+| **colour literals** | `#f8fafc`, `rgba(0, 0, 0, 0.1)` — a value the theme cannot reach | tokens only (`--color-*`, `--shadow-*`); the counts are frozen per file and may only shrink |
+| **primitives imported** | `ListPage`, `Pagination`, `Loading`, `EmptyState`, `Dialog`, … | use them; a page that writes its own pager beside `Pagination` has two implementations to keep in step |
+| **re-skinning** | a page sheet styling `table` / `th` / `td` / `button` / `select` / `input` / `textarea` | paint over a primitive's skin only when the primitive has no such shape; otherwise extend the primitive |
+| **own CSS rules** | a page whose sheet is mostly skin rather than layout | the design system owns appearance; the page owns layout and content |
+
+The visible difference appears when the *system* changes, not when a page is migrated: switching the theme, or
+changing the table skin once, reaches every page that borrows instead of copying. That is the point of the
+migration — the page looks the same *because* it now gets its values from the same place as its neighbours, and a
+canvas that reads `--color-bg-surface` is the fastest way to see it (it followed the theme; a literal did not).
