@@ -49,6 +49,7 @@ NAMED_AFTER_ROUTE: dict[str, str] = {
     "stories": "stories",
     "wiki": "wiki-spaces",
     "wiki-spaces": "wiki-spaces",
+    "workforce": "workforce",
 }
 
 #: Groups that are not a resource with its own prefix, and why.

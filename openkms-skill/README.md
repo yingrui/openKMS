@@ -160,7 +160,12 @@ pytest -v
 
 ### End-to-end smoke (real openKMS)
 
-`tests/run_cli.sh` shells out to `python scripts/cli.py …` for 21 read-path commands (ping → search → documents/articles/wiki → KB list/search/ask → ontology cypher/text-to-cypher/ask → eval datasets), chaining ids automatically (the first `id` from each `list` feeds the next `get`/`markdown`). It can be run end-to-end or you can copy individual lines to your shell.
+`tests/run_cli.sh` runs 21 read-path commands through `python scripts/cli.py …`:
+
+ ping → search → documents/articles/wiki → KB list/search/ask → ontology cypher/text-to-cypher/ask → eval datasets
+
+The script chains ids: the first `id` from each `list` feeds the next `get` or `markdown`. Run it end-to-end, or copy
+single lines to your shell.
 
 Pre-reqs: a working `config.yml` (`api_base_url` + `api_key`) and `jq` on `PATH`.
 
@@ -184,6 +189,7 @@ openkms-skill/
     commands-content.md    # search / docs / wiki / KB / eval …
     commands-ontology.md   # objects / links / FoO / actions
     commands-ops.md        # connectors / jobs / Chamber / k8s
+    commands-workforce.md  # workforce agents: fleet, service state, usage, the problem queue
     workflows.md           # recipes A–I
     research-report.md     # research → Reveal + Plotly static HTML
     functions-authoring.md # Function source (mandatory before --source-code-file)

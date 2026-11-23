@@ -108,7 +108,8 @@ Verify wiring after apply: `kubernetes env --cluster-id ID --deployment NAME --n
 
 ### App with its own database (StatefulSet-free demo)
 
-A namespaced DB is three objects the allowlist only partly covers: the **PVC** and the **Secret** are created out of band, then one `apply` carries the Deployment + Service.
+A namespaced DB is three objects, and the allowlist covers them only partly. The **PVC** and the **Secret** are created
+out of band. One `apply` then carries the Deployment and the Service.
 
 ```bash
 kubectl apply -f namespace.yaml                       # Namespace: cluster-scoped
@@ -136,4 +137,8 @@ The iframe URL is `/api/chamber/apps/<id>/proxy/` and openKMS **strips that pref
 - keep client routes in the hash (`#/…`) so deep links need no server-side rewrite;
 - SPA history routing without a `try_files`-style fallback 404s on refresh.
 
-Chamber apps should **not** implement their own sign-in. openKMS authenticates the user and sends `X-Openkms-User-Id`, `X-Openkms-Username`, `X-Openkms-User-Name`, `X-Openkms-User-Email`, `X-Openkms-User-Admin` (values percent-encoded UTF-8) on every proxied request; read identity from those headers, key user data by `X-Openkms-User-Id`, return `401` when it is missing. Do not expose the Service via Ingress / NodePort. Full contract: `docs/features/app-builder.md#chamber-identity-headers`.
+Chamber apps should **not** implement their own sign-in. openKMS authenticates the user on every proxied request. It sends these headers, with percent-encoded UTF-8 values:
+
+`X-Openkms-User-Id`, `X-Openkms-Username`, `X-Openkms-User-Name`, `X-Openkms-User-Email`, `X-Openkms-User-Admin`
+
+Read identity from those headers. Key user data by `X-Openkms-User-Id`. Return `401` when it is missing. Do not expose the Service via Ingress / NodePort. Full contract: `docs/features/app-builder.md#chamber-identity-headers`.

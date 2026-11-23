@@ -38,7 +38,17 @@ The CLI locates `config.yml` and its imports via `__file__`, so **cwd does not m
 python <skill_dir>/scripts/cli.py ping
 ```
 
-`<skill_dir>` is the install location: `.openkms/skills/openkms` for an openKMS project agent (cwd = project root), `~/.pi/agent/skills/openkms` (Pi), `~/.claude/skills/openkms` (Claude Code), `~/.config/opencode/skills/openkms` (OpenCode), or a dev checkout. First-time dev/manual checkout needs `pip install -r requirements.txt` once.
+`<skill_dir>` is the install location:
+
+| Host | Path |
+|---|---|
+| openKMS project agent | `.openkms/skills/openkms` (cwd = project root) |
+| Pi | `~/.pi/agent/skills/openkms` |
+| Claude Code | `~/.claude/skills/openkms` |
+| OpenCode | `~/.config/opencode/skills/openkms` |
+| Dev checkout | wherever you cloned it |
+
+A first dev or manual checkout needs `pip install -r requirements.txt` once.
 
 ## Install (OpenCode / Claude Code / Pi)
 

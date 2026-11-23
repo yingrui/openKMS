@@ -131,9 +131,10 @@ python scripts/cli.py datasets joins delete --join-id JOIN_ID --yes
 `--required` renders INNER (only matched rows); omit it for LEFT. Composite keys: `--columns
 "a=x,b=y"` (aligned pairs). The target columns must be the target dataset's primary/key columns.
 
-`--from-unique` marks the FK side unique too — a **1 → 1** relationship, checked, not assumed: the
-source side must be a declared key or prove unique from its profile. A 1:1 relationship is the only
-kind traversable **backwards** (one → many reverse); a plain many → one is not.
+`--from-unique` marks the FK side unique too, which makes the relationship **1 → 1**. The CLI checks this; it does not
+assume it. The source side must be a declared key, or prove unique from its profile.
+
+Only a 1:1 relationship can be traversed **backwards** (one → many reverse). A plain many → one cannot.
 
 ## 5. Quality rules
 
@@ -159,10 +160,17 @@ python scripts/cli.py datasets quality update --id DS_ID --rule-id RULE_ID --ena
 python scripts/cli.py datasets quality delete --id DS_ID --rule-id RULE_ID --yes
 ```
 
-`--type` is a whitelist — `not_null` / `unique` / `range` / `referential` / `freshness` — and each
-needs its own config: `--min`/`--max` (range), `--ref-dataset-id`/`--ref-column` (referential),
-`--max-age-days` (freshness). Do not invent types. `quality update --config '{"min":0}'` replaces the
-config object wholesale.
+`--type` is a fixed list. Each type needs its own config:
+
+| Type | Config |
+|---|---|
+| `not_null` | none |
+| `unique` | none |
+| `range` | `--min`, `--max` |
+| `referential` | `--ref-dataset-id`, `--ref-column` |
+| `freshness` | `--max-age-days` |
+
+Do not invent types. `quality update --config '{"min":0}'` replaces the whole config object.
 
 ## 6. Verify before you hand off
 
@@ -173,9 +181,10 @@ python scripts/cli.py datasets profile --id DS_ID
 python scripts/cli.py datasets schema-history --id DS_ID
 ```
 
-`rows` **filters the table's columns** (AND-ed; operators `= != like in > >= < <= between is_null
-is_not_null`, `between` written `a..b`) and is keyset-paged: pass the last `--sort` value back as
-`--after`. The response's `total` counts what the filters match. `profile` computes
+`rows` **filters the table's columns**, and the filters are AND-ed. Operators: `=`, `!=`, `like`, `in`, `>`, `>=`, `<`,
+`<=`, `between`, `is_null`, `is_not_null`. Write `between` as `a..b`.
+
+The result is keyset-paged. Pass the last `--sort` value back as `--after`. The response's `total` counts what the filters match. `profile` computes
 null/distinct/min/max per column against the source.
 
 ## 7. From dataset to meaning
@@ -202,8 +211,8 @@ null/distinct/min/max per column against the source.
 
 ## File datasets (training sets and other immutable artifacts)
 
-A **file dataset** is a catalog entry for immutable, versioned files rather than a table — a training
-slice, a monthly export, an artifact you want pinnable. It takes part in no relationship, backs no
+A **file dataset** is a catalog entry for immutable, versioned files instead of a table. Examples: a training slice, a
+monthly export, an artifact you want to pin. It takes part in no relationship, backs no
 object type, and answers no SQL: reading is column and row selection.
 
 ```

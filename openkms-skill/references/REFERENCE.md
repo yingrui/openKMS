@@ -299,6 +299,22 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `jobs get` | GET | `/api/jobs/{id}` | Detail including events / worker_log. |
 | `jobs retry` *(write)* | POST | `/api/jobs/{id}/retry` | |
 
+### Workforce
+
+| CLI | Method | Path | Notes |
+|---|---|---|---|
+| `workforce agents list` | GET | `/api/workforce/agents` | `--limit`, `--offset`. Owner-scoped; admins see all. |
+| `workforce agents get` | GET | `/api/workforce/agents/{id}` | Detail incl. knowledge / model / group bindings. |
+| `workforce agents pause` *(write)* | POST | `/api/workforce/agents/{id}/pause` | Keeps config and keys; callers get 503 + the paused message. |
+| `workforce agents resume` *(write)* | POST | `/api/workforce/agents/{id}/resume` | |
+| `workforce usage` | GET | `/api/workforce/operations/usage` | Per agent: calls/failures over `activity_window_days`, all-time votes. Its own route — the numbers read `audit_events`, so `/agents` does not carry them. |
+| `workforce issues list` | GET | `/api/workforce/issues` | `--status open\|resolved\|ignored\|all`, `--kind`, `--agent`. Response carries `counts` per status. |
+| `workforce issues get` | GET | `/api/workforce/issues?status=all` | No single-item route: the command picks the id out of the listing. |
+| `workforce issues resolve` *(write)* | PATCH | `/api/workforce/issues/{id}` | `{"status":"resolved","resolution":"…"}` — the API refuses a resolution-less close. |
+| `workforce issues ignore` *(write)* | PATCH | `/api/workforce/issues/{id}` | `{"status":"ignored"}`; a reason is optional. |
+| `workforce issues reopen` *(write)* | PATCH | `/api/workforce/issues/{id}` | `{"status":"open"}`. |
+| `workforce feedback` *(write)* | POST | `/api/workforce/agents/{id}/feedback` | `{message_id, conversation_id?, vote: up\|down\|null}`. One row per reader per answer; `--vote clear` sends `null`. |
+
 ### Comments / media
 
 | CLI | Method | Path | Notes |

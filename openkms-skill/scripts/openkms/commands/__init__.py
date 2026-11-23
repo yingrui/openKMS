@@ -32,6 +32,7 @@ from . import (
     semantic_models,
     wiki,
     wiki_spaces,
+    workforce,
 )
 
 
@@ -67,3 +68,4 @@ def register(sub: _SubParsersAction) -> None:
     ontology.add_subparser(sub)  # exposes `ontology cypher/...`, `ontology objects ...`, `ontology links ...`
     evaluation.add_subparser(sub)
     stories.add_subparser(sub)
+    workforce.add_subparser(sub)
