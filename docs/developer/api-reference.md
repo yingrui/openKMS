@@ -346,9 +346,9 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/ontology/external-services/k8s-clusters` | Clusters a `k8s_service` entry can point at (`ontology:read`) |
 | POST | `/api/ontology/external-services/by-api-name/{api_name}/resolve` | Runtime-only: `kind` + `transport` (`direct`/`backend`), URL + decrypted secret for `http`, allowed paths (caller token required; recorded by the audit middleware) |
 | POST | `/api/ontology/external-services/by-api-name/{api_name}/call` | Relays a `k8s_service` call through the cluster's kubeconfig: `{method, path, query?, body?}` → `{status, body}`. Allowlist re-checked server-side; credential applied here; **502** when the cluster call fails |
-| GET | `/api/chamber/apps` | List **Chamber** apps (`?status=`); `ontology:read` |
+| GET | `/api/chamber/apps` | List **Chamber** apps; `ontology:read` |
 | POST | `/api/chamber/apps` | Create Chamber app (`bindings.k8s` required; registration is the only state; needs `console:kubernetes` + `ontology:write`) |
-| GET | `/api/chamber/apps/{id}` | Run document for any registered app (404 when unknown) |
+| GET | `/api/chamber/apps/{id}` | One registered app — the run page's document (404 when unknown) |
 | GET/POST/PUT/PATCH/DELETE | `/api/chamber/apps/{id}/proxy/{path}` | HTTP proxy to the bound Kubernetes Service (`ontology:read`, session cookie) |
 | PATCH | `/api/chamber/apps/{id}` | Update metadata / `bindings.k8s` |
 | DELETE | `/api/chamber/apps/{id}` | Delete app |

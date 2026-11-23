@@ -1,12 +1,7 @@
 import { useMemo, useState } from 'react';
-import { useAsyncData } from '../../hooks/useAsyncData';
 import { useTranslation } from 'react-i18next';
 import { FormField } from '../../styles/design-system';
-import {
-  fetchClusterNamespaces,
-  fetchClusterServices,
-  fetchKubernetesClusters,
-} from '../../data/kubernetesClustersApi';
+import { useClusterServices } from './useClusterServices';
 import type { ChamberBindings } from '../../data/chamberApi';
 
 type K8sBinding = NonNullable<ChamberBindings['k8s']>;
@@ -27,30 +22,13 @@ export function ModuleServiceBindingEditor({ initial, saving, readOnly = false, 
   const [port, setPort] = useState(initial?.port ?? 80);
   const [path, setPath] = useState(initial?.path ?? '');
 
-  // Three loaders, all of the "fetch when the inputs change" shape: `loading` is derived and a
-  // failure is just the hook's `error`, so none of them set state synchronously.
-  const { data: clustersData } = useAsyncData(
-    async () => (await fetchKubernetesClusters({ limit: 200 })).items || [],
-    [],
-  );
-  const clusters = clustersData ?? [];
-  const { data: namespacesData, error: namespacesError } = useAsyncData(
-    async () =>
-      clusterId ? (await fetchClusterNamespaces(clusterId)).items.map((n) => n.name) : null,
-    [clusterId],
-  );
-  const namespaces = namespacesData ?? null;
+  // Same three lookups as the register wizard, via the same hook — one definition of what a failure means.
+  const { clusters, namespaces, services, namespacesError, servicesError } = useClusterServices({
+    clusterId,
+    namespace: namespace.trim(),
+  });
   const namespacesFailed = Boolean(namespacesError);
-  const { data: servicesData, error: servicesError } = useAsyncData(
-    async () =>
-      clusterId && namespace.trim()
-        ? (await fetchClusterServices(clusterId, namespace.trim())).items || []
-        : null,
-    [clusterId, namespace],
-  );
-  const services = servicesData ?? null;
   const servicesFailed = Boolean(servicesError);
-
 
   const namespaceOptions = useMemo(() => {
     const base = namespaces ?? [];

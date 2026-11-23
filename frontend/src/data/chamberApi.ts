@@ -18,7 +18,6 @@ export type ChamberAppResponse = {
   description?: string | null;
   template_id: 'module';
   bindings: ChamberBindings;
-  status: string;
   bindings_stale: boolean;
   missing_bindings: string[];
   created_by?: string | null;
@@ -27,15 +26,10 @@ export type ChamberAppResponse = {
   updated_at: string;
 };
 
-export type ChamberRunResponse = ChamberAppResponse;
-
 const base = `${config.apiUrl}/api/chamber/apps`;
 
-export async function listChamberApps(params?: { status?: string }): Promise<ChamberAppResponse[]> {
-  const qs = new URLSearchParams();
-  if (params?.status) qs.set('status', params.status);
-  const suffix = qs.toString() ? `?${qs}` : '';
-  return ontologyFetch<ChamberAppResponse[]>(`${base}${suffix}`, undefined, 'Failed to list Chamber apps');
+export async function listChamberApps(): Promise<ChamberAppResponse[]> {
+  return ontologyFetch<ChamberAppResponse[]>(base, undefined, 'Failed to list Chamber apps');
 }
 
 export async function createChamberApp(body: {
@@ -52,8 +46,8 @@ export async function createChamberApp(body: {
   );
 }
 
-export async function fetchChamberRun(appId: string): Promise<ChamberRunResponse> {
-  return ontologyFetch<ChamberRunResponse>(`${base}/${appId}`, undefined, 'Failed to load Chamber app');
+export async function fetchChamberApp(appId: string): Promise<ChamberAppResponse> {
+  return ontologyFetch<ChamberAppResponse>(`${base}/${appId}`, undefined, 'Failed to load Chamber app');
 }
 
 export function chamberAppProxyUrl(appId: string): string {

@@ -371,7 +371,7 @@ Requires **`knowledge_map:read`** (tree, link list) and **`knowledge_map:write`*
 | CLI | Method | Path | Notes |
 |---|---|---|---|
 | `chamber list` | GET | `/api/chamber/apps` | Chamber apps only. |
-| `chamber get` | GET | `/api/chamber/apps/{id}` | Published run doc. |
+| `chamber get` | GET | `/api/chamber/apps/{id}` | One app (its binding, stale flag, owner). |
 | `chamber create` *(write)* | POST | `/api/chamber/apps` | Requires `bindings.k8s`. Registration is the only state — there is no publish step. Prefer `kubernetes register-app`. |
 | `chamber patch` *(write)* | PATCH | `/api/chamber/apps/{id}` | Metadata / `bindings.k8s`. |
 | `chamber delete` *(write)* | DELETE | `/api/chamber/apps/{id}` | |

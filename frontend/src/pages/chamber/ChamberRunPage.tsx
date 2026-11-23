@@ -8,55 +8,14 @@ import {
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, ArrowLeft, ExternalLink, Maximize2, Minimize2, Settings } from 'lucide-react';
-import { fetchChamberRun, chamberAppProxyUrl, type ChamberRunResponse } from '../../data/chamberApi';
+import { fetchChamberApp, chamberAppProxyUrl, type ChamberAppResponse } from '../../data/chamberApi';
+import { probeService, type Probe } from './chamberProbe';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDocumentTheme } from '../../hooks/useDocumentTheme';
 import './ChamberPages.scss';
 
 const EXIT_BTN_MARGIN = 12;
 const DRAG_THRESHOLD_PX = 4;
-const PROBE_TIMEOUT_MS = 8000;
-
-/** Why the app did not answer. The proxy already knows; until now that knowledge stopped at an HTTP status. */
-type ProbeFailure = 'unreachable' | 'bindings' | 'auth' | 'missing' | 'unknown';
-type Probe =
-  | { kind: 'checking' }
-  | { kind: 'ok' }
-  | { kind: 'failed'; reason: ProbeFailure; status?: number };
-
-/**
- * One `HEAD` through the proxy before the frame is trusted with the page.
- *
- * `HEAD` because the probe must not fetch (or render, or side-effect) the app: the proxy answers the app's own
- * status, so 405 still means "reachable". A 502/504 is the proxy saying it could not reach the Service, 400 is its
- * bindings check, 401/403 is this platform refusing the request, 404 is "not registered" — or the app's own 404 at
- * its root, which the message says out loud rather than guessing.
- */
-async function probeService(appId: string): Promise<Probe> {
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
-  try {
-    const resp = await fetch(chamberAppProxyUrl(appId), {
-      method: 'HEAD',
-      credentials: 'same-origin',
-      cache: 'no-store',
-      signal: controller.signal,
-    });
-    if (resp.status === 502 || resp.status === 504) {
-      return { kind: 'failed', reason: 'unreachable', status: resp.status };
-    }
-    if (resp.status === 400) return { kind: 'failed', reason: 'bindings', status: resp.status };
-    if (resp.status === 401 || resp.status === 403) {
-      return { kind: 'failed', reason: 'auth', status: resp.status };
-    }
-    if (resp.status === 404) return { kind: 'failed', reason: 'missing', status: resp.status };
-    return { kind: 'ok' };
-  } catch {
-    return { kind: 'failed', reason: 'unknown' };
-  } finally {
-    window.clearTimeout(timer);
-  }
-}
 
 type ExitBtnPos = { left: number; top: number };
 
@@ -97,7 +56,7 @@ export function ChamberRunPage() {
   const { t } = useTranslation('chamber');
   const { canAccessPath } = useAuth();
   const canEdit = canAccessPath('/chamber');
-  const [app, setApp] = useState<ChamberRunResponse | null>(null);
+  const [app, setApp] = useState<ChamberAppResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   /** Keyed by the request it answers, so "checking" is derived and the effect never setStates on mount. */
   const [probeResult, setProbeResult] = useState<{ key: string; value: Probe } | null>(null);
@@ -121,7 +80,7 @@ export function ChamberRunPage() {
   useEffect(() => {
     void (async () => {
       try {
-        setApp(await fetchChamberRun(appId));
+        setApp(await fetchChamberApp(appId));
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
@@ -367,7 +326,7 @@ export function ChamberRunPage() {
 }
 
 /** The binding in one line: enough to fix a typo without opening Settings. */
-function probeTarget(k8s: ChamberRunResponse['bindings']['k8s']): string {
+function probeTarget(k8s: ChamberAppResponse['bindings']['k8s']): string {
   if (!k8s) return '—';
   const path = k8s.path ? `/${String(k8s.path).replace(/^\/+/, '')}` : '';
   return `${k8s.namespace}/${k8s.service}:${k8s.port}${path}`;

@@ -2,17 +2,14 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ArrowRight, Check, Loader2, Server } from 'lucide-react';
-import { useAsyncData } from '../../hooks/useAsyncData';
 import { useAuth } from '../../contexts/AuthContext';
 import { PERM_CONSOLE_KUBERNETES, PERM_ONTOLOGY_WRITE } from '../../config/permissions';
 import { createChamberApp } from '../../data/chamberApi';
-import {
-  fetchClusterNamespaces,
-  fetchClusterServices,
-  fetchKubernetesClusters,
-  type KubernetesClusterResponse,
-  type KubernetesServiceItem,
+import type {
+  KubernetesClusterResponse,
+  KubernetesServiceItem,
 } from '../../data/kubernetesClustersApi';
+import { useClusterServices } from './useClusterServices';
 import { FormField } from '../../styles/design-system';
 import { API_NAME_RE, firstPort, suggestApiName } from './registerDefaults';
 import './ChamberPages.scss';
@@ -48,40 +45,11 @@ export function ChamberRegisterPage() {
   const [apiNameError, setApiNameError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const {
-    data: clustersData,
-    error: clustersError,
-    loading: clustersLoading,
-  } = useAsyncData(
-    async () =>
-      canRegister ? (await fetchKubernetesClusters({ limit: 200 })).items || [] : [],
-    [canRegister],
-  );
-  const clusters = clustersData ?? [];
-
-  const {
-    data: namespacesData,
-    error: namespacesError,
-    loading: namespacesLoading,
-    reload: reloadNamespaces,
-  } = useAsyncData(
-    async () =>
-      cluster ? (await fetchClusterNamespaces(cluster.id)).items.map((n) => n.name) : null,
-    [cluster?.id],
-  );
-  const namespaces = namespacesData ?? null;
-
-  const {
-    data: servicesData,
-    error: servicesError,
-    loading: servicesLoading,
-    reload: reloadServices,
-  } = useAsyncData(
-    async () =>
-      cluster && namespace ? (await fetchClusterServices(cluster.id, namespace)).items || [] : null,
-    [cluster?.id, namespace],
-  );
-  const services = servicesData ?? null;
+  const { clusters, namespaces, services, loading, error, reload } = useClusterServices({
+    clusterId: cluster?.id ?? '',
+    namespace,
+    enabled: canRegister,
+  });
 
   const canSubmit = useMemo(
     () => Boolean(name.trim() && apiName.trim() && API_NAME_RE.test(apiName.trim()) && port > 0),
@@ -188,13 +156,13 @@ export function ChamberRegisterPage() {
         {step === 0 ? (
           <section className="chamber-register__section">
             <h2>{t('registerStepCluster')}</h2>
-            {clustersLoading ? <p>{t('loading')}</p> : null}
-            {clustersError ? (
+            {loading ? <p>{t('loading')}</p> : null}
+            {error ? (
               <p className="chamber-page__error" role="alert">
-                {errorText(clustersError)}
+                {errorText(error)}
               </p>
             ) : null}
-            {!clustersLoading && !clustersError && !clusters.length ? (
+            {!loading && !error && !clusters.length ? (
               <p className="settings-page-hint">{t('registerNoClusters')}</p>
             ) : null}
             <div className="chamber-register__list">
@@ -230,24 +198,23 @@ export function ChamberRegisterPage() {
               {cluster?.name}
               {namespace ? ` · ${namespace}` : ''}
             </p>
-            {namespacesError || servicesError ? (
+            {error ? (
               // An unreachable cluster used to render as an empty Service list, which reads as "this cluster
               // has none". Say what happened and offer the retry instead.
               <div className="chamber-page__error" role="alert">
-                <p>{errorText(namespacesError ?? servicesError)}</p>
+                <p>{errorText(error)}</p>
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => {
-                    reloadNamespaces();
-                    reloadServices();
+                    reload();
                   }}
                 >
                   {t('retry')}
                 </button>
               </div>
             ) : null}
-            {namespacesLoading ? <p>{t('loading')}</p> : null}
+            {loading ? <p>{t('loading')}</p> : null}
             {namespaces && namespaces.length > 0 ? (
               <FormField label={t('registerNamespace')} htmlFor="chamber-register-ns">
                 <select
@@ -270,7 +237,7 @@ export function ChamberRegisterPage() {
               <p className="settings-page-hint">{t('registerNoNamespaces')}</p>
             ) : null}
 
-            {servicesLoading ? <p>{t('loading')}</p> : null}
+
             {services && !services.length ? (
               <p className="settings-page-hint">{t('registerNoServices')}</p>
             ) : null}

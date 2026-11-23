@@ -1,4 +1,4 @@
-"""CRUD + publish snapshots for Chamber apps (hosted Kubernetes Service)."""
+"""CRUD for Chamber apps (hosted Kubernetes Service)."""
 
 from __future__ import annotations
 
@@ -20,10 +20,6 @@ ID_HEX = 12
 
 def new_app_id() -> str:
     return f"{APP_ID_PREFIX}{uuid.uuid4().hex[:ID_HEX]}"
-
-
-def _unused_new_version_id() -> str:
-    return str(uuid.uuid4())
 
 
 def bindings_as_dict(bindings: ChamberBindings | dict[str, Any] | None) -> dict[str, Any]:
@@ -49,7 +45,6 @@ def to_response_base(
         "description": app.description,
         "template_id": app.template_id or "module",
         "bindings": app.bindings or {},
-        "status": app.status,
         "bindings_stale": stale,
         "missing_bindings": list(missing or []),
         "created_by": app.created_by,
@@ -88,17 +83,13 @@ async def get_app(db: AsyncSession, app_id: str) -> ChamberApp:
     return app
 
 
-async def list_apps(
-    db: AsyncSession, *, status: str | None = None
-) -> list[ChamberApp]:
+async def list_apps(db: AsyncSession) -> list[ChamberApp]:
     q = (
         select(ChamberApp)
         # Legacy discriminator: only Chamber (module) apps exist.
         .where(ChamberApp.template_id == "module")
         .order_by(ChamberApp.updated_at.desc())
     )
-    if status:
-        q = q.where(ChamberApp.status == status)
     return list((await db.execute(q)).scalars().all())
 
 
@@ -129,7 +120,6 @@ async def create_app(
         description=body.description,
         template_id="module",
         bindings=bindings,
-        status="registered",
         created_by=created_by,
         created_by_name=created_by_name,
     )

@@ -25,7 +25,6 @@ class ChamberApp(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     template_id: Mapped[str] = mapped_column(String(64), nullable=False, default="module", server_default="module")
     bindings: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
-    status: Mapped[str] = mapped_column(String(32), nullable=False, default="registered", server_default="registered")
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_by_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

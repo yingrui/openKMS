@@ -57,7 +57,7 @@ Key tenant data by `X-Openkms-User-Id`. Return `401` when it is missing. Do not 
 | GET/PATCH/DELETE | `/api/chamber/apps/{id}` | Run doc (any registered app) / update / delete |
 | * | `/api/chamber/apps/{id}/proxy[/{path}]` | Session-cookie auth; strip Bearer |
 
-Storage: `chamber_apps` only — `chamber_published_versions` was dropped with the version layer (migration `08327ca4c4fe`), and the A2UI `app_components` table is gone too.
+Storage: `chamber_apps` only — `chamber_published_versions` was dropped with the version layer (migration `08327ca4c4fe`), `chamber_apps.status` went with it (`8b7aeb068564`), and the A2UI `app_components` table is gone too.
 
 ## Related
 

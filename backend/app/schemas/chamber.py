@@ -49,16 +49,9 @@ class ChamberResponse(BaseModel):
     description: str | None = None
     template_id: AppKind
     bindings: dict[str, Any]
-    status: str
     bindings_stale: bool = False
     missing_bindings: list[str] = Field(default_factory=list)
     created_by: str | None = None
     created_by_name: str | None = None
     created_at: datetime
     updated_at: datetime
-
-
-class ChamberRunResponse(ChamberResponse):
-    """Runtime document for Chamber Run (hosted iframe; no A2UI components)."""
-
-    pass

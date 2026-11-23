@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import ensure_permission, require_any_permission
 from app.api.ontology.deps import jwt_user_from_request, validate_api_name
 from app.database import get_db
 from app.models.kubernetes_cluster import KubernetesCluster
-from app.schemas.chamber import (
-    ChamberCreate,
-    ChamberResponse,
-    ChamberRunResponse,
-    ChamberUpdate,
-)
+from app.schemas.chamber import ChamberCreate, ChamberResponse, ChamberUpdate
 from app.services.runtime.chamber import service as chamber_svc
 from app.services.platform.credentials.credential_encryption import decrypt
 from app.services.platform.credentials.credential_encryption import DECRYPT_ERRORS
@@ -43,11 +38,8 @@ async def _to_list_item(db: AsyncSession, app) -> ChamberResponse:
 
 def _register_routes(api: APIRouter) -> None:
     @api.get("", response_model=list[ChamberResponse], dependencies=_read_deps)
-    async def list_apps(
-        status: str | None = Query(None),
-        db: AsyncSession = Depends(get_db),
-    ):
-        rows = await chamber_svc.list_apps(db, status=status)
+    async def list_apps(db: AsyncSession = Depends(get_db)):
+        rows = await chamber_svc.list_apps(db)
         return [await _to_list_item(db, r) for r in rows]
 
     @api.post("", response_model=ChamberResponse, status_code=201, dependencies=_read_deps)
@@ -63,15 +55,14 @@ def _register_routes(api: APIRouter) -> None:
         app = await chamber_svc.create_app(db, body, created_by=uid, created_by_name=uname)
         return await _to_list_item(db, app)
 
-    @api.get("/{app_id}", response_model=ChamberRunResponse, dependencies=_read_deps)
+    @api.get("/{app_id}", response_model=ChamberResponse, dependencies=_read_deps)
     async def get_app_run(app_id: str, db: AsyncSession = Depends(get_db)):
         """A registered Chamber app. Registration is the only state — there is no publish step to pass."""
         app = await chamber_svc.get_app(db, app_id)
         if app.template_id != "module":
             raise HTTPException(status_code=404, detail="Chamber app not found")
         stale, missing = await chamber_svc.enrich_stale(db, app)
-        base = chamber_svc.to_response_base(app, stale=stale, missing=missing)
-        return ChamberRunResponse(**base)
+        return ChamberResponse(**chamber_svc.to_response_base(app, stale=stale, missing=missing))
 
     @api.patch("/{app_id}", response_model=ChamberResponse, dependencies=_read_deps)
     async def update_app(
