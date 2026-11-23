@@ -364,21 +364,14 @@
   gap: var(--space-4);
 }
 
-.chamber-page__back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin-bottom: var(--space-3);
-  color: var(--color-text-muted);
-  text-decoration: none;
-
-  &:hover {
-    color: var(--color-text);
-  }
-}
-
 .chamber-register {
   max-width: 760px;
+}
+
+/* The back link is a flex item inside a header row on the run page (must stay centred there) and a
+   standalone line on the register page (needs air below it). Only the second one gets the margin. */
+.chamber-register > .chamber-page__back {
+  margin-bottom: var(--space-3);
 }
 
 .chamber-register__steps {
