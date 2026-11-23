@@ -201,7 +201,7 @@ export function LinkTypeDetail() {
             managePath="/ontology-manager/link-types"
           />
         ) : null}
-        <table className="link-type-table">
+        <table className="ds-table">
           <thead>
             <tr>
               <th>{t('ontology.linkTypeDetail.colSource')}</th>

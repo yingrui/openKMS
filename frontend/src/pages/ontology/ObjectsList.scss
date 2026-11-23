@@ -1,35 +1,6 @@
 @use '../../styles/design-system/mixins' as *;
 @use '../../styles/design-system/tokens' as ds;
 
-.objects-list {
-  width: 100%;
-}
-
-.objects-list .page-header {
-  margin-bottom: var(--space-8);
-}
-
-.objects-loading {
-  color: var(--color-text-secondary);
-  padding: 40px 0;
-}
-
-.objects-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  padding: calc(var(--space-16) + var(--space-4)) var(--space-6);
-  text-align: center;
-  color: var(--color-text-muted);
-}
-
-.objects-empty svg {
-  margin-bottom: var(--space-2);
-  opacity: 0.5;
-}
-
 .objects-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

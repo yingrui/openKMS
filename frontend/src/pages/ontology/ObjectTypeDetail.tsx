@@ -286,7 +286,7 @@ export function ObjectTypeDetail() {
             managePath="/ontology-manager/object-types"
           />
         ) : null}
-        <table className="object-type-table">
+        <table className="ds-table">
           <thead>
             <tr>
               {showSystemRidCol ? (

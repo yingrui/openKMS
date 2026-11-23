@@ -4,6 +4,9 @@ import { Link } from 'react-router-dom';
 import { Link2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchLinkTypes, type LinkTypeResponse } from '../../data/ontologyApi';
+import { ListPage } from '../../styles/design-system/ListPage';
+import { EmptyState } from '../../styles/design-system/EmptyState';
+import { Loading } from '../../styles/design-system/Loading';
 import './LinksList.scss';
 
 export function LinksList() {
@@ -27,22 +30,12 @@ export function LinksList() {
   }, []);
 
   return (
-    <div className="links-list">
-      <div className="page-header">
-        <div>
-          <h1>{t('links.title')}</h1>
-          <p className="page-subtitle">{t('links.subtitle')}</p>
-        </div>
-      </div>
+    <ListPage title={t('links.title')} subtitle={t('links.subtitle')}>
+      {loading ? <Loading label={t('shared.loading')} /> : null}
 
-      {loading && <p className="links-loading">{t('shared.loading')}</p>}
-
-      {!loading && types.length === 0 && (
-        <div className="links-empty">
-          <Link2 size={48} strokeWidth={1} />
-          <p>{t('links.empty')}</p>
-        </div>
-      )}
+      {!loading && types.length === 0 ? (
+        <EmptyState icon={<Link2 size={48} strokeWidth={1} />} title={t('links.empty')} />
+      ) : null}
 
       <div className="links-grid">
         {types.map((lt) => (
@@ -65,6 +58,6 @@ export function LinksList() {
           </Link>
         ))}
       </div>
-    </div>
+    </ListPage>
   );
 }

@@ -4,6 +4,27 @@ Run Cypher (or plain-language text-to-Cypher) against the configured **Neo4j** d
 
 Broader ontology schema, datasets, and indexing are documented in [Ontology — objects, links, datasets](ontology.md). This page focuses on **Graph view** behavior and implementation lessons.
 
+## Design-system scope
+
+The suite has three sections under its own rail (`ExplorerNavRail`): **objects**, **links**, **explore**. The
+first two are lists and a detail each; **explore is a workspace**, and the split is deliberate:
+
+| Page | Shell | Shared parts it uses |
+|---|---|---|
+| objects / links | `ListPage` (title + subtitle + body) | `ListPage`, `Loading`, `EmptyState`; the card grid is this page's own |
+| objects/:typeId, links/:typeId | the page's own header and toolbar | `ds-table`, `Dialog`, `SearchField`, `TableRowActions` |
+| explore | **no list shell** — a full-height workspace | `Pagination`, `ds-table`, `Loading`, `EmptyState`, `ds-control` |
+
+Explore is not wrapped in `ListPage` / `EntityViewShell` for a structural reason, not an oversight: `.ds-page`
+carries the app gutter and a page scroll, while the workspace must give the canvas the remaining height and own
+its own scrolling. The rail already supplies navigation, so an entity shell would be a rail inside a rail.
+
+**Canvas colours are read from tokens, never written as literals.** A canvas cannot resolve `var(--…)` — an
+unparseable colour string falls back to black — so the workspace reads `--color-bg-surface`,
+`--color-bg-elevated` and `--color-text` from the document element and re-reads them when `data-theme` changes.
+Hardcoding them (as this page once did, `#f8fafc` and `rgba(255,255,255,0.95)`) produces a light canvas in dark
+mode, which is the same mistake as a black one.
+
 ## Surfaces
 
 | Surface | Description |

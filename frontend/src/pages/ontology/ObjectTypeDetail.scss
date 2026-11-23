@@ -55,34 +55,6 @@
   max-width: 400px;
 }
 
-.object-type-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.object-type-table th,
-.object-type-table td {
-  padding: var(--space-3) var(--space-4);
-  text-align: left;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.object-type-table th {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.object-type-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.object-type-table tbody tr:hover {
-  background: var(--color-bg-muted);
-}
-
 .object-type-id-col {
   max-width: 12rem;
   vertical-align: top;

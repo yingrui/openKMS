@@ -4,6 +4,9 @@ import { Link } from 'react-router-dom';
 import { Box } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
+import { ListPage } from '../../styles/design-system/ListPage';
+import { EmptyState } from '../../styles/design-system/EmptyState';
+import { Loading } from '../../styles/design-system/Loading';
 import './ObjectsList.scss';
 
 export function ObjectsList() {
@@ -27,22 +30,12 @@ export function ObjectsList() {
   }, []);
 
   return (
-    <div className="objects-list">
-      <div className="page-header">
-        <div>
-          <h1>{t('objects.title')}</h1>
-          <p className="page-subtitle">{t('objects.subtitle')}</p>
-        </div>
-      </div>
+    <ListPage title={t('objects.title')} subtitle={t('objects.subtitle')}>
+      {loading ? <Loading label={t('shared.loading')} /> : null}
 
-      {loading && <p className="objects-loading">{t('shared.loading')}</p>}
-
-      {!loading && types.length === 0 && (
-        <div className="objects-empty">
-          <Box size={48} strokeWidth={1} />
-          <p>{t('objects.empty')}</p>
-        </div>
-      )}
+      {!loading && types.length === 0 ? (
+        <EmptyState icon={<Box size={48} strokeWidth={1} />} title={t('objects.empty')} />
+      ) : null}
 
       <div className="objects-grid">
         {types.map((ot) => (
@@ -63,6 +56,6 @@ export function ObjectsList() {
           </Link>
         ))}
       </div>
-    </div>
+    </ListPage>
   );
 }
