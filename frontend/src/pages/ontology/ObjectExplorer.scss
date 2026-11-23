@@ -253,12 +253,6 @@
   margin-left: 2px;
 }
 
-.object-explorer-loading {
-  font-size: var(--text-md);
-  color: var(--color-text-muted);
-  padding: 8px;
-}
-
 .object-explorer-main {
   flex: 1;
   display: flex;
@@ -382,6 +376,7 @@
   min-height: 0;
 }
 
+/* Skinned by `.ds-control`; this only fixes the box a query editor needs. */
 .object-explorer-cypher-input {
   flex: 0 0 auto;
   width: 100%;
@@ -389,14 +384,7 @@
   height: 150px;
   min-height: 150px;
   max-height: 150px;
-  padding: var(--padding-compact-y) var(--space-3);
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: var(--text-md);
   line-height: 1.5;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-  color: var(--color-text);
   resize: none;
   overflow-y: auto;
 }
@@ -419,32 +407,17 @@
   margin-top: 0;
 }
 
+/* Skinned by `.ds-control`; this only fixes the box. */
 .object-explorer-userq-input {
   width: 100%;
   box-sizing: border-box;
   height: 120px;
   min-height: 120px;
   max-height: 120px;
-  padding: var(--padding-compact-y) var(--space-3);
-  font-size: var(--text-md);
   line-height: 1.5;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-  color: var(--color-text);
   resize: none;
   overflow-y: auto;
   font-family: inherit;
-}
-
-.object-explorer-userq-input:focus {
-  outline: none;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px var(--color-accent-subtle);
-}
-
-.object-explorer-userq-input::placeholder {
-  color: var(--color-text-muted);
 }
 
 /* ----- Final Answer card ----- */
@@ -524,14 +497,6 @@
   white-space: pre-wrap;
 }
 
-.object-explorer-spinner {
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 .object-explorer-results {
   flex: 1;
   min-height: 0;
@@ -550,85 +515,11 @@
   min-height: 0;
 }
 
-.object-explorer-results-placeholder,
-.object-explorer-results-empty {
+.object-explorer-results-placeholder {
   padding: var(--space-6) 16px;
   text-align: center;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
-}
-
-.object-explorer-list-pagination {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--space-2) + var(--space-1) / 2) 16px;
-  margin-top: calc(var(--space-2) + var(--space-1) / 2);
-  padding-top: 10px;
-  border-top: 1px solid var(--color-border);
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-}
-
-.object-explorer-list-pagination__info {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3) var(--space-4);
-}
-
-.object-explorer-list-pagination__size {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  white-space: nowrap;
-}
-
-.object-explorer-list-pagination__size select {
-  padding: var(--space-1) var(--space-2);
-  font: inherit;
-  font-size: var(--text-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg);
-  color: var(--color-text);
-}
-
-.object-explorer-list-pagination__nav {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--space-2) + var(--space-1) / 2);
-}
-
-.object-explorer-list-pagination__status {
-  color: var(--color-text-muted);
-  font-size: var(--text-xs);
-  white-space: nowrap;
-}
-
-.object-explorer-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-sm);
-}
-
-.object-explorer-table th,
-.object-explorer-table td {
-  padding: var(--space-2) calc(var(--space-2) + var(--space-1) / 2);
-  text-align: left;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.object-explorer-table th {
-  background: var(--color-bg-muted);
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  white-space: nowrap;
-}
-
-.object-explorer-table tbody tr:hover {
-  background: var(--color-bg-elevated);
 }
 
 .object-explorer-cell-json {

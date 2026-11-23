@@ -13,6 +13,9 @@ import {
   type ObjectTypeResponse,
   type LinkTypeResponse,
 } from '../../data/ontologyApi';
+import { EmptyState } from '../../styles/design-system/EmptyState';
+import { Loading } from '../../styles/design-system/Loading';
+import { Pagination } from '../../styles/design-system/Pagination';
 import './ObjectExplorer.scss';
 
 /** Convert object type name to Neo4j label (alphanumeric, underscore) */
@@ -362,14 +365,28 @@ export function ObjectExplorer() {
     return result.rows.slice(start, start + listPageSize);
   }, [result, listPage, listPageSize]);
 
-  const listPagination = useMemo(() => {
-    if (!result) return { total: 0, totalPages: 1, from: 0, to: 0 };
-    const total = result.rows.length;
-    const totalPages = Math.max(1, Math.ceil(total / listPageSize));
-    const from = total === 0 ? 0 : listPage * listPageSize + 1;
-    const to = Math.min((listPage + 1) * listPageSize, total);
-    return { total, totalPages, from, to };
-  }, [result, listPage, listPageSize]);
+  /* A canvas cannot resolve `var(--…)`: whatever string is handed to it either parses as a colour or does not.
+     So the theme's values are read once and re-read when `data-theme` changes, instead of hardcoding a light
+     background that stays light in dark mode. */
+  const canvasColors = useCallback(() => {
+    const style = getComputedStyle(document.documentElement);
+    const read = (name: string, fallback: string) =>
+      style.getPropertyValue(name).trim() || fallback;
+    return {
+      background: read('--color-bg-surface', '#f8fafc'),
+      nodeFill: read('--color-bg-elevated', '#ffffff'),
+      text: read('--color-text', '#0f172a'),
+    };
+  }, []);
+  const [canvasTheme, setCanvasTheme] = useState(canvasColors);
+  useEffect(() => {
+    const root = document.documentElement;
+    const sync = () => setCanvasTheme(canvasColors());
+    const observer = new MutationObserver(sync);
+    observer.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+    sync();
+    return () => observer.disconnect();
+  }, [canvasColors]);
 
   const graphRef = useRef<ForceGraphMethods<GraphNode, GraphLink>>(undefined);
   const graphContainerRef = useRef<HTMLDivElement>(null);
@@ -505,7 +522,7 @@ export function ObjectExplorer() {
         <aside className="object-explorer-sidebar">
           <h3 className="object-explorer-sidebar-title">{t('objectTypesHeading')}</h3>
           {loading ? (
-            <p className="object-explorer-loading">{t('loadingSidebar')}</p>
+            <Loading label={t('loadingSidebar')} />
           ) : (
             <ul className="object-explorer-type-list">
               {objectTypes.map((ot) => (
@@ -588,7 +605,7 @@ export function ObjectExplorer() {
                   <div className="object-explorer-cypher-wrap">
                     <textarea
                       id="object-explorer-cypher"
-                      className="object-explorer-cypher-input"
+                      className="ds-control ds-control--mono object-explorer-cypher-input"
                       value={cypherInput}
                       onChange={(e) => setCypherDraft(e.target.value)}
                       placeholder={t('cypherPlaceholder')}
@@ -606,7 +623,7 @@ export function ObjectExplorer() {
                     >
                       {executing ? (
                         <>
-                          <Loader2 size={16} className="object-explorer-spinner" aria-hidden />
+                          <Loader2 size={16} className="ds-loading__spinner" aria-hidden />
                           {t('running')}
                         </>
                       ) : (
@@ -628,7 +645,7 @@ export function ObjectExplorer() {
                   <div className="object-explorer-userq-body">
                     <textarea
                       id="object-explorer-userq"
-                      className="object-explorer-userq-input"
+                      className="ds-control object-explorer-userq-input"
                       value={userQuestion}
                       onChange={(e) => setUserQuestion(e.target.value)}
                       placeholder={t('naturalPlaceholder')}
@@ -646,7 +663,7 @@ export function ObjectExplorer() {
                     >
                       {generating ? (
                         <>
-                          <Loader2 size={16} className="object-explorer-spinner" aria-hidden />
+                          <Loader2 size={16} className="ds-loading__spinner" aria-hidden />
                           {t('generatingCypher')}
                         </>
                       ) : (
@@ -692,7 +709,7 @@ export function ObjectExplorer() {
             {result === null ? (
               <p className="object-explorer-results-placeholder">{t('resultsPlaceholder')}</p>
             ) : result.rows.length === 0 ? (
-              <p className="object-explorer-results-empty">{t('noRows')}</p>
+              <EmptyState title={t('noRows')} />
             ) : (
               <>
                 <div className="object-explorer-view-toggle">
@@ -729,7 +746,7 @@ export function ObjectExplorer() {
                 {resultView === 'list' ? (
                   <>
                     <div className="ds-table-wrap">
-                      <table className="object-explorer-table">
+                      <table className="ds-table">
                         <thead>
                           <tr>
                             {result.columns.map((col) => (
@@ -756,62 +773,17 @@ export function ObjectExplorer() {
                         </tbody>
                       </table>
                     </div>
-                    <div
-                      className="object-explorer-list-pagination"
-                      role="navigation"
-                      aria-label={t('listPaginationAria')}
-                    >
-                      <div className="object-explorer-list-pagination__info">
-                        <span>
-                          {t('listPaginationRange', {
-                            from: listPagination.from,
-                            to: listPagination.to,
-                            total: listPagination.total,
-                          })}
-                        </span>
-                        <label className="object-explorer-list-pagination__size">
-                          <span>{t('listPerPage')}</span>
-                          <select
-                            value={listPageSize}
-                            onChange={(e) => setListPageSize(Number(e.target.value))}
-                            aria-label={t('listPerPage')}
-                            className="ds-control"
-                          >
-                            {LIST_PAGE_SIZE_OPTIONS.map((n) => (
-                              <option key={n} value={n}>
-                                {n}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      </div>
-                      {listPagination.totalPages > 1 && (
-                        <div className="object-explorer-list-pagination__nav">
-                          <button
-                            type="button"
-                            className="btn btn-secondary btn-sm"
-                            disabled={listPage <= 0}
-                            onClick={() => setListPage((p) => Math.max(0, p - 1))}
-                          >
-                            {t('listPrev')}
-                          </button>
-                          <span className="object-explorer-list-pagination__status">
-                            {t('listPageStatus', {
-                              current: listPage + 1,
-                              total: listPagination.totalPages,
-                            })}
-                          </span>
-                          <button
-                            type="button"
-                            className="btn btn-secondary btn-sm"
-                            disabled={listPage >= listPagination.totalPages - 1}
-                            onClick={() => setListPage((p) => Math.min(listPagination.totalPages - 1, p + 1))}
-                          >
-                            {t('listNext')}
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                    <Pagination
+                      total={result.rows.length}
+                      page={listPage}
+                      pageSize={listPageSize}
+                      pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
+                      onPageChange={setListPage}
+                      onPageSizeChange={(size) => {
+                        setListPageSize(size);
+                        setListPage(0);
+                      }}
+                    />
                   </>
                 ) : graphData ? (
                   <div
@@ -1016,7 +988,7 @@ export function ObjectExplorer() {
                         const strokeColor = n.objectTypeId
                           ? getObjectTypeColor(n.objectTypeId, objIdx >= 0 ? objIdx : 0)
                           : '#6366f1';
-                        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                        ctx.fillStyle = canvasTheme.nodeFill;
                         ctx.strokeStyle = strokeColor;
                         ctx.lineWidth = 1.5 / globalScale;
                         ctx.beginPath();
@@ -1029,7 +1001,7 @@ export function ObjectExplorer() {
                         ctx.stroke();
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillStyle = '#1f2937';
+                        ctx.fillStyle = canvasTheme.text;
                         ctx.fillText(label, n.x ?? 0, n.y ?? 0);
                       }}
                       linkColor={(link) => {
@@ -1042,11 +1014,11 @@ export function ObjectExplorer() {
                       linkDirectionalArrowLength={6}
                       linkDirectionalArrowRelPos={1}
                       linkCurvature={0.15}
-                      backgroundColor="#f8fafc"
+                      backgroundColor={canvasTheme.background}
                     />
                   </div>
                 ) : (
-                  <p className="object-explorer-results-empty">{t('noGraphData')}</p>
+                  <EmptyState title={t('noGraphData')} />
                 )}
               </>
             )}
