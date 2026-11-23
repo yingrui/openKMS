@@ -360,8 +360,12 @@ body:has(.app-content--function-editor-workspace) .app-main {
   }
 }
 
-/* The page carries the gutter when it is a `.ds-page` — see `design-system/_table.scss`. Two would double it. */
-.app-content:has(> .ds-page) {
+/* The page carries the gutter when it is a `.ds-page` — see `design-system/_table.scss`. Two would double it.
+   This has to hold for both shells: a rail route hands the gutter to `.app-page-pane`, and a list page inside
+   that pane is a `.ds-page` too. Only the content shell had the rule, so the ontology suite's list pages sat one
+   gutter further in than the pages beside them. */
+.app-content:has(> .ds-page),
+.app-page-pane:has(> .ds-page) {
   padding: 0;
 }
 

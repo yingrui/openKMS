@@ -39,6 +39,12 @@ if grep '\.app-content' src/App.scss | grep 'space-8' | grep -q 'padding'; then
   fail "App.scss .app-content must use --app-page-padding-* tokens, not --space-8"
 fi
 
+# Both shells must hand the gutter to a `.ds-page` child, or a list page inside a rail pane is inset twice.
+grep -q 'app-content:has(> .ds-page)' src/App.scss \
+  || fail "App.scss must zero .app-content padding when the page is a .ds-page"
+grep -q 'app-page-pane:has(> .ds-page)' src/App.scss \
+  || fail "App.scss must zero .app-page-pane padding when the page is a .ds-page (rail routes)"
+
 # Data-layer entity detail: the pane must own the gutter and the shell must fill the window.
 grep -q 'app-page-pane' src/components/Layout/PagePaneLayout.tsx \
   || fail "PagePaneLayout.tsx must render .app-page-pane (data-layer entity detail)"

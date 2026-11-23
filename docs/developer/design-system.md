@@ -188,6 +188,17 @@ its sheet loads last. Scope it (`settings-page-form .foo`) instead of relying on
 
 **Goal:** one gutter source per scroll column — no stacked padding on shell + page root.
 
+Two shells exist, and both must hand the gutter to a page that carries one (`.ds-page`, the `ListPage` root):
+
+| Shell | Who pads | Rule |
+|---|---|---|
+| no rail | `.app-content` | `.app-content:has(> .ds-page) { padding: 0 }` |
+| rail route | `.app-page-pane` inside `.app-content--with-*-rail` (which sets `padding: 0`) | `.app-page-pane:has(> .ds-page) { padding: 0 }` |
+
+The second rule is the one that goes missing first: a list page moved into a rail suite keeps looking almost right —
+inset by `--app-page-padding-x` twice, 48px instead of 24, so its cards sit a gutter further in than the cards on the
+page beside it. That is why the pair is asserted in `scripts/check-app-page-gutters.sh` rather than left to review.
+
 ### App layers (Application / Ontology / Data)
 
 The App Rail and the Home page group suite apps into three layers — `application` → `ontology` → `data` (top to bottom) — declared by `layer` in `frontend/src/config/appModules.ts`. The rail inserts a thin **`.sidebar-layer-divider`** between groups; the Home grid renders a titled section per layer (`.app-catalog-section-<layer>` + `.app-catalog-section-label`). Console stays outside the layers (shared platform). Group with **`groupModulesByLayer()`**; do not re-sort in UI code.
