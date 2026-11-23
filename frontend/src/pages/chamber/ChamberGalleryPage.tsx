@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LayoutGrid, Settings, Trash2 } from 'lucide-react';
+import { LayoutGrid, Plus, Settings, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { deleteChamberApp, listChamberApps, type ChamberAppResponse } from '../../data/chamberApi';
 import { PERM_ONTOLOGY_WRITE } from '../../config/permissions';
@@ -52,9 +52,18 @@ export function ChamberGalleryPage() {
 
   return (
     <div className="chamber-page">
-      <header className="page-header">
-        <h1>{t('galleryTitle')}</h1>
-        <p className="page-subtitle">{t('gallerySubtitle')}</p>
+      <header className="page-header chamber-page__header">
+        <div>
+          <h1>{t('galleryTitle')}</h1>
+          <p className="page-subtitle">{t('gallerySubtitle')}</p>
+        </div>
+        {/* The empty state already offers the same button; two of them on one screen is noise. */}
+        {canManage && (apps.length > 0 || loading) ? (
+          <Link to="/chamber/new" className="btn btn-primary">
+            <Plus size={16} />
+            <span>{t('registerAction')}</span>
+          </Link>
+        ) : null}
       </header>
       {loading ? <p>{t('loading')}</p> : null}
       {error ? <p className="chamber-page__error" role="alert">{error}</p> : null}
@@ -63,17 +72,24 @@ export function ChamberGalleryPage() {
           title={t('emptyGallery')}
           description={t('emptyGalleryHint')}
           action={
-            <Link to="/console/kubernetes" className="btn btn-primary">
-              {t('goToKubernetes')}
-            </Link>
+            canManage ? (
+              <Link to="/chamber/new" className="btn btn-primary">
+                {t('registerAction')}
+              </Link>
+            ) : (
+              <Link to="/console/kubernetes" className="btn btn-primary">
+                {t('goToKubernetes')}
+              </Link>
+            )
           }
         />
       ) : null}
       {!loading && apps.length > 0 ? (
         <div className="chamber-page__grid">
           {apps.map((app) => {
-            const openTo =
-              app.status === 'published' ? `/chamber/${app.id}` : `/chamber/${app.id}/settings`;
+            // One state only: every listed app opens. (This used to branch on `published`, which meant that
+            // once the status concept was removed every card led to the read-only settings page.)
+            const openTo = `/chamber/${app.id}`;
             return (
               <div key={app.id} className="chamber-page__card">
                 <div className="chamber-page__card-top">

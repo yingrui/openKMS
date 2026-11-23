@@ -227,6 +227,9 @@ const ExternalServicesPage = lazy(() =>
 const ChamberGalleryPage = lazy(() =>
   import('./pages/chamber/ChamberGalleryPage').then((m) => ({ default: m.ChamberGalleryPage })),
 );
+const ChamberRegisterPage = lazy(() =>
+  import('./pages/chamber/ChamberRegisterPage').then((m) => ({ default: m.ChamberRegisterPage })),
+);
 const ChamberRunPage = lazy(() =>
   import('./pages/chamber/ChamberRunPage').then((m) => ({ default: m.ChamberRunPage })),
 );
@@ -621,6 +624,7 @@ function App() {
           <Route path="apps/*" element={<LegacyAppsRedirect />} />
           <Route path="chamber" element={<Outlet />}>
             <Route index element={<ChamberGalleryPage />} />
+            <Route path="new" element={<ChamberRegisterPage />} />
             <Route path=":appId/settings" element={<ChamberSettingsPage />} />
             <Route path=":appId" element={<ChamberRunPage />} />
           </Route>

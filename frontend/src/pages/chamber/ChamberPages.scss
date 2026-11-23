@@ -354,3 +354,137 @@
   font-family: var(--font-mono, monospace);
   word-break: break-all;
 }
+
+/* ---------- 注册向导：三步 = 后端的三个输入（集群 / 命名空间+Service / 应用信息） ---------- */
+
+.chamber-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.chamber-page__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+  color: var(--color-text-muted);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--color-text);
+  }
+}
+
+.chamber-register {
+  max-width: 760px;
+}
+
+.chamber-register__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.chamber-register__step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+
+  &.is-current {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+
+  &.is-done {
+    color: var(--color-primary);
+  }
+}
+
+.chamber-register__index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  font-size: var(--text-xs);
+}
+
+.chamber-register__step.is-current .chamber-register__index {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.chamber-register__step.is-done .chamber-register__index {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-bg);
+}
+
+.chamber-register__pane {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.chamber-register__section > h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+}
+
+.chamber-register__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.chamber-register__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--color-primary);
+  }
+
+  &.is-selected {
+    border-color: var(--color-primary);
+    background: var(--color-surface-alt);
+  }
+}
+
+.chamber-register__option-main {
+  font-weight: 600;
+}
+
+.chamber-register__option-meta {
+  margin-left: auto;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.chamber-register__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-4);
+}

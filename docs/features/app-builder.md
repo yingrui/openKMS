@@ -10,10 +10,19 @@ Experimental **A2UI App Builder** authoring (Source / Design / OntoObjectList) h
 
 | Path | How |
 |------|-----|
-| Console → Kubernetes → cluster detail | **Register in Chamber** |
+| `/chamber` → **Register an app** | Three steps inside Chamber: cluster → namespace and Service → app details |
+| Console → Kubernetes → cluster detail | **Register in Chamber** on a Service row (a shortcut when you already know the Service) |
 | Skill | `kubernetes register-app …` or `apps create --bindings-json '{"k8s":{…}}'` |
 
-Requires **`console:kubernetes`** and **`ontology:write`** (`template_id=module`).
+Requires **`console:kubernetes`** and **`ontology:write`** (`template_id=module`). Without them the gallery offers no
+button, and `/chamber/new` explains which permission is missing instead of showing a form.
+
+**The wizard registers; it does not deploy.** Its three inputs are the three things the backend needs (a cluster, a
+namespace, a Service), and its last step names the app — `name`, `api_name` (checked against the backend's
+`^[a-zA-Z][a-zA-Z0-9_]*$` as you type, and again for uniqueness), port and an optional description. Submitting opens the
+app rather than returning to the list, because that is what registering was for. A cluster that cannot be reached, a
+namespace with no Services and a namespace that has none are three separate sentences on step 2 — an unreachable cluster
+used to render as an empty Service list, which reads as "nothing here to register".
 
 ## Run
 

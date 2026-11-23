@@ -4,19 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { createChamberApp } from '../../../data/chamberApi';
 import type { KubernetesServiceItem } from '../../../data/kubernetesClustersApi';
+import { firstPort, suggestApiName } from '../../chamber/registerDefaults';
 import { Dialog, FormField } from '../../../styles/design-system/index';
-
-function suggestApiName(service: string): string {
-  const cleaned = service.replace(/[^a-zA-Z0-9_]/g, '_');
-  const withLetter = /^[a-zA-Z]/.test(cleaned) ? cleaned : `svc_${cleaned}`;
-  return withLetter.slice(0, 128);
-}
-
-function firstPort(svc: KubernetesServiceItem): number {
-  if (svc.port_numbers && svc.port_numbers.length > 0) return svc.port_numbers[0];
-  const m = (svc.ports || '').match(/(\d+)/);
-  return m ? Number(m[1]) : 80;
-}
 
 /**
  * Register a cluster Service as a Chamber app — the flow, its state and its dialog, kept
