@@ -213,7 +213,8 @@
       "faq": "常见问题",
       "document_section": "文档目录节选",
       "metric": "指标",
-      "semantic_model": "语义模型"
+      "semantic_model": "语义模型",
+      "web": "网页"
     },
     "dataEvidenceHeading": "数据依据",
     "dataEvidenceAria": "本条回答使用的 Catalog 查询结果",

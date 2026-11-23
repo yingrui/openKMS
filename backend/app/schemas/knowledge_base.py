@@ -248,6 +248,8 @@ class SearchResult(BaseModel):
     document_id: str | None = None
     wiki_page_id: str | None = None
     wiki_space_id: str | None = None
+    #: External citation (`source_type == "web"`). The link is the evidence; without it the row is unverifiable.
+    url: str | None = None
     doc_metadata: dict[str, Any] | None = None
     #: Ordinal within the source document or wiki page (chunks only).
     chunk_index: int | None = None

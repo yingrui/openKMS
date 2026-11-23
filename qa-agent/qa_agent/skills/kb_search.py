@@ -41,23 +41,12 @@ def search_knowledge_base(
             return json.dumps({"query": query, "passages": []}, ensure_ascii=False)
         # JSON, like the Catalog tools: the passages are also the answer's **evidence**, and `select_display_sources`
         # reads them back out of the transcript to cite them. A prose blob would have to be parsed again.
+        # `model_dump` rather than a hand-written field list: the list was five places long, and the copy here silently
+        # dropped `retrieval_mode`, `retrieval_debug` and `doc_metadata` — every answer lost its retrieval chain.
         return json.dumps(
             {
                 "query": query,
-                "passages": [
-                    {
-                        "id": hit.id,
-                        "source_type": hit.source_type,
-                        "source_name": hit.source_name,
-                        "content": hit.content,
-                        "score": hit.score,
-                        "document_id": hit.document_id,
-                        "wiki_page_id": hit.wiki_page_id,
-                        "wiki_space_id": hit.wiki_space_id,
-                        "chunk_index": hit.chunk_index,
-                    }
-                    for hit in hits
-                ],
+                "passages": [hit.model_dump(mode="json") for hit in hits[:ON_DEMAND_TOP_K]],
             },
             ensure_ascii=False,
         )

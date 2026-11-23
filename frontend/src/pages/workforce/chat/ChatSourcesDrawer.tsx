@@ -62,7 +62,17 @@ function ReferenceCard({
         ) : null}
       </div>
       <div className="agent-chat-source-card__title">
-        {s.wiki_page_id && s.wiki_space_id ? (
+        {s.url ? (
+          /* External citation: the link is the evidence, so it opens in a new tab and does not navigate the app. */
+          <a
+            className="agent-chat-source-card__link"
+            href={s.url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {s.source_name || s.url}
+          </a>
+        ) : s.wiki_page_id && s.wiki_space_id ? (
           <Link className="agent-chat-source-card__link" to={`/wikis/${s.wiki_space_id}/pages/${s.wiki_page_id}`}>
             {s.source_name || s.wiki_page_id}
           </Link>
@@ -77,7 +87,7 @@ function ReferenceCard({
         )}
       </div>
       {detailPreview ? <p className="agent-chat-source-card__preview">{detailPreview}</p> : null}
-      <ChatRetrievalProvenancePanel s={s} t={t} />
+      <ChatRetrievalProvenancePanel s={s} />
     </div>
   );
 }

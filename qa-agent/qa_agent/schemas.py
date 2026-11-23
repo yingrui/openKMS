@@ -13,6 +13,9 @@ class SourceItem(BaseModel):
     document_id: str | None = None
     wiki_page_id: str | None = None
     wiki_space_id: str | None = None
+    #: External citation (web search). A `source_type` of `web` always carries one: without the link the reader cannot
+    #: check the claim, and an unchecked external claim is indistinguishable from the model's own opinion.
+    url: str | None = None
     doc_metadata: dict[str, Any] | None = None
     chunk_index: int | None = None
     retrieval_mode: str | None = None

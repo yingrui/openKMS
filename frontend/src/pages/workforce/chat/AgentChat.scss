@@ -1002,6 +1002,16 @@ body.openkms-agent-chat .agent-chat-shell {
   color: var(--color-ontology-fg);
 }
 
+/* External: a page outside this deployment. The dashed edge is the reminder that the claim came from elsewhere. */
+.agent-chat-source-card--web {
+  border-left-color: var(--color-text-muted);
+  border-left-style: dashed;
+}
+
+.agent-chat-source-card--web .agent-chat-source-card__kind {
+  color: var(--color-text-muted);
+}
+
 .agent-chat-source-card--metric {
   border-left-color: var(--color-info-fg);
   background: linear-gradient(

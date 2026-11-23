@@ -213,7 +213,8 @@
       "faq": "FAQ",
       "document_section": "Document section",
       "metric": "Metric",
-      "semantic_model": "Semantic model"
+      "semantic_model": "Semantic model",
+      "web": "Web"
     },
     "dataEvidenceHeading": "Data evidence",
     "dataEvidenceAria": "Catalog query results used in this answer",

@@ -5,9 +5,15 @@ import json
 import re
 from typing import Any
 
-from langchain_core.messages import AIMessage, ToolMessage
+import logging
 
+from langchain_core.messages import AIMessage, ToolMessage
+from pydantic import ValidationError
+
+from .evidence_ledger import EvidenceLedger
 from .schemas import SourceItem
+
+logger = logging.getLogger(__name__)
 
 PAGE_SECTION_TOOL_NAME = "read_document_section"
 ONTOLOGY_SCHEMA_TOOL_NAME = "get_ontology_schema"
@@ -466,6 +472,34 @@ def sources_from_catalog_tools(messages: list[Any]) -> list[SourceItem] | None:
 KB_SEARCH_TOOL_NAME = "search_knowledge_base"
 
 
+def sources_from_kb_search_payload(text: str) -> list[SourceItem]:
+    """Parse one `search_knowledge_base` result (its JSON payload) into sources.
+
+    Two callers need this: the transcript of a finished turn, and the stream, which only ever sees the tool's output as
+    text. Sharing the parser is what keeps the chat and `/ask` showing the same sources for the same answer.
+    """
+    try:
+        payload = json.loads(text)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    if not isinstance(payload, dict):
+        return []
+    out: list[SourceItem] = []
+    for passage in payload.get("passages") or []:
+        if not isinstance(passage, dict):
+            continue
+        try:
+            out.append(SourceItem.model_validate(passage))
+        except ValidationError:
+            # A passage that no longer matches the model is a contract break worth seeing in the log, not a reason to
+            # answer with half its evidence.
+            logger.warning("dropped a passage that does not match SourceItem: %s", sorted(passage)[:8])
+    return out
+
+
+    return out
+
+
 def sources_from_kb_search_tools(messages: list[Any]) -> list[SourceItem] | None:
     """Passages a `search_knowledge_base` call returned — in `on_miss` mode, the answer's evidence.
 
@@ -480,26 +514,62 @@ def sources_from_kb_search_tools(messages: list[Any]) -> list[SourceItem] | None
         text = getattr(message, "content", "")
         if not isinstance(text, str) or not text.strip():
             continue
-        try:
-            payload = json.loads(text)
-        except (json.JSONDecodeError, TypeError):
+        out.extend(sources_from_kb_search_payload(text))
+    return out or None
+
+
+WEB_SEARCH_TOOL_NAME = "search_web"
+
+
+def sources_from_web_search_payload(text: str) -> list[SourceItem]:
+    """Parse one `search_web` result into sources.
+
+    Same contract as the corpus parser, one difference: these are **external**. The URL is the citation, so a result
+    without one is dropped rather than shown as an unattributable row.
+    """
+    try:
+        payload = json.loads(text)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    if not isinstance(payload, dict):
+        return []
+    out: list[SourceItem] = []
+    for result in payload.get("results") or []:
+        if not isinstance(result, dict):
             continue
-        for passage in (payload.get("passages") or []) if isinstance(payload, dict) else []:
-            if not isinstance(passage, dict):
-                continue
-            out.append(
-                SourceItem(
-                    id=str(passage.get("id") or f"kb-search:{len(out)}"),
-                    source_type=str(passage.get("source_type") or "document"),
-                    content=str(passage.get("content") or ""),
-                    score=float(passage.get("score") or 0.0),
-                    source_name=passage.get("source_name"),
-                    document_id=passage.get("document_id"),
-                    wiki_page_id=passage.get("wiki_page_id"),
-                    wiki_space_id=passage.get("wiki_space_id"),
-                    chunk_index=passage.get("chunk_index"),
-                )
+        url = str(result.get("url") or "").strip()
+        if not url:
+            continue
+        published = result.get("published_at")
+        publisher = result.get("publisher")
+        metadata = {
+            key: value
+            for key, value in (("publisher", publisher), ("published_at", published))
+            if isinstance(value, str) and value.strip()
+        }
+        out.append(
+            SourceItem(
+                id=url,
+                source_type="web",
+                content=str(result.get("content") or ""),
+                # No retrieval score: the provider ranked, and inventing a number here would read like a similarity.
+                score=0.0,
+                source_name=result.get("title") or url,
+                url=url,
+                doc_metadata=metadata or None,
             )
+        )
+    return out
+
+
+def sources_from_web_search_tools(messages: list[Any]) -> list[SourceItem] | None:
+    out: list[SourceItem] = []
+    for message in messages or []:
+        if str(getattr(message, "name", "") or "") != WEB_SEARCH_TOOL_NAME:
+            continue
+        text = getattr(message, "content", "")
+        if isinstance(text, str) and text.strip():
+            out.extend(sources_from_web_search_payload(text))
     return out or None
 
 
@@ -509,32 +579,40 @@ def select_display_sources(
     messages: list[Any] | None = None,
     streamed_sections: list[SourceItem] | None = None,
     streamed_catalog: list[SourceItem] | None = None,
+    streamed_searched: list[SourceItem] | None = None,
+    streamed_web: list[SourceItem] | None = None,
     streamed_ontology_schema_names: list[str] | None = None,
     streamed_ontology_cypher_runs: list[tuple[str, dict[str, Any]]] | None = None,
 ) -> list[SourceItem]:
-    """Prefer Page Index, then Catalog query, then ontology graph, else RAG chunks."""
+    """Every source this turn produced, in family order.
+
+    It used to return the first non-empty family — correct when retrieval ran before generation and a turn could only
+    produce one. With tools, one answer quotes a section, a query and a page, and that rule dropped the rest. The ledger
+    appends instead; see `evidence_ledger.py`.
+    """
+    ledger = EvidenceLedger()
+
     if messages:
-        page = sources_from_page_index_tools(messages)
-        if page:
-            return page
-        catalog = sources_from_catalog_tools(messages)
-        if catalog:
-            return catalog
-        onto = sources_from_ontology_tools(messages)
-        if onto:
-            return onto
-        searched = sources_from_kb_search_tools(messages)
-        if searched:
-            return searched
-    if streamed_sections:
-        return streamed_sections
-    if streamed_catalog:
-        return list(streamed_catalog)
+        ledger.add("page", sources_from_page_index_tools(messages))
+        ledger.add("catalog", sources_from_catalog_tools(messages))
+        ledger.add("ontology", sources_from_ontology_tools(messages))
+        ledger.add("searched", sources_from_kb_search_tools(messages))
+        ledger.add("web", sources_from_web_search_tools(messages))
+    ledger.add("page", streamed_sections)
+    ledger.add("catalog", streamed_catalog)
     if streamed_ontology_cypher_runs:
-        src = ontology_sources_from_stream_parts(
-            schema_object_names=list(streamed_ontology_schema_names or []),
-            cypher_runs=streamed_ontology_cypher_runs,
+        ledger.add(
+            "ontology",
+            ontology_sources_from_stream_parts(
+                schema_object_names=list(streamed_ontology_schema_names or []),
+                cypher_runs=streamed_ontology_cypher_runs,
+            ),
         )
-        if src:
-            return src
-    return list(retrieve_chunks)
+    ledger.add("searched", streamed_searched)
+    ledger.add("web", streamed_web)
+
+    # The legacy slot: chunks from the pre-tool retrieval node, or a caller that has no transcript. Only when nothing
+    # else was found — those rows are the same passages `search_knowledge_base` returns, without their provenance.
+    if ledger.is_empty():
+        ledger.add("searched", retrieve_chunks)
+    return ledger.snapshot()

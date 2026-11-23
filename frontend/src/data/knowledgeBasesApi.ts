@@ -172,6 +172,8 @@ export interface SearchResult {
   document_id?: string | null;
   wiki_page_id?: string | null;
   wiki_space_id?: string | null;
+  /** External citation (`source_type: 'web'`): the link is the evidence. */
+  url?: string | null;
   doc_metadata?: Record<string, unknown> | null;
   /** Ordinal within the source document or wiki page (chunk hits only). */
   chunk_index?: number | null;

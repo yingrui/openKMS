@@ -49,6 +49,7 @@ function chatSourceKind(sourceType: string | null | undefined): string {
   const k = (sourceType || 'chunk').toLowerCase();
   if (
     k === 'ontology' ||
+    k === 'web' ||
     k === 'document_section' ||
     k === 'faq' ||
     k === 'chunk' ||
@@ -81,6 +82,7 @@ function splitQaSources(sources: SearchResult[]): {
 function chatSourceCardModifierClass(sourceType: string | null | undefined): string {
   const k = chatSourceKind(sourceType);
   if (k === 'ontology') return 'agent-chat-source-card--ontology';
+  if (k === 'web') return 'agent-chat-source-card--web';
   if (k === 'document_section') return 'agent-chat-source-card--section';
   if (k === 'faq') return 'agent-chat-source-card--faq';
   if (k === 'metric' || k === 'semantic_model') return 'agent-chat-source-card--metric';

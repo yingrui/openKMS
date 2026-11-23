@@ -18,15 +18,22 @@ from .backend_defaults import fetch_skill_prompts
 from .config import settings
 from .llm_config import get_effective_llm_config, get_llm_config
 from .logging_config import preview_text
+from .evidence_ledger import EvidenceLedger
 from .kb_answer_sources import (
+    KB_SEARCH_TOOL_NAME,
     ONTOLOGY_SCHEMA_TOOL_NAME,
     PAGE_SECTION_TOOL_NAME,
     RUN_CYPHER_TOOL_NAME,
+    WEB_SEARCH_TOOL_NAME,
+    _coerce_tool_output,
     extract_cypher_run_from_tool,
     extract_schema_names_from_tool_output,
     select_display_sources,
     source_from_catalog_tool,
     source_from_page_section_tool,
+    sources_from_kb_search_payload,
+    sources_from_web_search_payload,
+    ontology_sources_from_stream_parts,
 )
 from . import agent_config as agent_config_module
 from . import sandbox as sandbox_runner
@@ -738,9 +745,9 @@ class _StreamCollector:
     """
 
     buf: list[str] = field(default_factory=list)
-    sections: list[SourceItem] = field(default_factory=list)
-    seen_section_ids: set[str] = field(default_factory=set)
-    catalog: list[SourceItem] = field(default_factory=list)
+    #: Every family the turn produced. One ledger for the stream, and `select_display_sources` builds the same object for
+    #: a finished transcript — so a new family is added in one place, not in a collector branch and a parser both.
+    ledger: EvidenceLedger = field(default_factory=EvidenceLedger)
     schema_names: list[str] = field(default_factory=list)
     schema_seen: set[str] = field(default_factory=set)
     cypher_runs: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
@@ -825,22 +832,30 @@ class _StreamCollector:
             tool_inp = self.tool_inputs_by_run.get(run_id)
         if name == PAGE_SECTION_TOOL_NAME:
             src = source_from_page_section_tool(tool_inp, out)
-            if src is not None and src.id not in self.seen_section_ids:
-                self.seen_section_ids.add(src.id)
-                self.sections.append(src)
+            if src is not None:
+                self.ledger.add("page", [src])
         elif name == ONTOLOGY_SCHEMA_TOOL_NAME:
             for n in extract_schema_names_from_tool_output(out):
                 if n not in self.schema_seen:
                     self.schema_seen.add(n)
                     self.schema_names.append(n)
+        elif name == KB_SEARCH_TOOL_NAME:
+            # The corpus search is evidence too. Without this branch its passages fell through to the catalog parser and
+            # were dropped, so a streamed turn (the chat) showed no Sources at all.
+            self.ledger.add("searched", sources_from_kb_search_payload(_coerce_tool_output(out)))
+        elif name == WEB_SEARCH_TOOL_NAME:
+            # External citations are sources too, and the stream is the only place a chat turn can find them.
+            self.ledger.add("web", sources_from_web_search_payload(_coerce_tool_output(out)))
         elif name == RUN_CYPHER_TOOL_NAME:
             pair = extract_cypher_run_from_tool(tool_inp, out)
             if pair is not None:
                 self.cypher_runs.append(pair)
         else:
-            cat = source_from_catalog_tool(name, tool_inp, out, index=len(self.catalog))
+            cat = source_from_catalog_tool(
+                name, tool_inp, out, index=self.ledger.count("catalog")
+            )
             if cat is not None:
-                self.catalog.append(cat)
+                self.ledger.add("catalog", [cat])
 
     def _on_tool_error(self, ev: dict[str, Any]) -> bytes:
         self.tool_errors += 1
@@ -859,14 +874,18 @@ class _StreamCollector:
         return sum(len(x) for x in self.buf)
 
     def sources(self, ctx: list[Any]) -> list[SourceItem]:
-        return select_display_sources(
-            ctx,
-            messages=None,
-            streamed_sections=self.sections or None,
-            streamed_catalog=self.catalog or None,
-            streamed_ontology_schema_names=self.schema_names or None,
-            streamed_ontology_cypher_runs=self.cypher_runs or None,
-        )
+        # The graph family is derived from events rather than captured per call, so it joins the ledger last.
+        if self.cypher_runs:
+            self.ledger.add(
+                "ontology",
+                ontology_sources_from_stream_parts(
+                    schema_object_names=list(self.schema_names or []),
+                    cypher_runs=self.cypher_runs,
+                ),
+            )
+        if self.ledger.is_empty():
+            self.ledger.add("searched", ctx)
+        return self.ledger.snapshot()
 
 
 def _turn_state(
@@ -1065,8 +1084,10 @@ async def astream_agent_ndjson(
             sources_list = select_display_sources(
                 list(result.get("context") or []),
                 messages=list(result.get("messages") or []),
-                streamed_sections=collector.sections or None,
-                streamed_catalog=collector.catalog or None,
+                streamed_sections=collector.ledger.items("page") or None,
+                streamed_catalog=collector.ledger.items("catalog") or None,
+                streamed_searched=collector.ledger.items("searched") or None,
+                streamed_web=collector.ledger.items("web") or None,
                 streamed_ontology_schema_names=collector.schema_names or None,
                 streamed_ontology_cypher_runs=collector.cypher_runs or None,
             )

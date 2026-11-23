@@ -245,7 +245,7 @@ export function SearchTab({
                       </span>
                     </div>
                     <p className="kb-search-hit-excerpt">{r.content.slice(0, 300)}</p>
-                    <ChatRetrievalProvenancePanel s={r} t={t} />
+                    <ChatRetrievalProvenancePanel s={r} />
                     {r.source_type === 'chunk' ? (
                       <div className="openkms-flex-row-gap kb-search-hit-actions">
                         <button

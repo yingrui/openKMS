@@ -1,13 +1,21 @@
+import { useTranslation } from 'react-i18next';
 import type { SearchResult } from '../../../data/knowledgeBasesApi';
 import { kbHasRetrievalProvenance } from './chatUtils';
 import './ChatRetrievalProvenancePanel.scss';
 
 interface KbRetrievalProvenanceProps {
   s: SearchResult;
-  t: (key: string, options?: Record<string, unknown>) => string;
 }
 
-export function ChatRetrievalProvenancePanel({ s, t }: KbRetrievalProvenanceProps) {
+/**
+ * The retrieval chain behind one source: mode, pipeline stages, per-stage scores.
+ *
+ * It binds `knowledgeBase` itself instead of taking the caller's `t`. It arrived as a prop from two screens that use
+ * different namespaces, and the workforce one has no `detail.retrieval.*` — the panel rendered `DETAIL.RETRIEVAL.PANELTITLE`
+ * and eight more raw keys. Keys that a component alone needs belong to that component.
+ */
+export function ChatRetrievalProvenancePanel({ s }: KbRetrievalProvenanceProps) {
+  const { t } = useTranslation('knowledgeBase');
   if (!kbHasRetrievalProvenance(s)) return null;
   const dbg = s.retrieval_debug;
   const num = (v: unknown): string | null => {
