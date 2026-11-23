@@ -53,7 +53,8 @@ export function ChamberRegisterPage() {
     error: clustersError,
     loading: clustersLoading,
   } = useAsyncData(
-    async () => (await fetchKubernetesClusters({ limit: 200 })).items || [],
+    async () =>
+      canRegister ? (await fetchKubernetesClusters({ limit: 200 })).items || [] : [],
     [canRegister],
   );
   const clusters = clustersData ?? [];

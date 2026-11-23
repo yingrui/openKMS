@@ -91,7 +91,7 @@ def add_subparser(sub: _SubParsersAction) -> None:
     ls = sp.add_parser("list", help="List apps (GET /api/chamber/apps)")
     ls.set_defaults(fn=cmd_list)
 
-    gt = sp.add_parser("get", help="Get published app run doc")
+    gt = sp.add_parser("get", help="Get one app (GET /api/chamber/apps/{id})")
     gt.add_argument("id", help="app id, e.g. oa-…")
     gt.set_defaults(fn=cmd_get)
 
