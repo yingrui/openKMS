@@ -370,5 +370,10 @@
     "savedUpdated": "已更新",
     "savedFailed": "保存失败",
     "savedLoadFailed": "打不开这个探索"
+  },
+  "explorerSections": {
+    "explorations": "探索",
+    "query": "图查询",
+    "aria": "探索与图查询"
   }
 }

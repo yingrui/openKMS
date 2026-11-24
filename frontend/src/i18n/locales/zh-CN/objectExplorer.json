@@ -13,7 +13,7 @@
   "running": "执行中…",
   "execute": "执行",
   "queryTabsAria": "查询方式",
-  "tabCypher": "Cypher 查询",
+  "tabCypher": "图查询",
   "tabNatural": "自然语言转 Cypher",
   "naturalPlaceholder": "用自然语言描述图上的提问…",
   "generateAndRun": "生成 Cypher 并执行",

@@ -12,7 +12,6 @@ import { OntologyMobileRailProvider, useOntologyMobileRail } from '../../context
 import { ConsoleMobileNavProvider, useConsoleMobileNav } from '../../contexts/ConsoleMobileNavContext';
 import { ConfirmProvider } from '../../contexts/ConfirmContext';
 import { ManagerNavRail } from '../ontology/ManagerNavRail';
-import { ExplorerNavRail } from '../ontology/ExplorerNavRail';
 import { FunctionEditorNavRail } from '../ontology/FunctionEditorNavRail';
 import {
   getOntologySubApp,
@@ -24,7 +23,6 @@ import '../../App.scss';
 
 function OntologyRail({ subApp }: { subApp: ReturnType<typeof getOntologySubApp> }) {
   if (subApp === 'ontology-manager') return <ManagerNavRail />;
-  if (subApp === 'object-explorer') return <ExplorerNavRail />;
   if (subApp === 'function-editor') return <FunctionEditorNavRail />;
   return null;
 }
@@ -99,8 +97,12 @@ function MainLayoutInner() {
   const isSearchPage = location.pathname === '/search';
 
   const ontologySubApp = getOntologySubApp(location.pathname);
+  /* The object explorer has two sections, so a 220px rail to list them wasted the width that the charts need;
+     it carries a two-item strip instead (see `ExplorerSectionSwitch`). */
   const showOntologyRail =
-    isOntologySuitePath(location.pathname) && !isFunctionEditorWorkspacePath(location.pathname);
+    isOntologySuitePath(location.pathname) &&
+    !isFunctionEditorWorkspacePath(location.pathname) &&
+    ontologySubApp !== 'object-explorer';
   const isExplorePage = isObjectExplorerExplorePath(location.pathname);
   const isEditorWorkspace = isFunctionEditorWorkspacePath(location.pathname);
   const isChamberRun = /^\/chamber\/[^/]+$/.test(location.pathname);
@@ -119,7 +121,6 @@ function MainLayoutInner() {
 
   let ontologyRailModifier = '';
   if (ontologySubApp === 'ontology-manager') ontologyRailModifier = ' app-content--with-ontology-manager-rail';
-  else if (ontologySubApp === 'object-explorer') ontologyRailModifier = ' app-content--with-object-explorer-rail';
   else if (ontologySubApp === 'function-editor') ontologyRailModifier = ' app-content--with-function-editor-rail';
 
   let ontologyOutlet: ReactNode = <Outlet />;

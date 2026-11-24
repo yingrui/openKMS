@@ -186,7 +186,6 @@
 .app-content--with-channel-rail,
 .app-content--with-ontology-rail,
 .app-content--with-ontology-manager-rail,
-.app-content--with-object-explorer-rail,
 .app-content--with-function-editor-rail {
   display: flex;
   flex-direction: column;
@@ -205,8 +204,7 @@ body:has(
     .app-content--with-channel-rail,
     .app-content--with-ontology-rail,
     .app-content--with-ontology-manager-rail,
-    .app-content--with-object-explorer-rail,
-    .app-content--with-function-editor-rail
+      .app-content--with-function-editor-rail
   )
 ) {
   height: 100vh;
@@ -220,8 +218,7 @@ body:has(
       .app-content--with-channel-rail,
       .app-content--with-ontology-rail,
       .app-content--with-ontology-manager-rail,
-      .app-content--with-object-explorer-rail,
-      .app-content--with-function-editor-rail
+          .app-content--with-function-editor-rail
     )
   )
   #root,
@@ -231,8 +228,7 @@ body:has(
       .app-content--with-channel-rail,
       .app-content--with-ontology-rail,
       .app-content--with-ontology-manager-rail,
-      .app-content--with-object-explorer-rail,
-      .app-content--with-function-editor-rail
+          .app-content--with-function-editor-rail
     )
   )
   .app-layout,
@@ -242,8 +238,7 @@ body:has(
       .app-content--with-channel-rail,
       .app-content--with-ontology-rail,
       .app-content--with-ontology-manager-rail,
-      .app-content--with-object-explorer-rail,
-      .app-content--with-function-editor-rail
+          .app-content--with-function-editor-rail
     )
   )
   .app-shell-body,
@@ -253,8 +248,7 @@ body:has(
       .app-content--with-channel-rail,
       .app-content--with-ontology-rail,
       .app-content--with-ontology-manager-rail,
-      .app-content--with-object-explorer-rail,
-      .app-content--with-function-editor-rail
+          .app-content--with-function-editor-rail
     )
   )
   .app-main {
@@ -309,14 +303,14 @@ body:has(
   min-height: 0;
 }
 
-.app-content--with-object-explorer-rail.app-content--object-explorer {
+.app-content--object-explorer {
   padding: 0;
   overflow: hidden;
 }
 
 body:has(.app-content--with-ontology-rail),
 body:has(.app-content--with-ontology-manager-rail),
-body:has(.app-content--with-object-explorer-rail),
+body:has(.app-content--object-explorer),
 body:has(.app-content--with-function-editor-rail),
 body:has(.app-content--function-editor-workspace) {
   height: 100vh;
@@ -332,10 +326,10 @@ body:has(.app-content--with-ontology-manager-rail) #root,
 body:has(.app-content--with-ontology-manager-rail) .app-layout,
 body:has(.app-content--with-ontology-manager-rail) .app-shell-body,
 body:has(.app-content--with-ontology-manager-rail) .app-main,
-body:has(.app-content--with-object-explorer-rail) #root,
-body:has(.app-content--with-object-explorer-rail) .app-layout,
-body:has(.app-content--with-object-explorer-rail) .app-shell-body,
-body:has(.app-content--with-object-explorer-rail) .app-main,
+body:has(.app-content--object-explorer) #root,
+body:has(.app-content--object-explorer) .app-layout,
+body:has(.app-content--object-explorer) .app-shell-body,
+body:has(.app-content--object-explorer) .app-main,
 body:has(.app-content--with-function-editor-rail) #root,
 body:has(.app-content--with-function-editor-rail) .app-layout,
 body:has(.app-content--with-function-editor-rail) .app-shell-body,
@@ -535,8 +529,7 @@ body.openkms-agents-fullpage .agents-workspace {
     .app-content--with-channel-rail,
     .app-content--with-ontology-rail,
     .app-content--with-ontology-manager-rail,
-    .app-content--with-object-explorer-rail,
-    .app-content--with-function-editor-rail
+      .app-content--with-function-editor-rail
   ) {
     padding: var(--app-page-padding-y) var(--app-page-padding-x);
   }

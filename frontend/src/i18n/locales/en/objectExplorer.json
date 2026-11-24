@@ -13,7 +13,7 @@
   "running": "Running…",
   "execute": "Execute",
   "queryTabsAria": "Query mode",
-  "tabCypher": "Cypher query",
+  "tabCypher": "Cypher Query",
   "tabNatural": "Text to Cypher",
   "naturalPlaceholder": "Ask a graph question in plain language…",
   "generateAndRun": "Generate Cypher and run",
