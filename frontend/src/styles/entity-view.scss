@@ -298,6 +298,8 @@ body:has(.app-page-pane > .entity-view) .app-main {
   gap: var(--space-2);
   flex-wrap: wrap;
   align-items: center;
+  /* Pinned right: a long subtitle wraps and pushed a lone action to the left edge, under the text. */
+  margin-left: auto;
 }
 
 /* account-card provides surface; only OM-specific footer spacing here */

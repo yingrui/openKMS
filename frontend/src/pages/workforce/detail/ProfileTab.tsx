@@ -28,6 +28,8 @@ export function WorkforceProfileTab() {
   const [instruction, setInstruction] = useState(agent.agent_config?.prompts?.system_prompt ?? '');
   const [agentsMd, setAgentsMd] = useState(agent.agent_config?.prompts?.agents_md ?? '');
   const [saving, setSaving] = useState(false);
+  /** The assembled prompt replaces the form while it is open: a view of this page, not a fourth field on it. */
+  const [showPrompt, setShowPrompt] = useState(false);
 
   const save = async () => {
     setSaving(true);
@@ -56,21 +58,53 @@ export function WorkforceProfileTab() {
     </span>
   );
 
+  const promptPanel = (
+    <EntityViewPanel title={t('assembledPromptTitle')} description={t('assembledPromptLead')}>
+      <AssembledPrompt systemPrompt={instruction} agentsMd={agentsMd} />
+    </EntityViewPanel>
+  );
+
+  if (showPrompt) {
+    return (
+      <>
+        <EntityViewHeader
+          title={t('profileTitle')}
+          subtitle={t('profileLead')}
+          actions={
+            <button type="button" className="btn btn-secondary" onClick={() => setShowPrompt(false)}>
+              {t('assembledPromptBack')}
+            </button>
+          }
+        />
+        {promptPanel}
+      </>
+    );
+  }
+
   return (
     <>
       <EntityViewHeader
         title={t('profileTitle')}
         subtitle={t('profileLead')}
         actions={
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={saving || instruction.length > MAX_CHARS || agentsMd.length > MAX_CHARS}
-            onClick={() => void save()}
-          >
-            <Save size={16} aria-hidden />
-            {saving ? t('saving') : t('save')}
-          </button>
+          <>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setShowPrompt(true)}
+            >
+              {t('assembledPromptShow')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={saving || instruction.length > MAX_CHARS || agentsMd.length > MAX_CHARS}
+              onClick={() => void save()}
+            >
+              <Save size={16} aria-hidden />
+              {saving ? t('saving') : t('save')}
+            </button>
+          </>
         }
       />
 
@@ -122,15 +156,8 @@ export function WorkforceProfileTab() {
         </div>
       </EntityViewPanel>
 
-      {/* Read-only, and collapsed: the projection of what the three fields above (plus every other tab) assemble into.
-          Each block names the tab it comes from, so "what changed" is answered by opening this rather than by guessing. */}
-      <EntityViewPanel
-        title={t('assembledPromptTitle')}
-        description={t('assembledPromptLead')}
-        defaultCollapsed
-      >
-        <AssembledPrompt systemPrompt={instruction} agentsMd={agentsMd} />
-      </EntityViewPanel>
+      {/* Read-only: the projection of the fields above, plus every other tab, as the qa-agent assembles it. Opening it
+          replaces the form — showing both at once read as a fourth field with a wall of text under it. */}
     </>
   );
 }

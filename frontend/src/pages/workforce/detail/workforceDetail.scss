@@ -487,3 +487,34 @@
   justify-content: space-between;
   gap: 16px;
 }
+
+/* The assembled prompt: one card with labelled blocks, not a card per block. */
+.workforce-prompt-block {
+  margin-bottom: var(--space-4);
+}
+
+.workforce-prompt-block:last-child {
+  margin-bottom: 0;
+}
+
+.workforce-prompt-block__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+
+.workforce-prompt-block__label {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.workforce-prompt-block__note {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.workforce-view-switch {
+  margin-bottom: var(--space-3);
+}

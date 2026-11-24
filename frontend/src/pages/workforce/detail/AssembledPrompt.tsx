@@ -4,7 +4,6 @@ import { Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAsyncData } from '../../../hooks/useAsyncData';
 import { fetchPromptPreview, type WorkforcePromptPreview } from '../../../data/workforceApi';
-import { EntityViewPanel } from '../../shared/EntityViewShell';
 import { useWorkforceDetail } from './workforceDetailContext';
 
 /**
@@ -94,37 +93,45 @@ export function AssembledPrompt({
       </div>
 
       {error ? (
-        <EntityViewPanel>
-          <p className="ds-field__hint page-subtitle--error">{t('previewFailed')}</p>
-        </EntityViewPanel>
+        <p className="ds-field__hint page-subtitle--error">{t('previewFailed')}</p>
       ) : preview && view === 'full' ? (
-        <EntityViewPanel title={t('promptFullTitle')} description={t('promptFullLead')}>
+        <div className="workforce-prompt-block">
+          <div className="workforce-prompt-block__head">
+            <span className="workforce-prompt-block__label">{t('promptFullTitle')}</span>
+            <span className="workforce-prompt-block__note">{t('promptFullLead')}</span>
+          </div>
           <pre className="workforce-prompt-preview">{preview.system_prompt}</pre>
-        </EntityViewPanel>
+        </div>
       ) : preview ? (
         <>
           {preview.sections.map((section, index) => (
-            <EntityViewPanel
-              key={`${section.key}-${index}`}
-              title={t(`promptSection_${section.key}`)}
-              description={t(`promptSource_${section.key}`)}
-            >
+            <div key={`${section.key}-${index}`} className="workforce-prompt-block">
+              <div className="workforce-prompt-block__head">
+                <span className="workforce-prompt-block__label">
+                  {t(`promptSection_${section.key}`)}
+                </span>
+                <span className="workforce-prompt-block__note">
+                  {t(`promptSource_${section.key}`)}
+                </span>
+              </div>
               <pre className="workforce-prompt-preview">{section.content}</pre>
-            </EntityViewPanel>
+            </div>
           ))}
 
-          <EntityViewPanel title={t('promptAgentsMdTitle')} description={t('promptAgentsMdLead')}>
+          <div className="workforce-prompt-block">
+            <div className="workforce-prompt-block__head">
+              <span className="workforce-prompt-block__label">{t('promptAgentsMdTitle')}</span>
+              <span className="workforce-prompt-block__note">{t('promptAgentsMdLead')}</span>
+            </div>
             {preview.agents_md ? (
               <pre className="workforce-prompt-preview">{preview.agents_md}</pre>
             ) : (
               <p className="ds-field__hint">{t('previewAgentsMdEmpty')}</p>
             )}
-          </EntityViewPanel>
+          </div>
         </>
       ) : (
-        <EntityViewPanel>
-          <p className="ds-field__hint">{t('loading')}</p>
-        </EntityViewPanel>
+        <p className="ds-field__hint">{t('loading')}</p>
       )}
     </>
   );

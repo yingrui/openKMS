@@ -510,5 +510,9 @@
   "assembledPromptTitle": "拼装后的提示词",
   "assembledPromptLead": "模型实际拿到的内容，按来源分块——每块都标明来自哪个页签。",
   "toolsRequires_web_search_connector": "一个已选择的搜索连接器",
-  "colCapabilities": "能力"
+  "colCapabilities": "能力",
+  "assembledPromptShow": "查看提示词",
+  "assembledPromptBack": "返回编辑",
+  "promptSection_bound_data": "绑定的数据",
+  "promptSource_bound_data": "本员工绑定的语义模型与本体分组，来自「知识」页"
 }
