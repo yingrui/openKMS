@@ -202,7 +202,9 @@
       "edit": "Edit",
       "search": "Search",
       "subagent": "Subagent"
-    }
+    },
+    "toolDuration": "Took {{duration}}",
+    "toolStillRunning": "still running {{seconds}}s"
   },
   "files": {
     "title": "Project files",

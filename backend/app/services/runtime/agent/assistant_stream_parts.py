@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from app.services.runtime.agent.shared import truncate_wiki_tool_output_for_storage
@@ -20,6 +21,8 @@ class AssistantStreamPartsBuilder:
 
     def __init__(self) -> None:
         self._parts: list[dict[str, Any]] = []
+        #: `run_id → monotonic start`, so a stored trace keeps the duration the live stream showed.
+        self._started: dict[str, float] = {}
 
     @property
     def parts(self) -> list[dict[str, Any]]:
@@ -34,6 +37,10 @@ class AssistantStreamPartsBuilder:
             self._parts.append({"type": "text", "text": text})
 
     def tool_start(self, run_id: str, name: str, input_text: str = "") -> None:
+        # Wall time between the start and end events is the only duration the trace can carry: the agent's events do not
+        # stamp time, and a stored turn that loses it shows no duration where the live one did.
+        if run_id:
+            self._started[run_id] = time.monotonic()
         row: dict[str, Any] = {
             "type": "tool",
             "run_id": run_id,
@@ -45,21 +52,31 @@ class AssistantStreamPartsBuilder:
         self._parts.append(row)
 
     def tool_end(self, run_id: str, name: str, output: str = "") -> None:
+        duration_ms = self._duration_ms(run_id)
         idx = self._find_tool_index(run_id)
         stored_out = truncate_wiki_tool_output_for_storage(output) if output else ""
         if idx >= 0:
             row = self._parts[idx]
             row["name"] = name
             row["status"] = "ok"
+            if duration_ms is not None:
+                row["duration_ms"] = duration_ms
             if stored_out:
                 row["output"] = stored_out
         else:
             row = {"type": "tool", "run_id": run_id, "name": name, "status": "ok"}
+            if duration_ms is not None:
+                row["duration_ms"] = duration_ms
             if stored_out:
                 row["output"] = stored_out
             self._parts.append(row)
 
+    def _duration_ms(self, run_id: str) -> int | None:
+        started = self._started.pop(run_id, None) if run_id else None
+        return int((time.monotonic() - started) * 1000) if started is not None else None
+
     def tool_error(self, run_id: str, name: str, error: str = "") -> None:
+        duration_ms = self._duration_ms(run_id)
         idx = self._find_tool_index(run_id)
         stored_err = truncate_wiki_tool_output_for_storage(error) if error else "Tool error"
         if idx >= 0:
@@ -67,6 +84,8 @@ class AssistantStreamPartsBuilder:
             row["name"] = name
             row["status"] = "err"
             row["error"] = stored_err
+            if duration_ms is not None:
+                row["duration_ms"] = duration_ms
         else:
             self._parts.append(
                 {

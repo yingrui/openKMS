@@ -37,26 +37,7 @@
   display: none;
 }
 
-.agents-stream__tool-row--expand[open] /* How long the call took: the one number a tool log is missing. */
-.agents-stream__tool-pill-time {
-  flex-shrink: 0;
-  margin-left: auto;
-  font-variant-numeric: tabular-nums;
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-}
-
-/* A failure's reason, on the row. */
-.agents-stream__tool-pill-error {
-  flex: 0 1 auto;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--color-error);
-}
-
-.agents-stream__tool-pill-chevron {
+.agents-stream__tool-row--expand[open] .agents-stream__tool-pill-chevron {
   transform: rotate(90deg);
 }
 
@@ -93,8 +74,9 @@
   color: var(--color-text);
 }
 
+/* The detail takes the slack, so the reason, the duration and the chevron sit together at the end of the row. */
 .agents-stream__tool-pill-detail {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -102,23 +84,30 @@
   color: var(--color-text-muted);
 }
 
-/* How long the call took: the one number a tool log is missing. */
-.agents-stream__tool-pill-time {
+/* The reason it failed, and how long it took: both at the end of the row, both hidden while it runs. */
+.agents-stream__tool-pill-error {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 45%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-error);
+}
+
+/* How long the call has been running, and only after ten seconds: before that, silence is not worrying. */
+.agents-stream__tool-pill-slow {
   flex-shrink: 0;
-  margin-left: auto;
   font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
 
-/* A failure's reason, on the row. */
-.agents-stream__tool-pill-error {
-  flex: 0 1 auto;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--color-error);
+/* The duration in the expanded detail: a fact about the call, filed with its input and output. */
+.agents-stream__tool-meta {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }
 
 .agents-stream__tool-pill-chevron {

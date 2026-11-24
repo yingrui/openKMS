@@ -1,5 +1,7 @@
 import { ChevronRight, Code2, Terminal, type LucideIcon } from 'lucide-react';
-import { toolUsesCodeIcon } from '../wiki/agentStreamToolDisplay';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { toolUsesCodeIcon } from './agentStreamToolDisplay';
 
 interface Props {
   name: string;
@@ -10,14 +12,35 @@ interface Props {
   detail?: string;
   /** Why it failed. Shown on the row: "it went red" is not a reason a reader can act on. */
   error?: string;
-  /** How long the call took. Reported once it finished: while it runs, the row already says "…". */
-  durationMs?: number;
+  /** When the call started. Used for one thing: a call that is still running long enough to worry about. */
+  startedAt?: number;
 }
 
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${Math.floor(ms / 60_000)}m${Math.round((ms % 60_000) / 1000)}s`;
+/** How long a call may run before the row says so: silence only reads as "hung" after this. */
+const SLOW_CALL_SECONDS = 10;
+
+/**
+ * "still running 24s", and nothing before ten seconds.
+ *
+ * A counter from the first millisecond is noise while the answer is still streaming; a `…` that never changes after a
+ * minute reads as a hang. This is the middle: quiet until the wait is long enough that the reader wonders.
+ */
+function RunningTime({ startedAt }: { startedAt: number }) {
+  const { t } = useTranslation('agents');
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  const seconds = Math.floor((now - startedAt) / 1000);
+  if (seconds < SLOW_CALL_SECONDS) {
+    return <span className="agents-stream__tool-pill-running">…</span>;
+  }
+  return (
+    <span className="agents-stream__tool-pill-slow">
+      {t('stream.toolStillRunning', { seconds })}
+    </span>
+  );
 }
 
 export function ToolPillHead({
@@ -28,7 +51,7 @@ export function ToolPillHead({
   icon,
   detail,
   error,
-  durationMs,
+  startedAt,
 }: Props) {
   const Icon = icon ?? (toolUsesCodeIcon(name) ? Code2 : Terminal);
 
@@ -44,10 +67,7 @@ export function ToolPillHead({
           {error.length > 70 ? `${error.slice(0, 69)}…` : error}
         </span>
       ) : null}
-      {running ? null : durationMs !== undefined ? (
-        <span className="agents-stream__tool-pill-time">{formatDuration(durationMs)}</span>
-      ) : null}
-      {running ? <span className="agents-stream__tool-pill-running">…</span> : null}
+      {running ? (startedAt ? <RunningTime startedAt={startedAt} /> : <span className="agents-stream__tool-pill-running">…</span>) : null}
       {expandable ? (
         <ChevronRight
           size={12}

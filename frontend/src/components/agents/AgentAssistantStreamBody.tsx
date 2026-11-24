@@ -7,10 +7,11 @@ import {
   formatToolInputForDisplay,
   formatToolOutputForDisplay,
   shouldHideToolRow,
+  formatToolDuration,
   toolDetailLabel,
   toolKindLabel,
-} from '../wiki/agentStreamToolDisplay';
-import type { AssistantStreamPart } from '../wiki/wikiCopilotStreamParts';
+} from './agentStreamToolDisplay';
+import type { AssistantStreamPart } from './agentStreamParts';
 import './AgentMessage.scss';
 
 const MIN_TOOLS_TO_FOLD = 2;
@@ -74,17 +75,25 @@ function ToolIoBlock({
   input,
   output,
   error,
+  durationMs,
 }: {
   name: string;
   input?: string;
   output?: string;
   error?: string;
+  durationMs?: number;
 }) {
+  const { t } = useTranslation('agents');
   const displayInput = formatToolInputForDisplay(name, input);
   const displayOutput = formatToolOutputForDisplay(name, output);
 
   return (
     <div className="agents-stream__tool-io">
+      {durationMs !== undefined ? (
+        <p className="agents-stream__tool-meta">
+          {t('stream.toolDuration', { duration: formatToolDuration(durationMs) })}
+        </p>
+      ) : null}
       {displayInput ? <pre className="agents-stream__tool-pre">{displayInput}</pre> : null}
       {displayOutput ? <pre className="agents-stream__tool-pre">{displayOutput}</pre> : null}
       {error ? (
@@ -100,7 +109,8 @@ function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }
   const kind = toolKindLabel(step.name, t);
   const detail = toolDetailLabel(step.name, step.input);
   const running = step.status === 'running';
-  const hasIo = Boolean(step.input || step.output || step.error);
+  // The duration alone is enough to open a row: it is a fact about the call, and it must be reachable.
+  const hasIo = Boolean(step.input || step.output || step.error || step.durationMs !== undefined);
   const expandable = hasIo && (!running || Boolean(step.input));
   const rowClass = `agents-stream__tool-row${running ? ' agents-stream__tool-row--running' : ''}`;
 
@@ -114,7 +124,7 @@ function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }
             running={running}
             detail={detail}
             error={step.error}
-            durationMs={step.durationMs}
+            startedAt={step.startedAt}
           />
         </div>
       </div>
@@ -131,10 +141,16 @@ function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }
           expandable
           detail={detail}
           error={step.error}
-          durationMs={step.durationMs}
+          startedAt={step.startedAt}
         />
       </summary>
-      <ToolIoBlock name={step.name} input={step.input} output={step.output} error={step.error} />
+      <ToolIoBlock
+        name={step.name}
+        input={step.input}
+        output={step.output}
+        error={step.error}
+        durationMs={step.durationMs}
+      />
     </details>
   );
 }

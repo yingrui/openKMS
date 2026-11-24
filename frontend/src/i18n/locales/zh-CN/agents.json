@@ -201,7 +201,9 @@
       "edit": "编辑",
       "search": "检索",
       "subagent": "子任务"
-    }
+    },
+    "toolDuration": "耗时 {{duration}}",
+    "toolStillRunning": "仍在执行 {{seconds}}s"
   },
   "files": {
     "title": "项目文件",
