@@ -16,6 +16,9 @@ export type AgentToolCallStep = {
   output?: string;
   error?: string;
   status: 'running' | 'ok' | 'err';
+  /** When the call started (ms), and how long it took once it finished. Measured on arrival, not in the model. */
+  startedAt?: number;
+  durationMs?: number;
 };
 
 export type SubagentStep = {

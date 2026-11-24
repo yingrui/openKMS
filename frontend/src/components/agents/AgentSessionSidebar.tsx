@@ -144,7 +144,8 @@ export function AgentSessionSidebar({
                 aria-label={t('sessions.rename')}
                 onChange={(e) => setRenameValue(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
+                    if (e.key === 'Enter') {
                     e.preventDefault();
                     commitRename(c.id);
                   } else if (e.key === 'Escape') {

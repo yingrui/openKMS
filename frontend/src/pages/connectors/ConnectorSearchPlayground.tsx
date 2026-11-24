@@ -136,7 +136,8 @@ export function ConnectorSearchPlayground({
               placeholder={t('connectors.testSearchPlaceholder')}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && searchQuery.trim() && !sending) void handleSend();
+                if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
+                    if (e.key === 'Enter' && searchQuery.trim() && !sending) void handleSend();
               }}
               autoComplete="off"
             />

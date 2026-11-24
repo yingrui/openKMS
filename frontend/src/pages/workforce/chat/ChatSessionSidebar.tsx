@@ -149,6 +149,7 @@ export function ChatSessionSidebar({
                   aria-label={t('chat.sessionRename')}
                   onChange={(e) => setRenameValue(e.target.value)}
                   onKeyDown={(e) => {
+                    if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
                     if (e.key === 'Enter') {
                       e.preventDefault();
                       commitRename(c.id);

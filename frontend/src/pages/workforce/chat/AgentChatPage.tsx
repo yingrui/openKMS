@@ -1,7 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowUp, FolderTree, MessageSquare, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowUp,
+  Copy,
+  FolderTree,
+  MessageSquare,
+  RefreshCw,
+  Sparkles,
+  ThumbsDown,
+  ThumbsUp,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { polishFAQAnswer, createFAQ, type KnowledgeBaseResponse } from '../../../data/knowledgeBasesApi';
 import { useIsMobile } from '../../../hooks/useIsMobile';
@@ -11,6 +21,7 @@ import { AgentAssistantStreamBody } from '../../../components/agents/AgentAssist
 import { AgentMessageBody } from '../../../components/agents/AgentMessageBody';
 import { ChatFilesRail } from './ChatFilesRail';
 import { ChatSessionSidebar } from './ChatSessionSidebar';
+import { PERSISTED_AGENT_MESSAGE_ID } from '../../../components/agents/agentConstants';
 import { ChatSourcesDrawer, ChatSourcesPill, type ChatSourcesPanelPayload } from './ChatSourcesDrawer';
 import { chatFeedbackKey, splitQaSources } from './chatUtils';
 import { useAgentChat } from './useAgentChat';
@@ -26,6 +37,18 @@ import './AgentChat.scss';
  * The copy is the knowledge-base one (`knowledgeBase` i18n namespace, `detail.qa*`): the screen moved, its
  * words did not need to.
  */
+/** A message's time, formatted exactly as an Agent Project message formats it ("Nov 23, 04:01 PM"). */
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeBaseResponse }) {
   const { t } = useTranslation('workforce');
   /* Saving an answer as a knowledge-base FAQ: the words for that live with the FAQ feature, not here. */
@@ -196,7 +219,16 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
           )}
 
           <main className="agent-chat-main">
-            <div className="agent-chat-main-scroll" ref={chat.mainScrollRef}>
+            <div
+              className="agent-chat-main-scroll"
+              ref={chat.mainScrollRef}
+              onScroll={(e) => {
+                // At the very top there is more thread above: fetch it before the reader reaches the edge.
+                if (e.currentTarget.scrollTop < 80 && chat.hasOlder && !chat.loadingOlder) {
+                  void chat.loadOlderMessages();
+                }
+              }}
+            >
               {chat.chatMessages.length === 0 && !chat.sending ? (
                 <div className="agent-chat-hero">
                   <div className="agent-chat-hero-mark" aria-hidden>
@@ -209,6 +241,9 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
 
               {chat.chatMessages.length > 0 ? (
                 <div className="agent-chat-thread agent-chat-messages agent-chat-messages--fullpage">
+                  {chat.loadingOlder ? (
+                    <p className="agent-chat-older-hint">{t('chat.loadingOlder')}</p>
+                  ) : null}
                   {chat.chatMessages.map((msg, i) => {
                     const isLast = i === chat.chatMessages.length - 1;
                     return (
@@ -216,9 +251,6 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                         key={msg.id ?? `msg-fp-${i}`}
                         className={`agent-chat-msg agent-chat-msg-${msg.role}`}
                       >
-                        <span className="agent-chat-msg-label">
-                          {msg.role === 'user' ? t('chat.labelYou') : t('chat.labelAssistant')}
-                        </span>
                         {msg.role === 'assistant' && msg.streamParts && msg.streamParts.length > 0 ? (
                           <div className="agent-chat-assistant-stream">
                             <AgentAssistantStreamBody
@@ -248,6 +280,29 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                             />
                           </div>
                         )}
+                        {msg.role === 'user' ? (
+                          <div className="agent-chat-msg-meta">
+                            {msg.createdAt ? (
+                              <span className="agent-chat-msg-time">{formatTime(msg.createdAt)}</span>
+                            ) : null}
+                            {PERSISTED_AGENT_MESSAGE_ID.test(msg.id ?? '') ? (
+                              <button
+                                type="button"
+                                className="agent-chat-revert"
+                                title={t('chat.revertTitle')}
+                                aria-label={t('chat.revertAria')}
+                                disabled={chat.sending}
+                                onClick={() => {
+                                  void chat.revertMessage(msg).then((text) => {
+                                    if (text !== null) chat.setDraft(text);
+                                  });
+                                }}
+                              >
+                                <RefreshCw size={13} strokeWidth={2} aria-hidden />
+                              </button>
+                            ) : null}
+                          </div>
+                        ) : null}
                         {msg.role === 'assistant' &&
                           !(chat.sending && isLast) &&
                           (() => {
@@ -264,10 +319,10 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                             const rk = msg.replyKey ?? `legacy-${i}`;
                             const sourcesOpen = sourcesPanel?.replyKey === rk;
                             return (
-                              <div className="agent-chat-msg-actions">
+                              <>
+                              {warnings.length > 0 || hasSources ? (
+                              <div className="agent-chat-msg-evidence">
                                 {warnings.length > 0 ? (
-                                  /* What the agent could not source. Shown, not hidden: the reader decides
-                                     whether to trust the numbers, and the source asked to be told. */
                                   <ul className="agent-chat-grounding-warning" role="status">
                                     {warnings.map((w) => (
                                       <li key={w}>{w}</li>
@@ -289,7 +344,29 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                                     }
                                   />
                                 ) : null}
-                                {showFeedback ? (
+                              </div>
+                              ) : null}
+                              <div className="agent-chat-msg-actions">
+                                {msg.createdAt ? (
+                                  <span className="agent-chat-msg-time">
+                                    {formatTime(msg.createdAt)}
+                                  </span>
+                                ) : null}
+                                {assistantText ? (
+                                  <button
+                                    type="button"
+                                    className="agent-chat-copy"
+                                    title={t('chat.copyAnswer')}
+                                    aria-label={t('chat.copyAnswer')}
+                                    onClick={() => {
+                                      void navigator.clipboard.writeText(assistantText);
+                                      toast.success(t('chat.copied'));
+                                    }}
+                                  >
+                                    <Copy size={14} strokeWidth={2} aria-hidden />
+                                  </button>
+                                ) : null}
+                                {showFeedback || assistantText ? (
                                   <div className="agent-chat-msg-feedback">
                                     <button
                                       type="button"
@@ -313,10 +390,12 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                                     >
                                       <ThumbsDown size={16} strokeWidth={2} aria-hidden />
                                     </button>
-                                    {feedback === 'up' && question ? (
+                                    {question ? (
+                                      /* Appears while the reader is over the votes; it stays as long as the pointer is
+                                         inside that group, so the button can be reached. */
                                       <button
                                         type="button"
-                                        className="agent-chat-sources-action-btn"
+                                        className="agent-chat-save-faq"
                                         aria-label={t('chat.saveAsFaqAria')}
                                         onClick={() => openFaqFromAnswer(question, assistantText)}
                                       >
@@ -326,6 +405,7 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                                   </div>
                                 ) : null}
                               </div>
+                              </>
                             );
                           })()}
                       </div>
@@ -341,8 +421,18 @@ export function AgentChatPage({ agentId, kb }: { agentId: string; kb: KnowledgeB
                   className="agent-chat-composer-input"
                   placeholder={t('chat.placeholder')}
                   value={chat.draft}
-                  onChange={(e) => chat.setDraft(e.target.value)}
+                  onChange={(e) => {
+                    chat.setDraft(e.target.value);
+                    const el = e.currentTarget;
+                    // Grow with the text: a long question typed into a 24px window is a scrollbar, not a composer.
+                    el.style.height = 'auto';
+                    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+                  }}
                   onKeyDown={(e) => {
+                    // While an IME is composing, Enter belongs to it: committing here would send a half-typed
+                    // Chinese/Japanese/Korean message. `keyCode === 229` covers browsers that do not report
+                    // `isComposing` on the native event.
+                    if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();

@@ -10,6 +10,8 @@ import type { AssistantStreamPart } from '../../../components/wiki/wikiCopilotSt
 export interface ChatMessage {
   id?: string;
   role: 'user' | 'assistant';
+  /** When the server stored this turn. Absent while a reply is still streaming. */
+  createdAt?: string;
   content: string;
   sources?: SearchResult[];
   streamParts?: AssistantStreamPart[];

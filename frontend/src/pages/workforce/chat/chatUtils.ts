@@ -17,7 +17,7 @@ function kbAgentItemsToChatMessages(items: AgentMessageItem[]): ChatMessage[] {
   for (const m of items) {
     if (m.role !== 'user' && m.role !== 'assistant') continue;
     if (m.role === 'user') {
-      out.push({ id: m.id, role: 'user', content: m.content });
+      out.push({ id: m.id, role: 'user', content: m.content, createdAt: m.created_at });
       continue;
     }
     const tc = m.tool_calls as Record<string, unknown> | undefined;
@@ -26,6 +26,7 @@ function kbAgentItemsToChatMessages(items: AgentMessageItem[]): ChatMessage[] {
     out.push({
       id: m.id,
       role: 'assistant',
+      createdAt: m.created_at,
       content: m.content,
       sources,
       streamParts: assistantHistoryStreamParts(m.content, m.tool_calls),

@@ -162,7 +162,7 @@ const MessageRow = memo(function MessageRow({
           collapseTools={collapseTools}
         />
       </div>
-      {time ? (
+      {message.content ? (
         <div className="agents-chat-msg-meta">
           <button
             type="button"
@@ -174,7 +174,7 @@ const MessageRow = memo(function MessageRow({
           >
             <Copy size={13} strokeWidth={2} aria-hidden />
           </button>
-          <span className="agents-chat-msg-time">{time}</span>
+          {time ? <span className="agents-chat-msg-time">{time}</span> : null}
         </div>
       ) : null}
     </div>

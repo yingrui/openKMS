@@ -117,6 +117,9 @@
   --text-sm--line: 1.45;
   --text-md: 0.875rem;
   --text-md--line: 1.5;
+  /* A conversation is read, not skimmed: one step above body text, and the same in every chat surface. */
+  --text-chat: 0.9375rem;
+  --text-chat--line: 1.6;
   --text-base: 1rem;
   --text-base--line: 1.5;
   --text-lg: 1.125rem;

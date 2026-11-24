@@ -149,13 +149,21 @@ body.openkms-agent-chat .agent-chat-shell {
   max-width: 92%;
 }
 
+/* The same column an Agent Project session uses: 42rem, centred. Both surfaces show one conversation, so the same
+   measure is what makes a reply read the same width in either place. */
+.agent-chat-thread .agent-chat-msg {
+  width: 100%;
+  max-width: 42rem;
+  margin-inline: auto;
+}
+
 .agent-chat-page .agent-chat-thread .agent-chat-msg-assistant {
-  max-width: min(96%, 900px);
+  max-width: 42rem;
 }
 
 .agent-chat-composer-outer {
   flex-shrink: 0;
-  padding: var(--space-3) var(--space-4) var(--space-5);
+  padding: 12px 20px 16px;
   background: linear-gradient(to top, var(--color-bg) 70%, transparent);
 }
 
@@ -168,17 +176,17 @@ body.openkms-agent-chat .agent-chat-shell {
   display: flex;
   align-items: flex-end;
   gap: var(--space-2);
-  max-width: 760px;
+  max-width: 720px;
   margin: 0 auto;
-  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
-  border-radius: var(--radius-lg);
+  padding: 8px 8px 8px 6px;
+  border-radius: 20px;
   border: 1px solid var(--color-border-strong);
   background: var(--color-bg-elevated);
   box-shadow: var(--shadow-md);
 }
 
 .agent-chat-page .agent-chat-composer {
-  max-width: min(820px, calc(100% - var(--space-8)));
+  max-width: min(720px, calc(100% - var(--space-8)));
 }
 
 [data-theme='dark'] .agent-chat-composer {
@@ -190,12 +198,12 @@ body.openkms-agent-chat .agent-chat-shell {
   flex: 1;
   min-width: 0;
   width: auto;
-  min-height: 34px;
-  max-height: 200px;
+  min-height: 24px;
+  max-height: 140px;
   margin: 0;
   padding: calc(var(--space-1) / 2) calc(var(--space-1) / 2) var(--gap-compact);
   font: inherit;
-  font-size: var(--text-md);
+  font-size: var(--text-chat);
   line-height: 1.45;
   color: var(--color-text);
   background: transparent;
@@ -213,7 +221,7 @@ body.openkms-agent-chat .agent-chat-shell {
 }
 
 .agent-chat-composer-hint {
-  max-width: min(820px, calc(100% - var(--space-8)));
+  max-width: min(720px, calc(100% - var(--space-8)));
   margin: var(--space-2) auto 0;
   font-size: var(--text-xs);
   color: var(--color-text-muted);
@@ -225,11 +233,11 @@ body.openkms-agent-chat .agent-chat-shell {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: none;
-  border-radius: var(--radius-pill);
+  border-radius: 50%;
   background: var(--color-accent);
   color: var(--color-on-accent);
   cursor: pointer;
@@ -411,26 +419,28 @@ body.openkms-agent-chat .agent-chat-shell {
   align-items: flex-start;
 }
 
+.agent-chat-msg-user {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
 .agent-chat-msg-user .agent-chat-msg-bubble--user {
   width: fit-content;
-  max-width: 100%;
+  max-width: 85%;
 }
 
 .agent-chat-msg-assistant .agent-chat-msg-bubble--assistant {
   width: fit-content;
   max-width: 100%;
-}
-
-.agent-chat-msg-label {
-  font-size: var(--text-xs);
-  font-weight: 500;
-  color: var(--color-text-muted);
+  font-size: var(--text-chat);
+  line-height: 1.65;
 }
 
 /* Every bubble is one of the two variants; what they share is the bubble itself — the box, its padding and
    its width limit. Each variant then only sets colour and which corner is "open". */
 .agent-chat-msg-bubble {
-  padding: var(--padding-compact-y) var(--padding-compact-x);
+  padding: 10px 14px;
   max-width: 100%;
   min-width: 0;
 }
@@ -438,7 +448,9 @@ body.openkms-agent-chat .agent-chat-shell {
 .agent-chat-msg-bubble--user {
   background: var(--color-accent);
   color: var(--color-on-accent);
-  border-radius: var(--radius-md) var(--radius-md) var(--space-1) var(--radius-md);
+  border-radius: 14px 14px 4px 14px;
+  font-size: var(--text-chat);
+  line-height: 1.55;
 }
 
 .agent-chat-msg-bubble--user .agents-md {
@@ -489,12 +501,85 @@ body.openkms-agent-chat .agent-chat-shell {
   border-top: 1px solid var(--color-border);
 }
 
+/* The answer's evidence never hides: citations and the "could not source this" warning are what the reader weighs. */
+.agent-chat-msg-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* The small actions are quiet until the reader is on the message — the same as an Agent Project reply. */
 .agent-chat-msg-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   margin-top: var(--space-3);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.agent-chat-msg:hover .agent-chat-msg-actions,
+.agent-chat-msg:focus-within .agent-chat-msg-actions {
+  opacity: 1;
+}
+
+/* A touch screen has no hover: there is nothing to reveal them with. */
+@media (hover: none) {
+  .agent-chat-msg-actions {
+    opacity: 1;
+  }
+}
+
+.agent-chat-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.agent-chat-copy:hover {
+  color: var(--color-text);
+  background: var(--color-bg-muted);
+}
+
+.agent-chat-msg-time {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  user-select: none;
+}
+
+/* Save as FAQ: shown while the reader hovers the up-vote, and kept once the answer has been voted up. */
+.agent-chat-save-faq {
+  padding: 2px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+
+/* Hovering the votes reveals "Save as FAQ"; hovering the button itself keeps it — revealing on the up-vote alone made
+   the button vanish on the way to it, which is a button nobody can press. */
+.agent-chat-msg-feedback:hover .agent-chat-save-faq,
+.agent-chat-msg-feedback:focus-within .agent-chat-save-faq {
+  opacity: 1;
+}
+
+.agent-chat-save-faq:hover {
+  color: var(--color-accent);
 }
 
 .agent-chat-msg-feedback {
@@ -507,32 +592,27 @@ body.openkms-agent-chat .agent-chat-shell {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   padding: 0;
-  border: 1px solid var(--color-border-strong);
+  border: none;
   border-radius: var(--radius-sm);
-  background: var(--color-bg-muted);
-  color: var(--color-text-secondary);
+  background: none;
+  color: var(--color-text-muted);
   cursor: pointer;
 }
 
 .agent-chat-feedback-btn:hover {
-  background: var(--color-bg-elevated);
+  background: var(--color-bg-muted);
   color: var(--color-text);
-  border-color: var(--color-accent);
 }
 
 .agent-chat-feedback-btn--active.agent-chat-feedback-btn--up {
   color: var(--color-success);
-  border-color: var(--color-success);
-  background: color-mix(in srgb, var(--color-success) 12%, var(--color-bg-muted));
 }
 
 .agent-chat-feedback-btn--active.agent-chat-feedback-btn--down {
   color: var(--color-danger);
-  border-color: var(--color-danger);
-  background: color-mix(in srgb, var(--color-danger) 12%, var(--color-bg-muted));
 }
 
 .agent-chat-sources-action-btn {
@@ -1068,4 +1148,58 @@ body.openkms-agent-chat .agent-chat-shell {
     border-color: var(--color-accent, #2563eb);
     color: var(--color-accent, #2563eb);
   }
+}
+
+/* The row under a reader's own message: revert and its time, right-aligned, hidden until the message is hovered —
+   the same as an Agent Project session. */
+.agent-chat-msg-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 0.2rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.agent-chat-msg:hover .agent-chat-msg-meta,
+.agent-chat-msg:focus-within .agent-chat-msg-meta {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .agent-chat-msg-meta {
+    opacity: 1;
+  }
+}
+
+.agent-chat-revert {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.35rem;
+  border: none;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.agent-chat-revert:hover:not(:disabled) {
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+.agent-chat-revert:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* The previous page of the thread, while it loads. */
+.agent-chat-older-hint {
+  margin: 0 0 var(--space-2);
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }

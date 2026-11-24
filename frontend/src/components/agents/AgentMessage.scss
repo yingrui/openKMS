@@ -37,7 +37,16 @@
   display: none;
 }
 
-.agents-stream__tool-row--expand[open] /* A failure's reason, on the row. */
+.agents-stream__tool-row--expand[open] /* How long the call took: the one number a tool log is missing. */
+.agents-stream__tool-pill-time {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* A failure's reason, on the row. */
 .agents-stream__tool-pill-error {
   flex: 0 1 auto;
   min-width: 0;
@@ -90,6 +99,15 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--color-text-muted);
+}
+
+/* How long the call took: the one number a tool log is missing. */
+.agents-stream__tool-pill-time {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
 

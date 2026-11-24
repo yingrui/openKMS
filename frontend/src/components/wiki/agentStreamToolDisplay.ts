@@ -1,22 +1,23 @@
 /** Human-readable labels for agent tool rows (Cursor-style). */
 
+/** Agent Project tool name → label key in the `agents` namespace. */
 const TOOL_KIND: Record<string, string> = {
-  run_python: 'Python',
-  execute: 'Shell',
-  bash: 'Shell',
-  shell: 'Shell',
-  explore: 'Explored',
-  read_file: 'Read',
-  write_file: 'Write',
-  edit_file: 'Edit',
-  ls: 'Explored',
-  glob: 'Explored',
-  grep: 'Explored',
-  search_documents: 'Search',
-  search_wiki: 'Search',
-  search_knowledge_bases: 'Search',
-  web_search: 'Search',
-  task: 'Subagent',
+  run_python: 'python',
+  execute: 'shell',
+  bash: 'shell',
+  shell: 'shell',
+  explore: 'explored',
+  read_file: 'read',
+  write_file: 'write',
+  edit_file: 'edit',
+  ls: 'explored',
+  glob: 'explored',
+  grep: 'explored',
+  search_documents: 'search',
+  search_wiki: 'search',
+  search_knowledge_bases: 'search',
+  web_search: 'search',
+  task: 'subagent',
 };
 
 export function shouldHideToolRow(name: string): boolean {
@@ -91,13 +92,16 @@ const WORKFORCE_TOOL_KINDS: Record<string, string> = {
   run_command: 'shell',
 };
 
+/**
+ * The one-word verb a row leads with.
+ *
+ * Both tool vocabularies go through the label table — the Agent Project names (`read_file`, `ls`, `task`) were hardcoded
+ * English, so a Chinese screen said "Explored" next to rows that said 检索知识库.
+ */
 export function toolKindLabel(name: string, t?: (key: string, options?: Record<string, unknown>) => string): string {
-  const workforceKind = WORKFORCE_TOOL_KINDS[name];
-  if (workforceKind) {
-    return t ? t(`stream.toolKind.${workforceKind}`, { defaultValue: workforceKind }) : workforceKind;
-  }
-  if (name.startsWith('git_')) return t ? t('stream.toolKind.shell') : 'Shell';
-  return TOOL_KIND[name] ?? name.replace(/_/g, ' ');
+  const kind = WORKFORCE_TOOL_KINDS[name] ?? (name.startsWith('git_') ? 'shell' : TOOL_KIND[name]);
+  if (kind) return t ? t(`stream.toolKind.${kind}`, { defaultValue: kind }) : kind;
+  return name.replace(/_/g, ' ');
 }
 
 function workforceDetail(name: string, input?: string): string | undefined {
@@ -128,7 +132,8 @@ function workforceDetail(name: string, input?: string): string | undefined {
     case 'read_file':
     case 'write_file':
     case 'list_files':
-      return basename(text('path')) || undefined;
+      // Two tools share these names: the Agent Project's take `filePath`, the workforce one takes `path`.
+      return basename(text('path') || text('filePath')) || undefined;
     case 'get_ontology_schema':
       return text('group_id') || undefined;
     case 'get_semantic_model':

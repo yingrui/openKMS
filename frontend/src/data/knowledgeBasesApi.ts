@@ -454,6 +454,20 @@ export async function createKbAgentConversation(
   );
 }
 
+/** Remove one message and everything after it. Used to revert a turn and re-ask it. */
+export async function deleteKbAgentMessagesFrom(
+  kbId: string,
+  conversationId: string,
+  messageId: string,
+): Promise<void> {
+  return request<void>(
+    `/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations/${encodeURIComponent(
+      conversationId,
+    )}/messages/from/${encodeURIComponent(messageId)}`,
+    { method: 'DELETE' },
+  );
+}
+
 export async function deleteKbAgentConversation(kbId: string, conversationId: string): Promise<void> {
   return request<void>(
     `/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations/${encodeURIComponent(conversationId)}`,

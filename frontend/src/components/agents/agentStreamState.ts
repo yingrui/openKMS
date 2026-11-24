@@ -56,6 +56,7 @@ function applyToolStart<T extends CopilotStreamLine>(
       name: ev.name,
       input: ev.input,
       status: 'running' as const,
+      startedAt: s.startedAt ?? Date.now(),
     }));
     return {
       ...p,
@@ -70,6 +71,7 @@ function applyToolStart<T extends CopilotStreamLine>(
                 name: ev.name,
                 input: ev.input,
                 status: 'running' as const,
+                startedAt: Date.now(),
               },
             },
           ],
@@ -89,6 +91,7 @@ function applyToolEnd<T extends CopilotStreamLine>(
       name: ev.name,
       output: ev.output,
       status: 'ok' as const,
+      durationMs: s.startedAt ? Date.now() - s.startedAt : s.durationMs,
     }));
     const streamParts = updated
       ? next

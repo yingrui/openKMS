@@ -5,7 +5,8 @@ import { toast } from 'sonner';
 import {
   createKbAgentConversation,
   deleteKbAgentConversation,
-  listAllKbAgentMessages,
+  deleteKbAgentMessagesFrom,
+  listKbAgentMessagesPage,
   listKbAgentConversations,
   patchKbAgentConversation,
   postKbAgentMessageStream,
@@ -32,6 +33,9 @@ import type { ChatMessage, ChatFeedbackVote } from './types';
  * `agentId` is only used to build URLs — the thread belongs to the knowledge source (`kb.id`), which is why
  * the store and the API are the knowledge-base ones.
  */
+/** How many turns one page of the thread holds. */
+const THREAD_PAGE_SIZE = 50;
+
 export function useAgentChat({
   agentId,
   kb,
@@ -55,6 +59,11 @@ export function useAgentChat({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [feedback, setFeedback] = useState<Record<string, ChatFeedbackVote>>({});
   const [sending, setSending] = useState(false);
+  /** Messages still ahead of the loaded window; `0` means the thread starts here. */
+  const [olderOffset, setOlderOffset] = useState(0);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  /** One jump to the end when a thread opens; after that the reader's scroll position wins. */
+  const pinToBottomRef = useRef(true);
   const qaStreamAbortRef = useRef<AbortController | null>(null);
 
   /** Langfuse session id for the turns of this open chat (opaque UUID). */
@@ -86,6 +95,15 @@ export function useAgentChat({
   useLayoutEffect(() => {
     const scroller = mainScrollRef.current;
     if (!scroller) return;
+    if (pinToBottomRef.current) {
+      // Opening a conversation shows its end, however long it is.
+      scroller.scrollTop = scroller.scrollHeight;
+      pinToBottomRef.current = false;
+      return;
+    }
+    // After that, reading history wins: a token arriving must not move the page under the reader's eyes.
+    const distanceFromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
+    if (distanceFromBottom > 120) return;
     scroller.scrollTop = scroller.scrollHeight;
   }, [chatMessages, sending]);
 
@@ -95,7 +113,12 @@ export function useAgentChat({
 
   const loadMessagesForConversation = useCallback(
     async (id: string) => {
-      const msgs = await listAllKbAgentMessages(kbId, id);
+      // The newest page first: a thread of hundreds of turns is a slow first paint, and the reader starts at the end.
+      const page = await listKbAgentMessagesPage(kbId, id, { limit: THREAD_PAGE_SIZE });
+      pinToBottomRef.current = true;
+      const offset = Math.max(0, page.total - page.items.length);
+      setOlderOffset(offset);
+      const msgs = page.items;
       setChatMessages(kbAgentItemsToChatMessages(msgs));
       // Votes come back with the messages: the thumbs have to look the same after a reload as they did before it.
       setFeedback(kbAgentFeedbackFromItems(msgs));
@@ -206,6 +229,48 @@ export function useAgentChat({
       }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('chat.toastDeleteChatFailed'));
+    }
+  };
+
+  /**
+   * Remove one message and everything after it, and hand the text back to the composer.
+   *
+   * A turn that answered the wrong question leaves the conversation in a state the reader cannot fix by asking again —
+   * the bad answer stays in the history the next turn reads. Reverting makes the edit the new turn instead of a
+   * correction of the old one.
+   */
+  const revertMessage = async (message: ChatMessage): Promise<string | null> => {
+    if (!activeConversationId || !message.id) return null;
+    try {
+      await deleteKbAgentMessagesFrom(kbId, activeConversationId, message.id);
+      await loadMessagesForConversation(activeConversationId);
+      toast.success(t('chat.revertOk'));
+      return message.content;
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('chat.revertFailed'));
+      return null;
+    }
+  };
+
+  /** Bring the previous page of the thread in, above what is already shown. */
+  const loadOlderMessages = async () => {
+    if (!activeConversationId || olderOffset <= 0 || loadingOlder) return;
+    setLoadingOlder(true);
+    try {
+      const offset = Math.max(0, olderOffset - THREAD_PAGE_SIZE);
+      const page = await listKbAgentMessagesPage(kbId, activeConversationId, {
+        limit: olderOffset - offset,
+        offset,
+      });
+      setOlderOffset(offset);
+      setChatMessages((prev) => [
+        ...kbAgentItemsToChatMessages(page.items),
+        ...prev,
+      ]);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('chat.toastLoadOlderFailed'));
+    } finally {
+      setLoadingOlder(false);
     }
   };
 
@@ -348,10 +413,16 @@ export function useAgentChat({
                 const parts = streamed?.role === 'assistant' ? streamed.streamParts : undefined;
                 return [
                   ...without,
-                  { id: kbDone.user.id, role: 'user' as const, content: savedText },
+                  {
+                    id: kbDone.user.id,
+                    role: 'user' as const,
+                    createdAt: kbDone.user.created_at,
+                    content: savedText,
+                  },
                   {
                     id: kbDone.message.id,
                     role: 'assistant' as const,
+                    createdAt: kbDone.message.created_at,
                     content: kbDone.message.content,
                     sources: kbDone.sources,
                     grounding: kbDone.grounding ?? null,
@@ -406,6 +477,10 @@ export function useAgentChat({
     onNewChat,
     onRenameChat,
     onDeleteChat,
+    revertMessage,
+    hasOlder: olderOffset > 0,
+    loadingOlder,
+    loadOlderMessages,
     setFeedbackVote,
     assistantText,
   };
