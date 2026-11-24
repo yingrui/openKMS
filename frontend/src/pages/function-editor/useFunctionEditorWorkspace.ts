@@ -17,6 +17,8 @@ import {
 } from '../../data/ontologyFunctionsApi';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
 import { AUTHORING_OF_SOURCE, backToListPath, hasUnpublishedDraft, type Authoring } from './functionEditorState';
+import { draftFromSpec, emptyDraft, specFromDraft, type FlowDraft } from './logicFlow';
+import { fetchAllModels } from '../../data/modelsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 
 export function useFunctionEditorWorkspace() {
@@ -26,6 +28,9 @@ export function useFunctionEditorWorkspace() {
   const location = useLocation();
   const navigate = useNavigate();
   const isNew = location.pathname.endsWith('/new');
+  // The list you came from decides the authoring mode when creating: `?kind=logic` opens the flow editor.
+  const preset: Authoring =
+    new URLSearchParams(location.search).get('kind') === 'logic' ? 'logic' : 'code';
 
   const [apiName, setApiName] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -41,7 +46,11 @@ export function useFunctionEditorWorkspace() {
   const [running, setRunning] = useState(false);
   const [resolvedId, setResolvedId] = useState<string | null>(isNew ? null : functionId ?? null);
   // Which list "back" returns to is a property of the function, not of the page.
-  const [authoring, setAuthoring] = useState<Authoring>('code');
+  const [authoring, setAuthoring] = useState<Authoring>(preset);
+  const [flow, setFlow] = useState<FlowDraft>(emptyDraft());
+  const [flowErrors, setFlowErrors] = useState<string[]>([]);
+  const [models, setModels] = useState<{ id: string; label: string; isDefault: boolean }[]>([]);
+  const [trace, setTrace] = useState<Record<string, unknown> | null>(null);
   const [latestVersion, setLatestVersion] = useState<number | null>(null);
   const [publishedVersion, setPublishedVersion] = useState<number | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -64,6 +73,22 @@ export function useFunctionEditorWorkspace() {
   const insertSnippet = useCallback((snippet: string) => {
     setSourceCode((prev) => (prev.endsWith('\n') ? `${prev}${snippet}` : `${prev}\n${snippet}`));
   }, []);
+
+  // Only needed when the flow editor is on screen; a failed list leaves the "default model" option usable.
+  useEffect(() => {
+    if (authoring !== 'logic') return;
+    void fetchAllModels({ api_kind: 'chat-completions' })
+      .then((rows) =>
+        setModels(
+          rows.map((model) => ({
+            id: model.id,
+            label: model.name,
+            isDefault: model.is_default_in_category,
+          })),
+        ),
+      )
+      .catch(() => setModels([]));
+  }, [authoring]);
 
   const load = useCallback(async () => {
     if (isNew) {
@@ -92,6 +117,7 @@ export function useFunctionEditorWorkspace() {
         setOutputSchemaText(
           versions[0].output_schema ? JSON.stringify(versions[0].output_schema, null, 2) : '',
         );
+        setFlow(draftFromSpec(versions[0].flow_spec));
       }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('functions.loadFailed'));
@@ -129,23 +155,36 @@ export function useFunctionEditorWorkspace() {
         toast.error(e instanceof Error ? e.message : t('editor.invalidJson'));
         return;
       }
+      let flowSpec: Record<string, unknown> | null = null;
+      if (authoring === 'logic') {
+        const draft = specFromDraft(flow);
+        setFlowErrors(draft.errors);
+        if (draft.errors.length) {
+          toast.error(t('editor.logicFixErrors'));
+          return;
+        }
+        flowSpec = draft.spec;
+      }
       if (isNew) {
         const fn = await createOntologyFunction({
           api_name: apiName,
           display_name: displayName || apiName,
           object_type_id: objectTypeId || null,
-          source_code: sourceCode,
+          source: authoring,
+          source_code: authoring === 'logic' ? '' : sourceCode,
           input_schema: inputSchema,
           output_schema: outputSchema,
+          flow_spec: flowSpec,
         });
         toast.success(t('editor.created'));
         navigate(`/function-editor/${fn.id}`, { replace: true });
         setResolvedId(fn.id);
       } else if (resolvedId) {
         const version = await saveFunctionVersion(resolvedId, {
-          source_code: sourceCode,
+          source_code: authoring === 'logic' ? '' : sourceCode,
           input_schema: inputSchema,
           output_schema: outputSchema,
+          flow_spec: flowSpec,
         });
         setLatestVersion(version?.version ?? latestVersion);
         toast.success(t('editor.saved'));
@@ -185,7 +224,8 @@ export function useFunctionEditorWorkspace() {
     setRunning(true);
     try {
       const res = await executeOntologyFunction(id, input);
-      setPreviewOutput(JSON.stringify(res, null, 2));
+      setPreviewOutput(JSON.stringify(res.output ?? res, null, 2));
+      setTrace(res.trace ?? null);
       if (res.status === 'ok') toast.success(t('editor.runOk'));
       else toast.error(res.error || t('functions.runFailed'));
     } catch (e: unknown) {
@@ -284,6 +324,11 @@ export function useFunctionEditorWorkspace() {
     publishing,
     backTo: backToListPath(authoring),
     isLogic: authoring === 'logic',
+    flow,
+    setFlow,
+    flowErrors,
+    models,
+    trace,
     canPublish: Boolean(resolvedId) && !publishing && hasUnpublishedDraft(latestVersion, publishedVersion),
     onRun,
     onDelete,

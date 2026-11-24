@@ -126,6 +126,8 @@ class OntologyFunctionExecuteResponse(BaseModel):
     error: str | None = None
     duration_ms: int | None = None
     execution_id: str | None = None
+    # Returned with the result, not only on the executions list: the run panel shows what just happened.
+    trace: dict | None = None
 
 
 class OntologyFunctionExecutionResponse(BaseModel):

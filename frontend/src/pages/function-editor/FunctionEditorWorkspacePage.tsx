@@ -3,6 +3,8 @@ import { ArrowLeft, Loader2, Play, Plug, Rocket, Save, Trash2 } from 'lucide-rea
 import { AvailableQueriesPanel } from './AvailableQueriesPanel';
 import { FunctionCodeEditor } from './FunctionCodeEditor';
 import { FunctionPreviewPanel } from './FunctionPreviewPanel';
+import { LogicFlowEditor } from './LogicFlowEditor';
+import { LogicTracePanel } from './LogicTracePanel';
 import { useFunctionEditorWorkspace } from './useFunctionEditorWorkspace';
 import './function-editor.scss';
 
@@ -12,6 +14,11 @@ export function FunctionEditorWorkspacePage() {
     isNew,
     backTo,
     isLogic,
+    flow,
+    setFlow,
+    flowErrors,
+    models,
+    trace,
     canPublish,
     publishing,
     onPublish,
@@ -160,17 +167,31 @@ export function FunctionEditorWorkspacePage() {
 
       <div className="function-editor-workspace__main">
         <div className="function-editor-workspace__center">
-          <section className="function-editor-workspace__editor" aria-label={t('editor.sourceCode')}>
+          <section className="function-editor-workspace__editor" aria-label={t('editor.logicFlow')}>
             <div className="function-editor-workspace__editor-header">
-              <span className="function-editor-workspace__editor-title">{t('editor.sourceCode')}</span>
-              <span className="function-editor-workspace__lang-badge">Python</span>
+              <span className="function-editor-workspace__editor-title">
+                {isLogic ? t('editor.logicFlow') : t('editor.sourceCode')}
+              </span>
+              <span className="function-editor-workspace__lang-badge">
+                {isLogic ? t('editor.logicBadge') : 'Python'}
+              </span>
             </div>
             <div className="function-editor-workspace__editor-body">
-              <FunctionCodeEditor
-                value={sourceCode}
-                onChange={setSourceCode}
-                ariaLabel={t('editor.sourceCode')}
-              />
+              {isLogic ? (
+                <LogicFlowEditor
+                  draft={flow}
+                  models={models}
+                  errors={flowErrors}
+                  disabled={saving}
+                  onChange={setFlow}
+                />
+              ) : (
+                <FunctionCodeEditor
+                  value={sourceCode}
+                  onChange={setSourceCode}
+                  ariaLabel={t('editor.sourceCode')}
+                />
+              )}
             </div>
           </section>
 
@@ -182,8 +203,11 @@ export function FunctionEditorWorkspacePage() {
             onInputChange={setPreviewInput}
             onRun={() => void onRun()}
           />
+          {isLogic ? <LogicTracePanel trace={trace} /> : null}
         </div>
-        <AvailableQueriesPanel currentApiName={apiName || undefined} onInsertSnippet={insertSnippet} />
+        {isLogic ? null : (
+          <AvailableQueriesPanel currentApiName={apiName || undefined} onInsertSnippet={insertSnippet} />
+        )}
       </div>
     </div>
   );

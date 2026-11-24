@@ -201,6 +201,7 @@ async def execute_function_and_audit(
         error=outcome.error,
         duration_ms=outcome.duration_ms,
         execution_id=exec_id,
+        trace=outcome.trace,
     )
 
 

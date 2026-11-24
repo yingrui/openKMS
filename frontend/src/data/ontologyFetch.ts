@@ -24,4 +24,6 @@ export type OntologyExecutionResult = {
   duration_ms?: number;
   execution_id?: string;
   log_id?: string;
+  /** Logic functions only: one record per node (prompt sent, tokens, duration). */
+  trace?: Record<string, unknown> | null;
 };

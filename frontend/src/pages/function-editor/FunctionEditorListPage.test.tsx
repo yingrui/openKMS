@@ -50,7 +50,10 @@ describe('FunctionEditorListPage', () => {
     renderAt('/function-editor');
     expect(await screen.findByText('findSimilarComplaint')).toBeInTheDocument();
     expect(fetchOntologyFunctions).toHaveBeenCalledWith({ source: 'code' });
-    expect(screen.getByRole('link', { name: 'Create function' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Create function' })).toHaveAttribute(
+      'href',
+      '/function-editor/new',
+    );
   });
 
   it('asks for logic functions on the Logic entry and offers no create button', async () => {

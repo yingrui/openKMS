@@ -27,13 +27,13 @@ export function FunctionEditorListPage() {
       title={isLogic ? t("editor.logicTitle") : t("editor.title")}
       subtitle={isLogic ? t("editor.logicSubtitle") : t("editor.subtitle")}
       actions={
-        // Creating a Logic function needs the flow spec + executor (P1); until then the entry is for reading what
-        // exists, and says so rather than offering a button that cannot finish.
-        isLogic ? undefined : (
-          <Link to="/function-editor/new" className="btn btn-primary">
-            {t("editor.create")}
-          </Link>
-        )
+        // Each list creates its own kind: the entry decides the authoring mode, so the button never asks "which".
+        <Link
+          to={isLogic ? "/function-editor/new?kind=logic" : "/function-editor/new"}
+          className="btn btn-primary"
+        >
+          {isLogic ? t("editor.createLogic") : t("editor.create")}
+        </Link>
       }
     >
       <div className="ds-table-wrap">
@@ -58,7 +58,10 @@ export function FunctionEditorListPage() {
                 <tr>
                   <td colSpan={5} className="ds-table-empty">
                     {isLogic ? (
-                      t("editor.logicEmpty")
+                      <>
+                        {t("editor.logicEmpty")}{" "}
+                        <Link to="/function-editor/new?kind=logic">{t("editor.createLogic")}</Link>
+                      </>
                     ) : (
                       <>
                         {t("editor.emptyList")}{" "}

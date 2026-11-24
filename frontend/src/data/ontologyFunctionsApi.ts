@@ -56,6 +56,7 @@ export interface OntologyFunctionVersionResponse {
   source_code: string;
   input_schema?: Record<string, unknown> | null;
   output_schema?: Record<string, unknown> | null;
+  flow_spec?: Record<string, unknown> | null;
   entrypoint: string;
   runtime: string;
   validation_result?: Record<string, unknown> | null;
@@ -97,9 +98,12 @@ export async function createOntologyFunction(body: {
   display_name: string;
   description?: string;
   object_type_id?: string | null;
+  /** `logic` means the body is a flow; v1 then carries `flow_spec` instead of Python. */
+  source?: 'code' | 'logic';
   source_code?: string;
   input_schema?: Record<string, unknown> | null;
   output_schema?: Record<string, unknown> | null;
+  flow_spec?: Record<string, unknown> | null;
 }): Promise<OntologyFunctionResponse> {
   return ontologyFetch<OntologyFunctionResponse>(
     base,
@@ -154,6 +158,7 @@ export async function saveFunctionVersion(
     source_code: string;
     input_schema?: Record<string, unknown> | null;
     output_schema?: Record<string, unknown> | null;
+    flow_spec?: Record<string, unknown> | null;
   },
 ): Promise<OntologyFunctionVersionResponse> {
   return ontologyFetch<OntologyFunctionVersionResponse>(

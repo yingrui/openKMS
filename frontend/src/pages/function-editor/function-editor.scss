@@ -492,3 +492,194 @@
     font-size: var(--text-sm);
   }
 }
+
+/* ---------- Logic function: the flow as a list of nodes ---------- */
+
+.logic-flow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+
+.logic-flow__nodes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.logic-flow__node {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.logic-flow__node-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.logic-flow__id {
+  width: 8rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.logic-flow__kind {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.logic-flow__model {
+  max-width: 16rem;
+  font-size: var(--text-sm);
+}
+
+.logic-flow__node-actions {
+  display: flex;
+  gap: var(--space-1);
+  margin-inline-start: auto;
+
+  button:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+}
+
+.logic-flow__code {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.logic-flow__limit {
+  width: 8rem;
+}
+
+.logic-flow__errors {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  list-style: none;
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}
+
+/* ---------- Logic function: the trace, one card per node ---------- */
+
+.logic-trace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.logic-trace__title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.logic-trace__nodes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.logic-trace__node {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+
+  &--failed {
+    border-color: var(--color-danger);
+  }
+}
+
+.logic-trace__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.logic-trace__ok {
+  color: var(--color-success);
+}
+
+.logic-trace__fail {
+  color: var(--color-danger);
+}
+
+.logic-trace__id {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.logic-trace__model {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.logic-trace__meta {
+  margin-inline-start: auto;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.logic-trace__error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}
+
+.logic-trace__warn {
+  margin: 0;
+  color: var(--color-warning);
+  font-size: var(--text-xs);
+}
+
+.logic-trace__block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.logic-trace__label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.logic-trace__pre {
+  margin: 0;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 12rem;
+  overflow-y: auto;
+}
