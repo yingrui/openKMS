@@ -242,7 +242,11 @@ class TestPromptPreviewRoute:
                 return kb
 
             async def execute(self, stmt):
-                return SimpleNamespace(scalars=lambda: SimpleNamespace(first=lambda: object()))
+                # `data_scope_for_agent` reads rows with `.all()`; the binding lookups elsewhere read `.scalars().first()`.
+                return SimpleNamespace(
+                    scalars=lambda: SimpleNamespace(first=lambda: object()),
+                    all=lambda: [],
+                )
 
         sent: dict = {}
         # The draft from the editor, not the stored config: an author expects the preview to follow the text.
@@ -279,12 +283,15 @@ class TestPromptPreviewRoute:
         assert out.agents_md == "# rules"
         assert sent["url"].endswith("/knowledge-bases/kb_1/prompt-preview")
         # The qa-agent receives the same things the answer path sends: tools, runtime config, installed skills.
+        # `data_scope` too: the preview shows the bound-data section the answer carries, or the author is taught the
+        # wrong thing about what the model sees.
         assert set(sent["body"]) == {
             "agent_tools",
             "agent_config",
             "installed_skills",
             "agent_name",
             "agent_description",
+            "data_scope",
         }
         assert sent["body"]["agent_config"]["prompts"]["system_prompt"] == "xxxx"
         assert sent["body"]["agent_config"]["prompts"]["agents_md"] == "# 草稿约定"

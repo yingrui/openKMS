@@ -37,7 +37,17 @@
   display: none;
 }
 
-.agents-stream__tool-row--expand[open] .agents-stream__tool-pill-chevron {
+.agents-stream__tool-row--expand[open] /* A failure's reason, on the row. */
+.agents-stream__tool-pill-error {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-error);
+}
+
+.agents-stream__tool-pill-chevron {
   transform: rotate(90deg);
 }
 
@@ -81,6 +91,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--color-text-muted);
+}
+
+/* A failure's reason, on the row. */
+.agents-stream__tool-pill-error {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-error);
 }
 
 .agents-stream__tool-pill-chevron {

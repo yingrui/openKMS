@@ -8,66 +8,40 @@ from langchain_core.tools import tool
 from .. import catalog_client
 from ..ontology_client import get_ontology_schema as fetch_ontology_schema
 from ..ontology_client import run_cypher as execute_cypher
-from ..request_context import get_tool_access_token, get_tool_knowledge_base_id
-
-
-@tool
-def list_ontology_groups(_config: RunnableConfig) -> str:
-    """ The ontology groups linked to this knowledge base. Call it before any graph query."""
-    try:
-        token = get_tool_access_token(_config)
-        kb_id = get_tool_knowledge_base_id(_config)
-        if not kb_id:
-            return "Error: knowledge_base_id missing."
-        items = catalog_client.list_kb_ontology_groups(token, kb_id)
-        if not items:
-            return json.dumps(
-                {
-                    "items": [],
-                    "message": "This knowledge base has no linked ontology groups.",
-                },
-                indent=2,
-            )
-        return json.dumps({"items": items}, indent=2, default=str)
-    except Exception as e:
-        return f"Error listing ontology groups: {e}"
+from ..request_context import get_tool_access_token, get_tool_data_scope
 
 
 @tool
 def get_ontology_schema(
     _config: RunnableConfig,
-    group_id: Annotated[str, "Group id from list_ontology_groups; empty for every linked group"] = "",
+    group_id: Annotated[str, "Group id from the bound-data section of the system prompt; empty for the full schema"] = "",
 ) -> str:
     """ One group's object types and link types — the exact labels Cypher must use."""
     try:
         token = get_tool_access_token(_config)
-        kb_id = get_tool_knowledge_base_id(_config)
         schema = fetch_ontology_schema(token)
+        linked = list(get_tool_data_scope(_config).get("ontology_groups") or [])
         if not (group_id or "").strip():
-            if kb_id:
-                linked = catalog_client.list_kb_ontology_groups(token, kb_id)
-                if linked:
-                    return json.dumps(
-                        {
-                            "message": (
-                                "This knowledge base links ontology groups — pass group_id "
-                                "from list_ontology_groups instead of the full schema."
-                            ),
-                            "linked_groups": linked,
-                        },
-                        indent=2,
-                        default=str,
-                    )
+            if linked:
+                return json.dumps(
+                    {
+                        "message": (
+                            "This agent is bound to ontology groups — pass the group id from the "
+                            "bound-data section of the system prompt instead of the full schema."
+                        ),
+                        "bound_group_count": len(linked),
+                        "bound_groups": linked,
+                    },
+                    indent=2,
+                    default=str,
+                )
             return json.dumps(schema, indent=2, default=str)
 
-        if not kb_id:
-            return "Error: knowledge_base_id missing."
-        linked = catalog_client.list_kb_ontology_groups(token, kb_id)
-        allowed = {g.get("ontology_group_id") for g in linked}
-        if group_id not in allowed:
+        allowed = {str(g.get("id")) for g in linked}
+        if allowed and group_id not in allowed:
             return (
-                f"Error: ontology group '{group_id}' is not linked to this knowledge base. "
-                "Call list_ontology_groups first."
+                f"Error: ontology group '{group_id}' is not bound to this agent. "
+                "Use a group id from the bound-data section of the system prompt."
             )
         related = catalog_client.get_ontology_group_related(token, group_id)
         ot_ids = {str(x) for x in (related.get("object_type_ids") or [])}
@@ -86,6 +60,8 @@ def get_ontology_schema(
             if src in ot_names or tgt in ot_names:
                 link_types.append(lt)
         scoped = {
+            "object_type_count": len(object_types),
+            "link_type_count": len(link_types),
             "object_types": object_types,
             "link_types": link_types,
             "group_id": group_id,
@@ -118,5 +94,5 @@ def run_cypher(
         return f"Error executing Cypher: {e}"
 
 
-ontology_tools = [list_ontology_groups, get_ontology_schema, run_cypher]
+ontology_tools = [get_ontology_schema, run_cypher]
 

@@ -95,8 +95,9 @@ function ToolIoBlock({
 }
 
 function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }> }) {
+  const { t } = useTranslation('agents');
   const { step } = part;
-  const kind = toolKindLabel(step.name);
+  const kind = toolKindLabel(step.name, t);
   const detail = toolDetailLabel(step.name, step.input);
   const running = step.status === 'running';
   const hasIo = Boolean(step.input || step.output || step.error);
@@ -107,7 +108,13 @@ function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }
     return (
       <div className={rowClass}>
         <div className="agents-stream__tool-pill-line">
-          <ToolPillHead name={step.name} kind={kind} running={running} detail={detail} />
+          <ToolPillHead
+            name={step.name}
+            kind={kind}
+            running={running}
+            detail={detail}
+            error={step.error}
+          />
         </div>
       </div>
     );
@@ -122,6 +129,7 @@ function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }
           running={running}
           expandable
           detail={detail}
+          error={step.error}
         />
       </summary>
       <ToolIoBlock name={step.name} input={step.input} output={step.output} error={step.error} />

@@ -128,15 +128,6 @@ def get_dataset(access_token: str, dataset_id: str) -> dict[str, Any]:
         return resp.json()
 
 
-def list_kb_ontology_groups(access_token: str, knowledge_base_id: str) -> list[dict[str, Any]]:
-    url = f"{_base()}/api/knowledge-bases/{knowledge_base_id}/ontology-groups"
-    with httpx.Client(timeout=30.0) as client:
-        resp = client.get(url, headers=_headers(access_token))
-        resp.raise_for_status()
-        data = resp.json()
-    return data if isinstance(data, list) else []
-
-
 def get_ontology_group_related(access_token: str, group_id: str) -> dict[str, Any]:
     url = f"{_base()}/api/ontology/groups/{group_id}/related"
     with httpx.Client(timeout=30.0) as client:

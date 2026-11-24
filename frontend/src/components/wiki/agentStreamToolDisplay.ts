@@ -67,9 +67,77 @@ function legacyGitInputDisplay(name: string, obj: Record<string, unknown>): stri
   return undefined;
 }
 
-export function toolKindLabel(name: string): string {
-  if (name.startsWith('git_')) return 'Shell';
+/**
+ * The workforce tools, which are named in the catalogue (`qa-agent/tool_catalog.py`) and used to fall through to
+ * `name.replace(/_/g, ' ')` — a row that read "search knowledge base" and told a reader nothing about the question.
+ *
+ * The key is a label in the `agents` namespace, not the tool's name: a tool id is a contract with the model, and a
+ * label is copy that has to read well in two languages.
+ */
+const WORKFORCE_TOOL_KINDS: Record<string, string> = {
+  search_knowledge_base: 'knowledgeSearch',
+  search_web: 'webSearch',
+  read_document_toc: 'documentToc',
+  read_document_section: 'documentSection',
+  get_ontology_schema: 'graphSchema',
+  run_cypher: 'graphQuery',
+  get_semantic_model: 'model',
+  query_semantic_model: 'modelQuery',
+  run_sql: 'sql',
+  list_files: 'files',
+  read_file: 'read',
+  write_file: 'write',
+  run_python: 'python',
+  run_command: 'shell',
+};
+
+export function toolKindLabel(name: string, t?: (key: string, options?: Record<string, unknown>) => string): string {
+  const workforceKind = WORKFORCE_TOOL_KINDS[name];
+  if (workforceKind) {
+    return t ? t(`stream.toolKind.${workforceKind}`, { defaultValue: workforceKind }) : workforceKind;
+  }
+  if (name.startsWith('git_')) return t ? t('stream.toolKind.shell') : 'Shell';
   return TOOL_KIND[name] ?? name.replace(/_/g, ' ');
+}
+
+function workforceDetail(name: string, input?: string): string | undefined {
+  if (!input?.trim()) return undefined;
+  let obj: Record<string, unknown>;
+  try {
+    obj = JSON.parse(input) as Record<string, unknown>;
+  } catch {
+    return firstLine(input, 60);
+  }
+  const text = (key: string): string =>
+    typeof obj[key] === 'string' ? (obj[key] as string).trim() : '';
+
+  switch (name) {
+    case 'search_knowledge_base':
+    case 'search_web':
+      return text('query') ? firstLine(text('query'), 60) : undefined;
+    case 'run_cypher':
+      // The Cypher is the intent here; the model reads and writes it, so it is the best label available.
+      return firstLine(text('query').replace(/\s+/g, ' '), 60) || undefined;
+    case 'run_command':
+      return firstLine(text('command'), 60) || undefined;
+    case 'run_python':
+      return firstLine(text('code').split('\n').find((l) => l.trim()) ?? '', 60) || undefined;
+    case 'read_document_toc':
+    case 'read_document_section':
+      return text('document_id') || undefined;
+    case 'read_file':
+    case 'write_file':
+    case 'list_files':
+      return basename(text('path')) || undefined;
+    case 'get_ontology_schema':
+      return text('group_id') || undefined;
+    case 'get_semantic_model':
+    case 'query_semantic_model':
+    case 'run_sql':
+      return text('model_id') || undefined;
+    default:
+      return undefined;
+  }
 }
 
 /** Parse delegated subagent task input from stream `subagent_start.name`. */
@@ -165,6 +233,7 @@ export function toolUsesCodeIcon(name: string): boolean {
 /** Generate a short human-readable detail label from tool name + input (e.g. "package.json", "git status"). */
 export function toolDetailLabel(name: string, input?: string): string | undefined {
   if (!input?.trim()) return undefined;
+  if (WORKFORCE_TOOL_KINDS[name]) return workforceDetail(name, input);
 
   if (name === 'read_file' || name === 'edit_file' || name === 'write_file') {
     try {

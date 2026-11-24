@@ -182,7 +182,23 @@
   "stream": {
     "replyAria": "Agent reply",
     "subagentLabel": "Subagent",
-    "toolsFold": "{{count}} tool calls"
+    "toolsFold": "{{count}} tool calls",
+    "toolKind": {
+      "knowledgeSearch": "Knowledge search",
+      "webSearch": "Web search",
+      "documentToc": "Document outline",
+      "documentSection": "Document section",
+      "graphSchema": "Graph schema",
+      "graphQuery": "Graph query",
+      "model": "Semantic model",
+      "modelQuery": "Metric query",
+      "sql": "SQL query",
+      "files": "Files",
+      "read": "Read",
+      "write": "Write",
+      "python": "Python",
+      "shell": "Shell"
+    }
   },
   "files": {
     "title": "Project files",

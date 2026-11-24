@@ -30,7 +30,7 @@ capability turns `"all"` into that list — `{"code_execution": ["exec.shell"]}`
 case a capability-level switch cannot express. Tool ids (`catalog.sql`, `exec.shell`) are declared in the catalogue and
 survive a rename of the callable function; the callables themselves are named the way other agent platforms name theirs —
 verb first, no `_tool` suffix: `read_file`, `write_file`, `run_command`, `run_sql`. Where an object has a settled name in
-the data world it keeps it: `list_semantic_models` / `get_semantic_model` / `query_semantic_model`, because "semantic
+the data world it keeps it: `get_semantic_model` / `query_semantic_model`, because "semantic
 model" is the term Ossie's spec, Power BI and dbt's semantic layer all use — a bare `models` would read as LLM models.
 
 Limits are shown on the thing they limit: the command allow list constrains `run_command` only — `run_python`

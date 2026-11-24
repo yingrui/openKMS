@@ -57,11 +57,31 @@ def label_sources(sources: list[SourceItem], answer: str) -> list[SourceItem]:
     return labelled
 
 
-def ground(sources: list[SourceItem], answer: str) -> GroundingReport:
-    """The answer's overall grounding: how many of its numbers appear in *any* cited result."""
+#: How much of one tool result is kept for the grounding comparison. A count ("34 object types") appears in the first
+#: lines; the rest is data the answer cannot quote wholesale.
+_TOOL_MATERIAL_CHARS = 20_000
+
+
+def ground(
+    sources: list[SourceItem],
+    answer: str,
+    *,
+    material: list[str] | None = None,
+) -> GroundingReport:
+    """How many of the answer's numbers appear in what this turn actually fetched.
+
+    `sources` answer "can the reader check this?"; `material` answers "did the agent make the number up?" — and they are
+    different sets. A structural answer ("the graph has 34 object types") counts a tool's output that is deliberately
+    *not* a citation, so comparing only against sources declared every such number invented and the policy refused it.
+
+    Numbers are still checked: a number in neither a source nor a tool output is fabricated, and `enforce` refuses it.
+    """
     evidence: list[Any] = []
     for source in sources:
         evidence.extend(_evidence_of(source))
+    for text in material or []:
+        if text and text.strip():
+            evidence.append(text[:_TOOL_MATERIAL_CHARS])
     report = traceable_numbers(answer, evidence)
     return GroundingReport(
         traceable=report["traceable"],
@@ -82,7 +102,7 @@ def grounding_warnings(report: GroundingReport, mode: str) -> list[str]:
     missing = report.total - report.traceable
     listed = ", ".join(_format_number(v) for v in report.untraced[:5]) if report.untraced else ""
     return [
-        f"{missing} of {report.total} number(s) in this answer do not appear in any cited source"
+        f"{missing} of {report.total} number(s) in this answer appear in nothing this turn fetched"
         + (f": {listed}" if listed else "")
     ]
 

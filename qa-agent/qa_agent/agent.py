@@ -49,6 +49,8 @@ from .request_context import (
     reset_request_session_id,
     set_request_access_token,
     set_request_knowledge_base_id,
+    set_request_data_scope,
+    reset_request_data_scope,
     set_request_rerank,
     set_request_sandbox,
     set_request_session_id,
@@ -154,6 +156,7 @@ PROMPT_SECTION_KEYS = (
     "instruction",
     "conventions",
     "skills",
+    "bound_data",
     "tools",
     "policy",
     "context",
@@ -169,6 +172,7 @@ def prompt_sections(
     installed_skills: list[dict[str, Any]] | None = None,
     agent_name: str | None = None,
     agent_description: str | None = None,
+    data_scope: dict[str, Any] | None = None,
 ) -> list[tuple[str, str]]:
     """The system prompt as labelled pieces, in the order the model reads them.
 
@@ -236,6 +240,28 @@ def prompt_sections(
         if blocks:
             sections.append(("skills", "Installed skills:\n" + "\n\n".join(blocks)))
 
+    # Bound data: the agent's own models and groups, named here because the two listing tools that used to answer this
+    # cost a round trip per turn to read a fact the backend already knows.
+    scope_models = list((data_scope or {}).get("semantic_models") or [])
+    scope_groups = list((data_scope or {}).get("ontology_groups") or [])
+    if scope_models or scope_groups:
+        lines = ["Data bound to this agent — these ids are what the data tools accept:"]
+        if scope_models:
+            lines.append(
+                "- Semantic models: "
+                + ", ".join(f"{m.get('name') or m.get('id')} (`{m.get('id')}`)" for m in scope_models)
+            )
+        if scope_groups:
+            lines.append(
+                "- Ontology groups: "
+                + ", ".join(f"{g.get('name') or g.get('id')} (`{g.get('id')}`)" for g in scope_groups)
+            )
+        if scope_groups:
+            lines.append(
+                "Pass a group id to `get_ontology_schema`; `run_cypher` sees only these groups' labels."
+            )
+        sections.append(("bound_data", "\n".join(lines)))
+
     sections.append(
         (
             "tools",
@@ -272,6 +298,7 @@ def _build_system_prompt(
     installed_skills: list[dict[str, Any]] | None = None,
     agent_name: str | None = None,
     agent_description: str | None = None,
+    data_scope: dict[str, Any] | None = None,
 ) -> str:
     """The joined prompt. Built from `prompt_sections` so the preview and the answer use the same pieces."""
     return "\n\n".join(
@@ -284,8 +311,25 @@ def _build_system_prompt(
             installed_skills,
             agent_name,
             agent_description,
+            data_scope,
         )
     )
+
+
+#: Tools whose results a reader can be pointed at. A turn that ran none of them has nothing to cite — its evidence is
+#: structure (which schema exists, which groups are bound), and "cite something" would refuse an answer the graph can
+#: support.
+CITABLE_TOOL_NAMES = frozenset(
+    {
+        "search_knowledge_base",
+        "search_web",
+        "read_document_section",
+        "read_document_toc",
+        "run_cypher",
+        "query_semantic_model",
+        "run_sql",
+    }
+)
 
 
 def _apply_answer_policy(
@@ -297,6 +341,7 @@ def _apply_answer_policy(
     sources: list[Any],
     warnings: list[str],
     tool_ran: bool,
+    citable_tool_ran: bool | None = None,
 ) -> tuple[str, bool, dict[str, Any] | None, list[str]]:
     """Refuse in the open when a configured policy fires, and cap the answer when the agent asked for a cap.
 
@@ -310,7 +355,13 @@ def _apply_answer_policy(
     reason: str | None = None
     if ground_mode == "enforce" and grounding.untraced:
         reason = "unsourced_numbers"
-    elif tool_ran and agent_config_module.require_citations(agent_config) and not sources:
+    elif (
+        tool_ran
+        # Nothing citable ran: the answer drew on structure, and the citation rule would demand evidence that cannot exist.
+        and (citable_tool_ran if citable_tool_ran is not None else True)
+        and agent_config_module.require_citations(agent_config)
+        and not sources
+    ):
         reason = "no_citations"
 
     if reason is not None:
@@ -378,6 +429,7 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
             state.get("installed_skill_packages"),
             state.get("agent_name"),
             state.get("agent_description"),
+            state.get("data_scope"),
         ),
         conversation_history=state["conversation_history"],
         question=state["question"],
@@ -488,6 +540,7 @@ def finalize_node(state: dict[str, Any]) -> dict[str, Any]:
             state.get("installed_skill_packages"),
             state.get("agent_name"),
             state.get("agent_description"),
+            state.get("data_scope"),
         ),
         conversation_history=state["conversation_history"],
         question=state["question"],
@@ -565,6 +618,7 @@ def invoke_agent(
     web_search_connector_id: str | None = None,
     agent_name: str | None = None,
     agent_description: str | None = None,
+    data_scope: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Invoke the agent and return answer + sources."""
     from .langfuse_client import build_langgraph_trace_config, current_trace_id
@@ -584,6 +638,7 @@ def invoke_agent(
     h_sess = set_request_session_id(session_id or "")
     h_sbx = set_request_sandbox(sandbox_settings)
     h_ws = set_web_search_connector(web_search_connector_id or "")
+    h_scope = set_request_data_scope(data_scope)
     h_rr = set_request_rerank(
         agent_config_module.rerank_override(agent_config),
         agent_config_module.rerank_model_id(agent_config),
@@ -642,7 +697,11 @@ def invoke_agent(
         )
         # Label, do not filter: `used` when the answer's numbers came from a source, `consulted` when the query merely ran.
         display = label_sources(display, answer)
-        grounding = ground(display, answer)
+        grounding = ground(
+            display,
+            answer,
+            material=_tool_material(result.get("messages") or []),
+        )
         ground_mode = agent_config_module.require_grounded_numbers(agent_config)
         grounding.policy = ground_mode
         warnings = grounding_warnings(grounding, ground_mode)
@@ -654,6 +713,13 @@ def invoke_agent(
             sources=display,
             warnings=warnings,
             tool_ran=bool(result.get("messages")),
+            citable_tool_ran=_citable_tool_ran(
+                {
+                    str(getattr(m, "name", "") or "")
+                    for m in result.get("messages") or []
+                    if getattr(m, "type", "") == "tool"
+                }
+            ),
         )
         msgs = list(result.get("messages") or [])
         logger.info(
@@ -698,6 +764,7 @@ def invoke_agent(
         reset_request_sandbox(h_sbx)
         reset_web_search_connector(h_ws)
         reset_request_rerank(h_rr)
+        reset_request_data_scope(h_scope)
         reset_request_access_token(h)
 
 
@@ -756,6 +823,11 @@ class _StreamCollector:
     ledger: EvidenceLedger = field(default_factory=EvidenceLedger)
     schema_names: list[str] = field(default_factory=list)
     schema_seen: set[str] = field(default_factory=set)
+    #: Which tools ran, so the citation rule can ask whether any of them produces something citable.
+    tool_names: set[str] = field(default_factory=set)
+    #: Tool outputs, for "did it make this number up" — not citations. A structural answer counts a schema; the schema is
+    #: not a source, so grounding against sources alone called the count invented.
+    tool_outputs: list[str] = field(default_factory=list)
     cypher_runs: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
     tool_inputs_by_run: dict[str, Any] = field(default_factory=dict)
     graph_events: int = 0
@@ -829,6 +901,10 @@ class _StreamCollector:
             len(out_raw),
         )
         logger.debug("tool_end #%d preview=%r", self.tool_ends, preview_text(out_raw, 500))
+        self.tool_names.add(name)
+        material = _coerce_tool_output(out)
+        if material.strip():
+            self.tool_outputs.append(material)
         self._collect_evidence(name, data.get("input"), out, run_id)
         return _ndjson_line({"type": "tool_end", "run_id": run_id, "name": name, "output": _tool_io_preview(out, 10_000)})
 
@@ -894,6 +970,26 @@ class _StreamCollector:
         return self.ledger.snapshot()
 
 
+def _citable_tool_ran(names: set[str]) -> bool:
+    return bool(names & CITABLE_TOOL_NAMES)
+
+
+def _tool_material(messages: list[Any]) -> list[str]:
+    """Every tool result in a finished turn, as text: the comparison set for "was this number made up".
+
+    Sources answer "can the reader check it"; this answers "did it come from somewhere". The graph schema is the second
+    without being the first.
+    """
+    out: list[str] = []
+    for message in messages or []:
+        if getattr(message, "type", "") != "tool":
+            continue
+        text = _coerce_tool_output(message)
+        if text.strip():
+            out.append(text)
+    return out
+
+
 def _turn_state(
     *,
     knowledge_base_id: str,
@@ -914,6 +1010,7 @@ def _turn_state(
     installed_skill_packages: list[dict[str, Any]] | None = None,
     agent_name: str | None = None,
     agent_description: str | None = None,
+    data_scope: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
         "knowledge_base_id": knowledge_base_id,
@@ -939,6 +1036,7 @@ def _turn_state(
         "installed_skill_packages": installed_skill_packages or [],
         "agent_name": agent_name,
         "agent_description": agent_description,
+        "data_scope": data_scope,
         "top_p": agent_config_module.top_p(agent_config),
         "max_tokens": agent_config_module.max_tokens(agent_config),
     }
@@ -959,6 +1057,7 @@ async def astream_agent_ndjson(
     web_search_connector_id: str | None = None,
     agent_name: str | None = None,
     agent_description: str | None = None,
+    data_scope: dict[str, Any] | None = None,
 ) -> AsyncIterator[bytes]:
     """NDJSON stream: ``delta`` / ``tool_*`` events (wiki-copilot-compatible), then ``done`` or ``error``."""
     from .langfuse_client import build_langgraph_trace_config, current_trace_id, get_langfuse_callback
@@ -978,6 +1077,7 @@ async def astream_agent_ndjson(
     h_sess = set_request_session_id(session_id or "")
     h_sbx = set_request_sandbox(sandbox_settings)
     h_ws = set_web_search_connector(web_search_connector_id or "")
+    h_scope = set_request_data_scope(data_scope)
     h_rr = set_request_rerank(
         agent_config_module.rerank_override(agent_config),
         agent_config_module.rerank_model_id(agent_config),
@@ -1104,7 +1204,7 @@ async def astream_agent_ndjson(
                 yield _ndjson_line({"type": "delta", "t": answer})
 
         sources_list = label_sources(sources_list, answer)
-        grounding = ground(sources_list, answer)
+        grounding = ground(sources_list, answer, material=collector.tool_outputs)
         ground_mode = agent_config_module.require_grounded_numbers(agent_config)
         grounding.policy = ground_mode
         warnings = grounding_warnings(grounding, ground_mode)
@@ -1143,4 +1243,5 @@ async def astream_agent_ndjson(
         reset_request_sandbox(h_sbx)
         reset_web_search_connector(h_ws)
         reset_request_rerank(h_rr)
+        reset_request_data_scope(h_scope)
         reset_request_access_token(h)

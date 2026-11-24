@@ -39,6 +39,9 @@ class AskRequest(BaseModel):
     session_id: str | None = None
     #: The tool ledger: `{capability_id: "all" | [tool_id, ...]}`. Omitted → the core capabilities.
     agent_tools: dict[str, Any] | None = None
+    #: What this agent may read: `{semantic_models: [{id, name}], ontology_groups: [{id, name}]}`. Resolved by the
+    #: backend from the agent's bindings, so the tools neither guess nor fetch it per call.
+    data_scope: dict[str, Any] | None = None
     #: The KB's agent configuration (`AgentConfig` on the backend, already validated there). Absent → defaults, which are
     #: today's behaviour: top_k 5, `try_anyway` answer policy, no workspace.
     agent_config: dict[str, Any] | None = None
@@ -56,6 +59,8 @@ class AskRequest(BaseModel):
     #: Identity, part of the prompt rather than decoration on a list row.
     agent_name: str | None = None
     agent_description: str | None = None
+    #: What this agent may read, so the preview shows the same bound-data section the answer carries.
+    data_scope: dict[str, Any] | None = None
 
 
 class GroundingReport(BaseModel):
@@ -103,6 +108,8 @@ class PromptPreviewRequest(BaseModel):
     skills_registry: str | None = None
     agent_name: str | None = None
     agent_description: str | None = None
+    #: What this agent may read, so the preview shows the same bound-data section the answer carries.
+    data_scope: dict[str, Any] | None = None
 
 
 class PromptPreviewResponse(BaseModel):

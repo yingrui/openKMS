@@ -265,7 +265,7 @@ POST /knowledge-bases/{kb_id}/ask
 | System prompt | `qa_agent/agent.py` (`_build_system_prompt`) | identity + instruction + conventions + installed skill text + *"If the context or skills don't provide enough information, say so honestly."* No retrieval block: passages arrive through `search_knowledge_base` at answer time. Tool usage is **not** restated here either — the tool definitions carry it |
 | Tool usage | the tools' own docstrings (`qa_agent/skills/*.py`) | `@tool` docstrings become the function descriptions the model receives — what it does, when to use it, parameters, limits. One copy, exported for the configuration screen by `qa_agent/tool_catalog.py` (`GET /tools`) |
 | Installed skills | registry text, fetched via `/internal-api/skills/{registry}/{id}/{version}/prompt` | procedures and judgement the author installed; nothing here describes a tool signature |
-| Tools | `qa_agent/skills/{catalog,ontology,page_index}.py` | `list_semantic_models`, `get_semantic_model` (metrics + fields + tables), `query_semantic_model`, `run_sql` |
+| Tools | `qa_agent/skills/{catalog,ontology,page_index}.py` | `get_semantic_model` (metrics + fields + tables), `query_semantic_model`, `run_sql`; `get_ontology_schema`, `run_cypher` |
 | Evidence | `qa_agent/kb_answer_sources.py:459` (`select_display_sources`) | Page Index → Catalog → ontology → RAG chunks, **first non-empty wins**; a catalog entry is created from **any successful** query tool call |
 | LLM config | `qa_agent/backend_defaults.py` | resolved from the backend's model registry unless env overrides it |
 
@@ -605,3 +605,20 @@ the convention on a registered model produced `…/v4/v1/rerank` and every call 
 
 The choice reaches the tool through a request-scoped value (`set_request_rerank`), like the sandbox and the web-search
 connector: LangGraph runs tools in a copied context, so the graph's state dict is not visible to them.
+
+
+### Bound data is in the prompt, not behind a tool
+
+Two listing tools used to answer "what may I read": `list_semantic_models` and `list_ontology_groups`. That was a round
+trip per turn for a fact the backend already knows, and one of them asked a knowledge-base route that no longer exists.
+Both are gone. The agent's bindings travel with the request (`data_scope`) and appear as a `bound_data` section:
+
+```
+Data bound to this agent — these ids are what the data tools accept:
+- Semantic models: Stock (`745a2fbc-…`)
+- Ontology groups: 量化交易 (`og-f60a8921eac3`)
+```
+
+The listing is **bound-only**: before this, `list_semantic_models` fell back to every model the owner could read, while
+the Tools screen said the capability needs a bound model. The tool and the screen now agree, and the tools' `model_id` /
+`group_id` parameters point at the prompt section instead of at a function that no longer exists.

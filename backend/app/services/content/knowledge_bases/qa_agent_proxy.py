@@ -9,6 +9,7 @@ from fastapi import HTTPException
 
 from app.config import settings
 from app.models.knowledge_base import KnowledgeBase
+from app.services.workforce.data_scope import data_scope_for_agent
 from app.schemas.kb_agent_config import parse_agent_config
 
 CORE_AGENT_SKILLS = ("knowledge_search", "ontology", "catalog", "page_index")
@@ -52,6 +53,7 @@ def ask_agent_body(
     installed_skills: dict[str, str] | None = None,
     skills_registry: str | None = None,
     web_search_connector_id: str | None = None,
+    data_scope: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """The qa-agent request body.
 
@@ -64,6 +66,10 @@ def ask_agent_body(
         "access_token": access_token,
         "agent_tools": _kb_tools(kb) if agent_tools is None else agent_tools,
     }
+    # What this agent may read, resolved here because the bindings live on it. The tools used to fetch a knowledge
+    # base's version of this over a route that no longer exists.
+    if data_scope is not None:
+        body["data_scope"] = data_scope
     # The published prompt version, resolved by the caller (it has the session). Absent means the built-in text.
     if system_prompt:
         body["system_prompt"] = system_prompt
@@ -121,6 +127,7 @@ async def ask_agent_body_for_kb(db: Any, *, kb: KnowledgeBase, **kwargs: Any) ->
         kb=kb,
         agent_tools=agent_tools_for(agent) if agent is not None else _kb_tools(kb),
         agent_config=runtime_config(kb, agent),
+        data_scope=await data_scope_for_agent(db, agent),
         **kwargs,
     )
 

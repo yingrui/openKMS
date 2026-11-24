@@ -12,22 +12,6 @@ from ..request_context import get_tool_access_token
 
 
 
-@tool
-def list_semantic_models(_config: RunnableConfig) -> str:
-    """ The semantic models you may read. Call it before any number."""
-    try:
-        token = get_tool_access_token(_config)
-        items = catalog_client.list_semantic_models(token)
-        if not items:
-            return json.dumps(
-                {"items": [], "message": "No readable semantic models."},
-                indent=2,
-            )
-        return json.dumps({"items": items}, indent=2, default=str)
-    except Exception as e:
-        return f"Error listing semantic models: {e}"
-
-
 def _resolve_resource(token: str, model_id: str, resource_id: str | None) -> str | None:
     """The data resource a restricted model needs; a public model ignores it.
 
@@ -88,7 +72,7 @@ def _model_tables(token: str, model: dict[str, Any]) -> list[dict[str, Any]]:
 
 @tool
 def get_semantic_model(
-    model_id: Annotated[str, "Model id from list_semantic_models"],
+    model_id: Annotated[str, "Model id from the bound-data section of the system prompt"],
     _config: RunnableConfig,
 ) -> str:
     """One model's metrics, fields, tables, data assertions and `ai_context`."""
@@ -169,7 +153,7 @@ def get_semantic_model(
 
 @tool
 def query_semantic_model(
-    model_id: Annotated[str, "Model id from list_semantic_models"],
+    model_id: Annotated[str, "Model id from the bound-data section of the system prompt"],
     _config: RunnableConfig,
     metric: Annotated[str | None, "Saved metric name; preferred over expression"] = None,
     expression: Annotated[str | None, "Aggregate expression (e.g. SUM(amount)) when no saved metric fits"] = None,
@@ -213,7 +197,7 @@ def query_semantic_model(
 
 @tool
 def run_sql(
-    model_id: Annotated[str, "Model id from list_semantic_models"],
+    model_id: Annotated[str, "Model id from the bound-data section of the system prompt"],
     sql: Annotated[str, "One SELECT or WITH…SELECT over this model's tables"],
     _config: RunnableConfig,
     limit: Annotated[int | None, "Maximum rows"] = 100,
@@ -232,7 +216,6 @@ def run_sql(
 
 
 catalog_tools = [
-    list_semantic_models,
     get_semantic_model,
     query_semantic_model,
     run_sql,

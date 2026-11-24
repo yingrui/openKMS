@@ -108,6 +108,7 @@ async def _ask_impl(kb_id: str, request: AskRequest) -> AskResponse:
         agent_description=request.agent_description,
         system_prompt=request.system_prompt,
         prompt_version=request.prompt_version,
+        data_scope=request.data_scope,
     )
 
     sources: list[SourceItem] = []
@@ -164,6 +165,7 @@ def _stream_response(kb_id: str, request: AskRequest) -> StreamingResponse:
             installed_skills=request.installed_skills,
             skills_registry=request.skills_registry,
             web_search_connector_id=request.web_search_connector_id,
+            data_scope=request.data_scope,
         ),
         media_type="application/x-ndjson",
         headers={
@@ -194,6 +196,7 @@ def _prompt_preview_impl(kb_id: str, request: PromptPreviewRequest) -> PromptPre
         ),
         agent_name=request.agent_name,
         agent_description=request.agent_description,
+        data_scope=request.data_scope,
     )
     # No retrieval block to mark: passages arrive through `search_knowledge_base` at answer time, not before it.
     system_prompt = "\n\n".join(text for _key, text in sections)

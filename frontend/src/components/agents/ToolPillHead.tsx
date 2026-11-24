@@ -8,9 +8,11 @@ interface Props {
   expandable?: boolean;
   icon?: LucideIcon;
   detail?: string;
+  /** Why it failed. Shown on the row: "it went red" is not a reason a reader can act on. */
+  error?: string;
 }
 
-export function ToolPillHead({ name, kind, running, expandable, icon, detail }: Props) {
+export function ToolPillHead({ name, kind, running, expandable, icon, detail, error }: Props) {
   const Icon = icon ?? (toolUsesCodeIcon(name) ? Code2 : Terminal);
 
   return (
@@ -19,6 +21,11 @@ export function ToolPillHead({ name, kind, running, expandable, icon, detail }: 
       <span className="agents-stream__tool-pill-kind">{kind}</span>
       {detail ? (
         <span className="agents-stream__tool-pill-detail" title={detail}>{detail}</span>
+      ) : null}
+      {error ? (
+        <span className="agents-stream__tool-pill-error" title={error}>
+          {error.length > 70 ? `${error.slice(0, 69)}…` : error}
+        </span>
       ) : null}
       {running ? <span className="agents-stream__tool-pill-running">…</span> : null}
       {expandable ? (

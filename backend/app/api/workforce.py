@@ -97,6 +97,7 @@ from app.services.workforce.agent_config import (
     runtime_config,
 )
 from app.services.workforce.credentials import mint_credential
+from app.services.workforce.data_scope import data_scope_for_agent
 from app.services.workforce.usage import ACTIVITY_WINDOW_DAYS, empty_usage, usage_by_agent
 from app.services.workforce.read import (
     agent_detail,
@@ -504,6 +505,9 @@ async def agent_prompt_preview(
         "installed_skills": dict(agent.installed_skills or {}),
         "agent_name": agent.name,
         "agent_description": agent.description,
+        # The preview must show the same bound-data section the answer carries; omitting it teaches the author the wrong
+        # thing about what the model sees.
+        "data_scope": await data_scope_for_agent(db, agent),
     }
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -889,6 +893,9 @@ async def ask_agent(
         web_search_connector_id=web_search_connector_id(agent),
         agent_name=agent.name,
         agent_description=agent.description,
+        # What this agent may read. Sent with the request so a tool does not fetch it per call — and so its scope is
+        # this agent's bindings rather than every model its owner can read.
+        data_scope=await data_scope_for_agent(db, agent),
     )
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:

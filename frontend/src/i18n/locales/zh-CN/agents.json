@@ -181,7 +181,23 @@
   "stream": {
     "replyAria": "助手回复",
     "subagentLabel": "子代理",
-    "toolsFold": "{{count}} 次工具调用"
+    "toolsFold": "{{count}} 次工具调用",
+    "toolKind": {
+      "knowledgeSearch": "检索知识库",
+      "webSearch": "联网搜索",
+      "documentToc": "查看文档目录",
+      "documentSection": "读取文档章节",
+      "graphSchema": "获取图谱结构",
+      "graphQuery": "查询知识图谱",
+      "model": "查看语义模型",
+      "modelQuery": "查询指标",
+      "sql": "执行 SQL",
+      "files": "查看文件",
+      "read": "读取文件",
+      "write": "写入文件",
+      "python": "运行 Python",
+      "shell": "执行命令"
+    }
   },
   "files": {
     "title": "项目文件",

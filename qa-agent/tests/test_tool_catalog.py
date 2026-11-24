@@ -102,7 +102,6 @@ class TestToolLedger:
 
         names = [t.name for t in tools_for({"catalog": "all"})]
         assert names == [
-            "list_semantic_models",
             "get_semantic_model",
             "query_semantic_model",
             "run_sql",

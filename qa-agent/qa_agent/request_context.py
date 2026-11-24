@@ -125,6 +125,29 @@ def reset_request_rerank(handle: Any) -> None:
     _rerank.reset(handle)
 
 
+#: What this request may read, resolved by the backend: `{semantic_models: [...], ontology_groups: [...]}`.
+_scope: ContextVar[dict | None] = ContextVar("qa_agent_data_scope", default=None)
+
+
+def set_request_data_scope(scope: dict | None) -> Any:
+    return _scope.set(scope if isinstance(scope, dict) else None)
+
+
+def reset_request_data_scope(handle: Any) -> None:
+    _scope.reset(handle)
+
+
+def get_tool_data_scope(config: dict[str, Any] | None = None) -> dict:
+    """The models and groups this turn may read; `{}` when the caller sent none."""
+    ctx = _scope.get()
+    if isinstance(ctx, dict):
+        return ctx
+    c = (config or {}).get("configurable") or {}
+    if isinstance(c, dict) and isinstance(c.get("data_scope"), dict):
+        return dict(c["data_scope"])
+    return {}
+
+
 def get_tool_rerank(config: dict[str, Any] | None = None) -> tuple[bool | None, str | None]:
     """`(switch, model id)` for this turn's rerank stage.
 
