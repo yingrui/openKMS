@@ -49,6 +49,7 @@ from app.services.ontology.object_neo4j_store import (
 from app.services.ontology.query_filters import parse_prop_filters
 from app.services.ontology.object_neo4j_store import (
     fetch_object_from_neo4j,
+    graph_property_keys,
     get_first_neo4j_datasource,
     merge_object_row_to_neo4j,
     link_rel_type,
@@ -469,6 +470,61 @@ async def delete_object_type(
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
     await db.delete(obj_type)
+
+
+@router.post("/{object_type_id}/properties/from-graph", response_model=ObjectTypeResponse)
+async def declare_properties_from_graph(
+    object_type_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE)),
+):
+    """Add the properties the graph actually holds to this type's declaration.
+
+    A chart can only use a declared property, so a type that declares three of its eleven keys is partly unusable —
+    and one that declares none cannot be charted at all. The graph is the read path, so it is the honest source for
+    "which properties exist"; this endpoint appends what is missing and never removes (a type that has not been
+    indexed yet would otherwise lose everything).
+    """
+    obj_type = await db.get(ObjectType, object_type_id)
+    if not obj_type:
+        raise HTTPException(status_code=404, detail="Object type not found")
+    neo4j_ds = await get_first_neo4j_datasource(db)
+    if not neo4j_ds:
+        raise HTTPException(status_code=409, detail="Ontology objects are read from the graph.")
+    label = object_label(obj_type)
+    try:
+        keys = await run_with_neo4j_driver(neo4j_ds, lambda driver: graph_property_keys(driver, label))
+    except NEO4J_ERRORS as e:
+        raise HTTPException(status_code=503, detail=f"Ontology graph unavailable: {e}") from e
+    declared = [
+        dict(prop)
+        for prop in (obj_type.properties or [])
+        if isinstance(prop, dict) and prop.get("name")
+    ]
+    known = {str(prop["name"]) for prop in declared}
+    types = {
+        "String": "string",
+        "Long": "number",
+        "Double": "number",
+        "Boolean": "boolean",
+        "List": "array",
+        "Date": "date",
+        "DateTime": "datetime",
+    }
+    added = []
+    for name in sorted(keys):
+        if name in known or name.startswith("_"):
+            continue
+        declared.append(
+            {"name": name, "type": types.get(str(keys[name]), "string"), "required": False}
+        )
+        added.append(name)
+    if added:
+        obj_type.properties = declared
+        await db.commit()
+        await db.refresh(obj_type)
+    return obj_type
 
 
 async def _index_object_type_dataset_to_neo4j_session(

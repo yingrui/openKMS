@@ -5,7 +5,7 @@ import { ObjectSetActionOutcome } from './ObjectSetActionOutcome';
 import { ObjectSetChartAdd } from './ObjectSetChartAdd';
 import { ObjectSetCharts } from './ObjectSetCharts';
 import { ObjectSetComparePicker } from './ObjectSetComparePicker';
-import type { ChartSettings } from './objectSetChartsModel';
+import type { ChartSettings, ChartSpec } from './objectSetChartsModel';
 import type { ActionOutcome } from './useObjectSetOutcome';
 
 /**
@@ -25,8 +25,7 @@ export function ObjectSetChartBoard({
   typeId,
   search,
   filters,
-  chartProperties,
-  chartSettings,
+  chartSpecs,
   chartOptions,
   addable,
   compare,
@@ -49,14 +48,13 @@ export function ObjectSetChartBoard({
   typeId: string;
   search: string;
   filters: string[];
-  chartProperties: string[];
-  chartSettings: Record<string, ChartSettings>;
+  chartSpecs: ChartSpec[];
   chartOptions: { value: string; label: string }[];
   addable: { value: string; label: string }[];
   compare?: { filters: string[]; label: string };
   refreshKey: number;
   onLoaded: (charts: ObjectAggregateChart[]) => void;
-  onSettings: (prop: string, next: ChartSettings) => void;
+  onSettings: (key: string, next: ChartSettings) => void;
   onPick: (prop: string, value: string) => void;
   onPickPair: (prop: string, value: string, splitProp: string, splitValue: string) => void;
   onPickRange: (prop: string, from: number, to: number) => void;
@@ -89,8 +87,7 @@ export function ObjectSetChartBoard({
         typeId={typeId}
         search={search}
         filters={filters}
-        properties={chartProperties}
-        settings={chartSettings}
+        specs={chartSpecs}
         options={chartOptions}
         compare={compare}
         refreshKey={refreshKey}
@@ -101,7 +98,7 @@ export function ObjectSetChartBoard({
         onPickRange={onPickRange}
         onRemove={onRemove}
         onMove={onMove}
-        canMove={chartProperties.length > 1}
+        canMove={chartSpecs.length > 1}
         footer={<ObjectSetChartAdd options={addable} onAdd={onAdd} />}
       />
     </>

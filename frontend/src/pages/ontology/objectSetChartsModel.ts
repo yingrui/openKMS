@@ -12,6 +12,9 @@ import type { ObjectAggregateChart } from '../../data/ontologyApi';
  */
 export function isIdentifierChart(chart: Pick<ObjectAggregateChart, 'values'>): boolean {
   const values = chart.values ?? [];
+  /* A measure changes what a bar means: eight scenarios each holding one object is still eight values worth
+     reading, because the bar is the measure, not the count. Only a count chart can be all-identifiers. */
+  if (values.some((value) => value.measure !== undefined)) return false;
   return values.length > 1 && values.every((value) => value.count === 1);
 }
 
@@ -44,6 +47,24 @@ export interface ChartSettings {
 
 export interface ChartSpec extends ChartSettings {
   prop: string;
+}
+
+/**
+ * A chart's identity is what it asks, not which property it asks about.
+ *
+ * "Fill rate per plan" and "waste per plan" are two charts over the same property; keying them by the property
+ * would make the second one overwrite the first one's settings. The signature is also what a save stores, so two
+ * charts of one property survive a round trip.
+ */
+export function chartKey(spec: ChartSpec): string {
+  const metric = spec.metric && spec.metric !== 'count' ? spec.metric : 'count';
+  return [spec.prop, metric, spec.measure ?? '', spec.split ?? ''].join('\u0000');
+}
+
+export function addSpec(specs: ChartSpec[], spec: ChartSpec): ChartSpec[] {
+  return specs.some((existing) => chartKey(existing) === chartKey(spec))
+    ? specs
+    : [...specs, spec];
 }
 
 /**

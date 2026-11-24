@@ -17,6 +17,7 @@ import { EmptyState } from '../../styles/design-system/EmptyState';
 import { Loading } from '../../styles/design-system/Loading';
 import { ObjectSetChartSettings } from './ObjectSetChartSettings';
 import {
+  chartKey,
   deltaLabel,
   dimensionalCharts,
   formatMeasure,
@@ -25,6 +26,7 @@ import {
   isHistogram,
   isTimeline,
   type ChartSettings,
+  type ChartSpec,
 } from './objectSetChartsModel';
 
 /**
@@ -40,8 +42,7 @@ export function ObjectSetCharts({
   typeId,
   search,
   filters,
-  properties,
-  settings,
+  specs,
   options,
   compare,
   onSettings,
@@ -58,23 +59,21 @@ export function ObjectSetCharts({
   typeId: string;
   search: string;
   filters: string[];
-  /** Property names to chart, in order. The caller decides (prominent properties first). */
-  properties: string[];
-  /** Per-property metric/measure/split, keyed by the property string. */
-  settings?: Record<string, ChartSettings>;
+  /** The charts to draw, in order. Each one carries its own metric/measure/split. */
+  specs: ChartSpec[];
   /** Properties a chart may measure or split by — the type's own and its neighbours'. */
   options: { value: string; label: string }[];
   /** A second set to aggregate every chart over, when the caller asked for a comparison. */
   compare?: { filters: string[]; search?: string; label: string };
-  onSettings?: (prop: string, next: ChartSettings) => void;
+  onSettings?: (key: string, next: ChartSettings) => void;
   onPick: (prop: string, value: string) => void;
   /** A cross-tab cell is two conditions, not one: the row *and* the column. */
   onPickPair?: (prop: string, value: string, splitProp: string, splitValue: string) => void;
   /** A histogram bar is an interval, so picking one adds two conditions rather than one. */
   onPickRange?: (prop: string, from: number, to: number) => void;
   /** Chart editing: removing a chart is not removing its condition (the docs are explicit). */
-  onRemove?: (prop: string) => void;
-  onMove?: (prop: string, direction: -1 | 1) => void;
+  onRemove?: (key: string) => void;
+  onMove?: (key: string, direction: -1 | 1) => void;
   canMove?: boolean;
   /** Rendered as the last cell of the grid — the "add chart" card. */
   footer?: React.ReactNode;
@@ -91,22 +90,18 @@ export function ObjectSetCharts({
   /* `refreshKey` only means "read again": it is not part of the request, so it is read through a ref and used as a
      cache-buster instead of a dependency of the request itself. */
   const refresh = useRef(refreshKey ?? 0);
-  const [charts, setCharts] = useState<ObjectAggregateChart[]>([]);
+  /* Each drawn chart carries the spec it came from: two charts may read one property with different settings, and
+     the settings are what tell them apart. */
+  const [rows, setRows] = useState<{ spec: ChartSpec; chart: ObjectAggregateChart }[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
   /* Settings are part of the request, so charts that share them travel in one call and keep their order. */
-  const groups = useMemo(
-    () =>
-      groupBySettings(
-        properties.map((prop) => ({ prop, ...(settings?.[prop] ?? {}) }))
-      ),
-    [properties, settings]
-  );
+  const groups = useMemo(() => groupBySettings(specs), [specs]);
 
   const load = useCallback(async () => {
     if (!typeId || groups.length === 0) {
-      setCharts([]);
+      setRows([]);
       setLoading(false);
       return;
     }
@@ -126,22 +121,34 @@ export function ObjectSetCharts({
           })
         )
       );
-      const byProp = new Map<string, ObjectAggregateChart>();
-      for (const response of responses) {
-        for (const chart of response.charts) byProp.set(chart.prop, chart);
-      }
-      const ordered = groups.flatMap((group) => group.props.map((prop) => byProp.get(prop)));
+      /* Two charts may ask about the same property with different settings, so the results are matched by the
+         chart's identity — property plus what it measures — not by the property alone. */
+      const byKey = new Map<string, ObjectAggregateChart>();
+      groups.forEach((group, index) => {
+        const response = responses[index];
+        for (const spec of specs.filter((chart) =>
+          group.props.includes(chart.prop) &&
+          chartKey({ prop: chart.prop, ...group.settings }) === chartKey(chart)
+        )) {
+          const hit = response.charts.find((chart) => chart.prop === spec.prop);
+          if (hit) byKey.set(chartKey(spec), hit);
+        }
+      });
       // Identifiers are answered but not drawn: twelve bars of height one look like a failure, not a distribution.
-      const drawn = dimensionalCharts(ordered.filter(Boolean) as ObjectAggregateChart[]);
-      setCharts(drawn);
-      loadedRef.current?.(drawn);
+      const drawn = specs
+        .map((spec) => ({ spec, chart: byKey.get(chartKey(spec)) }))
+        .filter((row): row is { spec: ChartSpec; chart: ObjectAggregateChart } =>
+          Boolean(row.chart) && dimensionalCharts([row.chart as ObjectAggregateChart]).length > 0
+        );
+      setRows(drawn);
+      loadedRef.current?.(drawn.map((row) => row.chart));
     } catch {
-      setCharts([]);
+      setRows([]);
       setFailed(true);
     } finally {
       setLoading(false);
     }
-  }, [typeId, search, filters, groups, compare]);
+  }, [typeId, search, filters, groups, compare, specs]);
 
   useEffect(() => {
     if ((refreshKey ?? 0) === refresh.current) return;
@@ -168,12 +175,13 @@ export function ObjectSetCharts({
 
   if (loading) return <Loading label={t('objectSet.chartsLoading')} />;
   if (failed) return <EmptyState title={t('objectSet.chartsFailed')} />;
-  if (charts.length === 0) return <EmptyState title={t('objectSet.chartsEmpty')} />;
+  if (rows.length === 0) return <EmptyState title={t('objectSet.chartsEmpty')} />;
 
   return (
     <div className="object-set-charts">
-      {charts.map((chart) => {
-        const chartSettings = settings?.[chart.prop] ?? {};
+      {rows.map(({ spec, chart }) => {
+        const chartSettings: ChartSettings = spec;
+        const key = chartKey(spec);
         const measureLabel =
           chartSettings.metric && chartSettings.metric !== 'count'
             ? `${chartSettings.metric} ${chartSettings.measure ?? ''}`.trim()
@@ -201,7 +209,7 @@ export function ObjectSetCharts({
               pick: () => onPick(chart.prop, value.value),
             }));
         return (
-          <figure key={chart.prop} className="object-set-chart">
+          <figure key={key} className="object-set-chart">
             <figcaption className="object-set-chart__title">
               <span className="object-set-chart__name">
                 {chart.prop}
@@ -240,7 +248,7 @@ export function ObjectSetCharts({
                     <ObjectSetChartSettings
                       settings={chartSettings}
                       options={options}
-                      onChange={(next) => onSettings(chart.prop, next)}
+                      onChange={(next) => onSettings(key, next)}
                     />
                   ) : null}
                   {canMove && onMove ? (
@@ -249,7 +257,7 @@ export function ObjectSetCharts({
                         type="button"
                         className="object-set-chart__action"
                         aria-label={t('objectSet.chartMoveBack', { name: chart.prop })}
-                        onClick={() => onMove(chart.prop, -1)}
+                        onClick={() => onMove(key, -1)}
                       >
                         ‹
                       </button>
@@ -257,7 +265,7 @@ export function ObjectSetCharts({
                         type="button"
                         className="object-set-chart__action"
                         aria-label={t('objectSet.chartMoveForward', { name: chart.prop })}
-                        onClick={() => onMove(chart.prop, 1)}
+                        onClick={() => onMove(key, 1)}
                       >
                         ›
                       </button>
@@ -268,7 +276,7 @@ export function ObjectSetCharts({
                       type="button"
                       className="object-set-chart__action"
                       aria-label={t('objectSet.chartRemove', { name: chart.prop })}
-                      onClick={() => onRemove(chart.prop)}
+                      onClick={() => onRemove(key)}
                     >
                       ×
                     </button>

@@ -175,6 +175,32 @@ def instance_row_for_neo4j(obj_type: ObjectType, instance: ObjectInstance) -> di
     return row
 
 
+def flatten_props(props: dict, *, prefix: str = "", depth: int = 0) -> dict:
+    """A row as Neo4j properties: nested maps become `parent.child`, because a node cannot hold a map.
+
+    A measure stored inside a JSON blob is unreadable to charts and filters — `kpis.fill_rate` could only ever be a
+    string comparison. Flattening keeps the parent in the name, so the same spelling works in a filter, a chart and a
+    metric once the property list knows about it.
+    """
+    out: dict = {}
+    for key, value in props.items():
+        name = f"{prefix}{key}"
+        if isinstance(value, dict) and value and depth < 2:
+            out.update(flatten_props(value, prefix=f"{name}.", depth=depth + 1))
+        elif isinstance(value, (str, int, float, bool)):
+            out[name] = value
+        elif isinstance(value, (list, tuple)) and all(
+            isinstance(item, (str, int, float, bool)) for item in value
+        ):
+            out[name] = list(value)
+        elif value is None or value == {} or value == []:
+            continue
+        else:
+            # Anything a property cannot hold (a list of maps, a datetime) keeps its old meaning: text.
+            out[name] = str(value)
+    return out
+
+
 def merge_object_row_to_neo4j(session, label: str, columns: list[str], row: dict) -> int:
     """MERGE one flat property map into Neo4j. Returns 1 if a node was written, else 0.
 
@@ -185,20 +211,38 @@ def merge_object_row_to_neo4j(session, label: str, columns: list[str], row: dict
     values = [props.get(column) for column in columns]
     if any(value is None for value in values):
         return 0
-    safe_props: dict = {}
-    for k, v in props.items():
-        if isinstance(v, (str, int, float, bool)):
-            safe_props[k] = v
-        else:
-            safe_props[k] = str(v)
+    safe_props = flatten_props(props)
     identity = ", ".join(f"`{column}`: $k{i}" for i, column in enumerate(columns))
     params = {f"k{i}": safe_props.get(column) for i, column in enumerate(columns)}
     params["props"] = safe_props
+    # `SET n = $props` rather than `+=`: a mirror node holds what its source row holds, and a key the row no longer
+    # has must disappear. With `+=` a renamed or flattened column leaves its old value behind, which then reads as
+    # current data — the same class of wrongness as a stale node.
     session.run(
-        f"MERGE (n:{label} {{{identity}}}) SET n += $props",
+        f"MERGE (n:{label} {{{identity}}}) SET n = $props",
         **params,
     )
     return 1
+
+
+def graph_property_keys(driver, label: str) -> dict[str, str | None]:
+    """`{property name: a representative value type}` over the nodes of one label.
+
+    The graph is the read path, so the properties a chart can use are the ones the nodes carry — not only the ones
+    the type happens to declare. The two drift apart exactly when a source gains a column (or a nested blob is
+    flattened into leaves), and a type that declares nothing is otherwise unusable.
+    """
+    keys: dict[str, str | None] = {}
+    with driver.session() as session:
+        for record in session.run(
+            f"MATCH (n:{label}) WITH n LIMIT 200 UNWIND keys(n) AS k "
+            "RETURN k, collect(valueType(n[k]))[0] AS t"
+        ):
+            keys[str(record["k"])] = record["t"]
+        # A property that only some nodes carry is still real: scan the label fully for names, not for types.
+        for record in session.run(f"MATCH (n:{label}) UNWIND keys(n) AS k RETURN DISTINCT k"):
+            keys.setdefault(str(record["k"]), None)
+    return keys
 
 
 def _match_map(columns: list[str]) -> str:

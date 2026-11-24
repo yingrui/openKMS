@@ -32,6 +32,17 @@ describe('an identifier is not a dimension', () => {
     expect(isIdentifierChart(chart([]))).toBe(false);
   });
 
+  it('keeps a measure chart: one object per value is the normal case for a KPI', () => {
+    expect(
+      isIdentifierChart({
+        values: [
+          { value: 'a', count: 1, measure: 0.579 },
+          { value: 'b', count: 1, measure: 0.692 },
+        ],
+      })
+    ).toBe(false);
+  });
+
   it('keeps an identifier that happens to repeat once', () => {
     expect(isIdentifierChart(chart([['a', 1], ['b', 1], ['a', 2]]))).toBe(false);
   });

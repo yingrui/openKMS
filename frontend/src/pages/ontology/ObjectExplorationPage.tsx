@@ -41,7 +41,7 @@ import { ExplorationLayoutMenu } from './ExplorationLayoutMenu';
 import { ObjectExplorationSaveDialog } from './ObjectExplorationSaveDialog';
 import { ObjectSetFilters } from './ObjectSetFilters';
 import { formatFilter } from './objectSetCondition';
-import { settingsOf, type ChartSettings, type ChartSpec } from './objectSetChartsModel';
+import { addSpec, chartKey, type ChartSpec } from './objectSetChartsModel';
 import { parseSortList, toggleSortTerm } from './objectSetSort';
 import { useChartCatalog } from './useChartCatalog';
 import './ObjectSet.scss';
@@ -91,10 +91,9 @@ export function ObjectExplorationPage() {
   const [saveShared, setSaveShared] = useState(false);
   const [saving, setSaving] = useState(false);
   /* The layout this type opens with: personal, then global, then the built-in one (prominent props). */
-  const [chartProps, setChartProps] = useState<string[] | null>(null);
-  /* A chart's metric/measure/split, keyed by the property string: the property names the chart, the settings say
-     what it asks. Keeping them apart leaves ordering and the layout's chart list exactly as they were. */
-  const [chartSettings, setChartSettings] = useState<Record<string, ChartSettings>>({});
+  /* The charts on screen, in order. A chart is its property plus what it measures and splits by — two charts may
+     read one property with different measures. */
+  const [chartSpecs, setChartSpecs] = useState<ChartSpec[] | null>(null);
   /* Which properties the results table shows, in order — part of the layout, so it is saved with the exploration. */
   const [layoutColumns, setLayoutColumns] = useState<string[]>([]);
   const [links, setLinks] = useState<LinkTypeResponse[]>([]);
@@ -230,21 +229,20 @@ export function ObjectExplorationPage() {
     //
     // A saved exploration already names its charts, and the two requests race — so this one yields when the URL
     // carries `?saved=`.
-    if (!savedId) setChartProps(null);
+    if (!savedId) setChartSpecs(null);
     void fetchExplorationLayout(typeId)
       .then((res) => {
         if (cancelled) return;
         const charts = (res.layout?.charts as ChartSpec[] | undefined) ?? [];
         const props = charts.map((chart) => chart.prop).filter(Boolean);
         if (!savedId) {
-          setChartProps(props.length > 0 ? props : null);
-          setChartSettings(props.length > 0 ? settingsOf(charts) : {});
+          setChartSpecs(props.length > 0 ? charts : null);
           setLayoutColumns((res.layout?.columns as string[] | undefined) ?? []);
         }
         setLayoutChoices(res.available ?? []);
       })
       .catch(() => {
-        if (!cancelled && !savedId) setChartProps(null);
+        if (!cancelled && !savedId) setChartSpecs(null);
       });
     return () => {
       cancelled = true;
@@ -293,11 +291,7 @@ export function ObjectExplorationPage() {
         // A saved exploration is a **view**, not just a filter: its charts, their order and the first perspective it
         // opened with are part of what was saved. Conditions alone reopened as whatever the type defaults to.
         const charts = (row.layout?.charts as ChartSpec[] | undefined) ?? [];
-        const chartNames = charts.map((chart) => chart.prop).filter(Boolean);
-        if (chartNames.length > 0) {
-          setChartProps(chartNames);
-          setChartSettings(settingsOf(charts));
-        }
+        if (charts.length > 0) setChartSpecs(charts);
         setLayoutColumns((row.layout?.columns as string[] | undefined) ?? []);
         // The updater form keeps the current params without making this effect depend on them.
         setSearchParams(
@@ -327,8 +321,14 @@ export function ObjectExplorationPage() {
     objectType,
     links,
     typeById,
-    chartProps,
+    chartProps: chartSpecs ? chartSpecs.map((spec) => spec.prop) : null,
   });
+
+  /* The specs on screen, seeded by the layout and edited by the caller. */
+  const specs: ChartSpec[] = useMemo(
+    () => chartSpecs ?? chartProperties.map((prop) => ({ prop })),
+    [chartProperties, chartSpecs]
+  );
 
   const visibleColumns = useMemo(() => {
     const known = new Set(properties.map((property) => property.name));
@@ -336,20 +336,15 @@ export function ObjectExplorationPage() {
     return chosen.length > 0 ? chosen : properties.map((property) => property.name);
   }, [layoutColumns, properties]);
 
-  const removeChart = (prop: string) => {
-    setChartProps(chartProperties.filter((name) => name !== prop));
-    setChartSettings((current) => {
-      const { [prop]: _removed, ...rest } = current;
-      return rest;
-    });
-  };
+  const removeChart = (key: string) =>
+    setChartSpecs(specs.filter((spec) => chartKey(spec) !== key));
   const moveChart = (prop: string, direction: -1 | 1) => {
-    const index = chartProperties.indexOf(prop);
+    const index = specs.findIndex((spec) => chartKey(spec) === prop);
     const target = index + direction;
-    if (index < 0 || target < 0 || target >= chartProperties.length) return;
-    const next = [...chartProperties];
+    if (index < 0 || target < 0 || target >= specs.length) return;
+    const next = [...specs];
     [next[index], next[target]] = [next[target], next[index]];
-    setChartProps(next);
+    setChartSpecs(next);
   };
 
   /* Pivot targets: every link touching this type, pointing at the object on the other side. */
@@ -394,7 +389,7 @@ export function ObjectExplorationPage() {
 
   /** The layout currently on screen — what "save as my default" stores. */
   const currentLayout = () => ({
-    charts: chartProperties.map((prop) => ({ prop, ...(chartSettings[prop] ?? {}) })),
+    charts: specs,
     columns: visibleColumns,
     sorts: parseSortList(sort).map((term) => ({ prop: term.prop, desc: term.desc })),
     perspective,
@@ -422,7 +417,7 @@ export function ObjectExplorationPage() {
     setLayoutSaving(true);
     try {
       await saveExplorationLayout(typeId, {}, 'personal');
-      setChartProps(null);
+      setChartSpecs(null);
       toast.success(t('objectSet.layoutReset'));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('objectSet.layoutFailed'));
@@ -505,9 +500,7 @@ export function ObjectExplorationPage() {
             onUse={(choice) => {
               setLayoutOpen(false);
               const charts = (choice.layout?.charts as ChartSpec[] | undefined) ?? [];
-              const props = charts.map((chart) => chart.prop).filter(Boolean);
-              setChartProps(props.length > 0 ? props : null);
-              setChartSettings(props.length > 0 ? settingsOf(charts) : {});
+              setChartSpecs(charts.length > 0 ? charts : null);
               setLayoutColumns((choice.layout?.columns as string[] | undefined) ?? []);
             }}
             onSave={(scope) => {
@@ -609,22 +602,22 @@ export function ObjectExplorationPage() {
           typeId={typeId}
           search={search}
           filters={filters}
-          chartProperties={chartProperties}
-          chartSettings={chartSettings}
+          chartSpecs={specs}
           chartOptions={chartOptions}
           addable={addable}
           compare={compareSet ?? undefined}
           refreshKey={outcome.refreshKey}
           onLoaded={outcome.onLoaded}
-          onSettings={(prop, next) => {
-            /* A setting that says nothing is not a setting: drop the keys instead of storing empty ones. */
-            const cleaned: ChartSettings = {};
+          onSettings={(key, next) => {
+            /* A setting that says nothing is not a setting: keep only the keys that were chosen. */
+            const current = specs.find((spec) => chartKey(spec) === key);
+            const cleaned: ChartSpec = { prop: current?.prop ?? key };
             if (next.metric && next.metric !== 'count') {
               cleaned.metric = next.metric;
               if (next.measure) cleaned.measure = next.measure;
             }
             if (next.split) cleaned.split = next.split;
-            setChartSettings((current) => ({ ...current, [prop]: cleaned }));
+            setChartSpecs(specs.map((spec) => (chartKey(spec) === key ? cleaned : spec)));
           }}
           onPick={(prop, value) => setFilters([...filters, formatFilter(prop, 'eq', value)])}
           onPickPair={(prop, value, splitProp, splitValue) =>
@@ -645,7 +638,7 @@ export function ObjectExplorationPage() {
           }
           onRemove={removeChart}
           onMove={moveChart}
-          onAdd={(prop) => setChartProps([...chartProperties, prop])}
+          onAdd={(prop) => setChartSpecs(addSpec(specs, { prop }))}
         />
       ) : rowsLoading ? (
         <Loading label={t('objectSet.rowsLoading')} />

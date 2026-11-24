@@ -260,6 +260,22 @@ def cmd_sync_neo4j_type(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def cmd_refresh_properties(ns: argparse.Namespace) -> None:
+    path = f"/api/object-types/{ns.type_id}/properties/from-graph"
+    confirm_or_abort(
+        action=f"declare the graph's properties on object type {ns.type_id!r}",
+        method="POST",
+        path=path,
+        body=None,
+        yes=ns.yes,
+        dry_run=ns.dry_run,
+    )
+    with client() as s:
+        r = s.post(path)
+    r.raise_for_status()
+    print_json(r.json())
+
+
 # ---------------------------------------------------------------------------
 # argparse wiring
 # ---------------------------------------------------------------------------
@@ -403,3 +419,12 @@ def add_subparser(sub) -> None:
     )
     add_write_flags(snt)
     snt.set_defaults(fn=cmd_sync_neo4j_type)
+
+    rp = sp.add_parser(
+        "refresh-properties",
+        help="Append the properties the graph actually holds to the type's declaration "
+        "(POST /api/object-types/{id}/properties/from-graph)",
+    )
+    rp.add_argument("--type-id", required=True)
+    add_write_flags(rp)
+    rp.set_defaults(fn=cmd_refresh_properties)
