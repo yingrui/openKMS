@@ -60,12 +60,12 @@ async def test_source_filter_reaches_both_the_page_and_the_count(monkeypatch):
         function_service, "latest_versions_by_fn", lambda *_a, **_k: _async({})
     )
 
-    await function_service.list_functions(db, limit=10, offset=0, source="llm")
+    await function_service.list_functions(db, limit=10, offset=0, source="logic")
 
     assert len(db.statements) == 2
     for stmt in db.statements:
         assert "ontology_functions.source = " in _where_sql(stmt)
-        assert "llm" in _params(stmt).values()
+        assert "logic" in _params(stmt).values()
 
 
 @pytest.mark.asyncio

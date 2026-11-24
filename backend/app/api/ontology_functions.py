@@ -56,7 +56,7 @@ async def list_functions(
     _: None = Depends(require_any_permission(PERM_ONTOLOGY_READ)),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    source: Literal["code", "llm"] | None = Query(None),
+    source: Literal["code", "logic"] | None = Query(None),
 ):
     items, total = await function_service.list_functions(
         db, limit=limit, offset=offset, source=source

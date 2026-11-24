@@ -254,7 +254,7 @@ async def list_functions(
     offset: int,
     source: str | None = None,
 ) -> tuple[list[OntologyFunctionResponse], int]:
-    """`source` splits the two authoring modes over one registry: `code` (today) and `llm` (Logic functions)."""
+    """`source` splits the two authoring modes over one registry: `code` (source files) and `logic` (Logic functions)."""
     count_q = select(func.count()).select_from(OntologyFunction)
     rows_q = select(OntologyFunction)
     if source:
