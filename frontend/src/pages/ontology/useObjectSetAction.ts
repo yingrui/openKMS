@@ -13,7 +13,9 @@ import {
  * running, and the report at the end. A batch is not a transaction — the answer says how many were refused, and the
  * rows are re-read rather than patched locally, because the action may have changed what they sort by.
  */
-export function useObjectSetAction(onFinished: () => void) {
+export function useObjectSetAction(
+  onFinished: (outcome: { name: string; succeeded: number }) => void
+) {
   const { t } = useTranslation('explore');
   const [openAction, setOpenAction] = useState<OntologyActionTypeResponse | null>(null);
   const [busy, setBusy] = useState(false);
@@ -32,8 +34,9 @@ export function useObjectSetAction(onFinished: () => void) {
       });
       if (result.failed > 0) toast.warning(message);
       else toast.success(message);
+      const name = openAction.display_name;
       setOpenAction(null);
-      onFinished();
+      onFinished({ name, succeeded: result.succeeded });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('objectSet.actionFailed'));
     } finally {

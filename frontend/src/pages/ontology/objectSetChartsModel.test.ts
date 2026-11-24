@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   dimensionalCharts,
   deltaLabel,
+  diffCharts,
   formatMeasure,
   groupBySettings,
   intervalLabel,
@@ -104,5 +105,42 @@ describe('a difference reads as a share', () => {
     expect(deltaLabel(12, 10)).toBe('+20%');
     expect(deltaLabel(5, 0)).toBe('+∞');
     expect(deltaLabel(0, 0)).toBe('0');
+  });
+});
+
+describe('an action is verified against the numbers it changed', () => {
+  const chart = (prop: string, values: [string, number][]) => ({
+    prop,
+    values: values.map(([value, count]) => ({ value, count })),
+  });
+
+  it('lists only the values that moved, biggest move first', () => {
+    const changes = diffCharts(
+      [chart('region', [['华东', 36], ['华北', 33]])],
+      [chart('region', [['华东', 30], ['华北', 33]])]
+    );
+    expect(changes).toEqual([
+      { prop: 'region', moved: [{ value: '华东', before: 36, after: 30 }] },
+    ]);
+  });
+
+  it('treats a value that appeared or disappeared as 0, not as missing', () => {
+    const changes = diffCharts(
+      [chart('tier', [['A', 2]])],
+      [chart('tier', [['A', 2], ['B', 1]])]
+    );
+    expect(changes[0].moved).toEqual([{ value: 'B', before: 0, after: 1 }]);
+  });
+
+  it('reports nothing when a chart did not move at all', () => {
+    expect(
+      diffCharts([chart('tier', [['A', 2]])], [chart('tier', [['A', 2]])])
+    ).toEqual([]);
+  });
+
+  it('compares measures when the chart measures something', () => {
+    const before = [{ prop: 'x', values: [{ value: 'p', count: 2, measure: 10 }] }];
+    const after = [{ prop: 'x', values: [{ value: 'p', count: 2, measure: 7 }] }];
+    expect(diffCharts(before, after)[0].moved).toEqual([{ value: 'p', before: 10, after: 7 }]);
   });
 });

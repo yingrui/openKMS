@@ -425,7 +425,11 @@
     "compareAll": "Everyone (all objects)",
     "compareExplorations": "A saved exploration",
     "chartComparedWith": "vs {{name}}",
-    "chartBaseline": "Baseline"
+    "chartBaseline": "Baseline",
+    "outcomeTitle": "{{name}} ran on {{count}} objects — what moved",
+    "outcomeNothing": "No chart changed. The action did not touch a property these charts count.",
+    "outcomeDismiss": "Dismiss",
+    "outcomeMore": "+{{count}} more"
   },
   "explorerSections": {
     "explorations": "Explorations",

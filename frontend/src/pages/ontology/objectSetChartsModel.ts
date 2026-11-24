@@ -89,3 +89,47 @@ export function deltaLabel(current: number, baseline: number): string {
   const rounded = Math.round(pct);
   return `${rounded > 0 ? '+' : ''}${rounded}%`;
 }
+
+export interface ChartChange {
+  prop: string;
+  /** Only the values that moved — a chart where nothing moved is not a change. */
+  moved: { value: string; before: number; after: number }[];
+}
+
+/** The number a bar stands for: the measure when the chart measures something, its object count otherwise. */
+function barValue(row: { count: number; measure?: number }): number {
+  return row.measure ?? row.count;
+}
+
+/**
+ * What an action did, per chart, by comparing the numbers before it ran with the numbers after.
+ *
+ * This is the fourth step of the loop — analyse, choose, act, **verify**. Without it an action is a message that was
+ * sent; with it, the same screen answers "did it change anything, and where". A chart that moved nowhere is reported
+ * as nothing rather than as an empty section, because "no change" is the answer to the question that was asked.
+ */
+export function diffCharts(
+  before: ObjectAggregateChart[],
+  after: ObjectAggregateChart[]
+): ChartChange[] {
+  const beforeByProp = new Map(before.map((chart) => [chart.prop, chart]));
+  const changes: ChartChange[] = [];
+  for (const chart of after) {
+    const previous = beforeByProp.get(chart.prop);
+    if (!previous) continue;
+    const beforeValues = new Map((previous.values ?? []).map((row) => [row.value, barValue(row)]));
+    const afterValues = new Map((chart.values ?? []).map((row) => [row.value, barValue(row)]));
+    const values = new Set([...beforeValues.keys(), ...afterValues.keys()]);
+    const moved: ChartChange['moved'] = [];
+    for (const value of values) {
+      const was = beforeValues.get(value) ?? 0;
+      const now = afterValues.get(value) ?? 0;
+      if (Math.abs(now - was) > 1e-9) moved.push({ value, before: was, after: now });
+    }
+    if (moved.length > 0) {
+      moved.sort((a, b) => Math.abs(b.after - b.before) - Math.abs(a.after - a.before));
+      changes.push({ prop: chart.prop, moved });
+    }
+  }
+  return changes;
+}

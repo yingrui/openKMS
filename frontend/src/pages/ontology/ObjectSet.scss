@@ -904,3 +904,86 @@
   font-size: var(--text-xs);
   color: var(--color-text);
 }
+
+/* What an action changed: the fourth step of the loop, on the same screen as the first. */
+.object-set-outcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+}
+
+.object-set-outcome__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.object-set-outcome__title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.object-set-outcome__dismiss {
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.object-set-outcome__empty {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.object-set-outcome__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-xs);
+
+  li {
+    display: flex;
+    gap: var(--space-2);
+  }
+}
+
+.object-set-outcome__prop {
+  min-width: 8rem;
+  color: var(--color-text-muted);
+}
+
+.object-set-outcome__moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.object-set-outcome__move {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--color-text);
+}
+
+.object-set-outcome__was {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.object-set-outcome__now {
+  color: var(--color-accent);
+}

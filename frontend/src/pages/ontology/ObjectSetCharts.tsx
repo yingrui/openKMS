@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { fetchObjectAggregate, type ObjectAggregateChart } from '../../data/ontologyApi';
@@ -41,6 +41,8 @@ export function ObjectSetCharts({
   onMove,
   canMove,
   footer,
+  onLoaded,
+  refreshKey,
 }: {
   typeId: string;
   search: string;
@@ -65,8 +67,19 @@ export function ObjectSetCharts({
   canMove?: boolean;
   /** Rendered as the last cell of the grid — the "add chart" card. */
   footer?: React.ReactNode;
+  /** The numbers on screen, so the caller can compare them with the numbers after an action. */
+  onLoaded?: (charts: ObjectAggregateChart[]) => void;
+  /** Bump to re-read: an action has changed the objects this set contains. */
+  refreshKey?: number;
 }) {
   const { t } = useTranslation('explore');
+  /* The callback is read from a ref: passing it as a dependency would re-run the load on every parent render, and the
+     load sets state, so that is a loop rather than a refresh. */
+  const loadedRef = useRef(onLoaded);
+  loadedRef.current = onLoaded;
+  /* `refreshKey` only means "read again": it is not part of the request, so it is read through a ref and used as a
+     cache-buster instead of a dependency of the request itself. */
+  const refresh = useRef(refreshKey ?? 0);
   const [charts, setCharts] = useState<ObjectAggregateChart[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -108,7 +121,9 @@ export function ObjectSetCharts({
       }
       const ordered = groups.flatMap((group) => group.props.map((prop) => byProp.get(prop)));
       // Identifiers are answered but not drawn: twelve bars of height one look like a failure, not a distribution.
-      setCharts(dimensionalCharts(ordered.filter(Boolean) as ObjectAggregateChart[]));
+      const drawn = dimensionalCharts(ordered.filter(Boolean) as ObjectAggregateChart[]);
+      setCharts(drawn);
+      loadedRef.current?.(drawn);
     } catch {
       setCharts([]);
       setFailed(true);
@@ -116,6 +131,12 @@ export function ObjectSetCharts({
       setLoading(false);
     }
   }, [typeId, search, filters, groups, compare]);
+
+  useEffect(() => {
+    if ((refreshKey ?? 0) === refresh.current) return;
+    refresh.current = refreshKey ?? 0;
+    void load();
+  }, [refreshKey, load]);
 
   useEffect(() => {
     void load();

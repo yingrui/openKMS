@@ -34,8 +34,10 @@ import { ObjectSetChartAdd } from './ObjectSetChartAdd';
 import { ObjectSetComparePicker } from './ObjectSetComparePicker';
 import { useObjectSetCompare } from './useObjectSetCompare';
 import { ObjectSetActionMenu } from './ObjectSetActionMenu';
+import { ObjectSetActionOutcome } from './ObjectSetActionOutcome';
 import { ObjectSetResultsTable } from './ObjectSetResultsTable';
 import { useObjectSetAction } from './useObjectSetAction';
+import { useObjectSetOutcome } from './useObjectSetOutcome';
 import { ExplorationLayoutMenu } from './ExplorationLayoutMenu';
 import { ObjectExplorationSaveDialog } from './ObjectExplorationSaveDialog';
 import { ObjectSetCharts } from './ObjectSetCharts';
@@ -98,6 +100,7 @@ export function ObjectExplorationPage() {
   /* Actions are the one write an exploration offers: they run on the rows the caller ticked, never on the whole set. */
   const [actions, setActions] = useState<OntologyActionTypeResponse[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const outcome = useObjectSetOutcome();
   /* The types on the other side of those links: a chart may read a neighbour's property, and the option list has to
      know what that neighbour declares. */
   const [typeById, setTypeById] = useState<Record<string, ObjectTypeResponse>>({});
@@ -436,7 +439,8 @@ export function ObjectExplorationPage() {
     }
   };
 
-  const action = useObjectSetAction(() => {
+  const action = useObjectSetAction(({ name, succeeded }) => {
+    outcome.capture(name, succeeded);
     setSelected(new Set());
     void loadRows();
   });
@@ -579,6 +583,14 @@ export function ObjectExplorationPage() {
               }
             />
           </div>
+          {outcome.result ? (
+            <ObjectSetActionOutcome
+              actionName={outcome.result.name}
+              changed={outcome.result.succeeded}
+              changes={outcome.result.changes}
+              onDismiss={outcome.dismiss}
+            />
+          ) : null}
           <ObjectSetCharts
           typeId={typeId}
           search={search}
@@ -617,6 +629,8 @@ export function ObjectExplorationPage() {
           onMove={moveChart}
           canMove={chartProperties.length > 1}
           compare={compareSet ?? undefined}
+          refreshKey={outcome.refreshKey}
+          onLoaded={outcome.onLoaded}
           footer={<ObjectSetChartAdd options={addable} onAdd={(prop) => setChartProps([...chartProperties, prop])} />}
         />
         </>
