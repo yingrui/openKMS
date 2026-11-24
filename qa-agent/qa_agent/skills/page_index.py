@@ -14,7 +14,12 @@ def read_document_toc(
     document_id: Annotated[str, "Document id, from the search results in the context"],
     _config: RunnableConfig,
 ) -> str:
-    """ Section titles and line ranges for one document. Use when a retrieved chunk is not enough."""
+    """ List one document's section titles, each with its line range.
+
+    Use when a passage is cut off mid-argument, or when the question asks what a document covers. This is not a search:
+    it needs the `document_id` that a passage's source carries.
+
+    Returns the outline the next call needs — pass one section's range to `read_document_section`."""
     try:
         token = get_tool_access_token(_config)
         data = get_page_index(document_id, token)
@@ -38,7 +43,12 @@ def read_document_section(
     end_line: Annotated[int, "Last line, inclusive"],
     _config: RunnableConfig,
 ) -> str:
-    """ The markdown of one document section, by the line range the table of contents gave."""
+    """ Read one document section as markdown, by the line range `read_document_toc` returned.
+
+    Use when the retrieved chunks are too short to answer — a clause split across chunks, a table whose header is in
+    another passage. Not for reading a whole document: pick the section that covers the question.
+
+    Returns the section's text; quote from it and cite the document name."""
     if start_line < 1 or end_line < 1 or start_line > end_line:
         return "Error: start_line and end_line must be 1-based, start_line <= end_line"
     try:

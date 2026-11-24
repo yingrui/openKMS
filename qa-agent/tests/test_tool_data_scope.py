@@ -57,3 +57,45 @@ def test_the_enumeration_tools_are_no_longer_offered():
     assert "list_ontology_groups" not in names["ontology"]
     offered = {tool.name for tool in tools_for({"catalog": "all", "ontology": "all"})}
     assert offered == {"get_semantic_model", "query_semantic_model", "run_sql", "get_ontology_schema", "run_cypher"}
+
+
+def test_one_bound_group_answers_without_asking_which(scope):
+    """Exactly one bound group *is* the answer: the extra "pass a group id" turn was noise we introduced."""
+    from qa_agent import request_context
+    from qa_agent.skills import ontology
+
+    monkeypatch_target = ontology.fetch_ontology_schema
+    original_related = ontology.catalog_client.get_ontology_group_related
+    ontology.fetch_ontology_schema = lambda _token: {  # type: ignore[assignment]
+        "object_types": [{"id": "ot-1", "name": "InsuranceProduct"}],
+        "link_types": [],
+    }
+    ontology.catalog_client.get_ontology_group_related = lambda _t, _g: {  # type: ignore[assignment]
+        "object_type_ids": ["ot-1"],
+        "link_types": [],
+    }
+    try:
+        out = ontology.get_ontology_schema.invoke({"group_id": "", "config": {}})
+    finally:
+        ontology.fetch_ontology_schema = monkeypatch_target  # type: ignore[assignment]
+        ontology.catalog_client.get_ontology_group_related = original_related  # type: ignore[assignment]
+    assert "InsuranceProduct" in out
+    assert "pass the group id" not in out
+    assert request_context.get_tool_data_scope({})["ontology_groups"][0]["id"] == "og-1"
+
+
+def test_two_bound_groups_ask_which_one():
+    from qa_agent import request_context
+    from qa_agent.skills import ontology
+
+    handle = request_context.set_request_data_scope(
+        {"semantic_models": [], "ontology_groups": [{"id": "og-1"}, {"id": "og-2"}]}
+    )
+    original = ontology.fetch_ontology_schema
+    ontology.fetch_ontology_schema = lambda _token: {"object_types": [], "link_types": []}  # type: ignore[assignment]
+    try:
+        out = ontology.get_ontology_schema.invoke({"group_id": "", "config": {}})
+    finally:
+        ontology.fetch_ontology_schema = original  # type: ignore[assignment]
+        request_context.reset_request_data_scope(handle)
+    assert "more than one ontology group" in out

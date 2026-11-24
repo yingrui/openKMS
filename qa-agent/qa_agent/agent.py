@@ -265,11 +265,16 @@ def prompt_sections(
     sections.append(
         (
             "tools",
-            "Sources you may use:\n"
-            "1. **Knowledge base** – call `search_knowledge_base` before answering from its material; passages come back\n"
-            "   with their source, and an answer that names a document must quote what that call returned.\n"
-            "2. **Tools** – only the enabled ones are available; each definition says what it does and when to use it.\n"
-            "3. **Installed skills** – procedures above, when any are installed.",
+            "Sources you may use, and which one answers what:\n"
+            "- **Knowledge base** (`search_knowledge_base`): definitions, clauses, rules, procedures. Call it before\n"
+            "  answering from its material; an answer that names a document must quote what that call returned.\n"
+            "- **Ontology** (`get_ontology_schema`, `run_cypher`): entities and their state, counts, and relationships —\n"
+            "  which products exist, which are still sold, what a product is linked to.\n"
+            "- **Semantic model** (`get_semantic_model`, `query_semantic_model`, `run_sql`): numbers and metrics from the\n"
+            "  data model — prices, amounts, rates, anything named as a measure.\n"
+            "- **Installed skills**: procedures above, when any are installed.\n"
+            "A search that returns nothing for a question about entities, counts or measures does not mean the answer is\n"
+            "missing: check whether the bound ontology or semantic model covers it before saying you cannot find it.",
         )
     )
 

@@ -45,7 +45,12 @@ def run_python(
     code: Annotated[str, "Python source to run in the conversation directory"],
     _config: RunnableConfig,
 ) -> str:
-    """Run Python in this conversation's directory. Files go to `out/`; printed output is the evidence. The command allow list does not apply to code."""
+    """Run Python in this conversation's directory.
+
+    Use for computation the other tools cannot express: reshaping a returned table, a calculation across several
+    results. Printed output is the evidence — a value you did not print does not exist for the reader.
+
+    Files go to `out/`; the network is not available; the program allow list does not apply to Python code."""
     try:
         kb_id, session_id, settings = _scope(_config)
     except ValueError as exc:
@@ -70,7 +75,11 @@ def run_command(
     command: Annotated[str, "One command line; its program must be on the allow list"],
     _config: RunnableConfig,
 ) -> str:
-    """Run one program from this agent's allow list, in this conversation's directory. Anything else is refused before it starts."""
+    """Run one program from this agent's allow list, in this conversation's directory.
+
+    Use for inspection the file tools do not cover — `grep`, `head`, `wc` over a large file in this conversation. Each
+    call runs one program with its arguments; a program outside the allow list is refused before it starts, and a
+    command that starts another program (`find -exec`, pipes into a shell) is refused too."""
     try:
         kb_id, session_id, settings = _scope(_config)
     except ValueError as exc:

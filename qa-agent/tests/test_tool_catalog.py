@@ -32,7 +32,9 @@ def test_descriptions_are_the_tool_descriptions():
         for tool in item["tools"]:
             assert tool["description"], f"{tool['name']} has no description"
             # Short enough to read in a list, long enough to say what it does and where its limits are.
-            assert 40 <= len(tool["description"]) <= 220, (tool["name"], len(tool["description"]))
+            # A description is the model's only briefing at call time: what it does, when to use it, what it returns.
+            # Short ones were 60–90 characters and said only what the tool was called.
+            assert 150 <= len(tool["description"]) <= 600, (tool["name"], len(tool["description"]))
             assert tool["parameters"] is not None
 
 

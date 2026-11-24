@@ -16,18 +16,28 @@ def get_ontology_schema(
     _config: RunnableConfig,
     group_id: Annotated[str, "Group id from the bound-data section of the system prompt; empty for the full schema"] = "",
 ) -> str:
-    """ One group's object types and link types — the exact labels Cypher must use."""
+    """ One ontology group's object types and link types — the exact labels and relationship types Cypher must use.
+
+    Use before any graph query, and whenever the question is about entities: which products exist, how many, what they
+    are linked to, what state they are in. Not for definitions — those are in the knowledge base.
+
+    With one group bound the group's schema is returned directly; with several, pass `group_id`. Returns
+    `{object_type_count, link_type_count, object_types: [{name, properties, neo4j_label, ...}], link_types: [...]}`."""
     try:
         token = get_tool_access_token(_config)
         schema = fetch_ontology_schema(token)
         linked = list(get_tool_data_scope(_config).get("ontology_groups") or [])
         if not (group_id or "").strip():
-            if linked:
+            if len(linked) == 1:
+                # Exactly one group: this *is* the schema the caller wants. Asking "which one?" spent a turn to learn
+                # what the request had already said — the model then called again, and one of the two calls was noise.
+                group_id = str(linked[0].get("id") or "")
+            elif linked:
                 return json.dumps(
                     {
                         "message": (
-                            "This agent is bound to ontology groups — pass the group id from the "
-                            "bound-data section of the system prompt instead of the full schema."
+                            "This agent is bound to more than one ontology group — pass the group id "
+                            "from the bound-data section of the system prompt."
                         ),
                         "bound_group_count": len(linked),
                         "bound_groups": linked,
@@ -35,7 +45,8 @@ def get_ontology_schema(
                     indent=2,
                     default=str,
                 )
-            return json.dumps(schema, indent=2, default=str)
+            else:
+                return json.dumps(schema, indent=2, default=str)
 
         allowed = {str(g.get("id")) for g in linked}
         if allowed and group_id not in allowed:
@@ -83,7 +94,13 @@ def run_cypher(
     ],
     _config: RunnableConfig,
 ) -> str:
-    """Run one read-only Cypher query on Neo4j: MATCH / RETURN / WHERE only, with the schema's exact labels and relationship types."""
+    """Run one read-only Cypher query (MATCH / RETURN / WHERE) against the bound ontology.
+
+    Use to count, filter or join entities the schema describes — "which products have no sales status", "how many
+    diseases per parent". Copy `neo4j_label` and `neo4j_rel_type` verbatim from `get_ontology_schema`; uppercase or
+    guessed labels return nothing, which reads like "no data".
+
+    Returns `{columns, rows}`; state the numbers you actually got back."""
     if not query or not query.strip():
         return "Error: Cypher query cannot be empty."
     try:

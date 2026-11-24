@@ -25,8 +25,14 @@ def search_knowledge_base(
     query: Annotated[str, "What to look for in this knowledge base"],
     _config: RunnableConfig,
 ) -> str:
-    """Search this knowledge base for passages about `query`. Use when you need facts you do not already have —
-    definitions, method descriptions, policy. Returns numbered passages with their source; quote from them and cite."""
+    """Search this knowledge base for passages about `query`.
+
+    Use for definitions, clauses, rules, procedures — what the corpus says. Not for entities, counts or relationships
+    (use the ontology) or for measures (use the semantic model); a search that returns nothing does not mean the answer
+    is absent, so try the other sources before saying so.
+
+    Returns JSON `{query, passages: [{id, source_type, source_name, content, score, ...}]}`. Quote from `content` and
+    name `source_name` when you cite: the reader checks the document, not your summary."""
     try:
         kb_id = get_tool_knowledge_base_id(_config)
         if not kb_id:

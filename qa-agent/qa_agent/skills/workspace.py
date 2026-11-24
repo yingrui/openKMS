@@ -40,7 +40,10 @@ def list_files(
     _config: RunnableConfig,
     path: Annotated[str, "Directory inside the conversation; empty for the root"] = "",
 ) -> str:
-    """ Files in this conversation's directory, as relative paths."""
+    """ List the files in this conversation's directory, as relative paths.
+
+    Use before reading or writing, when you do not know what a previous turn left here. This is the conversation's own
+    folder — not the knowledge base, and not the documents a passage cites."""
     try:
         kb_id, session_id = _scope(_config)
         entries = session_fs.list_dir(kb_id, session_id, path)
@@ -60,7 +63,12 @@ def read_file(
     path: Annotated[str, "Path relative to the conversation directory"],
     _config: RunnableConfig,
 ) -> str:
-    """ One text file from this conversation's directory; binary files report their size."""
+    """ Read one text file from this conversation's directory.
+
+    Use for a file a previous turn wrote — a full result set too long to put in an answer. Binary files report their
+    size instead of content.
+
+    Cite it as "this conversation's file", not as a knowledge base document."""
     try:
         kb_id, session_id = _scope(_config)
         payload = session_fs.read_file(kb_id, session_id, path)
@@ -77,7 +85,10 @@ def write_file(
     content: Annotated[str, "Text to write"],
     _config: RunnableConfig,
 ) -> str:
-    """ Write a text file into this conversation's directory and return its path."""
+    """ Write a text file into this conversation's directory and return its path.
+
+    Use when a result is longer than an answer should be — a full table the caller may want to download — and say in the
+    answer what the file holds. The folder is scoped to this conversation; nothing outside it is writable."""
     try:
         kb_id, session_id = _scope(_config)
         target = path.strip() or "artifact.txt"

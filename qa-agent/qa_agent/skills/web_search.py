@@ -36,7 +36,13 @@ def search_web(
     _config: RunnableConfig,
     max_results: Annotated[int, "How many results to return"] = DEFAULT_MAX_RESULTS,
 ) -> str:
-    """Search the public web. Results are outside this knowledge base: cite them as external, never as a document."""
+    """Search the public web for pages about `query`.
+
+    Use when the answer is outside this deployment — news, current figures, a public document nobody ingested here. Not
+    a substitute for the knowledge base, and not for anything the corpus already answers.
+
+    Results are external: cite the URL, never attribute them to an internal document. Returns
+    `{query, results: [{title, url, content, publisher, published_at}]}`."""
     limit = max(1, min(int(max_results or DEFAULT_MAX_RESULTS), 10))
     base = (settings.openkms_backend_url or "").strip().rstrip("/")
     if not base:

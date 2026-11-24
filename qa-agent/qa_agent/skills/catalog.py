@@ -75,7 +75,12 @@ def get_semantic_model(
     model_id: Annotated[str, "Model id from the bound-data section of the system prompt"],
     _config: RunnableConfig,
 ) -> str:
-    """One model's metrics, fields, tables, data assertions and `ai_context`."""
+    """One semantic model's metrics, fields, tables, data assertions and `ai_context`.
+
+    Use before any numeric question: it says which measures exist and what they mean, so a question about a measure the
+    model does not have is answered "not in this model" instead of with a similar-looking field.
+
+    Returns the model with its metrics (name, display name, expression, aggregation) and fields."""
     try:
         token = get_tool_access_token(_config)
         model = catalog_client.get_semantic_model(token, model_id)
@@ -167,7 +172,13 @@ def query_semantic_model(
     limit: Annotated[int | None, "Maximum rows"] = 100,
     resource_id: Annotated[str | None, "Granted data resource; required when the model is restricted"] = None,
 ) -> str:
-    """One governed metric query: a saved metric or an aggregate expression. Never sum a `non_additive` metric — query it at the needed grain; pass `resource_id` when the model is restricted."""
+    """Run one governed metric query: a saved metric name, or an aggregate expression over the model's fields.
+
+    Use for numbers — totals, averages, rates at a grain. Never take a sum of a `non_additive` metric: query it at the
+    grain you need instead. Pass `resource_id` when the model is restricted, and `filters`/`group_by` rather than
+    fetching rows to filter them yourself.
+
+    Returns the rows plus the SQL that produced them; report the numbers you actually received."""
     try:
         token = get_tool_access_token(_config)
         body: dict[str, Any] = {
@@ -203,7 +214,12 @@ def run_sql(
     limit: Annotated[int | None, "Maximum rows"] = 100,
     resource_id: Annotated[str | None, "Granted data resource; required when the model is restricted"] = None,
 ) -> str:
-    """One read-only SELECT over this model's tables, when a metric query cannot express it. `resource_id` when restricted."""
+    """Run one read-only SELECT over this model's tables, when a metric query cannot express it.
+
+    Use for shapes a metric query does not cover — a join across two tables, a window, a DISTINCT list. Prefer
+    `query_semantic_model` when a saved metric exists: it carries the governed definition, this does not.
+
+    Returns the rows; `resource_id` is required when the model is restricted."""
     try:
         token = get_tool_access_token(_config)
         resource_id = _resolve_resource(token, model_id, resource_id)
