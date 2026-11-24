@@ -877,8 +877,14 @@ def _check_property_names(
         if declared and key.prop not in declared:
             unknown.append(key.prop)
     for name in props or []:
-        if declared and name not in declared:
-            unknown.append(name)
+        via, _, name_only = name.lstrip("@").partition("/") if name.startswith("@") else ("", "", name)
+        if via:
+            other = (link_targets or {}).get(via)
+            other_declared = _declared_properties(other) if other else set()
+            if other_declared and name_only not in other_declared:
+                unknown.append(name)
+        elif declared and name_only not in declared:
+            unknown.append(name_only)
     if unknown:
         raise HTTPException(
             status_code=400,
@@ -923,6 +929,12 @@ async def aggregate_objects(
     f: list[str] = Query(default=[], description="<prop>:<op>:<value> or @<link>/<prop>:<op>:<value>"),
     search: str | None = None,
     limit: int = Query(50, ge=1, le=200),
+    buckets: int = Query(
+        0,
+        ge=0,
+        le=40,
+        description="Intervals for a numeric property; 0 or a text property means a value distribution",
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """Property distributions over the current object set — one chart per `prop`.
@@ -965,6 +977,7 @@ async def aggregate_objects(
                 filters=filters,
                 link_info=link_info,
                 limit=limit,
+                buckets=buckets,
             )
             for name in prop
         ]

@@ -198,17 +198,93 @@ def page_query(label: str, where: str, order: str) -> str:
     return f"MATCH (n:{label}) {where} RETURN n {tail}"
 
 
+def split_link_property(prop: str) -> tuple[str, str] | None:
+    """`@linkName/someProp` → `("linkName", "someProp")`; a plain property returns None."""
+    if not prop.startswith("@"):
+        return None
+    link, _, name = prop[1:].partition("/")
+    if not link or not name:
+        raise QueryError(f"`{prop}` is not `@link/property`")
+    return link, name
+
+
+def chart_source(
+    label: str,
+    where: str,
+    prop: str,
+    *,
+    link_info: dict[str, tuple[str, str]] | None,
+) -> tuple[str, str, str, bool]:
+    """`(match prefix, node variable, property name, crosses a link)` for one charted property.
+
+    A chart may read the queried type or one of its neighbours — Palantir's charts do both, and "these distributors,
+    by the cycle of the plans they are in" is a question about both. Crossing a link means counting **objects**, not
+    edges: one object reachable twice through the relationship is still one object in the chart.
+    """
+    linked = split_link_property(prop)
+    if linked is None:
+        return f"MATCH (n:{label}) {where} ", "n", prop, False
+    link, name = linked
+    if not link_info or link not in link_info:
+        raise QueryError(f"`{link}` is not a link type of this object type")
+    rel, direction = link_info[link]
+    arrow = f"-[:{rel}]->" if direction == "out" else f"<-[:{rel}]-"
+    return f"MATCH (n:{label}) {where} MATCH (n){arrow}(m) ", "m", name, True
+
+
 def aggregate_query(
     label: str,
     where: str,
     prop: str,
     *,
     limit: int,
+    link_info: dict[str, tuple[str, str]] | None = None,
 ) -> str:
     """Distribution of one property over the current object set — the data behind one chart."""
-    tail = f"WHERE value IS NOT NULL RETURN value, c ORDER BY c DESC LIMIT {int(limit)}"
+    prefix, var, name, crosses = chart_source(label, where, prop, link_info=link_info)
+    counted = "count(DISTINCT n)" if crosses else "count(n)"
     return (
-        f"MATCH (n:{label}) {where} "
-        f"WITH toString(n.`{prop}`) AS value, count(n) AS c "
-        f"{tail}"
+        f"{prefix}"
+        f"WITH toString({var}.`{name}`) AS value, {counted} AS c "
+        f"WHERE value IS NOT NULL RETURN value, c ORDER BY c DESC LIMIT {int(limit)}"
+    )
+
+
+def numeric_extent_query(
+    label: str,
+    where: str,
+    prop: str,
+    *,
+    link_info: dict[str, tuple[str, str]] | None = None,
+) -> str:
+    """`(min, max, count)` of the property as a number, ignoring values that are not one.
+
+    A declared type cannot decide this: the same column holds numbers in one dataset and text in another, and the
+    chart has to describe the data it has.
+    """
+    prefix, var, name, _ = chart_source(label, where, prop, link_info=link_info)
+    return (
+        f"{prefix}"
+        f"WITH toFloat({var}.`{name}`) AS v WHERE v IS NOT NULL "
+        "RETURN min(v) AS lo, max(v) AS hi, count(v) AS c"
+    )
+
+
+def histogram_query(
+    label: str,
+    where: str,
+    prop: str,
+    *,
+    lo: float,
+    width: float,
+    link_info: dict[str, tuple[str, str]] | None = None,
+) -> str:
+    """Counts per equal interval, `[lo + k·width, lo + (k+1)·width)`."""
+    prefix, var, name, crosses = chart_source(label, where, prop, link_info=link_info)
+    counted = "count(DISTINCT n)" if crosses else "count(*)"
+    return (
+        f"{prefix}"
+        f"WITH toFloat({var}.`{name}`) AS v WHERE v IS NOT NULL "
+        "WITH toInteger(floor((v - $lo) / $width)) AS k, n AS n "
+        f"RETURN k, {counted} AS c ORDER BY k"
     )

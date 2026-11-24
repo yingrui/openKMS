@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dimensionalCharts, isIdentifierChart } from './objectSetChartsModel';
+import { dimensionalCharts, intervalLabel, isHistogram, isIdentifierChart } from './objectSetChartsModel';
 
 const chart = (values: [string, number][]) => ({
   prop: 'x',
@@ -33,5 +33,29 @@ describe('an identifier is not a dimension', () => {
       { ...chart([['B', 80], ['C', 72]]), prop: 'tier' },
     ];
     expect(dimensionalCharts(charts).map((c) => c.prop)).toEqual(['region', 'tier']);
+  });
+});
+
+describe('a numeric property arrives as intervals', () => {
+  const histogram = {
+    prop: 'ic_ir',
+    buckets: [
+      { from: -1.03, to: -0.78, count: 4 },
+      { from: -0.78, to: -0.53, count: 0 },
+    ],
+  };
+
+  it('is a histogram, not a value distribution', () => {
+    expect(isHistogram(histogram)).toBe(true);
+  });
+
+  it('survives the identifier filter that drops uuid charts', () => {
+    expect(dimensionalCharts([histogram]).map((chart) => chart.prop)).toEqual(['ic_ir']);
+  });
+
+  it('labels a bar with its interval, without inventing precision', () => {
+    expect(intervalLabel(-1.03, -0.78)).toBe('-1.03 – -0.78');
+    expect(intervalLabel(0.5866666, 0.91)).toBe('0.587 – 0.91');
+    expect(intervalLabel(3, 4)).toBe('3 – 4');
   });
 });

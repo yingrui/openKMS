@@ -318,9 +318,19 @@ def aggregate_object_set(
     filters: list | None,
     link_info: dict | None,
     limit: int = 50,
+    buckets: int = 0,
 ) -> dict:
-    """The distribution of one property over the current object set — one chart's data."""
-    from app.services.ontology.object_query import aggregate_query, where_clause
+    """One chart's data for one property over the current object set.
+
+    A number is read as intervals and everything else as values, decided by the data rather than by a declared type:
+    asking for buckets on a text property falls back to the distribution, which is what the caller wanted anyway.
+    """
+    from app.services.ontology.object_query import (
+        aggregate_query,
+        histogram_query,
+        numeric_extent_query,
+        where_clause,
+    )
 
     parts, params = _search_clause(search)
     where, filter_params = where_clause(filters or [], link_info=link_info or {})
@@ -328,10 +338,47 @@ def aggregate_object_set(
     if where:
         parts.append(where.removeprefix("WHERE "))
     combined = f"WHERE {' AND '.join(parts)}" if parts else ""
+
+    if buckets > 0:
+        with driver.session() as session:
+            extent = session.run(
+                numeric_extent_query(label, combined, prop, link_info=link_info), **params
+            ).single()
+        lo, hi, count = (extent["lo"], extent["hi"], extent["c"]) if extent else (None, None, 0)
+        if count:
+            lo = float(lo)
+            hi = float(hi)
+            width = (hi - lo) / buckets if hi > lo else 1.0
+            with driver.session() as session:
+                counts = {
+                    int(record["k"]): int(record["c"])
+                    for record in session.run(
+                        histogram_query(
+                            label, combined, prop, lo=lo, width=width, link_info=link_info
+                        ),
+                        lo=lo,
+                        width=width,
+                        **params,
+                    )
+                }
+            intervals = []
+            for index in range(buckets):
+                start = lo + index * width
+                intervals.append(
+                    {
+                        "from": round(start, 6),
+                        "to": round(start + width, 6),
+                        "count": counts.get(index, 0),
+                    }
+                )
+            return {"prop": prop, "buckets": intervals, "min": lo, "max": hi}
+
     with driver.session() as session:
         rows = [
             {"value": record["value"], "count": record["c"]}
-            for record in session.run(aggregate_query(label, combined, prop, limit=limit + 1), **params)
+            for record in session.run(
+                aggregate_query(label, combined, prop, limit=limit + 1, link_info=link_info), **params
+            )
         ]
     truncated = len(rows) > limit
     return {"prop": prop, "values": rows[:limit], "truncated": truncated}

@@ -11,7 +11,11 @@ from app.services.ontology.object_query import (
     order_clause,
     parse_filter,
     parse_filters,
+    aggregate_query,
+    histogram_query,
+    numeric_extent_query,
     parse_sort,
+    split_link_property,
     where_clause,
 )
 
@@ -95,3 +99,44 @@ def _sort(prop: str, descending: bool):
     from app.services.ontology.object_query import SortKey
 
     return SortKey(prop=prop, descending=descending)
+
+
+def test_a_chart_on_a_linked_type_counts_objects_not_edges():
+    """A distributor reachable twice through the link is still one distributor in the chart."""
+    cypher = aggregate_query(
+        "Distributor", "", "@allocates/cycle", limit=20, link_info={"allocates": ("allocates", "in")}
+    )
+    assert "MATCH (n:Distributor)  MATCH (n)<-[:allocates]-(m)" in cypher
+    assert "count(DISTINCT n) AS c" in cypher
+    assert "m.`cycle`" in cypher
+
+
+def test_a_histogram_can_read_the_neighbouring_type_too():
+    cypher = histogram_query(
+        "Distributor", "", "@allocates/fair_rate", lo=0.0, width=0.25,
+        link_info={"allocates": ("allocates", "out")},
+    )
+    assert "MATCH (n)<-[:allocates]-(m)" not in cypher
+    assert "MATCH (n)-[:allocates]->(m)" in cypher
+    assert "toFloat(m.`fair_rate`)" in cypher
+    assert "count(DISTINCT n) AS c" in cypher
+
+
+def test_a_chart_on_an_unknown_link_is_refused_rather_than_answered():
+    with pytest.raises(QueryError):
+        aggregate_query("Distributor", "", "@nope/cycle", limit=20, link_info={"allocates": ("x", "out")})
+    with pytest.raises(QueryError):
+        split_link_property("@allocates")
+
+
+def test_a_plain_property_still_counts_rows():
+    cypher = aggregate_query("Distributor", "WHERE n.`region` = $f_0", "tier", limit=10)
+    assert "count(n) AS c" in cypher
+    assert "n.`tier`" in cypher
+
+
+def test_a_histogram_excludes_values_that_are_not_numbers():
+    cypher = histogram_query("Factor", "", "ic_ir", lo=0.0, width=0.25)
+    assert "toFloat(n.`ic_ir`) AS v WHERE v IS NOT NULL" in cypher
+    assert "toInteger(floor((v - $lo) / $width))" in cypher
+    assert numeric_extent_query("Factor", "", "ic_ir").endswith("RETURN min(v) AS lo, max(v) AS hi, count(v) AS c")

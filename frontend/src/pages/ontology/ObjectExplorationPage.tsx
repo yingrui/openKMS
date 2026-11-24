@@ -6,6 +6,7 @@ import {
   fetchLinkTypes,
   fetchObjectType,
   fetchObjectInstances,
+  fetchObjectTypes,
   type ObjectInstanceResponse,
   type ObjectTypeResponse,
   type LinkTypeResponse,
@@ -24,9 +25,11 @@ import {
   saveExplorationLayout,
   type ExplorationResponse,
 } from '../../data/explorationsApi';
-import { Dialog, FormField } from '../../styles/design-system';
+
 import { useAuth } from '../../contexts/AuthContext';
 import { ExplorerMenu } from '../../components/ontology/ExplorerMenu';
+import { ExplorationLayoutMenu } from './ExplorationLayoutMenu';
+import { ObjectExplorationSaveDialog } from './ObjectExplorationSaveDialog';
 import { ObjectSetCharts } from './ObjectSetCharts';
 import { ObjectSetFilters } from './ObjectSetFilters';
 import { formatFilter } from './objectSetCondition';
@@ -79,6 +82,9 @@ export function ObjectExplorationPage() {
   /* The layout this type opens with: personal, then global, then the built-in one (prominent props). */
   const [chartProps, setChartProps] = useState<string[] | null>(null);
   const [links, setLinks] = useState<LinkTypeResponse[]>([]);
+  /* The types on the other side of those links: a chart may read a neighbour's property, and the option list has to
+     know what that neighbour declares. */
+  const [typeById, setTypeById] = useState<Record<string, ObjectTypeResponse>>({});
   const [pivotOpen, setPivotOpen] = useState(false);
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
@@ -147,6 +153,15 @@ export function ObjectExplorationPage() {
 
   useEffect(() => {
     let cancelled = false;
+    void fetchObjectTypes()
+      .then((res) => {
+        if (!cancelled) {
+          setTypeById(Object.fromEntries(res.items.map((type) => [type.id, type])));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setTypeById({});
+      });
     void fetchLinkTypes()
       .then((res) => {
         if (!cancelled) setLinks(res.items);
@@ -268,13 +283,51 @@ export function ObjectExplorationPage() {
     [objectType, properties]
   );
 
-  const chartProperties = useMemo(() => {
-    const known = new Set(properties.map((p) => p.name));
-    const source = chartProps ?? builtinCharts;
-    return source.filter((name) => known.has(name));
-  }, [chartProps, builtinCharts, properties]);
+  /* Properties reachable through one link, spelled `@<link>/<prop>` — the same string the filters use. The link's
+     api_name is the readable key, except where two links share one on this side (Stock has two `ofStock`), where the
+     id is the only unambiguous handle the reader accepts. */
+  const linkedChartOptions = useMemo(() => {
+    const touching = links.filter(
+      (link) => link.source_object_type_id === typeId || link.target_object_type_id === typeId
+    );
+    const nameCounts = new Map<string, number>();
+    for (const link of touching) {
+      const name = link.api_name ?? '';
+      nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
+    }
+    return touching.flatMap((link) => {
+      const otherId =
+        link.source_object_type_id === typeId
+          ? link.target_object_type_id
+          : link.source_object_type_id;
+      const other = typeById[otherId];
+      /* The reader accepts either the api_name or the id; a collision is settled by the id. */
+      const key = (nameCounts.get(link.api_name ?? '') ?? 0) > 1 ? link.id : (link.api_name ?? link.id);
+      return (other?.properties ?? []).map((property) => ({
+        value: `@${key}/${property.name}`,
+        label: `${other?.name ?? otherId} · ${property.name}`,
+      }));
+    });
+  }, [links, typeById, typeId]);
 
-  const addable = properties.map((p) => p.name).filter((name) => !chartProperties.includes(name));
+  const knownChartProps = useMemo(
+    () =>
+      new Set([
+        ...properties.map((p) => p.name),
+        ...linkedChartOptions.map((option) => option.value),
+      ]),
+    [linkedChartOptions, properties]
+  );
+
+  const chartProperties = useMemo(() => {
+    const source = chartProps ?? builtinCharts;
+    return source.filter((name) => knownChartProps.has(name));
+  }, [chartProps, builtinCharts, knownChartProps]);
+
+  const addable = [
+    ...properties.map((p) => ({ value: p.name, label: p.name })),
+    ...linkedChartOptions,
+  ].filter((option) => !chartProperties.includes(option.value));
 
   const removeChart = (prop: string) => setChartProps(chartProperties.filter((name) => name !== prop));
   const moveChart = (prop: string, direction: -1 | 1) => {
@@ -427,76 +480,27 @@ export function ObjectExplorationPage() {
       actions={
         <>
           <ExplorerMenu />
-          <div className="object-set-layout-menu">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              aria-expanded={layoutOpen}
-              onClick={() => setLayoutOpen((value) => !value)}
-              title={t('objectSet.layoutSavedHint')}
-            >
-              {t('objectSet.layoutTitle')}
-            </button>
-            {layoutOpen ? (
-              <div className="object-set-layout-menu__panel" role="menu">
-                {layoutChoices.length > 0 ? (
-                  <p className="object-set-layout-menu__label">{t('objectSet.layoutAvailable')}</p>
-                ) : null}
-                {layoutChoices.map((choice) => (
-                  <button
-                    key={choice.scope}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setLayoutOpen(false);
-                      const charts = (choice.layout?.charts as { prop: string }[] | undefined) ?? [];
-                      const props = charts.map((chart) => chart.prop).filter(Boolean);
-                      setChartProps(props.length > 0 ? props : null);
-                    }}
-                  >
-                    {choice.scope === 'global'
-                      ? t('objectSet.layoutUseGlobal')
-                      : t('objectSet.layoutUseMine')}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  role="menuitem"
-                  disabled={layoutSaving}
-                  onClick={() => {
-                    setLayoutOpen(false);
-                    void saveAsMyLayout();
-                  }}
-                >
-                  {t('objectSet.layoutSave')}
-                </button>
-                {isAdmin ? (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    disabled={layoutSaving}
-                    onClick={() => {
-                      setLayoutOpen(false);
-                      void saveAsMyLayout('global');
-                    }}
-                  >
-                    {t('objectSet.layoutSaveGlobal')}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  role="menuitem"
-                  disabled={layoutSaving}
-                  onClick={() => {
-                    setLayoutOpen(false);
-                    void resetLayout();
-                  }}
-                >
-                  {t('objectSet.layoutResetButton')}
-                </button>
-              </div>
-            ) : null}
-          </div>
+          <ExplorationLayoutMenu
+            open={layoutOpen}
+            choices={layoutChoices}
+            saving={layoutSaving}
+            isAdmin={isAdmin}
+            onToggle={() => setLayoutOpen((value) => !value)}
+            onUse={(choice) => {
+              setLayoutOpen(false);
+              const charts = (choice.layout?.charts as { prop: string }[] | undefined) ?? [];
+              const props = charts.map((chart) => chart.prop).filter(Boolean);
+              setChartProps(props.length > 0 ? props : null);
+            }}
+            onSave={(scope) => {
+              setLayoutOpen(false);
+              void saveAsMyLayout(scope);
+            }}
+            onReset={() => {
+              setLayoutOpen(false);
+              void resetLayout();
+            }}
+          />
           <button
             type="button"
             className="btn btn-primary"
@@ -573,6 +577,14 @@ export function ObjectExplorationPage() {
           filters={filters}
           properties={chartProperties}
           onPick={(prop, value) => setFilters([...filters, formatFilter(prop, 'eq', value)])}
+          onPickRange={(prop, from, to) =>
+            /* An interval is two conditions: `>= from` and `< to`. One bar, one readable pair of chips. */
+            setFilters([
+              ...filters,
+              formatFilter(prop, 'ge', String(from)),
+              formatFilter(prop, 'lt', String(to)),
+            ])
+          }
           onRemove={removeChart}
           onMove={moveChart}
           canMove={chartProperties.length > 1}
@@ -591,9 +603,9 @@ export function ObjectExplorationPage() {
               }}
             >
               <option value="">{t('objectSet.chartAddPick')}</option>
-              {addable.map((name) => (
-                <option key={name} value={name}>
-                  {name}
+              {addable.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
                   ))}
                 </select>
@@ -641,47 +653,17 @@ export function ObjectExplorationPage() {
         </div>
       )}
 
-      <Dialog
+      <ObjectExplorationSaveDialog
         open={saveOpen}
+        updating={Boolean(saved)}
+        name={saveName}
+        shared={saveShared}
+        saving={saving}
+        onName={setSaveName}
+        onShared={setSaveShared}
         onClose={() => setSaveOpen(false)}
-        title={saved ? t('objectSet.saveUpdate') : t('objectSet.saveCreate')}
-        closeAriaLabel={t('shared.close')}
-        size="sm"
-        footer={
-          <>
-            <button type="button" className="btn btn-secondary" onClick={() => setSaveOpen(false)}>
-              {t('shared.cancel')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => void save()}
-              disabled={saving || !saveName.trim()}
-            >
-              {t('shared.save')}
-            </button>
-          </>
-        }
-      >
-        <FormField label={t('objectSet.saveName')}>
-          <input
-            className="ds-control"
-            value={saveName}
-            onChange={(e) => setSaveName(e.target.value)}
-            placeholder={t('objectSet.saveNamePlaceholder')}
-          />
-        </FormField>
-        <FormField label={t('objectSet.saveVisibility')} hint={t('objectSet.saveVisibilityHint')}>
-          <select
-            className="ds-control"
-            value={saveShared ? 'shared' : 'private'}
-            onChange={(e) => setSaveShared(e.target.value === 'shared')}
-          >
-            <option value="private">{t('objectSet.visibilityPrivate')}</option>
-            <option value="shared">{t('objectSet.visibilityShared')}</option>
-          </select>
-        </FormField>
-      </Dialog>
+        onSave={() => void save()}
+      />
     </ListPage>
   );
 }

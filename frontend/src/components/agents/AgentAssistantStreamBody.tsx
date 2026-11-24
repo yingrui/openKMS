@@ -114,7 +114,6 @@ function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }
             running={running}
             detail={detail}
             error={step.error}
-            startedAt={step.startedAt}
             durationMs={step.durationMs}
           />
         </div>
@@ -132,7 +131,6 @@ function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }
           expandable
           detail={detail}
           error={step.error}
-          startedAt={step.startedAt}
           durationMs={step.durationMs}
         />
       </summary>

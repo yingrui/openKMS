@@ -5,7 +5,7 @@ import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 
 import { fetchObjectAggregate, type ObjectAggregateChart } from '../../data/ontologyApi';
 import { EmptyState } from '../../styles/design-system/EmptyState';
 import { Loading } from '../../styles/design-system/Loading';
-import { dimensionalCharts } from './objectSetChartsModel';
+import { dimensionalCharts, intervalLabel, isHistogram } from './objectSetChartsModel';
 
 /**
  * The exploration's chart area: one bar chart per property, each aggregating **the current object set**.
@@ -19,6 +19,7 @@ export function ObjectSetCharts({
   filters,
   properties,
   onPick,
+  onPickRange,
   onRemove,
   onMove,
   canMove,
@@ -30,6 +31,8 @@ export function ObjectSetCharts({
   /** Property names to chart, in order. The caller decides (prominent properties first). */
   properties: string[];
   onPick: (prop: string, value: string) => void;
+  /** A histogram bar is an interval, so picking one adds two conditions rather than one. */
+  onPickRange?: (prop: string, from: number, to: number) => void;
   /** Chart editing: removing a chart is not removing its condition (the docs are explicit). */
   onRemove?: (prop: string) => void;
   onMove?: (prop: string, direction: -1 | 1) => void;
@@ -56,6 +59,7 @@ export function ObjectSetCharts({
         search: search.trim() || undefined,
         filters,
         limit: 20,
+        buckets: 8,
       });
       // Identifiers are answered but not drawn: twelve bars of height one look like a failure, not a distribution.
       setCharts(dimensionalCharts(res.charts));
@@ -77,6 +81,9 @@ export function ObjectSetCharts({
     for (const filter of filters) {
       const [prop, op, rawValue] = filter.split(':');
       if (op === 'eq' && prop && rawValue) out.add(`${prop}\u0000${rawValue}`);
+      if ((op === 'ge' || op === 'lt') && prop && rawValue) {
+        out.add(`${prop}\u0000${op}\u0000${rawValue}`);
+      }
     }
     return out;
   }, [filters]);
@@ -88,7 +95,28 @@ export function ObjectSetCharts({
   return (
     <div className="object-set-charts">
       {charts.map((chart) => {
-        const data = chart.values.slice(0, 12);
+        /* One bar list for both shapes: a value bar narrows to one value, an interval bar to a range. */
+        const data = isHistogram(chart)
+          ? (chart.buckets ?? []).map((bucket) => {
+              const key = String(bucket.from);
+              const selected =
+                applied.has(`${chart.prop}\u0000ge\u0000${bucket.from}`) &&
+                applied.has(`${chart.prop}\u0000lt\u0000${bucket.to}`);
+              return {
+                key,
+                label: intervalLabel(bucket.from, bucket.to),
+                count: bucket.count,
+                selected,
+                pick: () => onPickRange?.(chart.prop, bucket.from, bucket.to),
+              };
+            })
+          : (chart.values ?? []).slice(0, 12).map((value) => ({
+              key: value.value,
+              label: value.value,
+              count: value.count,
+              selected: applied.has(`${chart.prop}\u0000${value.value}`),
+              pick: () => onPick(chart.prop, value.value),
+            }));
         return (
           <figure key={chart.prop} className="object-set-chart">
             <figcaption className="object-set-chart__title">
@@ -96,7 +124,7 @@ export function ObjectSetCharts({
                 {chart.prop}
                 {chart.truncated ? (
                   <span className="object-set-chart__more">
-                    {t('objectSet.chartTruncated', { count: chart.values.length })}
+                    {t('objectSet.chartTruncated', { count: (chart.values ?? []).length })}
                   </span>
                 ) : null}
               </span>
@@ -143,8 +171,8 @@ export function ObjectSetCharts({
                   <XAxis type="number" hide />
                   <YAxis
                     type="category"
-                    dataKey="value"
-                    width={110}
+                    dataKey="label"
+                    width={120}
                     tick={{ fontSize: 12 }}
                     interval={0}
                   />
@@ -156,20 +184,17 @@ export function ObjectSetCharts({
                     dataKey="count"
                     radius={[0, 3, 3, 0]}
                     onClick={(entry) => {
-                      // recharts hands the row datum; the category value is what a condition needs.
-                      const raw = (entry as unknown as { payload?: { value?: string }; value?: string });
-                      const picked = raw?.payload?.value ?? raw?.value;
-                      if (typeof picked === 'string') onPick(chart.prop, picked);
+                      // recharts hands the row datum back; that datum carries the bar's own handler.
+                      const raw = entry as unknown as { payload?: { pick?: () => void } };
+                      raw?.payload?.pick?.();
                     }}
                   >
                     {data.map((entry) => (
                       <Cell
-                        key={entry.value}
+                        key={entry.key}
                         cursor="pointer"
                         fill={
-                          applied.has(`${chart.prop}\u0000${entry.value}`)
-                            ? 'var(--color-accent)'
-                            : 'var(--color-accent-subtle)'
+                          entry.selected ? 'var(--color-accent)' : 'var(--color-accent-subtle)'
                         }
                       />
                     ))}
