@@ -811,6 +811,84 @@ async def index_one_object_type_to_neo4j(
 
 # --- Object instances (nested under object type) ---
 
+def _declared_properties(obj_type: ObjectType) -> set[str]:
+    return {
+        str(p.get("name"))
+        for p in (obj_type.properties or [])
+        if isinstance(p, dict) and p.get("name")
+    }
+
+
+async def _known_link_targets(
+    db: AsyncSession, obj_type: ObjectType
+) -> dict[str, ObjectType]:
+    """`link api_name → the object type on the other side`, so a one-hop filter can be checked."""
+    links = (
+        await db.execute(
+            select(LinkType).where(
+                or_(
+                    LinkType.source_object_type_id == obj_type.id,
+                    LinkType.target_object_type_id == obj_type.id,
+                )
+            )
+        )
+    ).scalars().all()
+    out: dict[str, ObjectType] = {}
+    for link in links:
+        other_id = (
+            link.target_object_type_id
+            if link.source_object_type_id == obj_type.id
+            else link.source_object_type_id
+        )
+        other = await db.get(ObjectType, other_id)
+        if other is None:
+            continue
+        for key in (link.api_name, link.id):
+            if key:
+                out[key] = other
+    return out
+
+
+def _check_property_names(
+    *,
+    obj_type: ObjectType,
+    filters,
+    sort,
+    props: list[str] | None = None,
+    link_targets: dict[str, ObjectType] | None = None,
+) -> None:
+    """A typo in a property name must not look like "no such data".
+
+    The graph answers an unknown property with an empty set, which reads as "this type has nothing" — the same
+    silent-wrongness shape as a stale mirror. Naming the property is cheap; the caller is told instead.
+    """
+    declared = _declared_properties(obj_type)
+    unknown: list[str] = []
+    for flt in filters:
+        if not flt.via:
+            if declared and flt.prop not in declared:
+                unknown.append(flt.prop)
+            continue
+        other = (link_targets or {}).get(flt.via)
+        other_declared = _declared_properties(other) if other else set()
+        if other_declared and flt.prop not in other_declared:
+            unknown.append(f"@{flt.via}/{flt.prop}")
+    for key in sort or []:
+        if declared and key.prop not in declared:
+            unknown.append(key.prop)
+    for name in props or []:
+        if declared and name not in declared:
+            unknown.append(name)
+    if unknown:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"unknown property: {', '.join(sorted(set(unknown)))} — "
+                f"'{obj_type.name}' declares {', '.join(sorted(declared))}"
+            ),
+        )
+
+
 async def _object_link_info(db: AsyncSession, obj_type: ObjectType) -> dict[str, tuple[str, str]]:
     """`link api_name → (neo4j rel type, 'out'|'in')` for the links touching this type.
 
@@ -863,6 +941,13 @@ async def aggregate_objects(
     except ObjectQueryError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     # The resource's row policy is part of the set, not a post-filter: charts and rows must agree.
+    _check_property_names(
+        obj_type=obj_type,
+        filters=filters,
+        sort=[],
+        props=prop,
+        link_targets=await _known_link_targets(db, obj_type),
+    )
     filters = [*await object_scope_filters(db, request, obj_type), *filters]
     link_info = await _object_link_info(db, obj_type)
     neo4j_ds = await get_first_neo4j_datasource(db)
@@ -923,6 +1008,12 @@ async def list_object_instances(
         order = parse_object_sort(sort)
     except ObjectQueryError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    _check_property_names(
+        obj_type=obj_type,
+        filters=filters,
+        sort=order,
+        link_targets=await _known_link_targets(db, obj_type),
+    )
     filters = [*await object_scope_filters(db, request, obj_type), *filters]
     id_props = resolve_id_properties(obj_type)
     neo4j_ds = await get_first_neo4j_datasource(db)

@@ -523,6 +523,17 @@ async def _index_link_type_m2m_junction(
     tgt_col = link_type.target_dataset_column
     # Keyed like the object layer keys these nodes, so the edge joins the node the object API shows.
     src_columns, tgt_columns = link_endpoint_keys(source_type, target_type)
+    # A guessed identity merges the junction's foreign key under whatever column came first: this is how 180
+    # `Distributor` nodes ended up carrying a uuid in `code` and no other property. Declare the key first.
+    for endpoint in (source_type, target_type):
+        if not (getattr(endpoint, "key_properties", None) or []):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"'{endpoint.name}' declares no key, so the junction's foreign key cannot be merged onto its "
+                    "objects — declare the key on that object type first"
+                ),
+            )
     if len(src_columns) > 1 or len(tgt_columns) > 1:
         raise HTTPException(
             status_code=400,
