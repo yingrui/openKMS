@@ -16,7 +16,7 @@ import {
 import { EmptyState } from '../../styles/design-system/EmptyState';
 import { Loading } from '../../styles/design-system/Loading';
 import { Pagination } from '../../styles/design-system/Pagination';
-import { ExplorerSectionSwitch } from '../../components/ontology/ExplorerSectionSwitch';
+import { ExplorerMenu } from '../../components/ontology/ExplorerMenu';
 import './ObjectExplorer.scss';
 
 /** Convert object type name to Neo4j label (alphanumeric, underscore) */
@@ -519,7 +519,9 @@ export function ObjectExplorer() {
 
   return (
     <div className="object-explorer">
-      <ExplorerSectionSwitch />
+      <div className="object-explorer-menubar">
+        <ExplorerMenu />
+      </div>
       <div className="object-explorer-layout">
         <aside className="object-explorer-sidebar">
           <h3 className="object-explorer-sidebar-title">{t('objectTypesHeading')}</h3>

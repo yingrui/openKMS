@@ -1,0 +1,64 @@
+/* The explorer's menu: sections plus the recent explorations, in the top-right where the page already puts actions. */
+
+.explorer-menu {
+  position: relative;
+}
+
+.explorer-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.explorer-menu__panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  min-width: 15rem;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-lg);
+}
+
+.explorer-menu__panel > button,
+.explorer-menu__recent {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.explorer-menu__panel > button:hover,
+.explorer-menu__recent:hover {
+  background: var(--color-bg-muted);
+}
+
+.explorer-menu__label {
+  margin: var(--space-2) var(--space-2) var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.explorer-menu__recent-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explorer-menu__recent-meta {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}

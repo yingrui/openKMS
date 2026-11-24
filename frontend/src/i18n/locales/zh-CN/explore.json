@@ -374,6 +374,8 @@
   "explorerSections": {
     "explorations": "探索",
     "query": "图查询",
-    "aria": "探索与图查询"
+    "aria": "探索与图查询",
+    "allExplorations": "我的探索",
+    "recent": "最近打开"
   }
 }

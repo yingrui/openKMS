@@ -17,6 +17,13 @@
   flex-direction: column;
 }
 
+/* The menu sits above the workspace, right-aligned; the workspace below keeps the remaining height. */
+.object-explorer-menubar {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-2) var(--space-3) 0;
+}
+
 .object-explorer-layout {
   display: flex;
   flex: 1;
@@ -38,7 +45,14 @@
 }
 
 @include max-width(ds.$bp-md-min) {
-  .object-explorer-layout {
+  /* The menu sits above the workspace, right-aligned; the workspace below keeps the remaining height. */
+.object-explorer-menubar {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-2) var(--space-3) 0;
+}
+
+.object-explorer-layout {
     overflow-x: auto;
   }
 

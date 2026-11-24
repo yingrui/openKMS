@@ -13,7 +13,7 @@ import {
 import { ListPage } from '../../styles/design-system/ListPage';
 import { EmptyState } from '../../styles/design-system/EmptyState';
 import { Loading } from '../../styles/design-system/Loading';
-import { ExplorerSectionSwitch } from '../../components/ontology/ExplorerSectionSwitch';
+import { ExplorerMenu } from '../../components/ontology/ExplorerMenu';
 import { OntologyScopePicker } from './OntologyScopePicker';
 import { typeOption } from './ontologyScopeOption';
 import './ObjectSet.scss';
@@ -180,7 +180,7 @@ export function ObjectsList() {
     <ListPage
       title={t('objects.title')}
       subtitle={t('objects.subtitle')}
-      tabs={<ExplorerSectionSwitch />}
+      actions={<ExplorerMenu />}
     >
       <div className="ontology-home">
         <nav className="ontology-home__nav" aria-label={t('objects.groupNav')}>

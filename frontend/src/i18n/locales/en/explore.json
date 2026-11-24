@@ -374,6 +374,8 @@
   "explorerSections": {
     "explorations": "Explorations",
     "query": "Cypher Query",
-    "aria": "Explorations and Cypher query"
+    "aria": "Explorations and Cypher query",
+    "allExplorations": "My explorations",
+    "recent": "Recently opened"
   }
 }

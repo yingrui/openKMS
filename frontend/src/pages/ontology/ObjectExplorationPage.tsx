@@ -20,6 +20,7 @@ import {
   type ExplorationResponse,
 } from '../../data/explorationsApi';
 import { Dialog, FormField } from '../../styles/design-system';
+import { ExplorerMenu } from '../../components/ontology/ExplorerMenu';
 import { ObjectSetCharts } from './ObjectSetCharts';
 import { ObjectSetFilters } from './ObjectSetFilters';
 import { formatFilter } from './objectSetCondition';
@@ -245,16 +246,19 @@ export function ObjectExplorationPage() {
               .join(' · ')
       }
       actions={
-        <button
-          type="button"
-          className="btn btn-primary"
+        <>
+          <ExplorerMenu />
+          <button
+            type="button"
+            className="btn btn-primary"
           onClick={() => {
             setSaveName(saved?.name ?? objectType.name);
             setSaveOpen(true);
           }}
         >
-          {saved ? t('objectSet.saveUpdate') : t('objectSet.saveCreate')}
-        </button>
+            {saved ? t('objectSet.saveUpdate') : t('objectSet.saveCreate')}
+          </button>
+        </>
       }
     >
       <div className="object-set-toolbar">
