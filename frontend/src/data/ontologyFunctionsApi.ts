@@ -212,6 +212,18 @@ export async function executeOntologyFunction(
   );
 }
 
+/** Run an unsaved flow (the editor's Run button). Needs write permission: it is authoring, not calling. */
+export async function dryRunLogicFlow(
+  functionId: string,
+  body: { flow_spec: Record<string, unknown>; input: Record<string, unknown> },
+): Promise<OntologyExecutionResult> {
+  return ontologyFetch<OntologyExecutionResult>(
+    `${base}/${functionId}/dry-run`,
+    { method: 'POST', body: JSON.stringify(body) },
+    'Failed to run the flow',
+  );
+}
+
 export async function executeOntologyFunctionByApiName(
   apiName: string,
   body: { input?: Record<string, unknown>; use_published?: boolean },

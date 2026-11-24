@@ -1,9 +1,18 @@
 /**
- * The Logic function draft: a list of nodes and the small amount of structure around them.
+ * The Logic function draft: nodes, and the derivations the editor would otherwise ask people to type.
  *
- * A draft is the UI's shape for `flow_spec`. Keeping the translation in one file means the editor never invents
- * fields the backend does not understand, and a spec written by an agent (or a future import) opens in the editor.
+ * Three things used to be authored by hand that are really consequences of the prompt:
+ * the function's input schema, the node ids, and the output reference. Here they are computed, so the form can be
+ * "write the prompt" and the rest of the UI can follow it.
  */
+
+export type FieldType = 'string' | 'number' | 'integer' | 'boolean' | 'string[]';
+
+export type OutputField = { name: string; type: FieldType; description: string };
+
+export const FIELD_TYPES: FieldType[] = ['string', 'number', 'integer', 'boolean', 'string[]'];
+
+export type OutputMode = 'text' | 'fields';
 
 export type ModelNode = {
   id: string;
@@ -12,21 +21,16 @@ export type ModelNode = {
   model_id: string;
   system: string;
   prompt: string;
-  /** Raw JSON text so a half-typed object does not blow up the form. */
+  outputMode: OutputMode;
+  fields: OutputField[];
+  /** Raw JSON, kept for the escape hatch and to round-trip a spec the UI cannot express as fields. */
   outputSchema: string;
   tokenLimit: string;
 };
 
-export type FlowDraft = {
-  nodes: ModelNode[];
-  /** `{{n1}}` style; empty means "the last node's output". */
-  output: string;
-};
+export type FlowDraft = { nodes: ModelNode[] };
 
-export type FlowSpec = {
-  nodes: Record<string, unknown>[];
-  output?: string;
-};
+export type FlowSpec = { nodes: Record<string, unknown>[]; output?: string };
 
 const REFERENCE = /\{\{\s*([A-Za-z0-9_.]+)\s*\}\}/g;
 
@@ -37,16 +41,18 @@ export function newNode(index: number): ModelNode {
     model_id: '',
     system: '',
     prompt: '',
+    outputMode: 'text',
+    fields: [],
     outputSchema: '',
     tokenLimit: '',
   };
 }
 
 export function emptyDraft(): FlowDraft {
-  return { nodes: [newNode(0)], output: '' };
+  return { nodes: [newNode(0)] };
 }
 
-/** Open a stored spec in the editor. Unknown node kinds are dropped here, never shown as editable. */
+/** Open a stored spec in the editor. Kinds the editor cannot edit are dropped, never shown as editable shells. */
 export function draftFromSpec(spec: unknown): FlowDraft {
   if (!spec || typeof spec !== 'object') return emptyDraft();
   const raw = (spec as FlowSpec).nodes;
@@ -54,22 +60,27 @@ export function draftFromSpec(spec: unknown): FlowDraft {
   const nodes = raw
     .filter((node): node is Record<string, unknown> => Boolean(node) && typeof node === 'object')
     .filter((node) => node.kind === 'model')
-    .map((node, index) => ({
-      id: String(node.id ?? `n${index + 1}`),
-      kind: 'model' as const,
-      model_id: String(node.model_id ?? ''),
-      system: String(node.system ?? ''),
-      prompt: String(node.prompt ?? ''),
-      outputSchema: node.output_schema ? JSON.stringify(node.output_schema, null, 2) : '',
-      tokenLimit: node.token_limit == null ? '' : String(node.token_limit),
-    }));
-  const output = typeof (spec as FlowSpec).output === 'string' ? String((spec as FlowSpec).output) : '';
-  return { nodes: nodes.length ? nodes : [newNode(0)], output };
+    .map((node, index) => {
+      const fields = fieldsFromSchema(node.output_schema);
+      return {
+        id: String(node.id ?? `n${index + 1}`),
+        kind: 'model' as const,
+        model_id: String(node.model_id ?? ''),
+        system: String(node.system ?? ''),
+        prompt: String(node.prompt ?? ''),
+        outputMode: (fields.length ? 'fields' : 'text') as OutputMode,
+        fields,
+        // Kept even when the fields table can express it, so opening and saving never narrows a hand-written schema.
+        outputSchema: node.output_schema ? JSON.stringify(node.output_schema, null, 2) : '',
+        tokenLimit: node.token_limit == null ? '' : String(node.token_limit),
+      };
+    });
+  return { nodes: nodes.length ? nodes : [newNode(0)] };
 }
 
 export type DraftResult = { spec: FlowSpec | null; errors: string[] };
 
-/** Draft → spec. Returns errors instead of throwing, so the form can show them next to the node. */
+/** Draft → spec. Returns errors instead of throwing, each named against the node it belongs to. */
 export function specFromDraft(draft: FlowDraft): DraftResult {
   const errors: string[] = [];
   const seen = new Set<string>();
@@ -89,27 +100,63 @@ export function specFromDraft(draft: FlowDraft): DraftResult {
     if (node.system.trim()) spec.system = node.system;
     if (node.tokenLimit.trim()) {
       const limit = Number(node.tokenLimit);
-      if (!Number.isInteger(limit) || limit <= 0) errors.push(`${where}: token limit must be a positive integer`);
-      else spec.token_limit = limit;
+      if (!Number.isInteger(limit) || limit <= 0) {
+        errors.push(`${where}: token limit must be a positive integer`);
+      } else spec.token_limit = limit;
     }
-    if (node.outputSchema.trim()) {
-      try {
-        const parsed = JSON.parse(node.outputSchema);
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-          errors.push(`${where}: output schema must be a JSON object`);
-        } else spec.output_schema = parsed;
-      } catch {
-        errors.push(`${where}: output schema is not valid JSON`);
-      }
-    }
+
+    const schema = outputSchemaFor(node, where, errors);
+    if (schema) spec.output_schema = schema;
     nodes.push(spec);
   });
 
   if (errors.length) return { spec: null, errors };
-  return { spec: draft.output.trim() ? { nodes, output: draft.output.trim() } : { nodes }, errors: [] };
+  return { spec: { nodes }, errors: [] };
 }
 
-/** What a prompt can reference: the function's inputs, and every earlier node. */
+/** Raw JSON wins over the field table: it is the escape hatch, and it round-trips whatever was stored. */
+function outputSchemaFor(
+  node: ModelNode,
+  where: string,
+  errors: string[],
+): Record<string, unknown> | null {
+  if (node.outputSchema.trim()) {
+    try {
+      const parsed = JSON.parse(node.outputSchema) as unknown;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+      errors.push(`${where}: output schema must be a JSON object`);
+    } catch {
+      errors.push(`${where}: output schema is not valid JSON`);
+    }
+    return null;
+  }
+  if (node.outputMode !== 'fields') return null;
+  if (!node.fields.some((field) => field.name.trim())) {
+    errors.push(`${where}: a structured output needs at least one named field`);
+    return null;
+  }
+  const duplicate = duplicatedName(node.fields);
+  if (duplicate) {
+    errors.push(`${where}: field "${duplicate}" is used twice`);
+    return null;
+  }
+  return schemaFromFields(node.fields);
+}
+
+function duplicatedName(fields: OutputField[]): string | null {
+  const seen = new Set<string>();
+  for (const field of fields) {
+    const name = field.name.trim();
+    if (!name) continue;
+    if (seen.has(name)) return name;
+    seen.add(name);
+  }
+  return null;
+}
+
+/** What a prompt can reference at this point: the function's inputs, and every earlier node. */
 export function availableReferences(nodeIndex: number, nodes: ModelNode[]): string[] {
   return ['input', ...nodes.slice(0, nodeIndex).map((node) => node.id.trim()).filter(Boolean)];
 }
@@ -124,4 +171,84 @@ export function unknownReferences(prompt: string, nodeIndex: number, nodes: Mode
     if (!available.includes(root) && !out.includes(reference)) out.push(reference);
   }
   return out;
+}
+
+/** Every `{{reference}}` in the draft's prompts, in the order they first appear. */
+export function variablesInDraft(draft: FlowDraft): string[] {
+  const out: string[] = [];
+  for (const node of draft.nodes) {
+    for (const match of node.prompt.matchAll(REFERENCE)) {
+      if (!out.includes(match[1])) out.push(match[1]);
+    }
+  }
+  return out;
+}
+
+/** The input field names the run panel must ask for: `input.x` → `x`, anything else is a node output. */
+export function inputNames(draft: FlowDraft): string[] {
+  const nodeIds = new Set(draft.nodes.map((node) => node.id.trim()));
+  const out: string[] = [];
+  for (const reference of variablesInDraft(draft)) {
+    const [root, ...rest] = reference.split('.');
+    // A reference to an earlier node is produced by the flow, so it is not something the run panel can ask for.
+    if (nodeIds.has(root)) continue;
+    const name = root === 'input' ? rest.join('.') : reference;
+    if (!name || out.includes(name)) continue;
+    out.push(name);
+  }
+  return out;
+}
+
+/**
+ * The function's input schema follows the prompt.
+ *
+ * Declaring inputs twice — once as `{{email}}` in a prompt, once in an `input_schema` textarea — is what made the
+ * first version feel like paperwork: type the variable, then be told the input it obviously needs is missing.
+ */
+export function inputSchemaFromDraft(draft: FlowDraft): Record<string, unknown> | null {
+  const names = inputNames(draft);
+  if (!names.length) return null;
+  const properties: Record<string, unknown> = {};
+  for (const name of names) properties[name] = { type: 'string' };
+  return { type: 'object', properties, required: names };
+}
+
+export function fieldsFromSchema(schema: unknown): OutputField[] {
+  if (!schema || typeof schema !== 'object') return [];
+  const properties = (schema as { properties?: unknown }).properties;
+  if (!properties || typeof properties !== 'object') return [];
+  return Object.entries(properties as Record<string, unknown>).map(([name, definition]) => ({
+    name,
+    type: jsonSchemaToType(definition),
+    description:
+      definition && typeof definition === 'object'
+        ? String((definition as { description?: unknown }).description ?? '')
+        : '',
+  }));
+}
+
+export function schemaFromFields(fields: OutputField[]): Record<string, unknown> | null {
+  const rows = fields.filter((field) => field.name.trim());
+  if (!rows.length) return null;
+  const properties: Record<string, unknown> = {};
+  for (const field of rows) {
+    properties[field.name.trim()] = {
+      ...typeToJsonSchema(field.type),
+      ...(field.description.trim() ? { description: field.description.trim() } : {}),
+    };
+  }
+  return { type: 'object', properties, required: rows.map((field) => field.name.trim()) };
+}
+
+function typeToJsonSchema(type: FieldType): Record<string, unknown> {
+  if (type === 'string[]') return { type: 'array', items: { type: 'string' } };
+  return { type };
+}
+
+function jsonSchemaToType(schema: unknown): FieldType {
+  if (!schema || typeof schema !== 'object') return 'string';
+  const raw = schema as { type?: unknown };
+  if (raw.type === 'array') return 'string[]';
+  const primitive = String(raw.type ?? 'string');
+  return (FIELD_TYPES as string[]).includes(primitive) ? (primitive as FieldType) : 'string';
 }

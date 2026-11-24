@@ -11,13 +11,21 @@ import {
   fetchFunctionVersions,
   fetchOntologyFunction,
   publishOntologyFunction,
+  dryRunLogicFlow,
   saveFunctionVersion,
   updateOntologyFunction,
   validateFunctionSource,
 } from '../../data/ontologyFunctionsApi';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
 import { AUTHORING_OF_SOURCE, backToListPath, hasUnpublishedDraft, type Authoring } from './functionEditorState';
-import { draftFromSpec, emptyDraft, specFromDraft, type FlowDraft } from './logicFlow';
+import {
+  draftFromSpec,
+  emptyDraft,
+  inputNames,
+  inputSchemaFromDraft,
+  specFromDraft,
+  type FlowDraft,
+} from './logicFlow';
 import { fetchAllModels } from '../../data/modelsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 
@@ -51,6 +59,7 @@ export function useFunctionEditorWorkspace() {
   const [flowErrors, setFlowErrors] = useState<string[]>([]);
   const [models, setModels] = useState<{ id: string; label: string; isDefault: boolean }[]>([]);
   const [trace, setTrace] = useState<Record<string, unknown> | null>(null);
+  const [runValues, setRunValues] = useState<Record<string, string>>({});
   const [latestVersion, setLatestVersion] = useState<number | null>(null);
   const [publishedVersion, setPublishedVersion] = useState<number | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -164,6 +173,8 @@ export function useFunctionEditorWorkspace() {
           return;
         }
         flowSpec = draft.spec;
+        // The inputs are whatever the prompts mention; keeping a stale hand-written schema would make Run reject them.
+        inputSchema = inputSchemaFromDraft(flow);
       }
       if (isNew) {
         const fn = await createOntologyFunction({
@@ -214,6 +225,31 @@ export function useFunctionEditorWorkspace() {
   const onRun = async () => {
     const id = resolvedId;
     if (!id) return;
+    if (authoring === 'logic') {
+      const draft = specFromDraft(flow);
+      setFlowErrors(draft.errors);
+      if (draft.errors.length || !draft.spec) {
+        toast.error(t('editor.logicFixErrors'));
+        return;
+      }
+      setRunning(true);
+      setTrace(null);
+      try {
+        const res = await dryRunLogicFlow(id, {
+          flow_spec: draft.spec as Record<string, unknown>,
+          input: Object.fromEntries(inputNames(flow).map((name) => [name, runValues[name] ?? ''])),
+        });
+        setPreviewOutput(JSON.stringify(res.output ?? res.error ?? res, null, 2));
+        setTrace(res.trace ?? null);
+        if (res.status === 'ok') toast.success(t('editor.runOk'));
+        else toast.error(res.error || t('functions.runFailed'));
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : t('functions.runFailed'));
+      } finally {
+        setRunning(false);
+      }
+      return;
+    }
     let input: Record<string, unknown> = {};
     try {
       input = JSON.parse(previewInput) as Record<string, unknown>;
@@ -329,6 +365,9 @@ export function useFunctionEditorWorkspace() {
     flowErrors,
     models,
     trace,
+    runInputs: inputNames(flow),
+    runValues,
+    setRunValues,
     canPublish: Boolean(resolvedId) && !publishing && hasUnpublishedDraft(latestVersion, publishedVersion),
     onRun,
     onDelete,

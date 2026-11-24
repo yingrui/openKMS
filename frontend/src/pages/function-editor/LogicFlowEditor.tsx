@@ -1,22 +1,16 @@
 import { useTranslation } from 'react-i18next';
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
-import { FormField } from '../../styles/design-system';
-import {
-  availableReferences,
-  newNode,
-  unknownReferences,
-  type FlowDraft,
-  type ModelNode,
-} from './logicFlow';
+import { Plus } from 'lucide-react';
+import { LogicNodeCard } from './LogicNodeCard';
+import { newNode, type FlowDraft, type ModelNode } from './logicFlow';
 
 export type ModelOption = { id: string; label: string; isDefault: boolean };
 
 /**
- * The flow, as a vertical list of nodes rather than a canvas.
+ * The flow, as a stack of prompt cards.
  *
- * Every existing flow editor draws boxes on a canvas; the flows people actually build are chains, and a chain reads
- * better as a list where the prompt is full width and the reference chips are next to the field. Branches (when they
- * exist) will indent under their condition instead of moving boxes around.
+ * Flows in practice are chains, so the chain is the layout: each node is a card you read top to bottom, and a branch
+ * (when branches exist) will indent under its condition rather than becoming a box on a canvas. What the card does not
+ * show, it derives — ids, input schema, reference list — because those were the parts people had to type twice.
  */
 export function LogicFlowEditor({
   draft,
@@ -45,161 +39,40 @@ export function LogicFlowEditor({
     if (target < 0 || target >= draft.nodes.length) return;
     const nodes = [...draft.nodes];
     [nodes[index], nodes[target]] = [nodes[target], nodes[index]];
-    onChange({ ...draft, nodes });
+    onChange({ nodes });
   };
 
   const remove = (index: number) => {
     if (draft.nodes.length <= 1) return;
-    onChange({ ...draft, nodes: draft.nodes.filter((_, i) => i !== index) });
+    onChange({ nodes: draft.nodes.filter((_, i) => i !== index) });
   };
+
+  const add = () => onChange({ nodes: [...draft.nodes, newNode(draft.nodes.length)] });
 
   return (
     <div className="logic-flow">
       <ol className="logic-flow__nodes">
-        {draft.nodes.map((node, index) => {
-          const unknown = unknownReferences(node.prompt, index, draft.nodes);
-          const references = availableReferences(index, draft.nodes);
-          return (
-            <li key={`${node.id}-${index}`} className="logic-flow__node">
-              <div className="logic-flow__node-head">
-                <input
-                  className="logic-flow__id ds-control"
-                  value={node.id}
-                  aria-label={t('editor.logicNodeId')}
-                  onChange={(e) => patch(index, { id: e.target.value })}
-                  disabled={disabled}
-                />
-                <span className="logic-flow__kind">{t('editor.logicNodeModel')}</span>
-                <select
-                  className="ds-control logic-flow__model"
-                  value={node.model_id}
-                  aria-label={t('editor.logicNodeModel')}
-                  onChange={(e) => patch(index, { model_id: e.target.value })}
-                  disabled={disabled}
-                >
-                  <option value="">{t('editor.logicModelDefault')}</option>
-                  {models.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.label}
-                      {model.isDefault ? ` ${t('editor.logicModelDefaultTag')}` : ''}
-                    </option>
-                  ))}
-                </select>
-                <div className="logic-flow__node-actions">
-                  <button
-                    type="button"
-                    className="ds-table-icon-link"
-                    aria-label={t('editor.logicMoveUp')}
-                    onClick={() => move(index, -1)}
-                    disabled={disabled || index === 0}
-                  >
-                    <ArrowUp size={15} aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    className="ds-table-icon-link"
-                    aria-label={t('editor.logicMoveDown')}
-                    onClick={() => move(index, 1)}
-                    disabled={disabled || index === draft.nodes.length - 1}
-                  >
-                    <ArrowDown size={15} aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    className="ds-table-icon-link"
-                    aria-label={t('editor.logicRemoveNode')}
-                    onClick={() => remove(index)}
-                    disabled={disabled || draft.nodes.length <= 1}
-                  >
-                    <Trash2 size={15} aria-hidden />
-                  </button>
-                </div>
-              </div>
-
-              <FormField label={t('editor.logicSystem')} htmlFor={`logic-system-${index}`}>
-                <input
-                  id={`logic-system-${index}`}
-                  className="ds-control"
-                  value={node.system}
-                  onChange={(e) => patch(index, { system: e.target.value })}
-                  disabled={disabled}
-                />
-              </FormField>
-
-              <FormField
-                label={t('editor.logicPrompt')}
-                htmlFor={`logic-prompt-${index}`}
-                hint={
-                  unknown.length
-                    ? t('editor.logicUnknownRefs', { refs: unknown.join(', ') })
-                    : t('editor.logicPromptHint', { refs: references.map((r) => `{{${r}}}`).join(' ') })
-                }
-              >
-                <textarea
-                  id={`logic-prompt-${index}`}
-                  className="ds-control"
-                  rows={4}
-                  value={node.prompt}
-                  onChange={(e) => patch(index, { prompt: e.target.value })}
-                  disabled={disabled}
-                />
-              </FormField>
-
-              <FormField
-                label={t('editor.logicOutputSchema')}
-                htmlFor={`logic-schema-${index}`}
-                hint={t('editor.logicOutputSchemaHint')}
-              >
-                <textarea
-                  id={`logic-schema-${index}`}
-                  className="ds-control logic-flow__code"
-                  rows={4}
-                  spellCheck={false}
-                  value={node.outputSchema}
-                  onChange={(e) => patch(index, { outputSchema: e.target.value })}
-                  disabled={disabled}
-                />
-              </FormField>
-
-              <FormField label={t('editor.logicTokenLimit')} htmlFor={`logic-limit-${index}`}>
-                <input
-                  id={`logic-limit-${index}`}
-                  className="ds-control logic-flow__limit"
-                  type="number"
-                  min={1}
-                  value={node.tokenLimit}
-                  onChange={(e) => patch(index, { tokenLimit: e.target.value })}
-                  disabled={disabled}
-                />
-              </FormField>
-            </li>
-          );
-        })}
+        {draft.nodes.map((node, index) => (
+          <LogicNodeCard
+            key={index}
+            node={node}
+            models={models}
+            index={index}
+            nodes={draft.nodes}
+            fields={node.fields}
+            disabled={disabled}
+            onChange={(changes) => patch(index, changes)}
+            onMove={(by) => move(index, by)}
+            onRemove={() => remove(index)}
+            canRemove={draft.nodes.length > 1}
+          />
+        ))}
       </ol>
 
-      <button
-        type="button"
-        className="btn btn-secondary btn-sm"
-        onClick={() => onChange({ ...draft, nodes: [...draft.nodes, newNode(draft.nodes.length)] })}
-        disabled={disabled}
-      >
+      <button type="button" className="logic-flow__add" onClick={add} disabled={disabled}>
         <Plus size={15} aria-hidden />
         {t('editor.logicAddNode')}
       </button>
-
-      <FormField
-        label={t('editor.logicOutputRef')}
-        htmlFor="logic-output"
-        hint={t('editor.logicOutputRefHint')}
-      >
-        <input
-          id="logic-output"
-          className="ds-control"
-          value={draft.output}
-          onChange={(e) => onChange({ ...draft, output: e.target.value })}
-          disabled={disabled}
-        />
-      </FormField>
 
       {errors.length ? (
         <ul className="logic-flow__errors" role="alert">

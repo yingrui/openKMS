@@ -120,6 +120,34 @@ async def _run_ofs(
     )
 
 
+async def dry_run_flow(
+    db: AsyncSession,
+    fn: OntologyFunction,
+    *,
+    flow_spec: dict,
+    input_payload: dict,
+    model_factory: logic_runtime.ModelFactory | None = None,
+) -> OntologyFunctionExecuteResponse:
+    """Execute the spec on screen. Nothing is recorded: a draft is not a fact about the function."""
+    if getattr(fn, "source", "code") != "logic":
+        raise HTTPException(status_code=400, detail="Only Logic functions have a flow to run")
+
+    if model_factory is None:
+
+        async def model_factory(model_id: str | None) -> Any:
+            return await resolve_model(db, model_id)
+
+    flow = await logic_runtime.run_flow(flow_spec, input_payload, model_factory=model_factory)
+    return OntologyFunctionExecuteResponse(
+        status=flow.status,
+        output=normalize_output(flow.output),
+        error=flow.error,
+        duration_ms=flow.duration_ms,
+        execution_id=None,
+        trace=flow.trace or None,
+    )
+
+
 async def _run_flow(
     db: AsyncSession,
     *,

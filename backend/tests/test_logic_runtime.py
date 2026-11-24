@@ -151,3 +151,35 @@ class TestRun:
 
         assert outcome.status == "error"
         assert called is False
+
+
+class TestDraftExecution:
+    """The editor runs what is on screen; that path must not depend on a saved version."""
+
+    @pytest.mark.asyncio
+    async def test_a_draft_runs_the_spec_it_is_given(self):
+        from app.services.ontology.execution_service import dry_run_flow
+
+        fn = type("Fn", (), {"source": "logic"})()
+        outcome = await dry_run_flow(
+            None,  # no db use: the model factory is injected instead of reading the registry
+            fn,
+            flow_spec=_spec(output_schema=SCHEMA),
+            input_payload={"q": "life"},
+            model_factory=_factory,
+        )
+
+        assert outcome.status == "ok"
+        assert outcome.output == {"answer": "42"}
+        assert outcome.execution_id is None, "a draft run is not an execution record"
+
+    @pytest.mark.asyncio
+    async def test_a_code_function_has_no_flow_to_run(self):
+        from fastapi import HTTPException
+
+        from app.services.ontology.execution_service import dry_run_flow
+
+        fn = type("Fn", (), {"source": "code"})()
+        with pytest.raises(HTTPException) as exc:
+            await dry_run_flow(None, fn, flow_spec=_spec(), input_payload={})
+        assert exc.value.status_code == 400

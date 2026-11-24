@@ -15,6 +15,7 @@ from app.models.ontology_function import OntologyFunctionExecution
 from app.schemas.ontology_functions import (
     OntologyFunctionCreate,
     OntologyFunctionExecuteRequest,
+    OntologyFunctionDryRunRequest,
     OntologyFunctionExecuteResponse,
     OntologyFunctionExecutionResponse,
     OntologyFunctionListResponse,
@@ -186,6 +187,20 @@ async def execute_function(
         caller_token=require_caller_token(request),
         call_depth=depth,
         call_stack=_call_stack(request),
+    )
+
+
+@router.post("/{function_id}/dry-run", response_model=OntologyFunctionExecuteResponse)
+async def dry_run_function(
+    function_id: str,
+    body: OntologyFunctionDryRunRequest,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
+):
+    """Run the flow the editor is showing. Needs write permission: it is authoring, not calling."""
+    fn = await function_service.get_function(db, function_id)
+    return await execution_service.dry_run_flow(
+        db, fn, flow_spec=body.flow_spec, input_payload=body.input
     )
 
 

@@ -4,6 +4,7 @@ import { AvailableQueriesPanel } from './AvailableQueriesPanel';
 import { FunctionCodeEditor } from './FunctionCodeEditor';
 import { FunctionPreviewPanel } from './FunctionPreviewPanel';
 import { LogicFlowEditor } from './LogicFlowEditor';
+import { LogicRunPanel } from './LogicRunPanel';
 import { LogicTracePanel } from './LogicTracePanel';
 import { useFunctionEditorWorkspace } from './useFunctionEditorWorkspace';
 import './function-editor.scss';
@@ -19,6 +20,9 @@ export function FunctionEditorWorkspacePage() {
     flowErrors,
     models,
     trace,
+    runInputs,
+    runValues,
+    setRunValues,
     canPublish,
     publishing,
     onPublish,
@@ -195,15 +199,34 @@ export function FunctionEditorWorkspacePage() {
             </div>
           </section>
 
-          <FunctionPreviewPanel
-            input={previewInput}
-            output={previewOutput}
-            running={running}
-            canRun={Boolean(resolvedId)}
-            onInputChange={setPreviewInput}
-            onRun={() => void onRun()}
-          />
-          {isLogic ? <LogicTracePanel trace={trace} /> : null}
+          {isLogic ? (
+            <>
+              <LogicRunPanel
+                inputs={runInputs}
+                values={runValues}
+                running={running}
+                canRun={Boolean(resolvedId)}
+                onChange={setRunValues}
+                onRun={() => void onRun()}
+              />
+              <LogicTracePanel trace={trace} />
+              {previewOutput ? (
+                <section className="logic-run">
+                  <span className="logic-run__title">{t('editor.previewOutput')}</span>
+                  <pre className="logic-trace__pre">{previewOutput}</pre>
+                </section>
+              ) : null}
+            </>
+          ) : (
+            <FunctionPreviewPanel
+              input={previewInput}
+              output={previewOutput}
+              running={running}
+              canRun={Boolean(resolvedId)}
+              onInputChange={setPreviewInput}
+              onRun={() => void onRun()}
+            />
+          )}
         </div>
         {isLogic ? null : (
           <AvailableQueriesPanel currentApiName={apiName || undefined} onInsertSnippet={insertSnippet} />

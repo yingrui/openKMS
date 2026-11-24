@@ -120,6 +120,13 @@ class OntologyFunctionExecuteRequest(BaseModel):
     use_published: bool = False
 
 
+class OntologyFunctionDryRunRequest(BaseModel):
+    """Run an unsaved flow: what the editor has on screen, not what was last saved."""
+
+    flow_spec: dict
+    input: dict = Field(default_factory=dict)
+
+
 class OntologyFunctionExecuteResponse(BaseModel):
     status: ExecutionStatus | str
     output: dict | None = None
