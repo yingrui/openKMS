@@ -37,7 +37,12 @@ function objectLabel(
 
 export function LinkTypeDetail({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation('explore');
-  const { typeId } = useParams<{ typeId: string }>();
+  /* Two apps mount this page and their routes name the parameter differently: the explorer's
+     `/object-explorer/links/:typeId` (now a redirect) and the manager's
+     `/ontology-manager/link-types/:linkTypeId/instances`.
+     Reading both keeps the page working from either route instead of spinning forever on an undefined id. */
+  const params = useParams<{ typeId?: string; linkTypeId?: string }>();
+  const typeId = params.typeId ?? params.linkTypeId ?? '';
   const { isAdmin } = useAuth();
   const [linkType, setLinkType] = useState<LinkTypeResponse | null>(null);
   const [instances, setInstances] = useState<LinkInstanceResponse[]>([]);
@@ -175,7 +180,7 @@ export function LinkTypeDetail({ embedded = false }: { embedded?: boolean } = {}
           say — and drops the page heading the shell already shows. */}
       <div className="link-type-detail-header">
         {!embedded && (
-          <Link to="/object-explorer/links" className="link-type-back">
+          <Link to="/ontology-manager/link-types" className="link-type-back">
             <ArrowLeft size={18} />
             <span>{t('ontology.linkTypeDetail.backLinks')}</span>
           </Link>

@@ -114,5 +114,7 @@
   "auditLog": "审计日志",
   "externalServices": "外部接口",
   "appTaglineExternalServices": "本体可调用的外部端点：Function 与 Action 的 webhook",
-  "ontologyRules": "规则"
+  "ontologyRules": "规则",
+  "exploreHome": "探索",
+  "cypher": "Cypher"
 }

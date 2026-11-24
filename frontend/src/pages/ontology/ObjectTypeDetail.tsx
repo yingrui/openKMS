@@ -256,7 +256,7 @@ export function ObjectTypeDetail({ embedded = false }: { embedded?: boolean } = 
           "add" action still belongs to the table, so it moves next to the search field. */}
       {!embedded && (
         <div className="object-type-detail-header">
-          <Link to="/object-explorer/objects" className="object-type-back">
+          <Link to="/ontology-manager/object-types" className="object-type-back">
             <ArrowLeft size={18} />
             <span>{t('ontology.objectTypeDetail.backObjects')}</span>
           </Link>

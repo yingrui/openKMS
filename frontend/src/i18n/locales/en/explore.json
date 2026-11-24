@@ -280,13 +280,33 @@
     }
   },
   "objects": {
-    "title": "Objects",
-    "subtitle": "Browse object types and their instances. Schema is managed in Console → Object Types.",
+    "title": "Explore your data",
+    "subtitle": "Pick an object type below to explore it as charts, or read it as results.",
     "loadFailed": "Failed to load object types",
     "empty": "No object types yet. Add them in Console → Object Types.",
-    "searchPlaceholder": "Search object types…",
+    "searchPlaceholder": "Search object types and properties…",
     "ungrouped": "Ungrouped",
-    "noMatch": "No object type matches"
+    "noMatch": "No object type matches",
+    "myExplorations": "My explorations",
+    "startNew": "Start a new exploration · pick an object type",
+    "sharedExploration": "Shared",
+    "privateExploration": "Private",
+    "deleteExploration": "Delete exploration {{name}}",
+    "deleteExplorationFailed": "Could not delete",
+    "searchScope": "Search scope",
+    "scopeAll": "All",
+    "groupNav": "Object type groups",
+    "groupNavTitle": "Object type groups",
+    "navAll": "All",
+    "scopeSearchingAll": "Searching all objects",
+    "scopeSearchingSelected": "Searching the selected scope",
+    "scopeRemoveAll": "Remove all",
+    "scopeGroups": "Groups",
+    "scopeTypes": "Object types",
+    "scopeFindGroup": "Type to search a group…",
+    "scopeFindType": "Type to search an object type…",
+    "scopeNoMatch": "Nothing matches",
+    "matchedProperty": "Property: {{name}}"
   },
   "links": {
     "title": "Links",
@@ -337,6 +357,18 @@
     "objectCount": "{{count}} objects",
     "rowsLoading": "Reading results…",
     "rowsEmpty": "No objects in this set",
-    "rowsFailed": "Could not read results"
+    "rowsFailed": "Could not read results",
+    "saveCreate": "Save exploration",
+    "saveUpdate": "Update exploration",
+    "saveName": "Name",
+    "saveNamePlaceholder": "e.g. Over-limit distributors in East China",
+    "saveVisibility": "Who can open it",
+    "saveVisibilityHint": "Sharing only lets someone open this exploration; which rows they see is still decided by data permissions.",
+    "visibilityPrivate": "Only me",
+    "visibilityShared": "Share with permitted people",
+    "savedCreated": "Saved",
+    "savedUpdated": "Updated",
+    "savedFailed": "Could not save",
+    "savedLoadFailed": "Could not open this exploration"
   }
 }

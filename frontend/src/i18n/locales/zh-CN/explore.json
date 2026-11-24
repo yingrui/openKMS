@@ -280,13 +280,33 @@
     }
   },
   "objects": {
-    "title": "对象",
-    "subtitle": "浏览对象类型及其实例。架构在控制台 → 对象类型 中管理。",
+    "title": "探索数据",
+    "subtitle": "选择下面的对象类型，开始一次探索（图表）或直接看结果（列表）。",
     "loadFailed": "无法加载对象类型",
     "empty": "暂无对象类型。请在控制台 → 对象类型 中添加。",
-    "searchPlaceholder": "搜索对象类型…",
+    "searchPlaceholder": "搜索对象类型与属性…",
     "ungrouped": "未分组",
-    "noMatch": "没有匹配的对象类型"
+    "noMatch": "没有匹配的对象类型",
+    "myExplorations": "我的探索",
+    "startNew": "新建探索 · 选择对象类型",
+    "sharedExploration": "共享",
+    "privateExploration": "私有",
+    "deleteExploration": "删除探索 {{name}}",
+    "deleteExplorationFailed": "删除失败",
+    "searchScope": "搜索范围",
+    "scopeAll": "全部",
+    "groupNav": "对象类型分组",
+    "groupNavTitle": "对象类型分组",
+    "navAll": "全部",
+    "scopeSearchingAll": "搜索全部对象",
+    "scopeSearchingSelected": "搜索选中的范围",
+    "scopeRemoveAll": "清除范围",
+    "scopeGroups": "分组",
+    "scopeTypes": "对象类型",
+    "scopeFindGroup": "搜索分组…",
+    "scopeFindType": "搜索对象类型…",
+    "scopeNoMatch": "没有匹配项",
+    "matchedProperty": "属性：{{name}}"
   },
   "links": {
     "title": "关联",
@@ -337,6 +357,18 @@
     "objectCount": "{{count}} 个对象",
     "rowsLoading": "正在读取结果…",
     "rowsEmpty": "这个对象集没有对象",
-    "rowsFailed": "读取结果失败"
+    "rowsFailed": "读取结果失败",
+    "saveCreate": "保存探索",
+    "saveUpdate": "更新探索",
+    "saveName": "名称",
+    "saveNamePlaceholder": "例如：华东区超限经销商",
+    "saveVisibility": "谁能打开",
+    "saveVisibilityHint": "共享只代表别人能打开这个探索；他们能看到哪些行，仍由数据权限决定。",
+    "visibilityPrivate": "只给我",
+    "visibilityShared": "共享给有权限的人",
+    "savedCreated": "已保存",
+    "savedUpdated": "已更新",
+    "savedFailed": "保存失败",
+    "savedLoadFailed": "打不开这个探索"
   }
 }

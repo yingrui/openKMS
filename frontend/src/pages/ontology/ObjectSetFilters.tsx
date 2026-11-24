@@ -84,7 +84,7 @@ export function ObjectSetFilters({
             ))}
           </select>
           <input
-            className="ds-control ds-control--compact"
+            className="ds-control ds-control--compact object-set-filters__value"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={t('objectSet.filterValue')}

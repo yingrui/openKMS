@@ -1,3 +1,6 @@
+@use '../../styles/design-system/mixins' as *;
+@use '../../styles/design-system/tokens' as ds;
+
 /* An object set's conditions, its two perspectives, and the chart area.
  *
  * The charts are controls, not reports: each bar is a condition waiting to be added, so the only styling here is
@@ -70,6 +73,18 @@
   gap: var(--space-2);
 }
 
+/* Same reason as the home search: a form control is full-width by default, so a row of them splits evenly.
+   Property and operator size to content; only the value gets to use the leftover space. */
+.object-set-filters__add .ds-control {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.object-set-filters__add .object-set-filters__value {
+  width: 12rem;
+  flex: 0 1 12rem;
+}
+
 .object-set-charts {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -134,31 +149,397 @@
 }
 
 .object-set-toolbar__search {
-  flex: 1 1 16rem;
-  max-width: 24rem;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
 }
 
-/* The explorer's entry: types grouped the way the ontology groups them. */
-.object-explorer-group {
-  margin-bottom: var(--space-6);
-}
+/* ── Explorer home ────────────────────────────────────────────────────────────────────────────────
+ * A dense index: one row per object type, three per line, grouped by the ontology's own groups. The tall
+ * resource card is right where cards carry actions (wiki spaces, glossaries); here the job is scanning
+ * twenty type names, so the row is one line of text with its count on the right. */
 
-.object-explorer-group:last-child {
-  margin-bottom: 0;
-}
-
-.object-explorer-group__title {
+.ontology-home-search {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-2);
-  margin: 0 0 var(--space-3);
-  font-size: var(--text-md);
-  font-weight: 600;
+  margin-bottom: var(--space-4);
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+}
+
+.ontology-home-search .ds-control {
+  border-color: transparent;
+  background: transparent;
+}
+
+/* `.ds-control` is `display:block; width:100%` because it normally sits in a stacked form field. In this row
+   that made the scope selector claim half the bar; it sizes to its content, and the input takes the rest. */
+.ontology-home-search__input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+.ontology-home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: var(--space-2);
+}
+
+.ontology-home-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.ontology-home-card:hover {
+  border-color: var(--color-border-strong);
+}
+
+.ontology-home-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+
+.ontology-home-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ontology-home-card__name {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--color-text);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ontology-home-card__desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ontology-home-card__count {
+  flex: 0 0 auto;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-muted);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.ontology-home-card__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.ontology-home-card__remove:hover {
+  color: var(--color-error);
+}
+
+/* Group title: a small label with its count, not a section heading — several of these stack. */
+.ontology-home-group {
+  margin-bottom: var(--space-4);
+}
+
+.ontology-home-group__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+}
+
+.ontology-home-group__count {
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-muted);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+/* The divider between "my explorations" and the object types below. */
+.ontology-home-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-5) 0 var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.ontology-home-divider::before,
+.ontology-home-divider::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--color-border);
+}
+
+/* ── Home: left grouping nav + scope picker ────────────────────────────────────────────────────── */
+
+.ontology-home {
+  display: grid;
+  grid-template-columns: minmax(160px, 200px) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@include max-width(ds.$bp-wide-max) {
+  .ontology-home {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ontology-home__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  position: sticky;
+  top: var(--space-3);
+}
+
+/* `.ds-eyebrow` supplies the type; this only spaces it above the group list. */
+.ontology-home__nav-title {
+  margin: var(--space-3) 0 var(--space-1);
+}
+
+.ontology-home__nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ontology-home__nav-item:hover {
+  background: var(--color-bg-muted);
   color: var(--color-text);
 }
 
-.object-explorer-group__count {
+.ontology-home__nav-item[aria-pressed='true'] {
+  background: var(--color-accent-subtle);
+  color: var(--color-text);
+}
+
+.ontology-home__nav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ontology-home__nav-count {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.ontology-home__main {
+  min-width: 0;
+}
+
+/* The scope picker: trigger sizes to its content; only the selected names truncate. */
+.ontology-scope {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.ontology-scope__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 18rem;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.ontology-scope__trigger:hover {
+  background: var(--color-bg-muted);
+}
+
+.ontology-scope__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ontology-scope__panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  width: min(28rem, 80vw);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-lg);
+}
+
+.ontology-scope__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.ontology-scope__tabs {
+  display: flex;
+  gap: var(--space-3);
+  padding: 0 var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ontology-scope__tab {
+  padding: var(--space-1) 0;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.ontology-scope__tab[aria-selected='true'] {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.ontology-scope__search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.ontology-scope__search .ds-control {
+  border: none;
+  background: none;
+}
+
+.ontology-scope__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.ontology-scope__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ontology-scope__row:hover,
+.ontology-scope__row.is-active {
+  background: var(--color-bg-muted);
+}
+
+.ontology-scope__check {
+  flex: 0 0 auto;
+  width: 14px;
+  color: var(--color-accent);
+}
+
+.ontology-scope__label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ontology-scope__name {
+  font-size: var(--text-sm);
+}
+
+.ontology-scope__detail {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ontology-scope__count {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.ontology-scope__empty {
+  padding: var(--space-2);
   color: var(--color-text-muted);
   font-size: var(--text-sm);
-  font-weight: 400;
+}
+
+.ontology-home-search .ontology-home-search__divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--color-border);
 }

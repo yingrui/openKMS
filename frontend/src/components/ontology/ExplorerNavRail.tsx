@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Box, Compass, Link2 } from 'lucide-react';
+import { Box, Compass } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 type NavItem = {
@@ -13,22 +13,15 @@ type NavItem = {
 
 const EXPLORER_NAV: NavItem[] = [
   {
-    to: '/object-explorer/objects',
-    labelKey: 'objects',
+    to: '/object-explorer/explorations',
+    labelKey: 'exploreHome',
     icon: Box,
-    match: (p) => p.startsWith('/object-explorer/objects'),
-    canPath: '/object-explorer/objects',
-  },
-  {
-    to: '/object-explorer/links',
-    labelKey: 'links',
-    icon: Link2,
-    match: (p) => p.startsWith('/object-explorer/links'),
-    canPath: '/object-explorer/links',
+    match: (p) => p.startsWith('/object-explorer/explorations'),
+    canPath: '/object-explorer/explorations',
   },
   {
     to: '/object-explorer/explore',
-    labelKey: 'explore',
+    labelKey: 'cypher',
     icon: Compass,
     match: (p) => p === '/object-explorer/explore' || p === '/object-explorer',
     canPath: '/object-explorer/explore',

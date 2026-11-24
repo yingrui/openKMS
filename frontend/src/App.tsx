@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BrowserRouter, Routes, Route, Outlet, useParams, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, Navigate, useParams } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { SystemPublicProvider } from './contexts/SystemPublicContext';
@@ -53,26 +53,22 @@ import { EvaluationRunDetailPage } from './pages/evaluation/EvaluationRunDetailP
 import { EvaluationDatasetSettings } from './pages/evaluation/EvaluationDatasetSettings';
 import { FeatureGate } from './components/FeatureGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
-
-function GroupMembersLegacyRedirect() {
-  const { groupId = '' } = useParams<{ groupId: string }>();
-  return <Navigate to={`/console/data-security/groups/${groupId}`} replace />;
-}
-
-function LegacyJobRunRedirect() {
-  const { jobId = '' } = useParams<{ jobId: string }>();
-  return <Navigate to={`/job-runs/${jobId}`} replace />;
-}
-
-function AgentProjectSettingsRedirect() {
-  const { projectId = '' } = useParams<{ projectId: string }>();
-  return <Navigate to={`/projects/${projectId}/settings`} replace />;
-}
-
-function AgentProjectWorkspaceRedirect() {
-  const { projectId = '' } = useParams<{ projectId: string }>();
-  return <Navigate to={`/projects/${projectId}`} replace />;
-}
+import {
+  GroupMembersLegacyRedirect,
+  LegacyJobRunRedirect,
+  AgentProjectSettingsRedirect,
+  AgentProjectWorkspaceRedirect,
+  LegacyConsoleDatasetRedirect,
+  LegacyOntologyDatasetRedirect,
+  LegacyOntologyActionsRedirect,
+  LegacyExplorerObjectRedirect,
+  LegacyExplorerLinkRedirect,
+  LegacyOntologyRedirect,
+  LegacyObjectsRedirect,
+  LegacyLinksRedirect,
+  LegacyChamberSettingsRedirect,
+  LegacyAppsRedirect,
+} from './routes-legacy-redirects';
 
 function AppLoadingFallback() {
   const { t } = useTranslation('common');
@@ -117,9 +113,6 @@ const Models = lazy(() => import('./pages/models/Models').then((m) => ({ default
 const ModelDetail = lazy(() => import('./pages/models/ModelDetail').then((m) => ({ default: m.ModelDetail })));
 const OntologyList = lazy(() => import('./pages/ontology/OntologyList').then((m) => ({ default: m.OntologyList })));
 const ObjectsList = lazy(() => import('./pages/ontology/ObjectsList').then((m) => ({ default: m.ObjectsList })));
-const ObjectTypeDetail = lazy(() => import('./pages/ontology/ObjectTypeDetail').then((m) => ({ default: m.ObjectTypeDetail })));
-const LinksList = lazy(() => import('./pages/ontology/LinksList').then((m) => ({ default: m.LinksList })));
-const LinkTypeDetail = lazy(() => import('./pages/ontology/LinkTypeDetail').then((m) => ({ default: m.LinkTypeDetail })));
 const FunctionsListPage = lazy(() =>
   import('./pages/ontology-manager/FunctionsListPage').then((m) => ({ default: m.FunctionsListPage })),
 );
@@ -374,57 +367,6 @@ const AgentSkillsPage = lazy(() => import('./pages/agents/AgentSkillsPage').then
 const AgentSkillSettings = lazy(() =>
   import('./pages/agents/AgentSkillSettings').then((m) => ({ default: m.AgentSkillSettings })),
 );
-function LegacyConsoleDatasetRedirect() {
-  const { id } = useParams();
-  return <Navigate to={`/datasets/${id ?? ''}`} replace />;
-}
-
-function LegacyOntologyDatasetRedirect() {
-  const { '*': rest } = useParams();
-  const location = useLocation();
-  const suffix = rest ? `/${rest}` : '';
-  return <Navigate to={`/datasets${suffix}${location.search}${location.hash}`} replace />;
-}
-
-function LegacyOntologyActionsRedirect() {
-  const { actionId = '', '*': rest } = useParams();
-  const location = useLocation();
-  const path = rest
-    ? `/ontology-manager/action-types/${actionId}/${rest}`
-    : `/ontology-manager/action-types/${actionId}`;
-  return <Navigate to={`${path}${location.search}${location.hash}`} replace />;
-}
-
-function LegacyOntologyRedirect() {
-  const location = useLocation();
-  const rest = location.pathname.replace(/^\/ontology/, '') + location.search + location.hash;
-  return <Navigate to={`/ontology-manager${rest || ''}`} replace />;
-}
-
-function LegacyObjectsRedirect() {
-  const location = useLocation();
-  const rest = location.pathname.replace(/^\/objects/, '/objects') + location.search + location.hash;
-  return <Navigate to={`/object-explorer${rest}`} replace />;
-}
-
-function LegacyLinksRedirect() {
-  const location = useLocation();
-  const rest = location.pathname.replace(/^\/links/, '/links') + location.search + location.hash;
-  return <Navigate to={`/object-explorer${rest}`} replace />;
-}
-
-function LegacyChamberSettingsRedirect() {
-  const { appId = '' } = useParams();
-  const location = useLocation();
-  return <Navigate to={`/chamber/${appId}/settings${location.search}${location.hash}`} replace />;
-}
-
-function LegacyAppsRedirect() {
-  const location = useLocation();
-  const rest = location.pathname.replace(/^\/apps/, '') + location.search + location.hash;
-  return <Navigate to={`/chamber${rest}`} replace />;
-}
-
 function WikiSpacePagesGate() {
   const { id } = useParams();
   return <WikiWorkspace key={id ?? ''} />;
@@ -612,12 +554,17 @@ function App() {
             <Route path="actions/:actionId/*" element={<LegacyOntologyActionsRedirect />} />
           </Route>
           <Route path="object-explorer" element={<Outlet />}>
-            <Route index element={<Navigate to="/object-explorer/explore" replace />} />
-            <Route path="objects" element={<ObjectsList />} />
-            <Route path="objects/:typeId" element={<ObjectTypeDetail />} />
+            {/* The explorer's home is the list of explorations; browsing a type's rows lives in the manager. */}
+            <Route index element={<Navigate to="/object-explorer/explorations" replace />} />
+            <Route path="explorations" element={<ObjectsList />} />
+            <Route path="objects" element={<Navigate to="/object-explorer/explorations" replace />} />
+            <Route path="objects/:typeId" element={<LegacyExplorerObjectRedirect />} />
             <Route path="explorations/:typeId" element={<ObjectExplorationPage />} />
-            <Route path="links" element={<LinksList />} />
-            <Route path="links/:typeId" element={<LinkTypeDetail />} />
+            <Route path="links" element={<Navigate to="/ontology-manager/link-types" replace />} />
+            <Route
+              path="links/:typeId"
+              element={<LegacyExplorerLinkRedirect />}
+            />
             <Route path="explore" element={<ObjectExplorer />} />
           </Route>
           <Route path="ontology-manager/external-services" element={<Navigate to="/external-services" replace />} />

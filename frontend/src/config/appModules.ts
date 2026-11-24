@@ -254,7 +254,7 @@ export const APP_MODULES: AppModule[] = [
     kind: 'suite_app',
     layer: 'ontology',
     order: 81,
-    homePath: '/object-explorer/objects',
+    homePath: '/object-explorer/explorations',
     icon: Compass,
     labelKey: 'objectExplorer',
     taglineKey: 'appTaglineObjectExplorer',

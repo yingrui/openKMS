@@ -114,5 +114,7 @@
   "auditLog": "Audit log",
   "externalServices": "External services",
   "appTaglineExternalServices": "Endpoints the ontology may call: Functions, and Action webhooks",
-  "ontologyRules": "Rules"
+  "ontologyRules": "Rules",
+  "exploreHome": "Explorations",
+  "cypher": "Cypher"
 }

@@ -12,6 +12,14 @@ import {
 import { EmptyState } from '../../styles/design-system/EmptyState';
 import { ListPage } from '../../styles/design-system/ListPage';
 import { Loading } from '../../styles/design-system/Loading';
+import {
+  createExploration,
+  fetchExploration,
+  filterTexts,
+  patchExploration,
+  type ExplorationResponse,
+} from '../../data/explorationsApi';
+import { Dialog, FormField } from '../../styles/design-system';
 import { ObjectSetCharts } from './ObjectSetCharts';
 import { ObjectSetFilters } from './ObjectSetFilters';
 import { formatFilter } from './objectSetCondition';
@@ -41,6 +49,14 @@ export function ObjectExplorationPage() {
   const [loading, setLoading] = useState(true);
   const [rowsLoading, setRowsLoading] = useState(true);
   const [search, setSearch] = useState('');
+  /* A saved exploration is this same page with its conditions restored: `?saved=<id>` names the row, and the
+     row is re-evaluated on open (it stores conditions, never results). */
+  const savedId = searchParams.get('saved');
+  const [saved, setSaved] = useState<ExplorationResponse | null>(null);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const [saveShared, setSaveShared] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const updateParams = (mutate: (params: URLSearchParams) => void) => {
     const params = new URLSearchParams(searchParams);
@@ -127,6 +143,39 @@ export function ObjectExplorationPage() {
     void loadRows();
   }, [loadRows]);
 
+  useEffect(() => {
+    if (!savedId) {
+      setSaved(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchExploration(savedId)
+      .then((row) => {
+        if (cancelled) return;
+        setSaved(row);
+        setSaveName(row.name);
+        setSaveShared(row.visibility === 'shared');
+        // The updater form keeps the current params without making this effect depend on them.
+        setSearchParams(
+          (previous) => {
+            const params = new URLSearchParams(previous);
+            params.delete('f');
+            for (const text of filterTexts(row.filters)) params.append('f', text);
+            const layoutSort = (row.layout?.sorts as
+              | { prop: string; desc?: boolean }[]
+              | undefined)?.[0];
+            if (layoutSort) params.set('sort', `${layoutSort.desc ? '-' : ''}${layoutSort.prop}`);
+            return params;
+          },
+          { replace: true }
+        );
+      })
+      .catch(() => toast.error(t('objectSet.savedLoadFailed')));
+    return () => {
+      cancelled = true;
+    };
+  }, [savedId, setSearchParams, t]);
+
   const properties: PropertyDef[] = useMemo(
     () => (objectType?.properties ?? []),
     [objectType]
@@ -143,19 +192,69 @@ export function ObjectExplorationPage() {
     [objectType, properties]
   );
 
+  const save = async () => {
+    if (!typeId || !saveName.trim()) return;
+    setSaving(true);
+    try {
+      const layout = {
+        charts: chartProperties.map((prop) => ({ prop })),
+        sorts: sort ? [{ prop: sort.replace(/^-/, ''), desc: sort.startsWith('-') }] : [],
+        perspective,
+      };
+      if (saved) {
+        const row = await patchExploration(saved.id, {
+          name: saveName.trim(),
+          visibility: saveShared ? 'shared' : 'private',
+          filters,
+          layout,
+        });
+        setSaved(row);
+        toast.success(t('objectSet.savedUpdated'));
+      } else {
+        const row = await createExploration({
+          name: saveName.trim(),
+          object_type_id: typeId,
+          filters,
+          layout,
+          visibility: saveShared ? 'shared' : 'private',
+        });
+        setSaved(row);
+        updateParams((params) => params.set('saved', row.id));
+        toast.success(t('objectSet.savedCreated'));
+      }
+      setSaveOpen(false);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('objectSet.savedFailed'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) return <Loading label={t('objectSet.typeLoading')} />;
   if (!objectType) return <EmptyState title={t('objectSet.typeMissing')} />;
 
   return (
     <ListPage
       className="object-exploration"
-      title={objectType.name}
+      title={saved ? saved.name : objectType.name}
       subtitle={
         total === null
           ? objectType.description ?? undefined
           : [objectType.description, t('objectSet.objectCount', { count: total })]
               .filter(Boolean)
               .join(' · ')
+      }
+      actions={
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => {
+            setSaveName(saved?.name ?? objectType.name);
+            setSaveOpen(true);
+          }}
+        >
+          {saved ? t('objectSet.saveUpdate') : t('objectSet.saveCreate')}
+        </button>
       }
     >
       <div className="object-set-toolbar">
@@ -228,6 +327,48 @@ export function ObjectExplorationPage() {
           </table>
         </div>
       )}
+
+      <Dialog
+        open={saveOpen}
+        onClose={() => setSaveOpen(false)}
+        title={saved ? t('objectSet.saveUpdate') : t('objectSet.saveCreate')}
+        closeAriaLabel={t('shared.close')}
+        size="sm"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setSaveOpen(false)}>
+              {t('shared.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void save()}
+              disabled={saving || !saveName.trim()}
+            >
+              {t('shared.save')}
+            </button>
+          </>
+        }
+      >
+        <FormField label={t('objectSet.saveName')}>
+          <input
+            className="ds-control"
+            value={saveName}
+            onChange={(e) => setSaveName(e.target.value)}
+            placeholder={t('objectSet.saveNamePlaceholder')}
+          />
+        </FormField>
+        <FormField label={t('objectSet.saveVisibility')} hint={t('objectSet.saveVisibilityHint')}>
+          <select
+            className="ds-control"
+            value={saveShared ? 'shared' : 'private'}
+            onChange={(e) => setSaveShared(e.target.value === 'shared')}
+          >
+            <option value="private">{t('objectSet.visibilityPrivate')}</option>
+            <option value="shared">{t('objectSet.visibilityShared')}</option>
+          </select>
+        </FormField>
+      </Dialog>
     </ListPage>
   );
 }
