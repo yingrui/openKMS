@@ -7,7 +7,7 @@ import {
   conversationTurnIsStalled,
   sessionLabel,
 } from '../../components/agents/projectSessionUtils';
-import { assistantHistoryStreamParts } from '../../components/wiki/wikiCopilotStreamParts';
+import { assistantHistoryStreamParts } from '../../components/agents/agentStreamParts';
 import type { AgentAttachment, AgentConversationResponse } from '../../data/agentApi';
 import {
   createProjectConversation,

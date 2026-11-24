@@ -1,6 +1,8 @@
-/**
- * Wiki Copilot stream UI state: interleaved assistant text + tool rows, and helpers
- * to rebuild display from persisted API messages.
+/*
+ * The assistant turn as text and tool rows, in order.
+ *
+ * Shared by Agent Project and by a workforce conversation: both render `AgentAssistantStreamBody`, and the backend
+ * stores both under these keys, so this is the one reader of the stored shape.
  */
 
 /** Matches backend `app.services.agent.wiki_runner.WIKI_TOOL_TRANSCRIPTS_KEY`. */
@@ -128,9 +130,11 @@ function streamPartsFromPersistedInterleaved(toolCalls: unknown): AssistantStrea
     const error = typeof o.error === 'string' ? o.error : undefined;
     const runId =
       typeof o.run_id === 'string' && o.run_id ? o.run_id : `persisted-${i}-${name}`;
+    // Stored with the trace, so a reloaded turn shows the same durations the live one did.
+    const durationMs = typeof o.duration_ms === 'number' ? o.duration_ms : undefined;
     parts.push({
       type: 'tool',
-      step: { runId, name, input, output, error, status },
+      step: { runId, name, input, output, error, status, durationMs },
     });
   }
   return parts.length ? parts : undefined;

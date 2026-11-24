@@ -344,3 +344,11 @@ export function toolDetailLabel(name: string, input?: string): string | undefine
 
   return firstLine(input, 50) || undefined;
 }
+
+
+/** A duration a reader can use: milliseconds under a second, seconds under a minute, then minutes. */
+export function formatToolDuration(ms: number): string {
+  if (ms < 1000) return `${Math.max(1, Math.round(ms))}ms`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${Math.floor(ms / 60_000)}m${Math.round((ms % 60_000) / 1000)}s`;
+}

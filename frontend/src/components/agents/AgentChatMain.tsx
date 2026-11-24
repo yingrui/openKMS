@@ -8,7 +8,7 @@ import { PERSISTED_AGENT_MESSAGE_ID } from './agentConstants';
 import { AgentInterruptBar } from './AgentInterruptBar';
 import { AgentPlanPanel } from './AgentPlanPanel';
 import type { AgentAttachment } from '../../data/agentApi';
-import type { AssistantStreamPart } from '../wiki/wikiCopilotStreamParts';
+import type { AssistantStreamPart } from './agentStreamParts';
 import './AgentsWorkspace.scss';
 
 export interface ChatMessage {

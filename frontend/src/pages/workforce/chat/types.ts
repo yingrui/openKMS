@@ -1,5 +1,5 @@
 import type { GroundingReport, SearchResult } from '../../../data/knowledgeBasesApi';
-import type { AssistantStreamPart } from '../../../components/wiki/wikiCopilotStreamParts';
+import type { AssistantStreamPart } from '../../../components/agents/agentStreamParts';
 
 /**
  * One line of the conversation, as the chat renders it.

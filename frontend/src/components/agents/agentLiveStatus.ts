@@ -1,11 +1,11 @@
 /**
  * Status helpers for the assistant stream.
  *
- * Kept beside `wikiCopilotStreamParts` (not re-exported from a component file) because
+ * Kept beside `agentStreamParts` (not re-exported from a component file) because
  * `react-refresh/only-export-components` forbids a module from exporting both a component and
  * plain functions.
  */
-import type { AssistantStreamPart } from '../wiki/wikiCopilotStreamParts';
+import type { AssistantStreamPart } from './agentStreamParts';
 
 /**
  * Whether a tool of the live turn is currently executing.

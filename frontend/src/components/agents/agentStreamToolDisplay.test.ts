@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toolDetailLabel, toolKindLabel } from './agentStreamToolDisplay';
+import { formatToolDuration, toolDetailLabel, toolKindLabel } from './agentStreamToolDisplay';
 
 const t = (key: string) => `t:${key.split('.').pop()}`;
 
@@ -23,5 +23,17 @@ describe('a tool row reads the same in both vocabularies', () => {
   it('the parameter becomes the subtitle', () => {
     expect(toolDetailLabel('read_file', JSON.stringify({ filePath: 'src/app/main.py' }))).toBe('main.py');
     expect(toolDetailLabel('search_knowledge_base', JSON.stringify({ query: 'MIO 等待期' }))).toBe('MIO 等待期');
+  });
+});
+
+describe('formatToolDuration', () => {
+  it('keeps milliseconds under a second and never reports zero', () => {
+    expect(formatToolDuration(0.2)).toBe('1ms');
+    expect(formatToolDuration(120)).toBe('120ms');
+  });
+  it('reads in seconds, then minutes', () => {
+    expect(formatToolDuration(1240)).toBe('1.2s');
+    expect(formatToolDuration(59_400)).toBe('59.4s');
+    expect(formatToolDuration(84_000)).toBe('1m24s');
   });
 });

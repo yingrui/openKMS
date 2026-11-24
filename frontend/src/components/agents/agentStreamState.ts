@@ -7,8 +7,8 @@ import {
   completeSubagent,
   updateToolInParts,
   type AssistantStreamPart,
-} from '../wiki/wikiCopilotStreamParts';
-import { parseSubagentLabel } from '../wiki/agentStreamToolDisplay';
+} from './agentStreamParts';
+import { parseSubagentLabel } from './agentStreamToolDisplay';
 import type { ProjectStreamEvent } from '../../data/projectsApi';
 import type { ChatMessage } from './AgentChatMain';
 

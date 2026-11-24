@@ -1,6 +1,6 @@
 import type { AgentMessageItem } from '../../../data/agentApi';
 import { KB_QA_SOURCES_V1, type SearchResult } from '../../../data/knowledgeBasesApi';
-import { assistantHistoryStreamParts } from '../../../components/wiki/wikiCopilotStreamParts';
+import { assistantHistoryStreamParts } from '../../../components/agents/agentStreamParts';
 import type { ChatFeedbackVote, ChatMessage } from './types';
 
 /** The votes already cast in this thread, keyed the way the thumbs look them up (`replyKey`/`id`). */
