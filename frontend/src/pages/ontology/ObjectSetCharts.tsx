@@ -127,6 +127,23 @@ export function ObjectSetCharts({
                     {t('objectSet.chartTruncated', { count: (chart.values ?? []).length })}
                   </span>
                 ) : null}
+                {isHistogram(chart) && chart.min !== undefined && chart.max !== undefined ? (
+                  <span className="object-set-chart__more">
+                    {intervalLabel(chart.min, chart.max)}
+                  </span>
+                ) : null}
+                {isHistogram(chart) && chart.counted !== undefined && chart.total !== undefined
+                  ? chart.counted < chart.total
+                    ? (
+                      <span className="object-set-chart__more">
+                        {t('objectSet.chartCoverage', {
+                          count: chart.counted,
+                          total: chart.total,
+                        })}
+                      </span>
+                    )
+                    : null
+                  : null}
               </span>
               {onRemove || onMove ? (
                 <span className="object-set-chart__actions">
@@ -165,6 +182,38 @@ export function ObjectSetCharts({
             </figcaption>
             {data.length === 0 ? (
               <p className="object-set-chart__empty">{t('objectSet.chartNoValues')}</p>
+            ) : isHistogram(chart) ? (
+              /* An interval distribution is read across a number line, so it is drawn on one: bars side by side on a
+                 category axis of intervals would look exactly like a value distribution. */
+              <ResponsiveContainer width="100%" height={168}>
+                <BarChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 8 }}>
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={0} angle={-35} height={46} textAnchor="end" />
+                  <YAxis hide />
+                  <Tooltip
+                    cursor={{ fill: 'var(--color-bg-muted)' }}
+                    formatter={(value) => [String(value ?? ''), t('objectSet.chartCount')]}
+                  />
+                  <Bar
+                    dataKey="count"
+                    radius={[3, 3, 0, 0]}
+                    onClick={(entry) => {
+                      // recharts hands the row datum back; that datum carries the bar's own handler.
+                      const raw = entry as unknown as { payload?: { pick?: () => void } };
+                      raw?.payload?.pick?.();
+                    }}
+                  >
+                    {data.map((entry) => (
+                      <Cell
+                        key={entry.key}
+                        cursor="pointer"
+                        fill={
+                          entry.selected ? 'var(--color-accent)' : 'var(--color-accent-subtle)'
+                        }
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             ) : (
               <ResponsiveContainer width="100%" height={Math.max(96, data.length * 26)}>
                 <BarChart data={data} layout="vertical" margin={{ top: 4, right: 12, bottom: 4, left: 4 }}>

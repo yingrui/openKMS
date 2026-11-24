@@ -393,7 +393,8 @@
     "chartMoveForward": "{{name}} 向后移",
     "chartAdd": "添加图表",
     "chartAddPick": "选择属性",
-    "chartAddNone": "没有可添加的属性"
+    "chartAddNone": "没有可添加的属性",
+    "chartCoverage": "{{total}} 个对象中 {{count}} 个有值"
   },
   "explorerSections": {
     "explorations": "探索",

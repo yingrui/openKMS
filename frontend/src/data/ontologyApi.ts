@@ -255,6 +255,9 @@ export interface ObjectAggregateChart {
   buckets?: { from: number; to: number; count: number }[];
   min?: number;
   max?: number;
+  /** Objects with a number, and objects in the set — a histogram that hides the difference reads as the smaller one. */
+  counted?: number;
+  total?: number;
   truncated?: boolean;
 }
 
