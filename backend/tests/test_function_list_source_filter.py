@@ -6,8 +6,6 @@ the count (a count that ignores the filter reports a pagination length the page 
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
 
 from app.services.ontology import function_service
