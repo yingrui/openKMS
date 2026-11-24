@@ -376,7 +376,15 @@ export function ObjectExplorationPage() {
       subtitle={
         total === null
           ? objectType.description ?? undefined
-          : [objectType.description, t('objectSet.objectCount', { count: total })]
+          : [
+              objectType.description,
+              t('objectSet.objectCount', { count: total }),
+              objectType.last_indexed_at
+                ? t('objectSet.dataAsOf', {
+                    time: new Date(objectType.last_indexed_at).toLocaleString(),
+                  })
+                : t('objectSet.neverIndexed'),
+            ]
               .filter(Boolean)
               .join(' · ')
       }

@@ -385,7 +385,9 @@
     "layoutUseMine": "我的布局",
     "layoutUseGlobal": "全局布局",
     "layoutSaveGlobal": "设为所有人默认",
-    "layoutSavedGlobal": "已设为所有人的默认布局"
+    "layoutSavedGlobal": "已设为所有人的默认布局",
+    "dataAsOf": "数据截至 {{time}}",
+    "neverIndexed": "尚未索引"
   },
   "explorerSections": {
     "explorations": "探索",

@@ -60,6 +60,8 @@ class ObjectTypeResponse(BaseModel):
     instance_count: int = 0
     created_at: datetime
     updated_at: datetime
+    #: When the graph mirror was last written; None means never indexed.
+    last_indexed_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

@@ -45,6 +45,9 @@ class ObjectType(Base):
     )  # {"start_property": "event_start_time", "end_property": "event_end_time"}
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)
     created_by_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    #: When this type was last written to the graph. Object reads come from the graph, so this is the only
+    #: honest answer to "how fresh is what I am looking at" — a filter over stale nodes returns stale rows.
+    last_indexed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

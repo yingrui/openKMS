@@ -28,6 +28,8 @@ export interface ObjectTypeResponse {
   display_property?: string | null;
   properties: PropertyDef[];
   instance_count: number;
+  /** When the graph mirror was last written; null means never indexed. */
+  last_indexed_at?: string | null;
   created_at: string;
   updated_at: string;
 }

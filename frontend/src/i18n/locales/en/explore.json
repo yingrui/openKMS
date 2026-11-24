@@ -385,7 +385,9 @@
     "layoutUseMine": "My layout",
     "layoutUseGlobal": "Global layout",
     "layoutSaveGlobal": "Set as everyone’s default",
-    "layoutSavedGlobal": "Set as the default for everyone"
+    "layoutSavedGlobal": "Set as the default for everyone",
+    "dataAsOf": "data as of {{time}}",
+    "neverIndexed": "not indexed yet"
   },
   "explorerSections": {
     "explorations": "Explorations",

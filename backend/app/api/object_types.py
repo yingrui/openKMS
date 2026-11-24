@@ -1,6 +1,7 @@
 """Object types API (admin CRUD + user read)."""
 import asyncio
 import uuid
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -155,6 +156,7 @@ def _to_response(obj_type: ObjectType, instance_count: int, dataset_name: str | 
         display_property=getattr(obj_type, "display_property", None),
         properties=props,
         instance_count=instance_count,
+        last_indexed_at=getattr(obj_type, "last_indexed_at", None),
         created_at=obj_type.created_at,
         updated_at=obj_type.updated_at,
     )
@@ -725,6 +727,11 @@ async def index_objects_to_neo4j(
                         )
     finally:
         driver.close()
+    # The mirror just changed for every type in this run; their freshness moves with it.
+    now = datetime.now(UTC)
+    for obj_type in obj_types:
+        obj_type.last_indexed_at = now
+    await db.commit()
     return IndexToNeo4jResponse(
         object_types_indexed=len(obj_types),
         nodes_created=nodes_created,
@@ -791,6 +798,9 @@ async def index_one_object_type_to_neo4j(
                     )
     finally:
         driver.close()
+    # The mirror just changed, so the "how fresh" answer changes with it.
+    obj_type.last_indexed_at = datetime.now(UTC)
+    await db.commit()
     return IndexToNeo4jResponse(
         object_types_indexed=1,
         nodes_created=nodes_created,
