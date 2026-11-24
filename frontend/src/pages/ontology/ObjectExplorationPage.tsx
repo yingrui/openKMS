@@ -54,7 +54,15 @@ export function ObjectExplorationPage() {
   const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [rowsLoading, setRowsLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  /* The object search lives in the URL (`?q=`), so "find objects of this type matching X" is a linkable address —
+     that is what the home page hands over when a query names an object rather than a type. */
+  const search = searchParams.get('q') ?? '';
+  const setSearch = (value: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (value) params.set('q', value);
+    else params.delete('q');
+    setSearchParams(params, { replace: true });
+  };
   /* A saved exploration is this same page with its conditions restored: `?saved=<id>` names the row, and the
      row is re-evaluated on open (it stores conditions, never results). */
   const savedId = searchParams.get('saved');

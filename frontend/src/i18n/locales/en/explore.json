@@ -306,7 +306,8 @@
     "scopeFindGroup": "Type to search a group…",
     "scopeFindType": "Type to search an object type…",
     "scopeNoMatch": "Nothing matches",
-    "matchedProperty": "Property: {{name}}"
+    "matchedProperty": "Property: {{name}}",
+    "searchObjectsIn": "Find objects matching “{{query}}” in {{type}}"
   },
   "links": {
     "title": "Links",

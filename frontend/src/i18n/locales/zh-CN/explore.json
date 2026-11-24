@@ -306,7 +306,8 @@
     "scopeFindGroup": "搜索分组…",
     "scopeFindType": "搜索对象类型…",
     "scopeNoMatch": "没有匹配项",
-    "matchedProperty": "属性：{{name}}"
+    "matchedProperty": "属性：{{name}}",
+    "searchObjectsIn": "在「{{type}}」中查找对象「{{query}}」"
   },
   "links": {
     "title": "关联",

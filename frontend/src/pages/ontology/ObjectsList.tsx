@@ -163,6 +163,17 @@ export function ObjectsList() {
     }
   };
 
+  /* When the query names an object rather than a type, the useful next step is that type's object search.
+     The type is unambiguous when the scope resolves to exactly one, or when only one type survived the query. */
+  const singleScopedType = useMemo(() => {
+    if (effectiveScope.length === 1) {
+      const hit = types.find((type) => type.id === effectiveScope[0]);
+      if (hit) return hit;
+    }
+    const rows = sections.flatMap((section) => section.types);
+    return rows.length === 1 ? rows[0] : null;
+  }, [effectiveScope, sections, types]);
+
   const groupOptions = groups.map((group) => ({
     id: group.id,
     label: group.display_name,
@@ -290,6 +301,20 @@ export function ObjectsList() {
                 ))}
               </div>
             </section>
+          ) : null}
+
+          {query.trim() && singleScopedType ? (
+            <Link
+              className="ontology-home-object-search"
+              to={`/object-explorer/explorations/${singleScopedType.id}?q=${encodeURIComponent(
+                query.trim()
+              )}`}
+            >
+              {t('objects.searchObjectsIn', {
+                type: singleScopedType.name,
+                query: query.trim(),
+              })}
+            </Link>
           ) : null}
 
           {!loading && nav !== 'mine' ? (
