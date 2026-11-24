@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, ChevronDown, Search } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
+import { SearchField } from '../../styles/design-system/ListToolbar';
 import type { ScopeOption } from './ontologyScopeOption';
 
 /**
@@ -67,6 +68,8 @@ export function OntologyScopePicker({
   const toggle = (id: string) =>
     onChange(effective.includes(id) ? effective.filter((x) => x !== id) : [...effective, id]);
 
+  const findLabel = tab === 'groups' ? t('objects.scopeFindGroup') : t('objects.scopeFindType');
+
   return (
     <div className="ontology-scope" ref={rootRef}>
       <button
@@ -112,18 +115,14 @@ export function OntologyScopePicker({
             ))}
           </div>
 
-          <label className="ontology-scope__search">
-            <Search size={14} aria-hidden />
-            <input
-              className="ds-control ds-control--compact"
-              value={needle}
-              onChange={(e) => setNeedle(e.target.value)}
-              placeholder={
-                tab === 'groups' ? t('objects.scopeFindGroup') : t('objects.scopeFindType')
-              }
-              aria-label={tab === 'groups' ? t('objects.scopeFindGroup') : t('objects.scopeFindType')}
-            />
-          </label>
+          <SearchField
+            compact
+            value={needle}
+            onChange={setNeedle}
+            className="ontology-scope__search"
+            label={findLabel}
+            placeholder={findLabel}
+          />
 
           <ul className="ontology-scope__list">
             {rows.map((option) => {

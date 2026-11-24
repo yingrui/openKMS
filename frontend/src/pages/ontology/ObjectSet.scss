@@ -508,19 +508,11 @@
   color: var(--color-text);
 }
 
-.ontology-scope__search {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: var(--space-2) 0;
-  padding: 0 var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
+/* The search inside the panel is `.ds-search--compact`: the shared pill, at the panel's size. */
 
-.ontology-scope__search .ds-control {
-  border: none;
-  background: none;
+.ontology-scope__search {
+  margin: var(--space-2) 0;
+  min-width: 0;
 }
 
 .ontology-scope__list {

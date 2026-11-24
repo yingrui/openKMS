@@ -12,7 +12,13 @@ export function ListToolbar({ children }: { children: ReactNode }) {
   return <div className="ds-list-toolbar">{children}</div>;
 }
 
-/** A search field with its magnifier, sized to match `.ds-control` so it sits on one line with a filter. */
+/**
+ * A search field with its magnifier, sized to match `.ds-control` so it sits on one line with a filter.
+ *
+ * `compact` is the same field inside a popover: no 36px box and no 200px floor, because a panel is narrower than
+ * the toolbar this was measured against. Sharing the pill is what keeps a second copy from drifting — the explorer's
+ * scope picker had one whose input sat at its intrinsic width, so typed text scrolled inside a box that never grew.
+ */
 export function SearchField({
   value,
   onChange,
@@ -21,6 +27,7 @@ export function SearchField({
   className,
   disabled,
   autoFocus,
+  compact,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -30,11 +37,16 @@ export function SearchField({
   className?: string;
   disabled?: boolean;
   autoFocus?: boolean;
+  compact?: boolean;
 }) {
   const id = useDsFieldId('search');
   return (
-    <div className={['ds-search', className].filter(Boolean).join(' ')}>
-      <Search size={18} aria-hidden />
+    <div
+      className={['ds-search', compact ? 'ds-search--compact' : '', className]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      <Search size={compact ? 14 : 18} aria-hidden />
       <input
         id={id}
         // ds-control-exempt: `.ds-search` styles this input (the field is the pill, not the control)
