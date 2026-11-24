@@ -759,6 +759,12 @@
   }
 }
 
+.object-set-crosstab__baseline {
+  display: block;
+  font-size: var(--text-xs);
+  opacity: 0.75;
+}
+
 .object-set-crosstab__cell {
   width: 100%;
   padding: var(--space-1);

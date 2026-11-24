@@ -317,6 +317,9 @@ def aggregate_query(
         raise QueryError(
             f"`{metric}` cannot be compared with another set; use one of {', '.join(COMPARABLE_METRICS)}"
         )
+    if compare_where is not None and split and metric != "count":
+        # A measured cross-tab compared with another set needs four numbers per cell; the cells are counts.
+        raise QueryError("a compared cross-tab counts objects; drop the metric")
 
     if compare_where is not None:
         return _compare_aggregate_query(
@@ -328,6 +331,7 @@ def aggregate_query(
             link_info=link_info,
             metric=metric,
             measure=measure,
+            split=split,
         )
 
     match, projection, columns = _aggregate_branch(
@@ -363,14 +367,29 @@ def _compare_aggregate_query(
     link_info: dict[str, tuple[str, str]] | None,
     metric: str,
     measure: str | None,
+    split: str | None = None,
 ) -> str:
-    """Both sets, one answer per value: current, baseline, and the delta the reader actually wants."""
+    """Both sets, one answer per value: current, baseline, and the delta the reader actually wants.
+
+    With a `split` the answer is per cell instead — a matrix, compared cell by cell.
+    """
     current = _aggregate_branch(
-        label, where, prop, limit=limit, link_info=link_info, metric=metric, measure=measure, split=None
+        label, where, prop, limit=limit, link_info=link_info, metric=metric, measure=measure, split=split
     )
     baseline = _aggregate_branch(
-        label, compare_where, prop, limit=limit, link_info=link_info, metric=metric, measure=measure, split=None
+        label, compare_where, prop, limit=limit, link_info=link_info, metric=metric, measure=measure, split=split
     )
+    if split:
+        keys = "value, split"
+        return (
+            f"CALL {{ {current[0]} {current[1]} RETURN {keys}, {current[2]['columns']}, 'cur' AS side "
+            f"UNION ALL "
+            f"{baseline[0]} {baseline[1]} RETURN {keys}, {baseline[2]['columns']}, 'cmp' AS side }} "
+            f"RETURN {keys}, "
+            "sum(CASE WHEN side = 'cur' THEN c ELSE 0 END) AS c, "
+            "sum(CASE WHEN side = 'cmp' THEN c ELSE 0 END) AS base "
+            f"ORDER BY c DESC LIMIT {int(limit)}"
+        )
     columns = [
         "value",
         "sum(CASE WHEN side = 'cur' THEN c ELSE 0 END) AS c",

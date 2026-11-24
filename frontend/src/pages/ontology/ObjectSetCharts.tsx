@@ -420,7 +420,7 @@ function CrossTab({
   const rows = [...new Set((chart.cells ?? []).map((cell) => cell.value))];
   const columns = [...new Set((chart.cells ?? []).map((cell) => cell.split))];
   const cellAt = (row: string, column: string) =>
-    (chart.cells ?? []).find((cell) => cell.value === row && cell.split === column)?.count ?? 0;
+    (chart.cells ?? []).find((cell) => cell.value === row && cell.split === column);
   const max = Math.max(1, ...(chart.cells ?? []).map((cell) => cell.count));
   return (
     <div className="object-set-crosstab-wrap">
@@ -440,7 +440,8 @@ function CrossTab({
             <tr key={row}>
               <th scope="row">{row}</th>
               {columns.map((column) => {
-                const count = cellAt(row, column);
+                const cell = cellAt(row, column);
+                const count = cell?.count ?? 0;
                 const selected = applied.has(`${chart.prop}\u0000${row}`);
                 return (
                   <td key={column}>
@@ -452,6 +453,12 @@ function CrossTab({
                       title={`${row} · ${column}`}
                     >
                       <span className={selected ? 'is-selected' : undefined}>{count || '·'}</span>
+                      {cell?.baseline !== undefined ? (
+                        /* A cell compared with another set says both numbers: the count, and where it moved from. */
+                        <span className="object-set-crosstab__baseline">
+                          {deltaLabel(count, cell.baseline)}
+                        </span>
+                      ) : null}
                     </button>
                   </td>
                 );

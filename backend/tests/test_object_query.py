@@ -229,3 +229,19 @@ def test_a_timeline_keeps_its_own_order_instead_of_ranking_by_size():
 
 def test_a_timeline_still_ranks_when_asked_to():
     assert "ORDER BY c DESC" in aggregate_query("Transaction", "", "trade_date", limit=20)
+
+
+def test_a_compared_cross_tab_answers_per_cell():
+    cypher = aggregate_query(
+        "Distributor", "", "channel_type", limit=20, split="tier", compare_where=""
+    )
+    assert "RETURN value, split, count(DISTINCT n) AS c, 'cur' AS side" in cypher
+    assert "sum(CASE WHEN side = 'cmp' THEN c ELSE 0 END) AS base" in cypher
+
+
+def test_a_measured_cross_tab_cannot_be_compared():
+    with pytest.raises(QueryError):
+        aggregate_query(
+            "Distributor", "", "channel_type", limit=20, split="tier",
+            metric="sum", measure="lead_time_weeks", compare_where="",
+        )

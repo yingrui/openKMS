@@ -434,8 +434,14 @@ def aggregate_object_set(
         # `limit` is per axis here: a matrix of 20 values × 20 splits is still one chart, and cutting it at 20 cells
         # would silently drop the right-hand columns.
         cell_limit = limit * limit
+        compared = compare_combined is not None
         cells = [
-            {"value": record["value"], "split": record["split"], "count": record["c"]}
+            {
+                "value": record["value"],
+                "split": record["split"],
+                "count": record["c"],
+                **({"baseline": record["base"]} if compared else {}),
+            }
             for record in records[:cell_limit]
         ]
         return {
