@@ -284,7 +284,9 @@ def histogram_query(
     counted = "count(DISTINCT n)" if crosses else "count(*)"
     return (
         f"{prefix}"
-        f"WITH toFloat({var}.`{name}`) AS v WHERE v IS NOT NULL "
+        # `n` has to be carried through the first WITH: a WITH replaces the scope, and counting rows afterwards
+        # would reference a variable that no longer exists ("Variable `n` not defined").
+        f"WITH toFloat({var}.`{name}`) AS v, n AS n WHERE v IS NOT NULL "
         "WITH toInteger(floor((v - $lo) / $width)) AS k, n AS n "
         f"RETURN k, {counted} AS c ORDER BY k"
     )

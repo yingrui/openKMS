@@ -18,7 +18,7 @@ from app.models.link_type import LinkType
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
 from app.services.platform.boundaries import boundary
-from app.services.ontology.neo4j_async import run_with_neo4j_driver
+from app.services.ontology.neo4j_async import NEO4J_ERRORS, run_with_neo4j_driver
 
 
 def neo4j_safe_label(name: str) -> str:
@@ -340,10 +340,15 @@ def aggregate_object_set(
     combined = f"WHERE {' AND '.join(parts)}" if parts else ""
 
     if buckets > 0:
-        with driver.session() as session:
-            extent = session.run(
-                numeric_extent_query(label, combined, prop, link_info=link_info), **params
-            ).single()
+        try:
+            with driver.session() as session:
+                extent = session.run(
+                    numeric_extent_query(label, combined, prop, link_info=link_info), **params
+                ).single()
+        except NEO4J_ERRORS:
+            # `toFloat()` refuses a boolean outright — a property that is not a number is not a reason to lose the
+            # whole chart, let alone the other charts in the same request. It falls back to a value distribution.
+            extent = None
         lo, hi, count = (extent["lo"], extent["hi"], extent["c"]) if extent else (None, None, 0)
         if count:
             lo = float(lo)

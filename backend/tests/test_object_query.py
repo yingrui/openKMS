@@ -137,6 +137,7 @@ def test_a_plain_property_still_counts_rows():
 
 def test_a_histogram_excludes_values_that_are_not_numbers():
     cypher = histogram_query("Factor", "", "ic_ir", lo=0.0, width=0.25)
-    assert "toFloat(n.`ic_ir`) AS v WHERE v IS NOT NULL" in cypher
+    # The node has to survive the first WITH, or the count afterwards names a variable that is gone.
+    assert "toFloat(n.`ic_ir`) AS v, n AS n WHERE v IS NOT NULL" in cypher
     assert "toInteger(floor((v - $lo) / $width))" in cypher
     assert numeric_extent_query("Factor", "", "ic_ir").endswith("RETURN min(v) AS lo, max(v) AS hi, count(v) AS c")
