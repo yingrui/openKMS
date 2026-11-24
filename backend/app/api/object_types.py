@@ -37,7 +37,7 @@ from app.services.ontology.object_query import (
     parse_filters as parse_object_filters,
     parse_sort as parse_object_sort,
 )
-from app.services.explorer.object_visibility import require_object_rows_readable
+from app.services.explorer.object_visibility import object_scope_filters
 from app.services.ontology.object_neo4j_store import (
     aggregate_object_set,
     query_object_set,
@@ -846,13 +846,14 @@ async def aggregate_objects(
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
     await _require_object_type_read(request, db, object_type_id)
-    await require_object_rows_readable(db, request, obj_type)
     if not prop:
         raise HTTPException(status_code=400, detail="Pass at least one `prop` to aggregate")
     try:
         filters = parse_object_filters(f, parse_prop_filters(request))
     except ObjectQueryError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    # The resource's row policy is part of the set, not a post-filter: charts and rows must agree.
+    filters = [*await object_scope_filters(db, request, obj_type), *filters]
     link_info = await _object_link_info(db, obj_type)
     neo4j_ds = await get_first_neo4j_datasource(db)
     if not neo4j_ds:
@@ -905,7 +906,6 @@ async def list_object_instances(
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
     await _require_object_type_read(request, db, object_type_id)
-    await require_object_rows_readable(db, request, obj_type)
 
     legacy = parse_prop_filters(request)
     try:
@@ -913,6 +913,7 @@ async def list_object_instances(
         order = parse_object_sort(sort)
     except ObjectQueryError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    filters = [*await object_scope_filters(db, request, obj_type), *filters]
     id_props = resolve_id_properties(obj_type)
     neo4j_ds = await get_first_neo4j_datasource(db)
     if not neo4j_ds:

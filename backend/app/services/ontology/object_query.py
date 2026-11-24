@@ -18,7 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 #: Comparison operators an object-set filter may use.
-OPS = ("eq", "ne", "gt", "ge", "lt", "le", "in", "contains")
+OPS = ("eq", "ne", "gt", "ge", "lt", "le", "in", "contains", "is_null", "is_not_null")
 
 
 class QueryError(ValueError):
@@ -42,6 +42,8 @@ class SortKey:
 
 
 def parse_value(op: str, raw: str) -> object:
+    if op in ("is_null", "is_not_null"):
+        return None
     """`in` becomes a list; a bare number stays a string so equality still compares text-to-text."""
     if op == "in":
         items = [part.strip() for part in raw.split(",") if part.strip()]
@@ -66,6 +68,9 @@ def parse_filter(raw: str) -> PropertyFilter:
         if not via:
             raise QueryError("a link filter needs a link type name")
     parts = text.split(":")
+    if len(parts) == 2 and parts[1].strip().lower() in ("is_null", "is_not_null"):
+        # `prop:is_null` carries no value, and demanding a trailing colon would be noise.
+        return PropertyFilter(prop=parts[0].strip(), op=parts[1].strip().lower(), value=None)
     if len(parts) < 3:
         raise QueryError(f"`{raw}` is not `<prop>:<op>:<value>`")
     prop, op, *rest = parts
@@ -103,7 +108,21 @@ def parse_sort(raw: str | None) -> list[SortKey]:
 # --- Cypher -------------------------------------------------------------------------------------
 
 
-def _comparison(expr: str, op: str, param: str) -> str:
+def _is_number(value: object) -> bool:
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, (int, float)):
+        return True
+    if isinstance(value, str):
+        try:
+            float(value)
+            return True
+        except ValueError:
+            return False
+    return False
+
+
+def _comparison(expr: str, op: str, param: str, value: object = None) -> str:
     if op == "eq":
         return f"toString({expr}) = ${param}"
     if op == "ne":
@@ -112,8 +131,15 @@ def _comparison(expr: str, op: str, param: str) -> str:
         return f"toLower(toString({expr})) CONTAINS toLower(${param})"
     if op == "in":
         return f"toString({expr}) IN ${param}"
-    # Numeric ordering: a string comparison would put "100" before "20".
-    return f"toFloat(toString({expr})) {_NUMERIC[op]} toFloat(${param})"
+    if op == "is_null":
+        return f"{expr} IS NULL"
+    if op == "is_not_null":
+        return f"{expr} IS NOT NULL"
+    # Numbers compare as numbers (a text compare puts "100" before "20"); dates and other strings compare as
+    # text, which is what an ISO date wants.
+    if _is_number(value):
+        return f"toFloat(toString({expr})) {_NUMERIC[op]} toFloat(${param})"
+    return f"toString({expr}) {_NUMERIC[op]} toString(${param})"
 
 
 _NUMERIC = {"gt": ">", "ge": ">=", "lt": "<", "le": "<="}
@@ -136,14 +162,14 @@ def where_clause(
     for index, flt in enumerate(filters):
         key = f"f_{index}"
         if flt.via is None:
-            parts.append(_comparison(f"{prefix}.`{flt.prop}`", flt.op, key))
+            parts.append(_comparison(f"{prefix}.`{flt.prop}`", flt.op, key, flt.value))
             params[key] = flt.value
             continue
         if flt.via not in link_info:
             raise QueryError(f"`{flt.via}` is not a link type of this object type")
         rel, direction = link_info[flt.via]
         arrow = f"-[:{rel}]->" if direction == "out" else f"<-[:{rel}]-"
-        inner = _comparison("m.`%s`" % flt.prop, flt.op, key)
+        inner = _comparison("m.`%s`" % flt.prop, flt.op, key, flt.value)
         parts.append(f"EXISTS {{ MATCH ({prefix}){arrow}(m) WHERE {inner} }}")
         params[key] = flt.value
     if not parts:
