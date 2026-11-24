@@ -53,7 +53,7 @@ export function ExplorerMenu() {
     <div className="explorer-menu" ref={rootRef}>
       <button
         type="button"
-        className="btn btn-secondary btn-sm explorer-menu__trigger"
+        className="btn btn-secondary explorer-menu__trigger"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >

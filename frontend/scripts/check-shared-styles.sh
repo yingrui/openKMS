@@ -18,6 +18,8 @@ report() {
 # --- 0. Undefined custom properties -------------------------------------------
 # `var(--x)` with no definition does not fall back to a theme colour: fill goes black, stroke disappears.
 python3 scripts/check-undefined-tokens.py || status=1
+# 页头那一行是一个整体：控件自带 `btn-sm` 就会比邻居矮一截，而调用方只写 `<ExplorerMenu />`，从外面改不了。
+python3 scripts/check-header-action-size.py || status=1
 # 一个页面"是否按设计系统"是组成问题，不是观感问题：颜色字面量（token 说得清）、原语导入、重造皮肤，逐页可数。
 python3 scripts/check-ds-adoption.py || status=1
 # 值对了但类名不同 —— 皮肤被抄了一份（`objects-card` 就是 `.ds-resource-list-card`）。按声明比对，逐页冻结。
