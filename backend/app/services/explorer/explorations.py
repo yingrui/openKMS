@@ -57,6 +57,35 @@ def validate_filters(raw: list[str] | list[dict] | None) -> list[dict]:
     return out
 
 
+CHART_METRICS = ("count", "sum", "avg", "min", "max")
+
+
+def _normalize_chart(entry: Any) -> dict:
+    """A chart is a property, and optionally what is measured in it and what it is split by.
+
+    `{prop}` alone is a count per value; `{prop, metric: avg, measure: x}` is "how much, on average"; `{prop, split:
+    y}` is a cross-tab. Anything else is refused rather than stored and ignored.
+    """
+    if not isinstance(entry, dict):
+        return {"prop": str(entry)}
+    prop = str(entry.get("prop") or "").strip()
+    if not prop:
+        raise ExplorationError("a chart needs a `prop`")
+    out: dict[str, Any] = {"prop": prop}
+    metric = entry.get("metric")
+    if metric is not None:
+        if metric not in CHART_METRICS:
+            raise ExplorationError(f"chart metric must be one of: {', '.join(CHART_METRICS)}")
+        out["metric"] = metric
+    for key in ("measure", "split"):
+        value = entry.get(key)
+        if value is not None:
+            out[key] = str(value)
+    if out.get("metric", "count") != "count" and not out.get("measure"):
+        raise ExplorationError("a chart with a metric needs a `measure`")
+    return out
+
+
 def normalize_layout(raw: dict | None) -> dict:
     """Keep the four known keys, refuse a perspective we do not render."""
     if raw is None:
@@ -74,10 +103,7 @@ def normalize_layout(raw: dict | None) -> dict:
     if charts is not None:
         if not isinstance(charts, list):
             raise ExplorationError("layout.charts must be a list of {prop}")
-        out["charts"] = [
-            {"prop": str(entry.get("prop"))} if isinstance(entry, dict) else {"prop": str(entry)}
-            for entry in charts
-        ]
+        out["charts"] = [_normalize_chart(entry) for entry in charts]
     for key in ("columns", "sorts"):
         value = raw.get(key)
         if value is None:

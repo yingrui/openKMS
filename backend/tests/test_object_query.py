@@ -129,9 +129,10 @@ def test_a_chart_on_an_unknown_link_is_refused_rather_than_answered():
         split_link_property("@allocates")
 
 
-def test_a_plain_property_still_counts_rows():
+def test_a_plain_property_still_counts_objects():
     cypher = aggregate_query("Distributor", "WHERE n.`region` = $f_0", "tier", limit=10)
-    assert "count(n) AS c" in cypher
+    # DISTINCT over `n` is the object count with or without a join; one spelling, one meaning.
+    assert "count(DISTINCT n) AS c" in cypher
     assert "n.`tier`" in cypher
 
 
@@ -146,3 +147,29 @@ def test_a_histogram_excludes_values_that_are_not_numbers():
     assert extent.endswith("RETURN min(v) AS lo, max(v) AS hi, count(v) AS c, count(*) AS total")
     # Counting must not happen after the null filter, or `total` would just equal `count(v)`.
     assert "WHERE v IS NOT NULL" not in extent
+
+
+def test_a_chart_can_be_split_by_a_second_property():
+    cypher = aggregate_query("Distributor", "", "region", limit=10, split="tier")
+    assert "toString(n.`region`) AS value, toString(n.`tier`) AS split" in cypher
+    assert "WHERE value IS NOT NULL AND split IS NOT NULL" in cypher
+    assert "RETURN value, split, count(DISTINCT n) AS c" in cypher
+    # A `WHERE` after `RETURN` is not Cypher.
+    assert "RETURN value, split, count(DISTINCT n) AS c WHERE" not in cypher
+
+
+def test_a_metric_turns_the_chart_from_how_many_into_how_much():
+    cypher = aggregate_query(
+        "Distributor", "", "region", limit=10, metric="avg", measure="lead_time_weeks"
+    )
+    assert "toFloat(n.`lead_time_weeks`) AS measure" in cypher
+    assert "avg(measure) AS v" in cypher
+    # Counting stays object based even when a second expression joins in.
+    assert "count(DISTINCT n) AS c" in cypher
+
+
+def test_a_metric_without_a_measure_or_an_unknown_one_is_refused():
+    with pytest.raises(QueryError):
+        aggregate_query("Distributor", "", "region", limit=10, metric="avg")
+    with pytest.raises(QueryError):
+        aggregate_query("Distributor", "", "region", limit=10, metric="median", measure="x")

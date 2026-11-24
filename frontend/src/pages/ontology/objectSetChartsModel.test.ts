@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { dimensionalCharts, intervalLabel, isHistogram, isIdentifierChart } from './objectSetChartsModel';
+import {
+  dimensionalCharts,
+  formatMeasure,
+  groupBySettings,
+  intervalLabel,
+  isHistogram,
+  isIdentifierChart,
+} from './objectSetChartsModel';
 
 const chart = (values: [string, number][]) => ({
   prop: 'x',
@@ -57,5 +64,35 @@ describe('a numeric property arrives as intervals', () => {
     expect(intervalLabel(-1.03, -0.78)).toBe('-1.03 – -0.78');
     expect(intervalLabel(0.5866666, 0.91)).toBe('0.587 – 0.91');
     expect(intervalLabel(3, 4)).toBe('3 – 4');
+  });
+});
+
+describe('chart settings group the requests', () => {
+  it('one request per distinct metric/split, props kept in order', () => {
+    const groups = groupBySettings([
+      { prop: 'region' },
+      { prop: 'tier' },
+      { prop: 'region', split: 'tier' },
+      { prop: 'lead_time_weeks', metric: 'avg', measure: 'lead_time_weeks' },
+    ]);
+    expect(groups.map((group) => group.props)).toEqual([
+      ['region', 'tier'],
+      ['region'],
+      ['lead_time_weeks'],
+    ]);
+    expect(groups[2].settings).toEqual({ metric: 'avg', measure: 'lead_time_weeks' });
+  });
+
+  it('a metric of count carries no measure', () => {
+    expect(groupBySettings([{ prop: 'region', metric: 'count', measure: 'x' }])[0].settings).toEqual({});
+  });
+});
+
+describe('measure labels stay readable', () => {
+  it('abbreviates and trims', () => {
+    expect(formatMeasure(12345)).toBe('1.2万');
+    expect(formatMeasure(1234567)).toBe('1.2M');
+    expect(formatMeasure(7)).toBe('7');
+    expect(formatMeasure(2.3456)).toBe('2.35');
   });
 });

@@ -105,3 +105,27 @@ def test_without_any_layout_the_caller_falls_back_to_the_type_itself():
 
     layout, source = asyncio.run(effective_layout(_Session([]), "t1", "u1"))
     assert (layout, source) == ({}, "builtin")
+
+
+def test_a_chart_can_carry_a_metric_and_a_split():
+    layout = normalize_layout(
+        {
+            "charts": [
+                {"prop": "region"},
+                {"prop": "region", "split": "tier"},
+                {"prop": "region", "metric": "avg", "measure": "lead_time_weeks"},
+            ]
+        }
+    )
+    assert layout["charts"] == [
+        {"prop": "region"},
+        {"prop": "region", "split": "tier"},
+        {"prop": "region", "metric": "avg", "measure": "lead_time_weeks"},
+    ]
+
+
+def test_a_metric_without_a_measure_is_refused_not_ignored():
+    with pytest.raises(ExplorationError):
+        normalize_layout({"charts": [{"prop": "region", "metric": "avg"}]})
+    with pytest.raises(ExplorationError):
+        normalize_layout({"charts": [{"prop": "region", "metric": "median", "measure": "x"}]})

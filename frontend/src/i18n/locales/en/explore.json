@@ -394,7 +394,18 @@
     "chartAdd": "Add chart",
     "chartAddPick": "Pick a property",
     "chartAddNone": "No property left to add",
-    "chartCoverage": "{{count}} of {{total}} have a value"
+    "chartCoverage": "{{count}} of {{total}} have a value",
+    "chartSettings": "Chart settings",
+    "chartMetric": "Measure",
+    "chartMeasure": "Of property",
+    "chartMeasurePick": "Pick a property",
+    "chartSplit": "Split by",
+    "chartSplitNone": "No split",
+    "metricCount": "Count",
+    "metricSum": "Sum",
+    "metricAvg": "Average",
+    "metricMin": "Minimum",
+    "metricMax": "Maximum"
   },
   "explorerSections": {
     "explorations": "Explorations",

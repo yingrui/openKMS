@@ -33,6 +33,8 @@ import { ObjectExplorationSaveDialog } from './ObjectExplorationSaveDialog';
 import { ObjectSetCharts } from './ObjectSetCharts';
 import { ObjectSetFilters } from './ObjectSetFilters';
 import { formatFilter } from './objectSetCondition';
+import { settingsOf, type ChartSettings, type ChartSpec } from './objectSetChartsModel';
+import { linkedChartOptions as linkedChartOptionsFor } from './linkedChartOptions';
 import './ObjectSet.scss';
 
 /**
@@ -81,6 +83,9 @@ export function ObjectExplorationPage() {
   const [saving, setSaving] = useState(false);
   /* The layout this type opens with: personal, then global, then the built-in one (prominent props). */
   const [chartProps, setChartProps] = useState<string[] | null>(null);
+  /* A chart's metric/measure/split, keyed by the property string: the property names the chart, the settings say
+     what it asks. Keeping them apart leaves ordering and the layout's chart list exactly as they were. */
+  const [chartSettings, setChartSettings] = useState<Record<string, ChartSettings>>({});
   const [links, setLinks] = useState<LinkTypeResponse[]>([]);
   /* The types on the other side of those links: a chart may read a neighbour's property, and the option list has to
      know what that neighbour declares. */
@@ -186,9 +191,12 @@ export function ObjectExplorationPage() {
     void fetchExplorationLayout(typeId)
       .then((res) => {
         if (cancelled) return;
-        const charts = (res.layout?.charts as { prop: string }[] | undefined) ?? [];
+        const charts = (res.layout?.charts as ChartSpec[] | undefined) ?? [];
         const props = charts.map((chart) => chart.prop).filter(Boolean);
-        if (!savedId) setChartProps(props.length > 0 ? props : null);
+        if (!savedId) {
+          setChartProps(props.length > 0 ? props : null);
+          setChartSettings(props.length > 0 ? settingsOf(charts) : {});
+        }
         setLayoutChoices(res.available ?? []);
       })
       .catch(() => {
@@ -240,9 +248,12 @@ export function ObjectExplorationPage() {
         setSaveShared(row.visibility === 'shared');
         // A saved exploration is a **view**, not just a filter: its charts, their order and the first perspective it
         // opened with are part of what was saved. Conditions alone reopened as whatever the type defaults to.
-        const charts = (row.layout?.charts as { prop: string }[] | undefined) ?? [];
+        const charts = (row.layout?.charts as ChartSpec[] | undefined) ?? [];
         const chartNames = charts.map((chart) => chart.prop).filter(Boolean);
-        if (chartNames.length > 0) setChartProps(chartNames);
+        if (chartNames.length > 0) {
+          setChartProps(chartNames);
+          setChartSettings(settingsOf(charts));
+        }
         // The updater form keeps the current params without making this effect depend on them.
         setSearchParams(
           (previous) => {
@@ -283,32 +294,11 @@ export function ObjectExplorationPage() {
     [objectType, properties]
   );
 
-  /* Properties reachable through one link, spelled `@<link>/<prop>` — the same string the filters use. The link's
-     api_name is the readable key, except where two links share one on this side (Stock has two `ofStock`), where the
-     id is the only unambiguous handle the reader accepts. */
-  const linkedChartOptions = useMemo(() => {
-    const touching = links.filter(
-      (link) => link.source_object_type_id === typeId || link.target_object_type_id === typeId
-    );
-    const nameCounts = new Map<string, number>();
-    for (const link of touching) {
-      const name = link.api_name ?? '';
-      nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
-    }
-    return touching.flatMap((link) => {
-      const otherId =
-        link.source_object_type_id === typeId
-          ? link.target_object_type_id
-          : link.source_object_type_id;
-      const other = typeById[otherId];
-      /* The reader accepts either the api_name or the id; a collision is settled by the id. */
-      const key = (nameCounts.get(link.api_name ?? '') ?? 0) > 1 ? link.id : (link.api_name ?? link.id);
-      return (other?.properties ?? []).map((property) => ({
-        value: `@${key}/${property.name}`,
-        label: `${other?.name ?? otherId} · ${property.name}`,
-      }));
-    });
-  }, [links, typeById, typeId]);
+  /* Properties reachable through one link, spelled `@<link>/<prop>` — the same string the filters use. */
+  const linkedChartOptions = useMemo(
+    () => linkedChartOptionsFor(links, typeById, typeId),
+    [links, typeById, typeId]
+  );
 
   const knownChartProps = useMemo(
     () =>
@@ -329,7 +319,13 @@ export function ObjectExplorationPage() {
     ...linkedChartOptions,
   ].filter((option) => !chartProperties.includes(option.value));
 
-  const removeChart = (prop: string) => setChartProps(chartProperties.filter((name) => name !== prop));
+  const removeChart = (prop: string) => {
+    setChartProps(chartProperties.filter((name) => name !== prop));
+    setChartSettings((current) => {
+      const { [prop]: _removed, ...rest } = current;
+      return rest;
+    });
+  };
   const moveChart = (prop: string, direction: -1 | 1) => {
     const index = chartProperties.indexOf(prop);
     const target = index + direction;
@@ -381,7 +377,7 @@ export function ObjectExplorationPage() {
 
   /** The layout currently on screen — what "save as my default" stores. */
   const currentLayout = () => ({
-    charts: chartProperties.map((prop) => ({ prop })),
+    charts: chartProperties.map((prop) => ({ prop, ...(chartSettings[prop] ?? {}) })),
     sorts: sort ? [{ prop: sort.replace(/^-/, ''), desc: sort.startsWith('-') }] : [],
     perspective,
   });
@@ -421,11 +417,7 @@ export function ObjectExplorationPage() {
     if (!typeId || !saveName.trim()) return;
     setSaving(true);
     try {
-      const layout = {
-        charts: chartProperties.map((prop) => ({ prop })),
-        sorts: sort ? [{ prop: sort.replace(/^-/, ''), desc: sort.startsWith('-') }] : [],
-        perspective,
-      };
+      const layout = currentLayout();
       if (saved) {
         const row = await patchExploration(saved.id, {
           name: saveName.trim(),
@@ -488,9 +480,10 @@ export function ObjectExplorationPage() {
             onToggle={() => setLayoutOpen((value) => !value)}
             onUse={(choice) => {
               setLayoutOpen(false);
-              const charts = (choice.layout?.charts as { prop: string }[] | undefined) ?? [];
+              const charts = (choice.layout?.charts as ChartSpec[] | undefined) ?? [];
               const props = charts.map((chart) => chart.prop).filter(Boolean);
               setChartProps(props.length > 0 ? props : null);
+              setChartSettings(props.length > 0 ? settingsOf(charts) : {});
             }}
             onSave={(scope) => {
               setLayoutOpen(false);
@@ -576,6 +569,21 @@ export function ObjectExplorationPage() {
           search={search}
           filters={filters}
           properties={chartProperties}
+          settings={chartSettings}
+          options={[
+            ...properties.map((p) => ({ value: p.name, label: p.name })),
+            ...linkedChartOptions,
+          ]}
+          onSettings={(prop, next) => {
+            /* A setting that says nothing is not a setting: drop the keys instead of storing empty ones. */
+            const cleaned: ChartSettings = {};
+            if (next.metric && next.metric !== 'count') {
+              cleaned.metric = next.metric;
+              if (next.measure) cleaned.measure = next.measure;
+            }
+            if (next.split) cleaned.split = next.split;
+            setChartSettings((current) => ({ ...current, [prop]: cleaned }));
+          }}
           onPick={(prop, value) => setFilters([...filters, formatFilter(prop, 'eq', value)])}
           onPickRange={(prop, from, to) =>
             /* An interval is two conditions: `>= from` and `< to`. One bar, one readable pair of chips. */

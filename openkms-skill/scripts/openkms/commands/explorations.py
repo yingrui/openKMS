@@ -20,11 +20,29 @@ PERSPECTIVES = ("explore", "results")
 VISIBILITIES = ("private", "shared")
 
 
+def _chart_entry(raw: str) -> dict[str, Any]:
+    """`--chart region` is a count per value; `--chart '{"prop":"region","split":"tier"}'` is the full chart.
+
+    The JSON form exists because a chart stopped being just a property: it can measure something and split by
+    something else, and inventing a flag syntax for those would be a second vocabulary for the same object.
+    """
+    text = raw.strip()
+    if text.startswith("{"):
+        try:
+            entry = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise SystemExit(f"--chart is neither a property nor JSON: {exc}") from exc
+        if not isinstance(entry, dict) or not entry.get("prop"):
+            raise SystemExit("--chart JSON needs at least a `prop`")
+        return entry
+    return {"prop": text}
+
+
 def _layout_body(ns: argparse.Namespace) -> dict[str, Any]:
     """`--chart` and `--sort` flags → the layout object the API stores."""
     layout: dict[str, Any] = {}
     if getattr(ns, "chart", None):
-        layout["charts"] = [{"prop": name} for name in ns.chart]
+        layout["charts"] = [_chart_entry(name) for name in ns.chart]
     if getattr(ns, "sort", None):
         layout["sorts"] = [
             {"prop": entry.lstrip("-"), "desc": entry.startswith("-")} for entry in ns.sort
@@ -157,7 +175,13 @@ def add_subparser(sub) -> None:
         default=[],
         help="repeatable: `prop:op:value` or `@link/prop:op:value` (ops: eq/ne/gt/ge/lt/le/in/contains/is_null/is_not_null)",
     )
-    a.add_argument("--chart", action="append", default=[], help="repeatable: a property to chart, in order")
+    a.add_argument(
+        "--chart",
+        action="append",
+        default=[],
+        help="repeatable, in order: `region`, or JSON `{\"prop\":\"region\",\"split\":\"tier\"}` / "
+        "`{\"prop\":\"region\",\"metric\":\"avg\",\"measure\":\"lead_time_weeks\"}`",
+    )
     a.add_argument("--sort", action="append", default=[], help="repeatable: `prop` or `-prop` (descending)")
     a.add_argument("--perspective", default=None, choices=PERSPECTIVES)
     a.add_argument("--visibility", default="private", choices=VISIBILITIES)
@@ -195,7 +219,12 @@ def add_layout_subparser(sub) -> None:
     s_ = sp.add_parser("set", help="Write a layout (personal, or global with ontology:write)")
     s_.add_argument("--object-type-id", required=True)
     s_.add_argument("--scope", default="personal", choices=("personal", "global"))
-    s_.add_argument("--chart", action="append", default=[], help="repeatable: a property to chart, in order")
+    s_.add_argument(
+        "--chart",
+        action="append",
+        default=[],
+        help="repeatable, in order: `region`, or the chart as JSON (see `explorations add --help`)",
+    )
     s_.add_argument("--sort", action="append", default=[], help="repeatable: `prop` or `-prop`")
     s_.add_argument("--perspective", default=None, choices=PERSPECTIVES)
     add_write_flags(s_)

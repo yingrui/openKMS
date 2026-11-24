@@ -394,7 +394,18 @@
     "chartAdd": "添加图表",
     "chartAddPick": "选择属性",
     "chartAddNone": "没有可添加的属性",
-    "chartCoverage": "{{total}} 个对象中 {{count}} 个有值"
+    "chartCoverage": "{{total}} 个对象中 {{count}} 个有值",
+    "chartSettings": "图表设置",
+    "chartMetric": "统计方式",
+    "chartMeasure": "统计属性",
+    "chartMeasurePick": "选择属性",
+    "chartSplit": "拆分依据",
+    "chartSplitNone": "不拆分",
+    "metricCount": "对象数",
+    "metricSum": "合计",
+    "metricAvg": "平均",
+    "metricMin": "最小",
+    "metricMax": "最大"
   },
   "explorerSections": {
     "explorations": "探索",

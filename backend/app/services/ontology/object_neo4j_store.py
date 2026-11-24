@@ -319,6 +319,9 @@ def aggregate_object_set(
     link_info: dict | None,
     limit: int = 50,
     buckets: int = 0,
+    metric: str = "count",
+    measure: str | None = None,
+    split: str | None = None,
 ) -> dict:
     """One chart's data for one property over the current object set.
 
@@ -393,14 +396,36 @@ def aggregate_object_set(
             }
 
     with driver.session() as session:
-        rows = [
-            {"value": record["value"], "count": record["c"]}
-            for record in session.run(
-                aggregate_query(label, combined, prop, limit=limit + 1, link_info=link_info), **params
+        records = list(
+            session.run(
+                aggregate_query(
+                    label,
+                    combined,
+                    prop,
+                    limit=limit + 1,
+                    link_info=link_info,
+                    metric=metric,
+                    measure=measure,
+                    split=split,
+                ),
+                **params,
             )
+        )
+    if split:
+        cells = [
+            {"value": record["value"], "split": record["split"], "count": record["c"]}
+            for record in records[:limit]
         ]
-    truncated = len(rows) > limit
-    return {"prop": prop, "values": rows[:limit], "truncated": truncated}
+        return {"prop": prop, "split": split, "cells": cells, "truncated": len(records) > limit}
+    rows = [
+        {"value": record["value"], "count": record["c"]} for record in records[:limit]
+    ]
+    if metric != "count":
+        # A value can have objects but no measurement in it; the number is then absent, not zero.
+        for row, record in zip(rows, records[:limit], strict=True):
+            if record["v"] is not None:
+                row["measure"] = record["v"]
+    return {"prop": prop, "values": rows, "truncated": len(records) > limit}
 
 
 def get_neo4j_node_by_id(

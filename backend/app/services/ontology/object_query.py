@@ -208,28 +208,24 @@ def split_link_property(prop: str) -> tuple[str, str] | None:
     return link, name
 
 
-def chart_source(
-    label: str,
-    where: str,
+METRICS = ("count", "sum", "avg", "min", "max")
+
+
+def _link_step(
     prop: str,
-    *,
+    alias: str,
     link_info: dict[str, tuple[str, str]] | None,
 ) -> tuple[str, str, str, bool]:
-    """`(match prefix, node variable, property name, crosses a link)` for one charted property.
-
-    A chart may read the queried type or one of its neighbours — Palantir's charts do both, and "these distributors,
-    by the cycle of the plans they are in" is a question about both. Crossing a link means counting **objects**, not
-    edges: one object reachable twice through the relationship is still one object in the chart.
-    """
+    """`(MATCH step, node variable, property name, crosses a link)` for one charted expression."""
     linked = split_link_property(prop)
     if linked is None:
-        return f"MATCH (n:{label}) {where} ", "n", prop, False
+        return "", "n", prop, False
     link, name = linked
     if not link_info or link not in link_info:
         raise QueryError(f"`{link}` is not a link type of this object type")
     rel, direction = link_info[link]
     arrow = f"-[:{rel}]->" if direction == "out" else f"<-[:{rel}]-"
-    return f"MATCH (n:{label}) {where} MATCH (n){arrow}(m) ", "m", name, True
+    return f" MATCH (n){arrow}({alias})", alias, name, True
 
 
 def aggregate_query(
@@ -239,14 +235,54 @@ def aggregate_query(
     *,
     limit: int,
     link_info: dict[str, tuple[str, str]] | None = None,
+    metric: str = "count",
+    measure: str | None = None,
+    split: str | None = None,
 ) -> str:
-    """Distribution of one property over the current object set — the data behind one chart."""
-    prefix, var, name, crosses = chart_source(label, where, prop, link_info=link_info)
-    counted = "count(DISTINCT n)" if crosses else "count(n)"
+    """The data behind one chart: values of `prop`, optionally split by a second property.
+
+    A chart may read the queried type or a neighbour (Palantir's charts do both: "these distributors, by the cycle of
+    the plans they are in"). Counting is always `count(DISTINCT n)` — one object reachable twice through a
+    relationship is still one object, and with a split the count has to stay a count of objects too.
+
+    `metric` turns the chart from "how many" into "how much": `sum`/`avg`/`min`/`max` of `measure` within each value.
+    """
+    if metric not in METRICS:
+        raise QueryError(f"unknown metric `{metric}`; one of {', '.join(METRICS)}")
+    if metric != "count" and not measure:
+        raise QueryError(f"`{metric}` needs a `measure` property")
+
+    match = f"MATCH (n:{label}) {where}"
+    step, dim_var, dim_name, _ = _link_step(prop, "m", link_info)
+    match += step
+    split_part = ""
+    if split:
+        step2, split_var, split_name, _ = _link_step(split, "m2", link_info)
+        match += step2
+        split_part = f", toString({split_var}.`{split_name}`) AS split"
+
+    measure_expr = ""
+    if metric != "count":
+        assert measure is not None
+        step3, measure_var, measure_name, _ = _link_step(measure, "m3", link_info)
+        match += step3
+        measure_expr = f", toFloat({measure_var}.`{measure_name}`) AS measure"
+
+    # `WHERE` belongs before `RETURN`, so every filter lives in the projection's own WHERE.
+    null_filters = ["value IS NOT NULL"] + (["split IS NOT NULL"] if split else [])
+    projection = (
+        f"WITH toString({dim_var}.`{dim_name}`) AS value{split_part}, n AS n{measure_expr} "
+        f"WHERE {' AND '.join(null_filters)}"
+    )
+    if split:
+        return (
+            f"{match} {projection} "
+            f"RETURN value, split, count(DISTINCT n) AS c ORDER BY c DESC LIMIT {int(limit)}"
+        )
+    measured = f", {metric}(measure) AS v" if metric != "count" else ""
     return (
-        f"{prefix}"
-        f"WITH toString({var}.`{name}`) AS value, {counted} AS c "
-        f"WHERE value IS NOT NULL RETURN value, c ORDER BY c DESC LIMIT {int(limit)}"
+        f"{match} {projection} "
+        f"RETURN value, count(DISTINCT n) AS c{measured} ORDER BY c DESC LIMIT {int(limit)}"
     )
 
 
@@ -262,9 +298,9 @@ def numeric_extent_query(
     A declared type cannot decide this: the same column holds numbers in one dataset and text in another, and the
     chart has to describe the data it has.
     """
-    prefix, var, name, _ = chart_source(label, where, prop, link_info=link_info)
+    step, var, name, _ = _link_step(prop, "m", link_info)
     return (
-        f"{prefix}"
+        f"MATCH (n:{label}) {where}{step} "
         # No `WHERE v IS NOT NULL`: `min`/`max`/`count(v)` already skip nulls, and `count(*)` has to see them —
         # otherwise `total` equals `count(v)` and the chart cannot say how many objects it left out.
         f"WITH toFloat({var}.`{name}`) AS v "
@@ -282,11 +318,11 @@ def histogram_query(
     link_info: dict[str, tuple[str, str]] | None = None,
 ) -> str:
     """Counts per equal interval, `[lo + k·width, lo + (k+1)·width)`."""
-    prefix, var, name, crosses = chart_source(label, where, prop, link_info=link_info)
-    counted = "count(DISTINCT n)" if crosses else "count(*)"
+    step, var, name, _ = _link_step(prop, "m", link_info)
+    counted = "count(DISTINCT n)" if step else "count(*)"
     buckets_ref = "$buckets - 1"
     return (
-        f"{prefix}"
+        f"MATCH (n:{label}) {where}{step} "
         # `n` has to be carried through the first WITH: a WITH replaces the scope, and counting rows afterwards
         # would reference a variable that no longer exists ("Variable `n` not defined").
         f"WITH toFloat({var}.`{name}`) AS v, n AS n WHERE v IS NOT NULL "

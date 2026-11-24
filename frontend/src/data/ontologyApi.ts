@@ -249,8 +249,11 @@ export async function fetchObjectInstances(
 export interface ObjectAggregateChart {
   /** `prop` is the queried type's property, or `@link/property` when it reads a neighbour. */
   prop: string;
-  /** A value distribution: the property as text, and how many objects hold it. */
-  values?: { value: string; count: number }[];
+  /** A value distribution: the property as text, how many objects hold it, and the metric when one was asked for. */
+  values?: { value: string; count: number; measure?: number }[];
+  /** A cross-tab: one cell per (value, split) pair. */
+  split?: string;
+  cells?: { value: string; split: string; count: number }[];
   /** A numeric property arrives as intervals instead — the server decides, from the data. */
   buckets?: { from: number; to: number; count: number }[];
   min?: number;
@@ -274,11 +277,17 @@ export async function fetchObjectAggregate(
     limit?: number;
     /** Ask for intervals; a text property still comes back as values. */
     buckets?: number;
+    metric?: 'count' | 'sum' | 'avg' | 'min' | 'max';
+    measure?: string;
+    split?: string;
   }
 ): Promise<{ charts: ObjectAggregateChart[] }> {
   const usp = new URLSearchParams();
   for (const prop of params.props) usp.append('prop', prop);
   if (params.buckets) usp.set('buckets', String(params.buckets));
+  if (params.metric && params.metric !== 'count') usp.set('metric', params.metric);
+  if (params.measure) usp.set('measure', params.measure);
+  if (params.split) usp.set('split', params.split);
   if (params.search) usp.set('search', params.search);
   for (const filter of params.filters ?? []) {
     if (filter.trim()) usp.append('f', filter);

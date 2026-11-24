@@ -5,19 +5,33 @@ import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 
 import { fetchObjectAggregate, type ObjectAggregateChart } from '../../data/ontologyApi';
 import { EmptyState } from '../../styles/design-system/EmptyState';
 import { Loading } from '../../styles/design-system/Loading';
-import { dimensionalCharts, intervalLabel, isHistogram } from './objectSetChartsModel';
+import { ObjectSetChartSettings } from './ObjectSetChartSettings';
+import {
+  dimensionalCharts,
+  formatMeasure,
+  groupBySettings,
+  intervalLabel,
+  isHistogram,
+  type ChartSettings,
+} from './objectSetChartsModel';
 
 /**
- * The exploration's chart area: one bar chart per property, each aggregating **the current object set**.
+ * The exploration's chart area: one chart per property, each aggregating **the current object set**.
  *
  * Clicking a bar adds that value as a condition (`<prop>:eq:<value>`), which is what makes a chart a control
  * rather than a report. Every chart re-aggregates after the click, because they all read the same set.
+ *
+ * A chart is more than "how many per value": it can measure something (`avg fill_rate` per region) and it can split
+ * by a second property (`region × tier`). Those are the two questions the counts could not answer.
  */
 export function ObjectSetCharts({
   typeId,
   search,
   filters,
   properties,
+  settings,
+  options,
+  onSettings,
   onPick,
   onPickRange,
   onRemove,
@@ -30,6 +44,11 @@ export function ObjectSetCharts({
   filters: string[];
   /** Property names to chart, in order. The caller decides (prominent properties first). */
   properties: string[];
+  /** Per-property metric/measure/split, keyed by the property string. */
+  settings?: Record<string, ChartSettings>;
+  /** Properties a chart may measure or split by — the type's own and its neighbours'. */
+  options: { value: string; label: string }[];
+  onSettings?: (prop: string, next: ChartSettings) => void;
   onPick: (prop: string, value: string) => void;
   /** A histogram bar is an interval, so picking one adds two conditions rather than one. */
   onPickRange?: (prop: string, from: number, to: number) => void;
@@ -45,8 +64,17 @@ export function ObjectSetCharts({
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
+  /* Settings are part of the request, so charts that share them travel in one call and keep their order. */
+  const groups = useMemo(
+    () =>
+      groupBySettings(
+        properties.map((prop) => ({ prop, ...(settings?.[prop] ?? {}) }))
+      ),
+    [properties, settings]
+  );
+
   const load = useCallback(async () => {
-    if (!typeId || properties.length === 0) {
+    if (!typeId || groups.length === 0) {
       setCharts([]);
       setLoading(false);
       return;
@@ -54,22 +82,32 @@ export function ObjectSetCharts({
     setLoading(true);
     setFailed(false);
     try {
-      const res = await fetchObjectAggregate(typeId, {
-        props: properties,
-        search: search.trim() || undefined,
-        filters,
-        limit: 20,
-        buckets: 8,
-      });
+      const responses = await Promise.all(
+        groups.map((group) =>
+          fetchObjectAggregate(typeId, {
+            props: group.props,
+            search: search.trim() || undefined,
+            filters,
+            limit: 20,
+            buckets: 8,
+            ...group.settings,
+          })
+        )
+      );
+      const byProp = new Map<string, ObjectAggregateChart>();
+      for (const response of responses) {
+        for (const chart of response.charts) byProp.set(chart.prop, chart);
+      }
+      const ordered = groups.flatMap((group) => group.props.map((prop) => byProp.get(prop)));
       // Identifiers are answered but not drawn: twelve bars of height one look like a failure, not a distribution.
-      setCharts(dimensionalCharts(res.charts));
+      setCharts(dimensionalCharts(ordered.filter(Boolean) as ObjectAggregateChart[]));
     } catch {
       setCharts([]);
       setFailed(true);
     } finally {
       setLoading(false);
     }
-  }, [typeId, search, filters, properties]);
+  }, [typeId, search, filters, groups]);
 
   useEffect(() => {
     void load();
@@ -95,15 +133,19 @@ export function ObjectSetCharts({
   return (
     <div className="object-set-charts">
       {charts.map((chart) => {
-        /* One bar list for both shapes: a value bar narrows to one value, an interval bar to a range. */
+        const chartSettings = settings?.[chart.prop] ?? {};
+        const measureLabel =
+          chartSettings.metric && chartSettings.metric !== 'count'
+            ? `${chartSettings.metric} ${chartSettings.measure ?? ''}`.trim()
+            : null;
+        /* One bar list for every shape: a value bar narrows to one value, an interval bar to a range. */
         const data = isHistogram(chart)
           ? (chart.buckets ?? []).map((bucket) => {
-              const key = String(bucket.from);
               const selected =
                 applied.has(`${chart.prop}\u0000ge\u0000${bucket.from}`) &&
                 applied.has(`${chart.prop}\u0000lt\u0000${bucket.to}`);
               return {
-                key,
+                key: String(bucket.from),
                 label: intervalLabel(bucket.from, bucket.to),
                 count: bucket.count,
                 selected,
@@ -113,7 +155,7 @@ export function ObjectSetCharts({
           : (chart.values ?? []).slice(0, 12).map((value) => ({
               key: value.value,
               label: value.value,
-              count: value.count,
+              count: value.measure ?? value.count,
               selected: applied.has(`${chart.prop}\u0000${value.value}`),
               pick: () => onPick(chart.prop, value.value),
             }));
@@ -127,6 +169,7 @@ export function ObjectSetCharts({
                     {t('objectSet.chartTruncated', { count: (chart.values ?? []).length })}
                   </span>
                 ) : null}
+                {measureLabel ? <span className="object-set-chart__more">{measureLabel}</span> : null}
                 {isHistogram(chart) && chart.min !== undefined && chart.max !== undefined ? (
                   <span className="object-set-chart__more">
                     {intervalLabel(chart.min, chart.max)}
@@ -145,8 +188,15 @@ export function ObjectSetCharts({
                     : null
                   : null}
               </span>
-              {onRemove || onMove ? (
+              {onRemove || onMove || onSettings ? (
                 <span className="object-set-chart__actions">
+                  {onSettings ? (
+                    <ObjectSetChartSettings
+                      settings={chartSettings}
+                      options={options}
+                      onChange={(next) => onSettings(chart.prop, next)}
+                    />
+                  ) : null}
                   {canMove && onMove ? (
                     <>
                       <button
@@ -180,7 +230,13 @@ export function ObjectSetCharts({
                 </span>
               ) : null}
             </figcaption>
-            {data.length === 0 ? (
+            {chart.cells ? (
+              <CrossTab
+                chart={chart}
+                applied={applied}
+                onPick={onPick}
+              />
+            ) : data.length === 0 ? (
               <p className="object-set-chart__empty">{t('objectSet.chartNoValues')}</p>
             ) : isHistogram(chart) ? (
               /* An interval distribution is read across a number line, so it is drawn on one: bars side by side on a
@@ -191,25 +247,11 @@ export function ObjectSetCharts({
                   <YAxis hide />
                   <Tooltip
                     cursor={{ fill: 'var(--color-bg-muted)' }}
-                    formatter={(value) => [String(value ?? ''), t('objectSet.chartCount')]}
+                    formatter={(value) => [formatMeasure(Number(value)), t('objectSet.chartCount')]}
                   />
-                  <Bar
-                    dataKey="count"
-                    radius={[3, 3, 0, 0]}
-                    onClick={(entry) => {
-                      // recharts hands the row datum back; that datum carries the bar's own handler.
-                      const raw = entry as unknown as { payload?: { pick?: () => void } };
-                      raw?.payload?.pick?.();
-                    }}
-                  >
+                  <Bar dataKey="count" radius={[3, 3, 0, 0]} onClick={pickFromDatum}>
                     {data.map((entry) => (
-                      <Cell
-                        key={entry.key}
-                        cursor="pointer"
-                        fill={
-                          entry.selected ? 'var(--color-accent)' : 'var(--color-accent-subtle)'
-                        }
-                      />
+                      <Cell key={entry.key} cursor="pointer" fill={fillFor(entry.selected)} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -227,25 +269,14 @@ export function ObjectSetCharts({
                   />
                   <Tooltip
                     cursor={{ fill: 'var(--color-bg-muted)' }}
-                    formatter={(value) => [String(value ?? ''), t('objectSet.chartCount')]}
+                    formatter={(value) => [
+                      formatMeasure(Number(value)),
+                      measureLabel ?? t('objectSet.chartCount'),
+                    ]}
                   />
-                  <Bar
-                    dataKey="count"
-                    radius={[0, 3, 3, 0]}
-                    onClick={(entry) => {
-                      // recharts hands the row datum back; that datum carries the bar's own handler.
-                      const raw = entry as unknown as { payload?: { pick?: () => void } };
-                      raw?.payload?.pick?.();
-                    }}
-                  >
+                  <Bar dataKey="count" radius={[0, 3, 3, 0]} onClick={pickFromDatum}>
                     {data.map((entry) => (
-                      <Cell
-                        key={entry.key}
-                        cursor="pointer"
-                        fill={
-                          entry.selected ? 'var(--color-accent)' : 'var(--color-accent-subtle)'
-                        }
-                      />
+                      <Cell key={entry.key} cursor="pointer" fill={fillFor(entry.selected)} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -255,6 +286,79 @@ export function ObjectSetCharts({
         );
       })}
       {footer}
+    </div>
+  );
+}
+
+function fillFor(selected: boolean) {
+  return selected ? 'var(--color-accent)' : 'var(--color-accent-subtle)';
+}
+
+/** recharts hands the row datum back; that datum carries the bar's own handler. */
+function pickFromDatum(entry: unknown) {
+  const raw = entry as { payload?: { pick?: () => void } };
+  raw?.payload?.pick?.();
+}
+
+/**
+ * A cross-tab: primary values as rows, the split values as columns.
+ *
+ * Stacked bars were the alternative and they lie at this size — twenty-four groups over four categories is a
+ * rainbow nobody reads. A small matrix shows the shape and each cell is still a click away from being a condition.
+ */
+function CrossTab({
+  chart,
+  applied,
+  onPick,
+}: {
+  chart: ObjectAggregateChart;
+  applied: Set<string>;
+  onPick: (prop: string, value: string) => void;
+}) {
+  const rows = [...new Set((chart.cells ?? []).map((cell) => cell.value))];
+  const columns = [...new Set((chart.cells ?? []).map((cell) => cell.split))];
+  const cellAt = (row: string, column: string) =>
+    (chart.cells ?? []).find((cell) => cell.value === row && cell.split === column)?.count ?? 0;
+  const max = Math.max(1, ...(chart.cells ?? []).map((cell) => cell.count));
+  return (
+    <div className="object-set-crosstab-wrap">
+      <table className="object-set-crosstab">
+        <thead>
+          <tr>
+            <th scope="col">{chart.prop}</th>
+            {columns.map((column) => (
+              <th key={column} scope="col">
+                {column}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row}>
+              <th scope="row">{row}</th>
+              {columns.map((column) => {
+                const count = cellAt(row, column);
+                const selected = applied.has(`${chart.prop}\u0000${row}`);
+                return (
+                  <td key={column}>
+                    <button
+                      type="button"
+                      className="object-set-crosstab__cell"
+                      style={{ opacity: count === 0 ? 0.35 : Math.max(0.45, count / max) }}
+                      onClick={() => onPick(chart.prop, row)}
+                      title={`${row} · ${column}`}
+                    >
+                      <span className={selected ? 'is-selected' : undefined}>{count || '·'}</span>
+                    </button>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="object-set-crosstab__hint">{chart.split}</p>
     </div>
   );
 }

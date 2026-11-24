@@ -700,3 +700,76 @@
   color: var(--color-text-secondary);
   font-size: var(--text-sm);
 }
+
+/* A chart's own settings and the cross-tab it can produce. */
+.object-set-chart-settings {
+  position: relative;
+  display: inline-flex;
+}
+
+.object-set-chart-settings__panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 13rem;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-lg);
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+}
+
+.object-set-crosstab-wrap {
+  overflow-x: auto;
+}
+
+.object-set-crosstab {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-xs);
+
+  th {
+    padding: var(--space-1);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-muted);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 1px;
+  }
+}
+
+.object-set-crosstab__cell {
+  width: 100%;
+  padding: var(--space-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font: inherit;
+  cursor: pointer;
+
+  .is-selected {
+    text-decoration: underline;
+  }
+}
+
+.object-set-crosstab__hint {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}

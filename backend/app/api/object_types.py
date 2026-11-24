@@ -34,6 +34,7 @@ from app.models.link_type import LinkType
 from app.models.object_type import ObjectType
 from app.services.ontology.api_names import ApiNameError, resolve_api_name
 from app.services.ontology.object_query import (
+    METRICS,
     QueryError as ObjectQueryError,
     parse_filters as parse_object_filters,
     parse_sort as parse_object_sort,
@@ -935,6 +936,9 @@ async def aggregate_objects(
         le=40,
         description="Intervals for a numeric property; 0 or a text property means a value distribution",
     ),
+    metric: str = Query("count", description="count | sum | avg | min | max of `measure` within each value"),
+    measure: str | None = Query(None, description="The numeric property a non-count metric aggregates"),
+    split: str | None = Query(None, description="A second property: the chart becomes a cross-tab"),
     db: AsyncSession = Depends(get_db),
 ):
     """Property distributions over the current object set — one chart per `prop`.
@@ -948,6 +952,12 @@ async def aggregate_objects(
     await _require_object_type_read(request, db, object_type_id)
     if not prop:
         raise HTTPException(status_code=400, detail="Pass at least one `prop` to aggregate")
+    if metric not in METRICS:
+        raise HTTPException(
+            status_code=400, detail=f"unknown metric `{metric}`; one of {', '.join(METRICS)}"
+        )
+    if metric != "count" and not measure:
+        raise HTTPException(status_code=400, detail=f"`{metric}` needs a `measure` property")
     try:
         filters = parse_object_filters(f, parse_prop_filters(request))
     except ObjectQueryError as exc:
@@ -957,7 +967,7 @@ async def aggregate_objects(
         obj_type=obj_type,
         filters=filters,
         sort=[],
-        props=prop,
+        props=[*prop, *([measure] if measure else []), *([split] if split else [])],
         link_targets=await _known_link_targets(db, obj_type),
     )
     filters = [*await object_scope_filters(db, request, obj_type), *filters]
@@ -978,6 +988,9 @@ async def aggregate_objects(
                 link_info=link_info,
                 limit=limit,
                 buckets=buckets,
+                metric=metric,
+                measure=measure,
+                split=split,
             )
             for name in prop
         ]
