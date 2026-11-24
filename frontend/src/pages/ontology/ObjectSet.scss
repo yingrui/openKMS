@@ -110,6 +110,57 @@
   margin-bottom: var(--space-2);
 }
 
+.object-set-chart__name {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.object-set-chart__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.object-set-chart__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.object-set-chart__action:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+/* The "add chart" card that ends the chart grid. */
+.object-set-chart--add {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  border-style: dashed;
+}
+
+.object-set-chart__add-select {
+  width: auto;
+}
+
 .object-set-chart__more {
   color: var(--color-text-muted);
   font-weight: 400;

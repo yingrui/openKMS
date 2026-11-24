@@ -1,3 +1,4 @@
+import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -17,6 +18,10 @@ export function ObjectSetCharts({
   filters,
   properties,
   onPick,
+  onRemove,
+  onMove,
+  canMove,
+  footer,
 }: {
   typeId: string;
   search: string;
@@ -24,6 +29,12 @@ export function ObjectSetCharts({
   /** Property names to chart, in order. The caller decides (prominent properties first). */
   properties: string[];
   onPick: (prop: string, value: string) => void;
+  /** Chart editing: removing a chart is not removing its condition (the docs are explicit). */
+  onRemove?: (prop: string) => void;
+  onMove?: (prop: string, direction: -1 | 1) => void;
+  canMove?: boolean;
+  /** Rendered as the last cell of the grid — the "add chart" card. */
+  footer?: React.ReactNode;
 }) {
   const { t } = useTranslation('explore');
   const [charts, setCharts] = useState<ObjectAggregateChart[]>([]);
@@ -79,10 +90,46 @@ export function ObjectSetCharts({
         return (
           <figure key={chart.prop} className="object-set-chart">
             <figcaption className="object-set-chart__title">
-              {chart.prop}
-              {chart.truncated ? (
-                <span className="object-set-chart__more">
-                  {t('objectSet.chartTruncated', { count: chart.values.length })}
+              <span className="object-set-chart__name">
+                {chart.prop}
+                {chart.truncated ? (
+                  <span className="object-set-chart__more">
+                    {t('objectSet.chartTruncated', { count: chart.values.length })}
+                  </span>
+                ) : null}
+              </span>
+              {onRemove || onMove ? (
+                <span className="object-set-chart__actions">
+                  {canMove && onMove ? (
+                    <>
+                      <button
+                        type="button"
+                        className="object-set-chart__action"
+                        aria-label={t('objectSet.chartMoveBack', { name: chart.prop })}
+                        onClick={() => onMove(chart.prop, -1)}
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type="button"
+                        className="object-set-chart__action"
+                        aria-label={t('objectSet.chartMoveForward', { name: chart.prop })}
+                        onClick={() => onMove(chart.prop, 1)}
+                      >
+                        ›
+                      </button>
+                    </>
+                  ) : null}
+                  {onRemove ? (
+                    <button
+                      type="button"
+                      className="object-set-chart__action"
+                      aria-label={t('objectSet.chartRemove', { name: chart.prop })}
+                      onClick={() => onRemove(chart.prop)}
+                    >
+                      ×
+                    </button>
+                  ) : null}
                 </span>
               ) : null}
             </figcaption>
@@ -131,6 +178,7 @@ export function ObjectSetCharts({
           </figure>
         );
       })}
+      {footer}
     </div>
   );
 }

@@ -243,19 +243,35 @@ export function ObjectExplorationPage() {
     [objectType]
   );
 
+  /* The charts on screen: a layout seeds them once, then the caller edits the list — add, remove, move. */
+  const builtinCharts = useMemo(
+    () =>
+      [
+        ...(objectType?.display_property ? [objectType.display_property] : []),
+        ...properties.map((p) => p.name),
+      ]
+        .filter((name, index, all) => all.indexOf(name) === index)
+        .slice(0, 6),
+    [objectType, properties]
+  );
+
   const chartProperties = useMemo(() => {
     const known = new Set(properties.map((p) => p.name));
-    if (chartProps) {
-      const ordered = chartProps.filter((name) => known.has(name));
-      if (ordered.length > 0) return ordered.slice(0, 8);
-    }
-    return [
-      ...(objectType?.display_property ? [objectType.display_property] : []),
-      ...properties.map((p) => p.name),
-    ]
-      .filter((name, index, all) => all.indexOf(name) === index)
-      .slice(0, 6);
-  }, [chartProps, objectType, properties]);
+    const source = chartProps ?? builtinCharts;
+    return source.filter((name) => known.has(name));
+  }, [chartProps, builtinCharts, properties]);
+
+  const addable = properties.map((p) => p.name).filter((name) => !chartProperties.includes(name));
+
+  const removeChart = (prop: string) => setChartProps(chartProperties.filter((name) => name !== prop));
+  const moveChart = (prop: string, direction: -1 | 1) => {
+    const index = chartProperties.indexOf(prop);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= chartProperties.length) return;
+    const next = [...chartProperties];
+    [next[index], next[target]] = [next[target], next[index]];
+    setChartProps(next);
+  };
 
   /* Pivot targets: every link touching this type, pointing at the object on the other side. */
   const pivots = useMemo(
@@ -544,6 +560,33 @@ export function ObjectExplorationPage() {
           filters={filters}
           properties={chartProperties}
           onPick={(prop, value) => setFilters([...filters, formatFilter(prop, 'eq', value)])}
+          onRemove={removeChart}
+          onMove={moveChart}
+          canMove={chartProperties.length > 1}
+          footer={
+            addable.length > 0 ? (
+          <div className="object-set-chart object-set-chart--add">
+            <label className="object-set-chart__title" htmlFor="object-set-add-chart">
+              {t('objectSet.chartAdd')}
+            </label>
+            <select
+              id="object-set-add-chart"
+              className="ds-control ds-control--compact object-set-chart__add-select"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) setChartProps([...chartProperties, e.target.value]);
+              }}
+            >
+              <option value="">{t('objectSet.chartAddPick')}</option>
+              {addable.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+                  ))}
+                </select>
+              </div>
+            ) : null
+          }
         />
       ) : rowsLoading ? (
         <Loading label={t('objectSet.rowsLoading')} />

@@ -387,7 +387,13 @@
     "layoutSaveGlobal": "设为所有人默认",
     "layoutSavedGlobal": "已设为所有人的默认布局",
     "dataAsOf": "数据截至 {{time}}",
-    "neverIndexed": "尚未索引"
+    "neverIndexed": "尚未索引",
+    "chartRemove": "移除图表 {{name}}",
+    "chartMoveBack": "{{name}} 向前移",
+    "chartMoveForward": "{{name}} 向后移",
+    "chartAdd": "添加图表",
+    "chartAddPick": "选择属性",
+    "chartAddNone": "没有可添加的属性"
   },
   "explorerSections": {
     "explorations": "探索",

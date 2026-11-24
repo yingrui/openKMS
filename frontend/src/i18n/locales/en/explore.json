@@ -387,7 +387,13 @@
     "layoutSaveGlobal": "Set as everyone’s default",
     "layoutSavedGlobal": "Set as the default for everyone",
     "dataAsOf": "data as of {{time}}",
-    "neverIndexed": "not indexed yet"
+    "neverIndexed": "not indexed yet",
+    "chartRemove": "Remove chart {{name}}",
+    "chartMoveBack": "Move {{name}} earlier",
+    "chartMoveForward": "Move {{name}} later",
+    "chartAdd": "Add chart",
+    "chartAddPick": "Pick a property",
+    "chartAddNone": "No property left to add"
   },
   "explorerSections": {
     "explorations": "Explorations",
