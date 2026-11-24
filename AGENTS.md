@@ -122,10 +122,13 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 
 - 改 `backend/app/models/`：`alembic revision --autogenerate` → **逐条复核** → `upgrade head`。  
   **复核的判据：这条 op 是不是你这次改的？** autogenerate 会比对“模型 vs 库”，凡是库里有、模型没声明的都会被提议删除 —— 包括运行时创建的表（LangGraph `checkpoint*`、Procrastinate）和迁移里用 SQL 建的索引（GIN、partial unique）。这类对象由 `backend/alembic/env.py` 的 `EXCLUDE_TABLES` / `EXCLUDE_INDEXES` 负责声明，**不要靠每次手删**：新增运行时表或 SQL 建索引时，同一处登记。一条生成出来的迁移里出现与本任务无关的 `drop_table` / `drop_index`，说明过滤清单缺项，先补清单再重生成。  
-- **手写 `create_table` 时，时间戳列必须写 `nullable=False`。** 模型里 `Mapped[datetime]` 就是 NOT NULL，而
-  `sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now())` 不带 `nullable` 默认是**可空** ——
-  `ex1explorations` 就这样漏了 3 列，之后每次 autogenerate 都会提议 3 条 `alter_column … nullable=False`（补丁迁移
-  `b372f5321237`）。写完 create_table 后跑一次探针，看到无关的 `alter_column` 先修列定义/补迁移，别当成噪音。
+- **门禁替你做探针：`./check.sh` 里的 `scripts/check_migration_drift.py` 跑 `alembic check`。** 它失败只有两种原因，
+  脚本会说是哪一种：**库落后于迁移**（`alembic upgrade head`）或**改了模型没写迁移**（补迁移；已 push 的迁移不改，
+  加补丁）。它同时抓"手写迁移与模型不一致"——这一类已经发生过两次（`5ea40717a131` 的 33 个时间戳、
+  `b372f5321237` 的 3 个）。**根因写法**：手写 `create_table` 时时间戳列必须写 `nullable=False`，因为
+  `sa.Column(..., server_default=sa.func.now())` 不带 `nullable` 默认是**可空**，而模型里 `Mapped[datetime]` 是 NOT NULL。
+  仍然要人看的是**过滤清单**那一类（运行时表 / SQL 建的索引）：`alembic check` 会把它们当"该删"提出来，所以
+  看到无关的 `drop_*` 先补 `env.py`。
 - 改 **`permission_default_patterns.py`**：另加一条 **refresh migration** 重刷 `security_permissions`（参考 `c3d4e5f6a7b8_*`、`j1k2l3m4n5o6_*`）。只改 Python 默认值不会更新已有库。  
 - API 启动时不建表。本地用 `backend/dev.sh`（先 pgvector，再 Alembic）；Docker 的 CMD 先跑 Alembic 再起 uvicorn。
 - **openKMS backend 一律由用户执行 `backend/dev.sh` 启动，agent 不要手工起 uvicorn。** 手工启动会跳过 pgvector 与 Alembic 检查，也失去 `--reload`。需要重启时提醒用户，不要自己拉起或杀掉进程。  

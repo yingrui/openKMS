@@ -49,6 +49,12 @@ echo "→ module paths"
 # pytest never imports scheduler.py, worker.py or a migration — this does.
 uv run python scripts/check_module_paths.py || status=1
 
+echo "→ migration drift"
+# The migration is only trustworthy if the models and the migrated database agree; twice this repo shipped a
+# hand-written create_table whose nullability did not match the model. `alembic check` answers it, the script adds
+# which of the two reasons it failed (database behind, or a change with no migration).
+uv run python scripts/check_migration_drift.py || status=1
+
 echo "→ pytest"
 uv run pytest -q || status=1
 
