@@ -5,6 +5,7 @@ import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 
 import { fetchObjectAggregate, type ObjectAggregateChart } from '../../data/ontologyApi';
 import { EmptyState } from '../../styles/design-system/EmptyState';
 import { Loading } from '../../styles/design-system/Loading';
+import { dimensionalCharts } from './objectSetChartsModel';
 
 /**
  * The exploration's chart area: one bar chart per property, each aggregating **the current object set**.
@@ -56,7 +57,8 @@ export function ObjectSetCharts({
         filters,
         limit: 20,
       });
-      setCharts(res.charts);
+      // Identifiers are answered but not drawn: twelve bars of height one look like a failure, not a distribution.
+      setCharts(dimensionalCharts(res.charts));
     } catch {
       setCharts([]);
       setFailed(true);

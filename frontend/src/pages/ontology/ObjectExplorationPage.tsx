@@ -162,21 +162,27 @@ export function ObjectExplorationPage() {
   useEffect(() => {
     if (!typeId) return;
     let cancelled = false;
+    // Clear first: a chart list belongs to one type. Carrying the previous type's props into the next exploration
+    // leaves the grid empty, because every name it kept is unknown to the type being opened.
+    //
+    // A saved exploration already names its charts, and the two requests race — so this one yields when the URL
+    // carries `?saved=`.
+    if (!savedId) setChartProps(null);
     void fetchExplorationLayout(typeId)
       .then((res) => {
         if (cancelled) return;
         const charts = (res.layout?.charts as { prop: string }[] | undefined) ?? [];
         const props = charts.map((chart) => chart.prop).filter(Boolean);
-        if (props.length > 0) setChartProps(props);
+        if (!savedId) setChartProps(props.length > 0 ? props : null);
         setLayoutChoices(res.available ?? []);
       })
       .catch(() => {
-        if (!cancelled) setChartProps(null);
+        if (!cancelled && !savedId) setChartProps(null);
       });
     return () => {
       cancelled = true;
     };
-  }, [typeId]);
+  }, [savedId, typeId]);
 
   const loadRows = useCallback(async () => {
     if (!typeId) return;
@@ -217,6 +223,11 @@ export function ObjectExplorationPage() {
         setSaved(row);
         setSaveName(row.name);
         setSaveShared(row.visibility === 'shared');
+        // A saved exploration is a **view**, not just a filter: its charts, their order and the first perspective it
+        // opened with are part of what was saved. Conditions alone reopened as whatever the type defaults to.
+        const charts = (row.layout?.charts as { prop: string }[] | undefined) ?? [];
+        const chartNames = charts.map((chart) => chart.prop).filter(Boolean);
+        if (chartNames.length > 0) setChartProps(chartNames);
         // The updater form keeps the current params without making this effect depend on them.
         setSearchParams(
           (previous) => {
@@ -227,6 +238,8 @@ export function ObjectExplorationPage() {
               | { prop: string; desc?: boolean }[]
               | undefined)?.[0];
             if (layoutSort) params.set('sort', `${layoutSort.desc ? '-' : ''}${layoutSort.prop}`);
+            if (row.layout?.perspective === 'results') params.set('view', 'results');
+            else params.delete('view');
             return params;
           },
           { replace: true }
