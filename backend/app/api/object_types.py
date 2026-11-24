@@ -29,13 +29,24 @@ from app.services.ontology.neo4j_async import (
     run_with_neo4j_driver,
 )
 from app.models.object_instance import ObjectInstance
+from app.models.link_type import LinkType
 from app.models.object_type import ObjectType
 from app.services.ontology.api_names import ApiNameError, resolve_api_name
+from app.services.ontology.object_query import (
+    QueryError as ObjectQueryError,
+    parse_filters as parse_object_filters,
+    parse_sort as parse_object_sort,
+)
+from app.services.ontology.object_neo4j_store import (
+    aggregate_object_set,
+    query_object_set,
+)
 from app.services.ontology.query_filters import parse_prop_filters
 from app.services.ontology.object_neo4j_store import (
     fetch_object_from_neo4j,
     get_first_neo4j_datasource,
     merge_object_row_to_neo4j,
+    link_rel_type,
     object_label,
     prune_object_nodes,
     prune_refused_reason,
@@ -789,31 +800,116 @@ async def index_one_object_type_to_neo4j(
 
 # --- Object instances (nested under object type) ---
 
+async def _object_link_info(db: AsyncSession, obj_type: ObjectType) -> dict[str, tuple[str, str]]:
+    """`link api_name → (neo4j rel type, 'out'|'in')` for the links touching this type.
+
+    Direction is expressed from the queried type's side: `out` when it is the link's source. That is all a
+    one-hop filter needs, and it is what lets `f=@allocatesTo/cycle:eq:2026-W46` keep returning *distributors*.
+    """
+    links = (
+        await db.execute(
+            select(LinkType).where(
+                or_(
+                    LinkType.source_object_type_id == obj_type.id,
+                    LinkType.target_object_type_id == obj_type.id,
+                )
+            )
+        )
+    ).scalars().all()
+    info: dict[str, tuple[str, str]] = {}
+    for link in links:
+        direction = "out" if link.source_object_type_id == obj_type.id else "in"
+        rel = link_rel_type(link)
+        for key in (link.api_name, link.id):
+            if key:
+                info[key] = (rel, direction)
+    return info
+
+
+@router.get("/{object_type_id}/aggregate", dependencies=[Depends(require_auth)])
+async def aggregate_objects(
+    object_type_id: str,
+    request: Request,
+    prop: list[str] = Query(default=[]),
+    f: list[str] = Query(default=[], description="<prop>:<op>:<value> or @<link>/<prop>:<op>:<value>"),
+    search: str | None = None,
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+):
+    """Property distributions over the current object set — one chart per `prop`.
+
+    Charts are the way the exploration is driven, so they must aggregate the **same** set the table shows:
+    same `search`, same `f`, same link filters. Two props in one request means one round trip for two charts.
+    """
+    obj_type = await db.get(ObjectType, object_type_id)
+    if not obj_type:
+        raise HTTPException(status_code=404, detail="Object type not found")
+    await _require_object_type_read(request, db, object_type_id)
+    if not prop:
+        raise HTTPException(status_code=400, detail="Pass at least one `prop` to aggregate")
+    try:
+        filters = parse_object_filters(f, parse_prop_filters(request))
+    except ObjectQueryError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    link_info = await _object_link_info(db, obj_type)
+    neo4j_ds = await get_first_neo4j_datasource(db)
+    if not neo4j_ds:
+        raise HTTPException(status_code=409, detail="Ontology objects are read from the graph.")
+    label = object_label(obj_type)
+
+    def _run(driver):
+        return [
+            aggregate_object_set(
+                driver,
+                label,
+                prop=name,
+                search=search,
+                filters=filters,
+                link_info=link_info,
+                limit=limit,
+            )
+            for name in prop
+        ]
+
+    try:
+        charts = await run_with_neo4j_driver(neo4j_ds, _run)
+    except NEO4J_ERRORS as e:
+        raise HTTPException(status_code=503, detail=f"Ontology graph unavailable: {e}") from e
+    return {"charts": charts}
+
+
 @router.get("/{object_type_id}/objects", response_model=ObjectInstanceListResponse)
 async def list_object_instances(
     object_type_id: str,
     request: Request,
     search: str | None = None,
+    f: list[str] = Query(default=[], description="<prop>:<op>:<value> or @<link>/<prop>:<op>:<value>"),
+    sort: str | None = Query(None, description="-prop,other"),
     limit: int = Query(500, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List object instances from the ontology graph.
+    """List object instances from the ontology graph — one page of an object set.
 
     The graph *is* the object layer: dataset tables and ``object_instances`` are what gets
     indexed into it (a source and a write queue), never a second read path. A deployment
     without a Neo4j data source, or a type that was never indexed, therefore gets an explicit
     answer instead of a silently empty list.
 
-    ``search`` and ``prop.<name>=value`` filters, plus ``limit``/``offset``, are applied in the
-    graph, so ``total`` describes the filtered set.
+    The set is `search` + `f` (typed conditions, optionally through one link), ordered by `sort`;
+    the legacy `prop.<name>=value` spelling is accepted and means `eq`.
     """
     obj_type = await db.get(ObjectType, object_type_id)
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
     await _require_object_type_read(request, db, object_type_id)
 
-    prop_filters = parse_prop_filters(request)
+    legacy = parse_prop_filters(request)
+    try:
+        filters = parse_object_filters(f, legacy)
+        order = parse_object_sort(sort)
+    except ObjectQueryError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     id_props = resolve_id_properties(obj_type)
     neo4j_ds = await get_first_neo4j_datasource(db)
     if not neo4j_ds:
@@ -826,10 +922,19 @@ async def list_object_instances(
         )
 
     label = object_label(obj_type)
+    link_info = await _object_link_info(db, obj_type)
 
     def _query(driver):
-        return _query_neo4j_nodes(
-            driver, label, search, limit, offset, id_props, prop_filters=prop_filters
+        return query_object_set(
+            driver,
+            label,
+            search=search,
+            limit=limit,
+            offset=offset,
+            key_properties=id_props,
+            filters=filters,
+            sort=order,
+            link_info=link_info,
         )
 
     try:
@@ -839,7 +944,7 @@ async def list_object_instances(
 
     # An empty, unfiltered page can mean "no objects" or "never indexed". Say which.
     indexed: bool | None = True
-    if total == 0 and not search and not prop_filters:
+    if total == 0 and not search and not filters:
         indexed = not await _has_unindexed_source(db, obj_type)
     return _instances_from_graph(rows, object_type_id, total, indexed)
 

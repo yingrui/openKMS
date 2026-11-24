@@ -215,40 +215,46 @@ def delete_object_node(session, label: str, columns: list[str], values: list[Any
     return int(row["c"] or 0) if row else 0
 
 
-def query_neo4j_nodes(
+def _search_clause(search: str | None) -> tuple[list[str], dict]:
+    trimmed = search.strip() if search else None
+    if not trimmed:
+        return [], {}
+    return (
+        ["any(k IN keys(n) WHERE toLower(toString(n[k])) CONTAINS toLower($search))"],
+        {"search": trimmed},
+    )
+
+
+def query_object_set(
     driver,
     label: str,
+    *,
     search: str | None,
     limit: int,
     offset: int,
     key_properties: list[str],
-    prop_filters: dict[str, str] | None = None,
+    filters: list | None = None,
+    sort: list | None = None,
+    link_info: dict | None = None,
 ) -> tuple[list[dict], int]:
-    """Query nodes from Neo4j by label. Returns (rows, total)."""
-    search_trimmed = search.strip() if search else None
-    prop_filters = prop_filters or {}
-    where_parts: list[str] = []
-    params: dict = {"offset": offset, "limit": limit}
-    if search_trimmed:
-        where_parts.append(
-            "any(k IN keys(n) WHERE toLower(toString(n[k])) CONTAINS toLower($search))"
-        )
-        params["search"] = search_trimmed
-    for i, (name, value) in enumerate(prop_filters.items()):
-        pname = f"pf_{i}"
-        where_parts.append(f"toString(n.`{name}`) = ${pname}")
-        params[pname] = value
-    where_clause = f"WHERE {' AND '.join(where_parts)}" if where_parts else ""
-    with driver.session() as session:
-        count_result = session.run(
-            f"MATCH (n:{label}) {where_clause} RETURN count(n) AS c",
-            **{k: v for k, v in params.items() if k not in ("offset", "limit")},
-        )
-        total = count_result.single()["c"] or 0
+    """One page of an object set, and its total size.
 
+    The set is `label + search + filters`, ordered by `sort`; that is the same shape the URL carries, so the
+    chart aggregation below runs over exactly the rows this returns.
+    """
+    parts, params = _search_clause(search)
+    from app.services.ontology.object_query import count_query, order_clause, page_query, where_clause
+
+    where, filter_params = where_clause(filters or [], link_info=link_info or {})
+    params.update(filter_params)
+    if where:
+        parts.append(where.removeprefix("WHERE "))
+    combined = f"WHERE {' AND '.join(parts)}" if parts else ""
+    order = order_clause(sort or [], key_properties=key_properties)
+    with driver.session() as session:
+        total = session.run(count_query(label, combined), **params).single()["c"] or 0
         result = session.run(
-            f"MATCH (n:{label}) {where_clause} RETURN n SKIP $offset LIMIT $limit",
-            **params,
+            page_query(label, combined, order), **params, offset=offset, limit=limit
         )
 
         def _serialize_val(v):
@@ -274,6 +280,61 @@ def query_neo4j_nodes(
             if row_id is not None:
                 rows.append({"id": row_id, "data": data})
         return rows, total
+
+
+def query_neo4j_nodes(
+    driver,
+    label: str,
+    search: str | None,
+    limit: int,
+    offset: int,
+    key_properties: list[str],
+    prop_filters: dict[str, str] | None = None,
+) -> tuple[list[dict], int]:
+    """Legacy entry point: equality filters only. Everything else goes through `query_object_set`."""
+    from app.services.ontology.object_query import PropertyFilter
+
+    filters = [
+        PropertyFilter(prop=name, op="eq", value=value)
+        for name, value in (prop_filters or {}).items()
+    ]
+    return query_object_set(
+        driver,
+        label,
+        search=search,
+        limit=limit,
+        offset=offset,
+        key_properties=key_properties,
+        filters=filters,
+    )
+
+
+def aggregate_object_set(
+    driver,
+    label: str,
+    *,
+    prop: str,
+    search: str | None,
+    filters: list | None,
+    link_info: dict | None,
+    limit: int = 50,
+) -> dict:
+    """The distribution of one property over the current object set — one chart's data."""
+    from app.services.ontology.object_query import aggregate_query, where_clause
+
+    parts, params = _search_clause(search)
+    where, filter_params = where_clause(filters or [], link_info=link_info or {})
+    params.update(filter_params)
+    if where:
+        parts.append(where.removeprefix("WHERE "))
+    combined = f"WHERE {' AND '.join(parts)}" if parts else ""
+    with driver.session() as session:
+        rows = [
+            {"value": record["value"], "count": record["c"]}
+            for record in session.run(aggregate_query(label, combined, prop, limit=limit + 1), **params)
+        ]
+    truncated = len(rows) > limit
+    return {"prop": prop, "values": rows[:limit], "truncated": truncated}
 
 
 def get_neo4j_node_by_id(
