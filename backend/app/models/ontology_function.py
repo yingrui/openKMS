@@ -46,6 +46,8 @@ class OntologyFunctionVersion(Base):
     source_code: Mapped[str] = mapped_column(Text, nullable=False)
     input_schema: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     output_schema: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Logic functions store their flow here instead of `source_code`: prompt + nodes + output reference.
+    flow_spec: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     entrypoint: Mapped[str] = mapped_column(String(64), nullable=False, default="execute", server_default="execute")
     runtime: Mapped[str] = mapped_column(String(32), nullable=False, default="python3", server_default="python3")
     validation_result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
@@ -69,6 +71,8 @@ class OntologyFunctionExecution(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     input_payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     output_payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Per-node record of what the flow actually did: prompt sent, tokens, tool calls, duration.
+    trace: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

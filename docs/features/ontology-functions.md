@@ -139,22 +139,44 @@ see `tmp/plan/function-logic.md` and [Palantir's LLM functions](../research/pala
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/ontology/functions` | List functions (`?source=code\|logic` — the two editor entries) |
-| POST | `/api/ontology/functions` | Create function + v1 (validated); optional `object_type_id` |
+| POST | `/api/ontology/functions` | Create function + v1 (validated); optional `object_type_id`; `source='logic'` + `flow_spec` for a Logic function |
 | PATCH | `/api/ontology/functions/{id}` | Update metadata (`display_name`, `description`, `object_type_id`, status) |
-| POST | `/api/ontology/functions/{id}/versions` | Save draft version |
+| POST | `/api/ontology/functions/{id}/versions` | Save draft version (`flow_spec` for Logic functions) |
 | POST | `/api/ontology/functions/{id}/validate` | Static validate |
 | POST | `/api/ontology/functions/{id}/publish` | Publish version |
 | POST | `/api/ontology/functions/{id}/execute` | Run draft or `use_published` |
 | POST | `/api/ontology/functions/by-api-name/{apiName}/execute` | Run published by api name |
-| GET | `/api/ontology/functions/{id}/executions` | Observability |
+| GET | `/api/ontology/functions/{id}/executions` | Observability, including the per-node `trace` of a Logic run |
 
 External services: `/api/ontology/external-services` (CRUD + `POST …/by-api-name/{api_name}/resolve`).
 Groups: `/api/ontology/groups` (related resources: `GET /api/ontology/groups/{id}/related`). Action types: `/api/ontology/action-types` (honor optional pinned `function_version`). **Built-in** rules `object_create` / `object_modify` / `object_delete` apply edits directly (no Function). **Function** rule type runs the bound Function, audits, and **applies `output.edits` `create` / `modify` / `delete` ops** onto resolvable object instances (`applied.created_ids` / `modified_ids` / `deleted_ids`). Dataset/Neo4j synthetic `object_id` remains deferred ([alignment](../research/ontology_manager_alignment.md#product-decision-action-write-back-b1)). Object list supports `prop.<name>=` equality; link list supports `source_object_id`. Domain object types and Function source remain tenant content, not platform seeds.
 
+## Logic functions (flow, not source)
+
+A function whose `source='logic'` carries a **`flow_spec`** on its version instead of Python: an ordered list of nodes,
+each with a prompt, a model and an output schema, plus an `output` reference. Same table, same versions, same publish
+step — so Actions, permissions and `openkms_functions` callers do not change.
+
+| Piece | Where |
+|-------|-------|
+Flow body | `ontology_function_versions.flow_spec` (validated before the version is saved) |
+Executor | `app/services/ontology/logic_runtime.py` — **the backend orchestrates; ofs is not involved** (a flow is not untrusted code, and it needs DB, permissions and per-node budgets) |
+Model | a node's `model_id` resolves through the platform registry (`api_models` / `api_providers`); omitted → the default `chat-completions` model |
+Trace | `ontology_function_executions.trace` — per node: prompt as sent, tokens, duration, error; read via `GET …/{id}/executions` |
+
+Supported node kinds today: **`model` only**, in a linear chain. `function` / `action` / `transform` / `condition` /
+`loop` are rejected at save time with a message that says they are not implemented yet, rather than half-working.
+
+Invariants:
+
+- The model never touches the ontology — it gets a prompt and returns data. Tools arrive with the tool nodes.
+- A node over its token or time budget **fails**; it is never truncated (a truncated answer looks like a real one).
+- Every node leaves a trace entry, including failed ones — the prompt on a failure is the thing you need most.
+
 ## Runtime
 
 1. Editor or Manager calls backend `execute`.
-2. Backend loads `source_code` + `entrypoint` from `ontology_function_versions`.
+2. Backend loads the version and branches: `source='logic'` → `logic_runtime.run_flow`; otherwise `source_code` + `entrypoint` → ofs.
 3. Validates `input_schema` and call depth/stack.
 4. POSTs to ofs `/execute`.
 5. ofs resolves `@function` (or legacy `execute`), injects `Client`, runs subprocess.

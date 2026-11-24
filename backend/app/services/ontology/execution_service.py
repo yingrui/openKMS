@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import uuid
 from dataclasses import dataclass
 
@@ -31,6 +33,8 @@ from app.services.ontology.constants import (
 from fastapi import HTTPException
 
 from app.services.ontology.function_runtime import FunctionExecutionError, execute_in_ofs
+from app.services.ontology import logic_runtime
+from app.services.ontology.logic_model_registry import resolve_model
 from app.services.ontology.function_service import get_function, get_function_by_api_name, resolve_version_for_execute
 from app.services.ontology.input_schema import validate_input_against_schema
 from app.models.object_type import ObjectType
@@ -81,6 +85,7 @@ class ExecutionOutcome:
     output: dict | None
     error: str | None
     duration_ms: int | None
+    trace: dict | None = None
 
 
 async def _run_ofs(
@@ -115,6 +120,29 @@ async def _run_ofs(
     )
 
 
+async def _run_flow(
+    db: AsyncSession,
+    *,
+    ver: OntologyFunctionVersion,
+    input_payload: dict,
+) -> ExecutionOutcome:
+    """Logic functions: the backend orchestrates, so a node failure is recorded with its trace."""
+
+    async def model_factory(model_id: str | None) -> Any:
+        return await resolve_model(db, model_id)
+
+    flow = await logic_runtime.run_flow(
+        ver.flow_spec, input_payload, model_factory=model_factory
+    )
+    return ExecutionOutcome(
+        status=flow.status,
+        output=normalize_output(flow.output),
+        error=flow.error,
+        duration_ms=flow.duration_ms,
+        trace=flow.trace or None,
+    )
+
+
 async def execute_function_and_audit(
     db: AsyncSession,
     fn: OntologyFunction,
@@ -142,14 +170,17 @@ async def execute_function_and_audit(
     # Release any open transaction before awaiting OFS so nested Client HTTP
     # (same process, same API key) is not blocked on row locks / idle-in-transaction.
     await db.commit()
-    outcome = await _run_ofs(
-        ver=ver,
-        fn=fn,
-        input_payload=input_payload,
-        caller_token=caller_token,
-        call_depth=call_depth,
-        call_stack=stack,
-    )
+    if getattr(fn, "source", "code") == "logic":
+        outcome = await _run_flow(db, ver=ver, input_payload=input_payload)
+    else:
+        outcome = await _run_ofs(
+            ver=ver,
+            fn=fn,
+            input_payload=input_payload,
+            caller_token=caller_token,
+            call_depth=call_depth,
+            call_stack=stack,
+        )
     ex = OntologyFunctionExecution(
         id=exec_id,
         function_id=fn.id,
@@ -160,6 +191,7 @@ async def execute_function_and_audit(
         input_payload=input_payload,
         output_payload=outcome.output,
         error_message=outcome.error,
+        trace=outcome.trace,
     )
     db.add(ex)
     await db.commit()

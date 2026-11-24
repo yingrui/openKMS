@@ -17,6 +17,7 @@ class OntologyFunctionVersionResponse(BaseModel):
     source_code: str
     input_schema: dict | None = None
     output_schema: dict | None = None
+    flow_spec: dict | None = None
     entrypoint: str
     runtime: str
     validation_result: dict | None = None
@@ -83,9 +84,12 @@ class OntologyFunctionCreate(BaseModel):
     display_name: str = Field(min_length=1, max_length=256)
     description: str | None = None
     object_type_id: str | None = None
+    # `logic` means the body is a flow, not Python; the two modes share everything else.
+    source: Literal["code", "logic"] = "code"
     source_code: str | None = None
     input_schema: dict | None = None
     output_schema: dict | None = None
+    flow_spec: dict | None = None
 
 
 class OntologyFunctionUpdate(BaseModel):
@@ -97,9 +101,11 @@ class OntologyFunctionUpdate(BaseModel):
 
 
 class OntologyFunctionVersionCreate(BaseModel):
-    source_code: str
+    source_code: str = ""
     input_schema: dict | None = None
     output_schema: dict | None = None
+    # Present for Logic functions; `source_code` stays empty for them.
+    flow_spec: dict | None = None
 
 
 class OntologyFunctionValidateResponse(BaseModel):
@@ -132,6 +138,8 @@ class OntologyFunctionExecutionResponse(BaseModel):
     input_payload: dict | None = None
     output_payload: dict | None = None
     error_message: str | None = None
+    # Per-node record for Logic functions (prompt sent, tokens, duration); null for code functions.
+    trace: dict | None = None
     created_at: datetime
 
 

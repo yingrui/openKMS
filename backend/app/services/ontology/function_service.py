@@ -28,6 +28,7 @@ from app.schemas.ontology_functions import (
     OntologySchemaFieldRef,
 )
 from app.services.ontology.constants import FUNCTION_ID_PREFIX, ID_HEX_LENGTH, VERSION_ID_PREFIX
+from app.services.ontology.logic_runtime import validate_flow_spec
 from app.services.ontology.function_templates import (
     DEFAULT_FUNCTION_SOURCE,
     extract_function_uses,
@@ -55,6 +56,7 @@ def version_to_response(ver: OntologyFunctionVersion) -> OntologyFunctionVersion
         source_code=ver.source_code,
         input_schema=ver.input_schema,
         output_schema=ver.output_schema,
+        flow_spec=ver.flow_spec,
         entrypoint=ver.entrypoint,
         runtime=ver.runtime,
         validation_result=ver.validation_result,
@@ -294,8 +296,13 @@ async def create_function(
 
     await assert_io_schemas_ok(db, input_schema=body.input_schema, output_schema=body.output_schema)
 
-    source = body.source_code or DEFAULT_FUNCTION_SOURCE
-    valid, errors, warnings = validate_function_source(source)
+    is_logic = body.source == "logic"
+    source = body.source_code or ("" if is_logic else DEFAULT_FUNCTION_SOURCE)
+    if is_logic:
+        flow_errors = validate_flow_spec(body.flow_spec)
+        valid, errors, warnings = (not flow_errors), flow_errors, []
+    else:
+        valid, errors, warnings = validate_function_source(source)
     fn_id = new_function_id()
     fn = OntologyFunction(
         id=fn_id,
@@ -303,6 +310,7 @@ async def create_function(
         display_name=body.display_name,
         description=body.description,
         object_type_id=body.object_type_id,
+        source=body.source,
         created_by=created_by,
         created_by_name=created_by_name,
     )
@@ -314,6 +322,7 @@ async def create_function(
         source_code=source,
         input_schema=body.input_schema,
         output_schema=body.output_schema,
+        flow_spec=body.flow_spec,
         validation_result={"valid": valid, "errors": errors, "warnings": warnings},
         created_by=created_by,
         created_by_name=created_by_name,
@@ -395,7 +404,7 @@ async def create_version(
     created_by: str | None,
     created_by_name: str | None,
 ) -> OntologyFunctionVersionResponse:
-    await get_function(db, function_id)
+    fn = await get_function(db, function_id)
     latest = await latest_version(db, function_id)
     # Preserve prior schemas when the client omits the fields (Editor often saves code only).
     # Explicit null clears; explicit {} / object replaces.
@@ -410,7 +419,12 @@ async def create_version(
         output_schema = latest.output_schema if latest else None
     await assert_io_schemas_ok(db, input_schema=input_schema, output_schema=output_schema)
     next_ver = (latest.version + 1) if latest else 1
-    valid, errors, warnings = validate_function_source(body.source_code)
+    # A Logic function's body is its flow; validating it as Python would only report "no entrypoint".
+    if getattr(fn, "source", "code") == "logic":
+        flow_errors = validate_flow_spec(body.flow_spec)
+        valid, errors, warnings = (not flow_errors), flow_errors, []
+    else:
+        valid, errors, warnings = validate_function_source(body.source_code)
     ver = OntologyFunctionVersion(
         id=new_version_id(),
         function_id=function_id,
@@ -418,6 +432,7 @@ async def create_version(
         source_code=body.source_code,
         input_schema=input_schema,
         output_schema=output_schema,
+        flow_spec=body.flow_spec,
         validation_result={"valid": valid, "errors": errors, "warnings": warnings},
         created_by=created_by,
         created_by_name=created_by_name,
@@ -476,17 +491,25 @@ async def publish_function(
         ver = await latest_version(db, function_id)
     if not ver:
         raise HTTPException(status_code=404, detail="Version not found")
-    valid, errors, _ = validate_function_source(ver.source_code, entrypoint=ver.entrypoint)
-    if not valid:
-        raise HTTPException(status_code=400, detail={"message": "Validation failed", "errors": errors})
-    uses_errors = await validate_uses_dependencies(
-        db,
-        ver.source_code,
-        entrypoint=ver.entrypoint,
-        self_api_name=fn.api_name,
-    )
-    if uses_errors:
-        raise HTTPException(status_code=400, detail={"message": "Validation failed", "errors": uses_errors})
+    if getattr(fn, "source", "code") == "logic":
+        # A Logic function has no Python body and no `uses=` decorator; its flow is validated when it is saved.
+        flow_errors = validate_flow_spec(ver.flow_spec)
+        if flow_errors:
+            raise HTTPException(
+                status_code=400, detail={"message": "Validation failed", "errors": flow_errors}
+            )
+    else:
+        valid, errors, _ = validate_function_source(ver.source_code, entrypoint=ver.entrypoint)
+        if not valid:
+            raise HTTPException(status_code=400, detail={"message": "Validation failed", "errors": errors})
+        uses_errors = await validate_uses_dependencies(
+            db,
+            ver.source_code,
+            entrypoint=ver.entrypoint,
+            self_api_name=fn.api_name,
+        )
+        if uses_errors:
+            raise HTTPException(status_code=400, detail={"message": "Validation failed", "errors": uses_errors})
     fn.published_version_id = ver.id
     fn.development_status = "active"
     await db.commit()

@@ -216,6 +216,7 @@ async def list_executions(
             input_payload=e.input_payload,
             output_payload=e.output_payload,
             error_message=e.error_message,
+            trace=e.trace,
             created_at=e.created_at,
         )
         for e in rows
