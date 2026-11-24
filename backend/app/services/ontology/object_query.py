@@ -265,8 +265,10 @@ def numeric_extent_query(
     prefix, var, name, _ = chart_source(label, where, prop, link_info=link_info)
     return (
         f"{prefix}"
-        f"WITH toFloat({var}.`{name}`) AS v WHERE v IS NOT NULL "
-        "RETURN min(v) AS lo, max(v) AS hi, count(v) AS c"
+        # No `WHERE v IS NOT NULL`: `min`/`max`/`count(v)` already skip nulls, and `count(*)` has to see them —
+        # otherwise `total` equals `count(v)` and the chart cannot say how many objects it left out.
+        f"WITH toFloat({var}.`{name}`) AS v "
+        "RETURN min(v) AS lo, max(v) AS hi, count(v) AS c, count(*) AS total"
     )
 
 
@@ -282,11 +284,15 @@ def histogram_query(
     """Counts per equal interval, `[lo + k·width, lo + (k+1)·width)`."""
     prefix, var, name, crosses = chart_source(label, where, prop, link_info=link_info)
     counted = "count(DISTINCT n)" if crosses else "count(*)"
+    buckets_ref = "$buckets - 1"
     return (
         f"{prefix}"
         # `n` has to be carried through the first WITH: a WITH replaces the scope, and counting rows afterwards
         # would reference a variable that no longer exists ("Variable `n` not defined").
         f"WITH toFloat({var}.`{name}`) AS v, n AS n WHERE v IS NOT NULL "
+        # The maximum lands exactly on the top edge, where `floor((hi - lo) / width)` is `buckets` — outside the
+        # intervals that get drawn. Clamping keeps it in the last one instead of dropping those objects.
         "WITH toInteger(floor((v - $lo) / $width)) AS k, n AS n "
+        f"WITH (CASE WHEN k >= $buckets THEN {buckets_ref} ELSE k END) AS k, n AS n "
         f"RETURN k, {counted} AS c ORDER BY k"
     )

@@ -140,4 +140,9 @@ def test_a_histogram_excludes_values_that_are_not_numbers():
     # The node has to survive the first WITH, or the count afterwards names a variable that is gone.
     assert "toFloat(n.`ic_ir`) AS v, n AS n WHERE v IS NOT NULL" in cypher
     assert "toInteger(floor((v - $lo) / $width))" in cypher
-    assert numeric_extent_query("Factor", "", "ic_ir").endswith("RETURN min(v) AS lo, max(v) AS hi, count(v) AS c")
+    # The maximum sits exactly on the top edge, so it is clamped into the last interval instead of being dropped.
+    assert "CASE WHEN k >= $buckets THEN $buckets - 1 ELSE k END" in cypher
+    extent = numeric_extent_query("Factor", "", "ic_ir")
+    assert extent.endswith("RETURN min(v) AS lo, max(v) AS hi, count(v) AS c, count(*) AS total")
+    # Counting must not happen after the null filter, or `total` would just equal `count(v)`.
+    assert "WHERE v IS NOT NULL" not in extent

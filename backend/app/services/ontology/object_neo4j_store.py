@@ -349,7 +349,11 @@ def aggregate_object_set(
             # `toFloat()` refuses a boolean outright — a property that is not a number is not a reason to lose the
             # whole chart, let alone the other charts in the same request. It falls back to a value distribution.
             extent = None
-        lo, hi, count = (extent["lo"], extent["hi"], extent["c"]) if extent else (None, None, 0)
+        lo, hi, count, total = (
+            (extent["lo"], extent["hi"], extent["c"], extent["total"])
+            if extent
+            else (None, None, 0, 0)
+        )
         if count:
             lo = float(lo)
             hi = float(hi)
@@ -363,6 +367,7 @@ def aggregate_object_set(
                         ),
                         lo=lo,
                         width=width,
+                        buckets=buckets,
                         **params,
                     )
                 }
@@ -376,7 +381,16 @@ def aggregate_object_set(
                         "count": counts.get(index, 0),
                     }
                 )
-            return {"prop": prop, "buckets": intervals, "min": lo, "max": hi}
+            # `total - count` is how many objects have no number here. A distribution that silently drops them
+            # reads as "the set is 14" when it is 18.
+            return {
+                "prop": prop,
+                "buckets": intervals,
+                "min": lo,
+                "max": hi,
+                "counted": count,
+                "total": total,
+            }
 
     with driver.session() as session:
         rows = [
