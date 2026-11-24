@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ListPage } from "../../styles/design-system";
 import { Loader2, Pencil } from "lucide-react";
@@ -6,19 +6,54 @@ import { useOntologyFunctionsList } from "./useOntologyFunctionsList";
 import "../ontology/ontology-admin.scss";
 import "./function-editor.scss";
 
+type Authoring = 'code' | 'llm';
+
+/**
+ * One list for both authoring modes — `source` is the only difference.
+ *
+ * The registry is shared (same table, same versions, same call surface), so two pages would be two copies of this
+ * table that drift. The `LLM 函数` entry exists to *find* those functions, not to invent a second kind of artifact.
+ */
 export function FunctionEditorListPage() {
   const { t } = useTranslation("ontology");
-  const { items, loading } = useOntologyFunctionsList();
+  const location = useLocation();
+  const source: Authoring = location.pathname.endsWith("/logic") ? "llm" : "code";
+  const { items, loading } = useOntologyFunctionsList(source);
+  const isLogic = source === "llm";
 
   return (
     <ListPage
       className="function-editor-list"
-      title={t("editor.title")}
-      subtitle={t("editor.subtitle")}
+      title={isLogic ? t("editor.logicTitle") : t("editor.title")}
+      subtitle={isLogic ? t("editor.logicSubtitle") : t("editor.subtitle")}
       actions={
-        <Link to="/function-editor/new" className="btn btn-primary">
-          {t("editor.create")}
-        </Link>
+        // Creating a Logic function needs the flow spec + executor (P1); until then the entry is for reading what
+        // exists, and says so rather than offering a button that cannot finish.
+        isLogic ? undefined : (
+          <Link to="/function-editor/new" className="btn btn-primary">
+            {t("editor.create")}
+          </Link>
+        )
+      }
+      tabs={
+        <div className="settings-page-tabs" role="tablist" aria-label={t("editor.title")}>
+          <Link
+            to="/function-editor"
+            role="tab"
+            aria-selected={!isLogic}
+            className={`settings-page-tab${!isLogic ? " active" : ""}`}
+          >
+            {t("editor.tabFunctions")}
+          </Link>
+          <Link
+            to="/function-editor/logic"
+            role="tab"
+            aria-selected={isLogic}
+            className={`settings-page-tab${isLogic ? " active" : ""}`}
+          >
+            {t("editor.tabLogic")}
+          </Link>
+        </div>
       }
     >
       <div className="ds-table-wrap">
@@ -42,8 +77,14 @@ export function FunctionEditorListPage() {
               {items.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="ds-table-empty">
-                    {t("editor.emptyList")}{" "}
-                    <Link to="/function-editor/new">{t("editor.create")}</Link>
+                    {isLogic ? (
+                      t("editor.logicEmpty")
+                    ) : (
+                      <>
+                        {t("editor.emptyList")}{" "}
+                        <Link to="/function-editor/new">{t("editor.create")}</Link>
+                      </>
+                    )}
                   </td>
                 </tr>
               ) : (

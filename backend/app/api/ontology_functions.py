@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,8 +56,11 @@ async def list_functions(
     _: None = Depends(require_any_permission(PERM_ONTOLOGY_READ)),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
+    source: Literal["code", "llm"] | None = Query(None),
 ):
-    items, total = await function_service.list_functions(db, limit=limit, offset=offset)
+    items, total = await function_service.list_functions(
+        db, limit=limit, offset=offset, source=source
+    )
     return OntologyFunctionListResponse(items=items, total=total)
 
 

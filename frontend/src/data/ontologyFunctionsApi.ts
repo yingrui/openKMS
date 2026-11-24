@@ -76,8 +76,16 @@ export interface OntologyFunctionExecutionResponse {
 
 const base = `${config.apiUrl}/api/ontology/functions`;
 
-export async function fetchOntologyFunctions(): Promise<OntologyFunctionListResponse> {
-  return ontologyFetch<OntologyFunctionListResponse>(base, undefined, 'Failed to fetch functions');
+/** `source` is the authoring mode: `code` (today) or `llm` (Logic functions). Omitted = the whole registry. */
+export async function fetchOntologyFunctions(params?: {
+  source?: 'code' | 'llm';
+}): Promise<OntologyFunctionListResponse> {
+  const qs = params?.source ? `?source=${params.source}` : '';
+  return ontologyFetch<OntologyFunctionListResponse>(
+    `${base}${qs}`,
+    undefined,
+    'Failed to fetch functions',
+  );
 }
 
 export async function fetchOntologyFunction(id: string): Promise<OntologyFunctionResponse> {

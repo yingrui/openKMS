@@ -572,6 +572,7 @@ function App() {
           <Route path="external-services" element={<ExternalServicesPage />} />
           <Route path="function-editor" element={<Outlet />}>
             <Route index element={<FunctionEditorListPage />} />
+            <Route path="logic" element={<FunctionEditorListPage />} />
             <Route path="new" element={<FunctionEditorWorkspacePage />} />
             <Route path="external-services" element={<Navigate to="/external-services" replace />} />
             <Route path=":functionId" element={<FunctionEditorWorkspacePage />} />

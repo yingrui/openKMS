@@ -117,11 +117,21 @@ Neither kind gives a hard network boundary: for `http` the sandbox makes the cal
 rule the client keeps. A deployment that needs the boundary itself puts the function runner on a
 restricted network — and then `k8s_service` (relayed by the backend) is the kind that still works.
 
+## Two entries, one registry
+
+The Function Editor lists two authoring modes over the same table: **Functions** (`source='code'`, authored as Python
+source) and **LLM functions** (`source='llm'`). `source` is the only difference — same versions, same publish step,
+same `openkms_functions` call surface — so it is one list component filtered by `?source=`, not a second registry.
+
+LLM function *authoring* is not open yet: the entry lists what exists and says so. What it will add is a `flow_spec`
+(prompt + ontology tools + deterministic steps) stored on the version, executed by the backend with a per-node trace —
+see `tmp/plan/function-logic.md` and [Palantir's LLM functions](../research/palantir-llm-functions.md).
+
 ## API
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/ontology/functions` | List functions |
+| GET | `/api/ontology/functions` | List functions (`?source=code\|llm` — the two editor entries) |
 | POST | `/api/ontology/functions` | Create function + v1 (validated); optional `object_type_id` |
 | PATCH | `/api/ontology/functions/{id}` | Update metadata (`display_name`, `description`, `object_type_id`, status) |
 | POST | `/api/ontology/functions/{id}/versions` | Save draft version |

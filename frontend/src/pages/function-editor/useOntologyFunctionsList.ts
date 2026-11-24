@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { fetchOntologyFunctions, type OntologyFunctionResponse } from '../../data/ontologyFunctionsApi';
 
-export function useOntologyFunctionsList() {
+export function useOntologyFunctionsList(source?: 'code' | 'llm') {
   const { t } = useTranslation('ontology');
   const [items, setItems] = useState<OntologyFunctionResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -11,14 +11,14 @@ export function useOntologyFunctionsList() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchOntologyFunctions();
+      const res = await fetchOntologyFunctions({ source });
       setItems(res.items);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('functions.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, source]);
 
   useEffect(() => {
     void load();

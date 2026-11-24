@@ -252,12 +252,17 @@ async def list_functions(
     *,
     limit: int,
     offset: int,
+    source: str | None = None,
 ) -> tuple[list[OntologyFunctionResponse], int]:
-    total = (await db.execute(select(func.count()).select_from(OntologyFunction))).scalar_one()
+    """`source` splits the two authoring modes over one registry: `code` (today) and `llm` (Logic functions)."""
+    count_q = select(func.count()).select_from(OntologyFunction)
+    rows_q = select(OntologyFunction)
+    if source:
+        count_q = count_q.where(OntologyFunction.source == source)
+        rows_q = rows_q.where(OntologyFunction.source == source)
+    total = (await db.execute(count_q)).scalar_one()
     rows = (
-        await db.execute(
-            select(OntologyFunction).order_by(OntologyFunction.api_name).offset(offset).limit(limit)
-        )
+        await db.execute(rows_q.order_by(OntologyFunction.api_name).offset(offset).limit(limit))
     ).scalars().all()
     ids = [fn.id for fn in rows]
     latest, pub = await _version_summaries(db, ids)
