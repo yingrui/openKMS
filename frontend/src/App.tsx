@@ -188,6 +188,12 @@ const ObjectTypeOverviewTab = lazy(() =>
     default: m.ObjectTypeOverviewTab,
   })),
 );
+const ObjectTypeInstancesTab = lazy(() =>
+  import('./pages/ontology-manager/ObjectTypeDetailPage').then((m) => ({ default: m.ObjectTypeInstancesTab })),
+);
+const LinkTypeInstancesTab = lazy(() =>
+  import('./pages/ontology-manager/LinkTypeDetailPage').then((m) => ({ default: m.LinkTypeInstancesTab })),
+);
 const ObjectTypePropertiesTab = lazy(() =>
   import('./pages/ontology-manager/ObjectTypeDetailPage').then((m) => ({ default: m.ObjectTypePropertiesTab })),
 );
@@ -237,6 +243,9 @@ const ChamberSettingsPage = lazy(() =>
   import('./pages/chamber/ChamberSettingsPage').then((m) => ({ default: m.ChamberSettingsPage })),
 );
 const ObjectExplorer = lazy(() => import('./pages/ontology/ObjectExplorer').then((m) => ({ default: m.ObjectExplorer })));
+const ObjectExplorationPage = lazy(() =>
+  import('./pages/ontology/ObjectExplorationPage').then((m) => ({ default: m.ObjectExplorationPage })),
+);
 const DocumentDetail = lazy(() => import('./pages/documents/DocumentDetail').then((m) => ({ default: m.DocumentDetail })));
 const WikiSpaceSettings = lazy(() =>
   import('./pages/wiki/WikiSpaceSettings').then((m) => ({ default: m.WikiSpaceSettings })),
@@ -568,6 +577,7 @@ function App() {
             <Route path="object-types/:typeId" element={<ObjectTypeManagerDetailPage />}>
               <Route index element={<ObjectTypeOverviewTab />} />
               <Route path="properties" element={<ObjectTypePropertiesTab />} />
+              <Route path="instances" element={<ObjectTypeInstancesTab />} />
               <Route path="datasources" element={<ObjectTypeDatasourcesTab />} />
               <Route path="sharing" element={<ObjectTypeSharingTab />} />
             </Route>
@@ -575,6 +585,7 @@ function App() {
             <Route path="link-types/:linkTypeId/settings" element={<LinkTypeSettingsRedirect />} />
             <Route path="link-types/:linkTypeId" element={<LinkTypeManagerDetailPage />}>
               <Route index element={<LinkTypeOverviewTab />} />
+              <Route path="instances" element={<LinkTypeInstancesTab />} />
               <Route path="datasources" element={<LinkTypeDatasourcesTab />} />
               <Route path="sharing" element={<LinkTypeSharingTab />} />
             </Route>
@@ -604,6 +615,7 @@ function App() {
             <Route index element={<Navigate to="/object-explorer/explore" replace />} />
             <Route path="objects" element={<ObjectsList />} />
             <Route path="objects/:typeId" element={<ObjectTypeDetail />} />
+            <Route path="explorations/:typeId" element={<ObjectExplorationPage />} />
             <Route path="links" element={<LinksList />} />
             <Route path="links/:typeId" element={<LinkTypeDetail />} />
             <Route path="explore" element={<ObjectExplorer />} />

@@ -21,7 +21,7 @@ import {
   TableRowActionCell,
   TableRowActions,
 } from '../../styles/design-system';
-import './LinkTypeDetail.scss';
+import '../../styles/ontology-link-instances.scss';
 
 function objectLabel(
   data: Record<string, unknown> | null | undefined,
@@ -35,7 +35,7 @@ function objectLabel(
   return first != null ? String(first) : dash;
 }
 
-export function LinkTypeDetail() {
+export function LinkTypeDetail({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation('explore');
   const { typeId } = useParams<{ typeId: string }>();
   const { isAdmin } = useAuth();
@@ -170,22 +170,26 @@ export function LinkTypeDetail() {
   }
 
   return (
-    <div className="link-type-detail">
+    <div className={embedded ? 'link-type-detail link-type-detail--embedded' : 'link-type-detail'}>
+      {/* Embedded (the manager's instances tab) keeps the endpoints line — it is the one fact the table does not
+          say — and drops the page heading the shell already shows. */}
       <div className="link-type-detail-header">
-        <Link to="/object-explorer/links" className="link-type-back">
-          <ArrowLeft size={18} />
-          <span>{t('ontology.linkTypeDetail.backLinks')}</span>
-        </Link>
+        {!embedded && (
+          <Link to="/object-explorer/links" className="link-type-back">
+            <ArrowLeft size={18} />
+            <span>{t('ontology.linkTypeDetail.backLinks')}</span>
+          </Link>
+        )}
         <div className="link-type-detail-title-row">
-          <h1>{linkType.name}</h1>
+          {!embedded && <h1>{linkType.name}</h1>}
           {isAdmin && !linkType.dataset_id && (
-            <button type="button" className="btn btn-primary" onClick={openAdd}>
-              <Plus size={18} />
+            <button type="button" className="btn btn-primary btn-sm" onClick={openAdd}>
+              <Plus size={16} />
               <span>{t('ontology.linkTypeDetail.addLink')}</span>
             </button>
           )}
         </div>
-        {linkType.description && (
+        {!embedded && linkType.description && (
           <p className="link-type-detail-desc">{linkType.description}</p>
         )}
         <p className="link-type-arrow-label">

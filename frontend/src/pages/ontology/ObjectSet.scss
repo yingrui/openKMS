@@ -1,0 +1,164 @@
+/* An object set's conditions, its two perspectives, and the chart area.
+ *
+ * The charts are controls, not reports: each bar is a condition waiting to be added, so the only styling here is
+ * layout and the "already applied" emphasis (the colours come from tokens, the click state from the chart). */
+
+.object-set-viewbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.object-set-viewbar__button {
+  min-height: var(--tap-min);
+}
+
+.object-set-viewbar__button[aria-pressed='true'] {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.object-set-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.object-set-filters__clear {
+  flex-shrink: 0;
+}
+
+.object-set-filters__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill, var(--radius-md));
+  background: var(--color-bg-muted);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.object-set-filters__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.object-set-filters__remove:hover {
+  color: var(--color-text);
+}
+
+.object-set-filters__hint {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.object-set-filters__add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.object-set-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.object-set-chart {
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.object-set-chart__title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+
+.object-set-chart__more {
+  color: var(--color-text-muted);
+  font-weight: 400;
+  font-size: var(--text-xs);
+}
+
+.object-set-chart__empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* A sortable column header: the table owns the skin, this only makes the label a control. */
+.object-set-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.object-exploration {
+  /* The list page's own gutter; charts sit on the page, not in a card. */
+  gap: var(--space-4);
+}
+
+.object-set-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.object-set-toolbar__search {
+  flex: 1 1 16rem;
+  max-width: 24rem;
+}
+
+/* The explorer's entry: types grouped the way the ontology groups them. */
+.object-explorer-group {
+  margin-bottom: var(--space-6);
+}
+
+.object-explorer-group:last-child {
+  margin-bottom: 0;
+}
+
+.object-explorer-group__title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.object-explorer-group__count {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}

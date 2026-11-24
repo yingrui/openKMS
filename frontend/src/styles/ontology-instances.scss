@@ -1,8 +1,20 @@
-@use '../../styles/design-system/mixins' as *;
-@use '../../styles/design-system/tokens' as ds;
+@use './design-system/mixins' as *;
+@use './design-system/tokens' as ds;
 
 .object-type-detail {
   width: 100%;
+}
+
+/* The manager's instances tab: the shell owns the heading, so the page contributes only its toolbar and table. */
+.object-type-detail--embedded .object-type-detail-toolbar {
+  margin-bottom: var(--space-3);
+}
+
+.object-type-detail-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .object-type-detail-loading {
@@ -138,23 +150,13 @@ td.object-type-empty {
   to { transform: rotate(360deg); }
 }
 
-.object-type-dialog-body input,
-.object-type-dialog-body select {
-  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-elevated);
-  color: var(--color-text);
-  font-size: var(--text-base);
-}
-
-.object-type-dialog-body input.ds-control,
-.object-type-dialog-body select.ds-control {
+.ds-resource-list-dialog-body input.ds-control,
+.ds-resource-list-dialog-body select.ds-control {
   padding-block: 0;
 }
 
-.object-type-dialog-body input:focus,
-.object-type-dialog-body select:focus {
+.ds-resource-list-dialog-body input:focus,
+.ds-resource-list-dialog-body select:focus {
   outline: none;
   border-color: var(--color-accent);
 }

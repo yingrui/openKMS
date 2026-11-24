@@ -123,9 +123,12 @@ export function ObjectTypeOverviewTab() {
         subtitle={objectType.description || t('objectTypes.noDescription')}
         actions={
           <>
-            <Link to={`/object-explorer/objects/${objectType.id}`} className="btn btn-secondary">
+            <Link
+              to={`/ontology-manager/object-types/${objectType.id}/instances`}
+              className="btn btn-secondary"
+            >
               <ExternalLink size={16} aria-hidden />
-              {t('objectTypes.openInExplorer')}
+              {t('objectTypes.openInstances')}
             </Link>
             <button type="button" className="btn btn-primary" onClick={() => void onSave()} disabled={saving}>
               <Save size={16} aria-hidden />

@@ -233,12 +233,12 @@ export function OntologySchemaGraph({
                 void navigate(`/ontology-manager/functions/${node.id}`);
                 return;
               }
-              void navigate(`/object-explorer/objects/${node.id}`);
+              void navigate(`/ontology-manager/object-types/${node.id}`);
             }}
             onLinkClick={(l) => {
               const link = l as OntologySchemaLink;
               if ((link.kind ?? 'linkType') !== 'linkType') return;
-              void navigate(`/object-explorer/links/${link.id}`);
+              void navigate(`/ontology-manager/link-types/${link.id}`);
             }}
             nodeCanvasObject={(node, ctx, globalScale) => {
               const n = node as OntologySchemaNode & { x?: number; y?: number };

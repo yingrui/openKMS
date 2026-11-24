@@ -283,7 +283,10 @@
     "title": "对象",
     "subtitle": "浏览对象类型及其实例。架构在控制台 → 对象类型 中管理。",
     "loadFailed": "无法加载对象类型",
-    "empty": "暂无对象类型。请在控制台 → 对象类型 中添加。"
+    "empty": "暂无对象类型。请在控制台 → 对象类型 中添加。",
+    "searchPlaceholder": "搜索对象类型…",
+    "ungrouped": "未分组",
+    "noMatch": "没有匹配的对象类型"
   },
   "links": {
     "title": "关联",
@@ -298,5 +301,42 @@
   },
   "treeEmpty": "这个空间还没有页面。",
   "treeAria": "该 wiki 空间的页面",
-  "treeLoading": "加载中…"
+  "treeLoading": "加载中…",
+  "objectSet": {
+    "chartsLoading": "正在计算分布…",
+    "chartsFailed": "读不到分布（图数据库不可用）",
+    "chartsEmpty": "这个对象类型还没有可展示的属性",
+    "chartTruncated": "共 {{count}} 个取值",
+    "chartNoValues": "该属性没有取值",
+    "chartCount": "对象数",
+    "viewExplore": "开始探索",
+    "viewResults": "结果列表",
+    "noFilters": "点击图表中的取值即可筛选",
+    "clearFilters": "清除条件",
+    "removeFilter": "移除条件 {{name}}",
+    "addFilter": "加条件",
+    "filterProp": "属性",
+    "filterValue": "值",
+    "op": {
+      "eq": "等于",
+      "ne": "不等于",
+      "contains": "包含",
+      "in": "属于（逗号分隔）",
+      "gt": "大于",
+      "ge": "大于等于",
+      "lt": "小于",
+      "le": "小于等于"
+    },
+    "filterOp": "条件",
+    "sortBy": "按 {{name}} 排序",
+    "toolbar": "条件与视角",
+    "searchPlaceholder": "在此对象集中搜索…",
+    "typeLoading": "正在打开探索…",
+    "typeMissing": "这个对象类型不存在",
+    "typeLoadFailed": "打开对象类型失败",
+    "objectCount": "{{count}} 个对象",
+    "rowsLoading": "正在读取结果…",
+    "rowsEmpty": "这个对象集没有对象",
+    "rowsFailed": "读取结果失败"
+  }
 }

@@ -1,5 +1,5 @@
-@use '../../styles/design-system/mixins' as *;
-@use '../../styles/design-system/tokens' as ds;
+@use './design-system/mixins' as *;
+@use './design-system/tokens' as ds;
 
 .link-type-detail {
   width: 100%;

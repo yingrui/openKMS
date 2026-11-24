@@ -48,6 +48,7 @@ import {
   EntityViewPanel,
   EntityViewShell,
 } from '../shared/EntityViewShell';
+import { ObjectTypeDetail } from '../ontology/ObjectTypeDetail';
 import { ObjectTypeDetailCtx, useObjectTypeDetail } from './useObjectTypeDetail';
 import '../ontology/ontology-admin.scss';
 import { datasetLabel } from '../catalog/datasetLabel';
@@ -345,6 +346,7 @@ export function ObjectTypeDetailPage() {
         navItems={[
           { to: base, label: t('objectTypes.overview'), end: true },
           { to: `${base}/properties`, label: t('objectTypes.properties') },
+          { to: `${base}/instances`, label: t('objectTypes.instances') },
           { to: `${base}/datasources`, label: t('objectTypes.datasources') },
           { to: `${base}/sharing`, label: t('objectTypes.sharing') },
         ]}
@@ -353,6 +355,11 @@ export function ObjectTypeDetailPage() {
       </EntityViewShell>
     </ObjectTypeDetailCtx.Provider>
   );
+}
+
+/** The type's rows: the same table the standalone page had, and the only place to edit them. */
+export function ObjectTypeInstancesTab() {
+  return <ObjectTypeDetail embedded />;
 }
 
 export function ObjectTypePropertiesTab() {

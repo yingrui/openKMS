@@ -215,18 +215,60 @@ export interface ObjectInstanceListResponse {
 
 export async function fetchObjectInstances(
   objectTypeId: string,
-  params?: { search?: string; limit?: number; propFilters?: Record<string, string> }
-): Promise<ObjectInstanceListResponse> {
-  const query: Record<string, string | number | boolean | undefined> = {
-    search: params?.search,
-    limit: params?.limit,
-  };
-  for (const [k, v] of Object.entries(params?.propFilters || {})) {
-    query[`prop.${k}`] = v;
+  params?: {
+    search?: string;
+    limit?: number;
+    offset?: number;
+    /** `<prop>:<op>:<value>` or `@<link>/<prop>:<op>:<value>` — the object set's conditions. */
+    filters?: string[];
+    /** `-prop,other` */
+    sort?: string;
+    /** Legacy equality filters; sent as `prop.<name>=<value>` and equivalent to `eq`. */
+    propFilters?: Record<string, string>;
   }
-  return request<ObjectInstanceListResponse>(`/api/object-types/${objectTypeId}/objects`, {
-    query,
-  });
+): Promise<ObjectInstanceListResponse> {
+  const usp = new URLSearchParams();
+  if (params?.search) usp.set('search', params.search);
+  for (const filter of params?.filters ?? []) {
+    if (filter.trim()) usp.append('f', filter);
+  }
+  if (params?.sort) usp.set('sort', params.sort);
+  if (params?.limit !== undefined) usp.set('limit', String(params.limit));
+  if (params?.offset !== undefined) usp.set('offset', String(params.offset));
+  for (const [k, v] of Object.entries(params?.propFilters || {})) {
+    usp.set(`prop.${k}`, v);
+  }
+  const qs = usp.toString();
+  return request<ObjectInstanceListResponse>(
+    `/api/object-types/${objectTypeId}/objects${qs ? `?${qs}` : ''}`
+  );
+}
+
+export interface ObjectAggregateChart {
+  prop: string;
+  /** `value` is the property as text; a numeric property arrives as its own string and is bucketed by the client. */
+  values: { value: string; count: number }[];
+  truncated: boolean;
+}
+
+/**
+ * Property distributions over the **current object set** — one entry per requested prop.
+ * Charts are how the exploration is driven, so they take the same `filters`/`search` the table does.
+ */
+export async function fetchObjectAggregate(
+  objectTypeId: string,
+  params: { props: string[]; search?: string; filters?: string[]; limit?: number }
+): Promise<{ charts: ObjectAggregateChart[] }> {
+  const usp = new URLSearchParams();
+  for (const prop of params.props) usp.append('prop', prop);
+  if (params.search) usp.set('search', params.search);
+  for (const filter of params.filters ?? []) {
+    if (filter.trim()) usp.append('f', filter);
+  }
+  if (params.limit !== undefined) usp.set('limit', String(params.limit));
+  return request<{ charts: ObjectAggregateChart[] }>(
+    `/api/object-types/${objectTypeId}/aggregate?${usp.toString()}`
+  );
 }
 
 export async function createObjectInstance(

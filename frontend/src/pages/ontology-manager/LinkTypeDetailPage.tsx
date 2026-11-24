@@ -12,6 +12,7 @@ import {
   type ObjectTypeResponse,
 } from '../../data/ontologyApi';
 import { fetchDatasets, fetchDatasetMetadata, type DatasetResponse } from '../../data/datasetsApi';
+import { LinkTypeDetail } from '../ontology/LinkTypeDetail';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import {
@@ -259,6 +260,7 @@ export function LinkTypeDetailPage() {
         meta={linkType.cardinality}
         navItems={[
           { to: base, label: t('linkTypes.overview'), end: true },
+          { to: `${base}/instances`, label: t('linkTypes.instances') },
           { to: `${base}/datasources`, label: t('linkTypes.datasources') },
           { to: `${base}/sharing`, label: t('linkTypes.sharing') },
         ]}
@@ -558,4 +560,9 @@ export function LinkTypeSettingsRedirect() {
       ? `/ontology-manager/link-types/${linkTypeId}/sharing`
       : `/ontology-manager/link-types/${linkTypeId}`;
   return <Navigate to={target} replace />;
+}
+
+/** The link type's edges: the table the standalone page had, and where an edge is added or removed. */
+export function LinkTypeInstancesTab() {
+  return <LinkTypeDetail embedded />;
 }

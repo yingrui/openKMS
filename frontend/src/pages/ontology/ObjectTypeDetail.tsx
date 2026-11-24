@@ -32,9 +32,9 @@ import {
   isReservedPropertyName,
   SYSTEM_RID_PROPERTY_NAME,
 } from '../ontology-manager/objectTypeFormModel';
-import './ObjectTypeDetail.scss';
+import '../../styles/ontology-instances.scss';
 
-export function ObjectTypeDetail() {
+export function ObjectTypeDetail({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation('explore');
   const displayValue = useCallback(
     (v: unknown): string => {
@@ -251,32 +251,44 @@ export function ObjectTypeDetail() {
   };
 
   return (
-    <div className="object-type-detail">
-      <div className="object-type-detail-header">
-        <Link to="/object-explorer/objects" className="object-type-back">
-          <ArrowLeft size={18} />
-          <span>{t('ontology.objectTypeDetail.backObjects')}</span>
-        </Link>
-        <div className="object-type-detail-title-row">
-          <h1>{objectType.name}</h1>
-          {isAdmin && (
-            <button type="button" className="btn btn-primary" onClick={openAdd}>
-              <Plus size={18} />
-              <span>{t('ontology.objectTypeDetail.addObject')}</span>
-            </button>
+    <div className={embedded ? 'object-type-detail object-type-detail--embedded' : 'object-type-detail'}>
+      {/* Embedded (the manager's instances tab) does not repeat the page title the shell already shows; the
+          "add" action still belongs to the table, so it moves next to the search field. */}
+      {!embedded && (
+        <div className="object-type-detail-header">
+          <Link to="/object-explorer/objects" className="object-type-back">
+            <ArrowLeft size={18} />
+            <span>{t('ontology.objectTypeDetail.backObjects')}</span>
+          </Link>
+          <div className="object-type-detail-title-row">
+            <h1>{objectType.name}</h1>
+            {isAdmin && (
+              <button type="button" className="btn btn-primary" onClick={openAdd}>
+                <Plus size={18} />
+                <span>{t('ontology.objectTypeDetail.addObject')}</span>
+              </button>
+            )}
+          </div>
+          {objectType.description && (
+            <p className="object-type-detail-desc">{objectType.description}</p>
           )}
         </div>
-        {objectType.description && (
-          <p className="object-type-detail-desc">{objectType.description}</p>
-        )}
-      </div>
+      )}
 
-      <SearchField
-        value={search}
-        onChange={setSearch}
-        label={t('ontology.objectTypeDetail.searchPlaceholder')}
-        className="object-type-search-bar"
-      />
+      <div className="object-type-detail-toolbar">
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          label={t('ontology.objectTypeDetail.searchPlaceholder')}
+          className="object-type-search-bar"
+        />
+        {embedded && isAdmin ? (
+          <button type="button" className="btn btn-primary btn-sm" onClick={openAdd}>
+            <Plus size={16} />
+            <span>{t('ontology.objectTypeDetail.addObject')}</span>
+          </button>
+        ) : null}
+      </div>
 
       <div className="ds-table-wrap">
         {graphNotice ? (

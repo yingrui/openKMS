@@ -283,7 +283,10 @@
     "title": "Objects",
     "subtitle": "Browse object types and their instances. Schema is managed in Console → Object Types.",
     "loadFailed": "Failed to load object types",
-    "empty": "No object types yet. Add them in Console → Object Types."
+    "empty": "No object types yet. Add them in Console → Object Types.",
+    "searchPlaceholder": "Search object types…",
+    "ungrouped": "Ungrouped",
+    "noMatch": "No object type matches"
   },
   "links": {
     "title": "Links",
@@ -298,5 +301,42 @@
   },
   "treeEmpty": "No pages in this space.",
   "treeAria": "Pages in this wiki space",
-  "treeLoading": "Loading…"
+  "treeLoading": "Loading…",
+  "objectSet": {
+    "chartsLoading": "Computing distributions…",
+    "chartsFailed": "Distributions unavailable (graph store unreachable)",
+    "chartsEmpty": "This object type has no properties to chart yet",
+    "chartTruncated": "{{count}} distinct values",
+    "chartNoValues": "No values for this property",
+    "chartCount": "Objects",
+    "viewExplore": "Start exploration",
+    "viewResults": "Results",
+    "noFilters": "Click a value in a chart to filter",
+    "clearFilters": "Clear conditions",
+    "removeFilter": "Remove condition {{name}}",
+    "addFilter": "Add condition",
+    "filterProp": "Property",
+    "filterValue": "Value",
+    "op": {
+      "eq": "equals",
+      "ne": "not",
+      "contains": "contains",
+      "in": "in (comma separated)",
+      "gt": ">",
+      "ge": "≥",
+      "lt": "<",
+      "le": "≤"
+    },
+    "filterOp": "Condition",
+    "sortBy": "Sort by {{name}}",
+    "toolbar": "Conditions and perspective",
+    "searchPlaceholder": "Search within this object set…",
+    "typeLoading": "Opening the exploration…",
+    "typeMissing": "This object type does not exist",
+    "typeLoadFailed": "Could not open the object type",
+    "objectCount": "{{count}} objects",
+    "rowsLoading": "Reading results…",
+    "rowsEmpty": "No objects in this set",
+    "rowsFailed": "Could not read results"
+  }
 }

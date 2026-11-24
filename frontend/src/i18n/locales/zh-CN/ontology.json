@@ -1007,7 +1007,6 @@
     "instances": "实例",
     "instanceCount": "{{count}} 个对象",
     "noDescription": "无描述",
-    "openInExplorer": "在 Object Explorer 中打开",
     "relatedLinkTypes": "相关链接类型",
     "relatedActions": "相关操作类型",
     "relatedFunctions": "相关函数",
@@ -1103,7 +1102,8 @@
     "apiNameFixed": "创建时固定 —— 已发布的 Function 用它调用该类型。",
     "cancel": "取消",
     "selectPlaceholder": "请选择…",
-    "indexObjectsTitle": "把对象索引进知识图谱"
+    "indexObjectsTitle": "把对象索引进知识图谱",
+    "openInstances": "查看实例"
   },
   "linkTypes": {
     "title": "链接类型",
@@ -1122,7 +1122,7 @@
     "source": "源",
     "target": "目标",
     "cardinality": "基数",
-    "instances": "链接数",
+    "instances": "实例",
     "relationship": "关系",
     "sourceKeyProperty": "源键属性",
     "targetKeyProperty": "目标键属性",

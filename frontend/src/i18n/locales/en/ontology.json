@@ -1014,7 +1014,6 @@
     "instances": "Instances",
     "instanceCount": "{{count}} objects",
     "noDescription": "No description",
-    "openInExplorer": "Open in Object Explorer",
     "relatedLinkTypes": "Related link types",
     "relatedActions": "Related action types",
     "relatedFunctions": "Related functions",
@@ -1110,7 +1109,8 @@
     "apiNameFixed": "Fixed at creation — published Functions call this type by it.",
     "cancel": "Cancel",
     "selectPlaceholder": "Select…",
-    "indexObjectsTitle": "Index objects to knowledge graph"
+    "indexObjectsTitle": "Index objects to knowledge graph",
+    "openInstances": "View instances"
   },
   "linkTypes": {
     "title": "Link Types",
@@ -1129,7 +1129,7 @@
     "source": "Source",
     "target": "Target",
     "cardinality": "Cardinality",
-    "instances": "Links",
+    "instances": "Instances",
     "relationship": "Relationship",
     "sourceKeyProperty": "Source key property",
     "targetKeyProperty": "Target key property",
