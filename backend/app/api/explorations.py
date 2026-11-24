@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_any_permission, require_permission
+from app.api.auth import ensure_permission, require_any_permission
 from app.database import get_db
 from app.models.exploration import VISIBILITIES, Exploration, ExplorationLayout
 from app.models.object_type import ObjectType
@@ -260,7 +260,9 @@ async def put_layout(
 ):
     me, _ = _payload(request)
     if body.scope == "global":
-        await require_permission(PERM_ONTOLOGY_WRITE)(request)
+        # `ensure_permission` takes `db`, unlike the `Depends(...)` factories — calling a dependency by hand hands
+        # FastAPI's own `Depends` object to `db.get` and 500s the request.
+        await ensure_permission(request, db, PERM_ONTOLOGY_WRITE)
     if not await db.get(ObjectType, body.object_type_id):
         raise HTTPException(status_code=400, detail="Object type not found")
     try:
