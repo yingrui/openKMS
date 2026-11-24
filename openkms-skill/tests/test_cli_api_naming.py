@@ -32,6 +32,8 @@ NAMED_AFTER_ROUTE: dict[str, str] = {
     "document-channels": "document-channels",
     "documents": "documents",
     "evaluations": "evaluations",
+    "exploration-layouts": "exploration-layouts",
+    "explorations": "explorations",
     "glossaries": "glossaries",
     "jobs": "jobs",
     "knowledge-bases": "knowledge-bases",
@@ -63,6 +65,7 @@ DELIBERATELY_NOT_A_ROUTE: dict[str, str] = {
 MODULE: dict[str, str] = {
     "chamber": "apps.py",
     "evaluations": "evaluation.py",
+    "exploration-layouts": "explorations.py",
     "knowledge-bases": "kb.py",
     "kubernetes": "kubernetes.py",
     "media-channels": "media.py",

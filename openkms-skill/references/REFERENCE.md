@@ -255,6 +255,13 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets quality run` *(write)* | POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | Prints the **run** it produced (`status`, `checked_count`, `failed_count`, `detail`) — the POST answers with the rule, which carries only `last_status`. |
 | `datasets quality runs` | GET | `/api/datasets/{id}/quality-rules/{rule_id}/runs` | A rule's run history, newest first. |
 | `datasets quality delete` *(write)* | DELETE | `/api/datasets/{id}/quality-rules/{rule_id}` | |
+| `explorations list` | GET | `/api/explorations` | Saved object sets — mine plus everything `shared`; `?object_type_id=`. |
+| `explorations get` | GET | `/api/explorations/{id}` | Its `filters` and `layout`, with the type name. |
+| `explorations add` *(write)* | POST | `/api/explorations` | Body `{name, object_type_id, filters, layout, visibility}`. `filters` are the UI's own strings (`prop:op:value`, `@link/prop:op:value`); `layout` is `{charts, sorts, perspective}` from `--chart` / `--sort` / `--perspective`. Stores **conditions, not results**. |
+| `explorations update` *(write)* | PATCH | `/api/explorations/{id}` | Owner only. `--filter` / `--chart` / `--sort` replace those lists; `--visibility private\|shared`. |
+| `explorations delete` *(write)* | DELETE | `/api/explorations/{id}` | Owner only. |
+| `exploration-layouts get` | GET | `/api/exploration-layouts` | `?object-type-id=` — the effective layout (personal → global → built-in), its `source`, and the `available` choices. |
+| `exploration-layouts set` *(write)* | PUT | `/api/exploration-layouts` | Body `{object_type_id, layout, scope}`; `scope=personal` (default) or `global` (needs `ontology:write`). This is how a type "opens the way I left it". |
 | `metrics list` | GET | `/api/metrics` | Metrics; optional `?semantic_model_id=` / `?base_dataset_id=`. |
 | `metrics add` *(write)* | POST | `/api/metrics` | Body `{name, semantic_model_id, base_dataset_id, additivity, expression:{dialects:{ANSI_SQL}}, datatype?, filters?, joins?, time_dimension?, ai_context?}`. `additivity ∈ additive\|non_additive` (a ratio/rate/price is `non_additive`); `expression` is an aggregate SQL fragment (Ossie); the base dataset must be in the model's scope; `time_dimension` names the model field that carries the period. |
 | `metrics compute` | GET | `/api/metrics/{metric_id}/compute` | Runs the metric **read-only** (statement timeout + row cap); records a run. |

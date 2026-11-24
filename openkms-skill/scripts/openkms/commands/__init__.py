@@ -16,6 +16,7 @@ from . import (
     document_channels,
     documents,
     evaluation,
+    explorations,
     stories,
     glossaries,
     jobs,
@@ -62,6 +63,8 @@ def register(sub: _SubParsersAction) -> None:
     media.add_media_channels_subparser(sub)
     media.add_media_subparser(sub)
     metrics.add_subparser(sub)
+    explorations.add_subparser(sub)
+    explorations.add_layout_subparser(sub)
     rules.add_metric_rules_subparser(sub)
     rules.add_metric_events_subparser(sub)
     semantic_models.add_subparser(sub)
