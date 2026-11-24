@@ -78,10 +78,17 @@ class LayoutWrite(BaseModel):
     scope: str = Field(default="personal", pattern="^(personal|global)$")
 
 
+class LayoutChoice(BaseModel):
+    scope: str  # `personal` | `global`
+    layout: dict
+
+
 class LayoutOut(BaseModel):
     object_type_id: str
     layout: dict
     source: str
+    #: What can be chosen: this caller's layout (when set) and the global one (when set).
+    available: list[LayoutChoice] = []
 
 
 def _payload(request: Request) -> tuple[str | None, str | None]:
@@ -226,10 +233,25 @@ async def delete_exploration(
 async def get_layout(
     request: Request, object_type_id: str, db: AsyncSession = Depends(get_db)
 ):
-    """The layout an exploration of this type opens with: personal, then global, then built-in."""
+    """The layout an exploration of this type opens with, and which layouts can be chosen."""
     me, _ = _payload(request)
     layout, source = await effective_layout(db, object_type_id, me)
-    return LayoutOut(object_type_id=object_type_id, layout=layout, source=source)
+    rows = (
+        await db.execute(
+            select(ExplorationLayout).where(ExplorationLayout.object_type_id == object_type_id)
+        )
+    ).scalars().all()
+    available = [
+        LayoutChoice(
+            scope="personal" if row.owner_sub == me else "global",
+            layout=dict(row.layout or {}),
+        )
+        for row in rows
+        if row.owner_sub == me or row.owner_sub == ""
+    ]
+    return LayoutOut(
+        object_type_id=object_type_id, layout=layout, source=source, available=available
+    )
 
 
 @layouts_router.put("", response_model=LayoutOut, dependencies=WRITE_DEPS)

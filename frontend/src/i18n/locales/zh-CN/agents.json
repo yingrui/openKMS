@@ -196,7 +196,11 @@
       "read": "读取文件",
       "write": "写入文件",
       "python": "运行 Python",
-      "shell": "执行命令"
+      "shell": "执行命令",
+      "explored": "浏览",
+      "edit": "编辑",
+      "search": "检索",
+      "subagent": "子任务"
     }
   },
   "files": {

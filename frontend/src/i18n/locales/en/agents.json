@@ -197,7 +197,11 @@
       "read": "Read",
       "write": "Write",
       "python": "Python",
-      "shell": "Shell"
+      "shell": "Shell",
+      "explored": "Explored",
+      "edit": "Edit",
+      "search": "Search",
+      "subagent": "Subagent"
     }
   },
   "files": {

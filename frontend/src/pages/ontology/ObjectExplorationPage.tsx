@@ -19,11 +19,13 @@ import {
   fetchExploration,
   fetchExplorationLayout,
   filterTexts,
+  type ExplorationLayoutChoice,
   patchExploration,
   saveExplorationLayout,
   type ExplorationResponse,
 } from '../../data/explorationsApi';
 import { Dialog, FormField } from '../../styles/design-system';
+import { useAuth } from '../../contexts/AuthContext';
 import { ExplorerMenu } from '../../components/ontology/ExplorerMenu';
 import { ObjectSetCharts } from './ObjectSetCharts';
 import { ObjectSetFilters } from './ObjectSetFilters';
@@ -77,6 +79,8 @@ export function ObjectExplorationPage() {
   const [pivotOpen, setPivotOpen] = useState(false);
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
+  const [layoutChoices, setLayoutChoices] = useState<ExplorationLayoutChoice[]>([]);
+  const { isAdmin } = useAuth();
 
   const updateParams = (mutate: (params: URLSearchParams) => void) => {
     const params = new URLSearchParams(searchParams);
@@ -161,6 +165,7 @@ export function ObjectExplorationPage() {
         const charts = (res.layout?.charts as { prop: string }[] | undefined) ?? [];
         const props = charts.map((chart) => chart.prop).filter(Boolean);
         if (props.length > 0) setChartProps(props);
+        setLayoutChoices(res.available ?? []);
       })
       .catch(() => {
         if (!cancelled) setChartProps(null);
@@ -292,12 +297,16 @@ export function ObjectExplorationPage() {
     perspective,
   });
 
-  const saveAsMyLayout = async () => {
+  const saveAsMyLayout = async (scope: 'personal' | 'global' = 'personal') => {
     if (!typeId) return;
     setLayoutSaving(true);
     try {
-      await saveExplorationLayout(typeId, currentLayout(), 'personal');
-      toast.success(t('objectSet.layoutSaved'));
+      await saveExplorationLayout(typeId, currentLayout(), scope);
+      const refreshed = await fetchExplorationLayout(typeId);
+      setLayoutChoices(refreshed.available ?? []);
+      toast.success(
+        scope === 'global' ? t('objectSet.layoutSavedGlobal') : t('objectSet.layoutSaved')
+      );
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('objectSet.layoutFailed'));
     } finally {
@@ -386,6 +395,26 @@ export function ObjectExplorationPage() {
             </button>
             {layoutOpen ? (
               <div className="object-set-layout-menu__panel" role="menu">
+                {layoutChoices.length > 0 ? (
+                  <p className="object-set-layout-menu__label">{t('objectSet.layoutAvailable')}</p>
+                ) : null}
+                {layoutChoices.map((choice) => (
+                  <button
+                    key={choice.scope}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setLayoutOpen(false);
+                      const charts = (choice.layout?.charts as { prop: string }[] | undefined) ?? [];
+                      const props = charts.map((chart) => chart.prop).filter(Boolean);
+                      setChartProps(props.length > 0 ? props : null);
+                    }}
+                  >
+                    {choice.scope === 'global'
+                      ? t('objectSet.layoutUseGlobal')
+                      : t('objectSet.layoutUseMine')}
+                  </button>
+                ))}
                 <button
                   type="button"
                   role="menuitem"
@@ -397,6 +426,19 @@ export function ObjectExplorationPage() {
                 >
                   {t('objectSet.layoutSave')}
                 </button>
+                {isAdmin ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={layoutSaving}
+                    onClick={() => {
+                      setLayoutOpen(false);
+                      void saveAsMyLayout('global');
+                    }}
+                  >
+                    {t('objectSet.layoutSaveGlobal')}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   role="menuitem"

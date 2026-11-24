@@ -380,7 +380,12 @@
     "layoutTitle": "布局",
     "pivot": "沿关系跳到",
     "pivotVia": "经 {{name}}",
-    "pivotNeedsPlainSet": "当前集合已经跨过关系，暂不支持再跳"
+    "pivotNeedsPlainSet": "当前集合已经跨过关系，暂不支持再跳",
+    "layoutAvailable": "选择布局",
+    "layoutUseMine": "我的布局",
+    "layoutUseGlobal": "全局布局",
+    "layoutSaveGlobal": "设为所有人默认",
+    "layoutSavedGlobal": "已设为所有人的默认布局"
   },
   "explorerSections": {
     "explorations": "探索",

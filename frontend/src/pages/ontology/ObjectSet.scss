@@ -563,6 +563,12 @@
   box-shadow: var(--shadow-lg);
 }
 
+.object-set-layout-menu__label {
+  margin: var(--space-1) var(--space-2) 2px;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
 .object-set-layout-menu__panel button {
   display: block;
   width: 100%;

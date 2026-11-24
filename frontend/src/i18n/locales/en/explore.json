@@ -380,7 +380,12 @@
     "layoutTitle": "Layout",
     "pivot": "Pivot to",
     "pivotVia": "via {{name}}",
-    "pivotNeedsPlainSet": "This set already crosses a relationship; pivoting again is not supported yet"
+    "pivotNeedsPlainSet": "This set already crosses a relationship; pivoting again is not supported yet",
+    "layoutAvailable": "Choose a layout",
+    "layoutUseMine": "My layout",
+    "layoutUseGlobal": "Global layout",
+    "layoutSaveGlobal": "Set as everyone’s default",
+    "layoutSavedGlobal": "Set as the default for everyone"
   },
   "explorerSections": {
     "explorations": "Explorations",

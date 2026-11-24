@@ -16,10 +16,17 @@ export interface ExplorationResponse {
   mine: boolean;
 }
 
+export interface ExplorationLayoutChoice {
+  scope: 'personal' | 'global';
+  layout: Record<string, unknown>;
+}
+
 export interface ExplorationLayoutResponse {
   object_type_id: string;
   layout: Record<string, unknown>;
   source: 'personal' | 'global' | 'builtin';
+  /** What can be chosen for this type: this caller's layout and the global one, when either exists. */
+  available?: ExplorationLayoutChoice[];
 }
 
 /** `f` conditions as the reader's `prop:op:value` / `@link/prop:op:value` strings. */
