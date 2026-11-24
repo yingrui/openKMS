@@ -16,6 +16,9 @@ from app.models.object_type import ObjectType
 from app.models.ontology_function import OntologyActionLog, OntologyActionType
 from app.schemas.ontology_functions import (
     OntologyActionWebhookState,
+    OntologyActionBatchItem,
+    OntologyActionBatchRequest,
+    OntologyActionBatchResponse,
     OntologyActionExecuteRequest,
     OntologyActionExecuteResponse,
     OntologyActionLogResponse,
@@ -315,20 +318,16 @@ async def delete_action_type(
     await db.commit()
 
 
-@router.post("/{action_type_id}/execute", response_model=OntologyActionExecuteResponse)
-async def execute_action_type(
-    action_type_id: str,
-    body: OntologyActionExecuteRequest,
+async def _execute_one(
+    db: AsyncSession,
+    at: OntologyActionType,
     request: Request,
-    db: AsyncSession = Depends(get_db),
-    _: None = Depends(require_any_permission(PERM_ONTOLOGY_READ)),
-):
-    at = await _get_action_type(db, action_type_id)
-    if at.status != "active":
-        raise HTTPException(status_code=400, detail="Action type is not active")
-
-    input_payload = dict(body.input or {})
-    object_id = body.object_id
+    *,
+    object_id: str | None,
+    input_payload: dict,
+) -> OntologyActionExecuteResponse:
+    """One action, one object — the body both the single and the batch entry point share."""
+    input_payload = dict(input_payload or {})
     if object_id:
         ot = await db.get(ObjectType, at.object_type_id)
         if not ot:
@@ -382,6 +381,82 @@ async def execute_action_type(
         caller_user_id=uid,
         caller_token=require_caller_token(request),
         caller_name=_caller_name(request),
+    )
+
+
+
+
+@router.post("/{action_type_id}/execute", response_model=OntologyActionExecuteResponse)
+async def execute_action_type(
+    action_type_id: str,
+    body: OntologyActionExecuteRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(require_any_permission(PERM_ONTOLOGY_READ)),
+):
+    at = await _get_action_type(db, action_type_id)
+    if at.status != "active":
+        raise HTTPException(status_code=400, detail="Action type is not active")
+    return await _execute_one(
+        db, at, request, object_id=body.object_id, input_payload=body.input
+    )
+
+
+# Palantir's Explorer passes a selection of up to 1000 objects to an action form; ours stops well short of that
+# because the work is sequential and each object writes its own audit row.
+BATCH_MAX = 200
+
+
+@router.post("/{action_type_id}/execute-batch", response_model=OntologyActionBatchResponse)
+async def execute_action_type_batch(
+    action_type_id: str,
+    body: OntologyActionBatchRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(require_any_permission(PERM_ONTOLOGY_READ)),
+):
+    """Run one action over the objects an exploration selected, reporting per object.
+
+    A batch is not a transaction: one object that refuses (a validation rule, a missing reference) must not undo the
+    others, so each runs on its own and the answer says which ones failed and why.
+    """
+    at = await _get_action_type(db, action_type_id)
+    if at.status != "active":
+        raise HTTPException(status_code=400, detail="Action type is not active")
+    object_ids = list(dict.fromkeys(body.object_ids))
+    if not object_ids:
+        raise HTTPException(status_code=400, detail="Pass at least one object id")
+    if len(object_ids) > BATCH_MAX:
+        raise HTTPException(
+            status_code=400, detail=f"At most {BATCH_MAX} objects per batch ({len(object_ids)} given)"
+        )
+    results: list[OntologyActionBatchItem] = []
+    for object_id in object_ids:
+        # Each run commits, and a commit expires the instances it touched — reading `at.object_type_id` afterwards is
+        # a lazy refresh outside the async greenlet, which fails as `MissingGreenlet`. Re-read the action per object.
+        at = await _get_action_type(db, action_type_id)
+        try:
+            outcome = await _execute_one(
+                db, at, request, object_id=object_id, input_payload=body.input
+            )
+            ok = outcome.status == "ok"
+            results.append(
+                OntologyActionBatchItem(
+                    object_id=object_id,
+                    status=outcome.status,
+                    error=None if ok else (outcome.error or "failed"),
+                )
+            )
+        except HTTPException as exc:
+            # A refusal is about this object (a rule, a missing reference): report it and carry on. Anything else is
+            # a bug in the action itself, and it should abort the batch rather than be repeated 200 times.
+            await db.rollback()
+            results.append(
+                OntologyActionBatchItem(object_id=object_id, status="error", error=str(exc.detail))
+            )
+    failed = sum(1 for item in results if item.status != "ok")
+    return OntologyActionBatchResponse(
+        succeeded=len(results) - failed, failed=failed, results=results
     )
 
 

@@ -28,6 +28,12 @@ import {
 
 import { useAuth } from '../../contexts/AuthContext';
 import { ExplorerMenu } from '../../components/ontology/ExplorerMenu';
+import { fetchOntologyActionTypes, type OntologyActionTypeResponse } from '../../data/ontologyActionsApi';
+import { ObjectSetActionDialog } from './ObjectSetActionDialog';
+import { ObjectSetChartAdd } from './ObjectSetChartAdd';
+import { ObjectSetActionMenu } from './ObjectSetActionMenu';
+import { ObjectSetResultsTable } from './ObjectSetResultsTable';
+import { useObjectSetAction } from './useObjectSetAction';
 import { ExplorationLayoutMenu } from './ExplorationLayoutMenu';
 import { ObjectExplorationSaveDialog } from './ObjectExplorationSaveDialog';
 import { ObjectSetCharts } from './ObjectSetCharts';
@@ -87,6 +93,9 @@ export function ObjectExplorationPage() {
      what it asks. Keeping them apart leaves ordering and the layout's chart list exactly as they were. */
   const [chartSettings, setChartSettings] = useState<Record<string, ChartSettings>>({});
   const [links, setLinks] = useState<LinkTypeResponse[]>([]);
+  /* Actions are the one write an exploration offers: they run on the rows the caller ticked, never on the whole set. */
+  const [actions, setActions] = useState<OntologyActionTypeResponse[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   /* The types on the other side of those links: a chart may read a neighbour's property, and the option list has to
      know what that neighbour declares. */
   const [typeById, setTypeById] = useState<Record<string, ObjectTypeResponse>>({});
@@ -126,15 +135,6 @@ export function ObjectExplorationPage() {
     });
   };
 
-  const sortState = (prop: string): 'ascending' | 'descending' | 'none' => {
-    const term = sort
-      .split(',')
-      .map((entry) => entry.trim())
-      .find((entry) => entry.replace(/^-/, '') === prop);
-    if (!term) return 'none';
-    return term.startsWith('-') ? 'descending' : 'ascending';
-  };
-
   useEffect(() => {
     let cancelled = false;
     if (!typeId) return;
@@ -167,6 +167,13 @@ export function ObjectExplorationPage() {
       .catch(() => {
         if (!cancelled) setTypeById({});
       });
+    void fetchOntologyActionTypes({ object_type_id: typeId })
+      .then((rows) => {
+        if (!cancelled) setActions(rows.filter((row) => row.status === 'active'));
+      })
+      .catch(() => {
+        if (!cancelled) setActions([]);
+      });
     void fetchLinkTypes()
       .then((res) => {
         if (!cancelled) setLinks(res.items);
@@ -177,7 +184,12 @@ export function ObjectExplorationPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [typeId]);
+
+  /* A selection is a claim about specific objects: when the set changes it no longer means anything. */
+  useEffect(() => {
+    setSelected(new Set());
+  }, [filters, search]);
 
   useEffect(() => {
     if (!typeId) return;
@@ -447,6 +459,11 @@ export function ObjectExplorationPage() {
     }
   };
 
+  const action = useObjectSetAction(() => {
+    setSelected(new Set());
+    void loadRows();
+  });
+
   if (loading) return <Loading label={t('objectSet.typeLoading')} />;
   if (!objectType) return <EmptyState title={t('objectSet.typeMissing')} />;
 
@@ -493,6 +510,11 @@ export function ObjectExplorationPage() {
               setLayoutOpen(false);
               void resetLayout();
             }}
+          />
+          <ObjectSetActionMenu
+            actions={actions}
+            count={selected.size}
+            onPick={action.setOpenAction}
           />
           <button
             type="button"
@@ -604,70 +626,48 @@ export function ObjectExplorationPage() {
           onRemove={removeChart}
           onMove={moveChart}
           canMove={chartProperties.length > 1}
-          footer={
-            addable.length > 0 ? (
-          <div className="object-set-chart object-set-chart--add">
-            <label className="object-set-chart__title" htmlFor="object-set-add-chart">
-              {t('objectSet.chartAdd')}
-            </label>
-            <select
-              id="object-set-add-chart"
-              className="ds-control ds-control--compact object-set-chart__add-select"
-              value=""
-              onChange={(e) => {
-                if (e.target.value) setChartProps([...chartProperties, e.target.value]);
-              }}
-            >
-              <option value="">{t('objectSet.chartAddPick')}</option>
-              {addable.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-                  ))}
-                </select>
-              </div>
-            ) : null
-          }
+          footer={<ObjectSetChartAdd options={addable} onAdd={(prop) => setChartProps([...chartProperties, prop])} />}
         />
       ) : rowsLoading ? (
         <Loading label={t('objectSet.rowsLoading')} />
       ) : instances.length === 0 ? (
         <EmptyState title={t('objectSet.rowsEmpty')} />
       ) : (
-        <div className="ds-table-wrap">
-          <table className="ds-table">
-            <thead>
-              <tr>
-                {properties.map((p) => {
-                  const state = sortState(p.name);
-                  return (
-                    <th key={p.name} aria-sort={state}>
-                      <button
-                        type="button"
-                        className="object-set-sort"
-                        onClick={() => toggleSort(p.name)}
-                        title={t('objectSet.sortBy', { name: p.name })}
-                      >
-                        {p.name}
-                        {state === 'ascending' ? ' ↑' : state === 'descending' ? ' ↓' : ''}
-                      </button>
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {instances.map((row) => (
-                <tr key={row.id}>
-                  {properties.map((p) => (
-                    <td key={p.name}>{cellText(row.data?.[p.name])}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ObjectSetResultsTable
+          instances={instances}
+          properties={properties}
+          sort={sort}
+          onSort={toggleSort}
+          selected={selected}
+          onToggle={(id) =>
+            setSelected((current) => {
+              const next = new Set(current);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              return next;
+            })
+          }
+          onToggleAll={() =>
+            setSelected((current) => {
+              const all = instances.every((row) => current.has(row.id));
+              const next = new Set(current);
+              for (const row of instances) {
+                if (all) next.delete(row.id);
+                else next.add(row.id);
+              }
+              return next;
+            })
+          }
+        />
       )}
+
+      <ObjectSetActionDialog
+        action={action.openAction}
+        count={selected.size}
+        busy={action.busy}
+        onClose={() => action.setOpenAction(null)}
+        onSubmit={(input) => void action.run([...selected], input)}
+      />
 
       <ObjectExplorationSaveDialog
         open={saveOpen}
@@ -682,10 +682,4 @@ export function ObjectExplorationPage() {
       />
     </ListPage>
   );
-}
-
-function cellText(value: unknown): string {
-  if (value === null || value === undefined || value === '') return '—';
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
 }

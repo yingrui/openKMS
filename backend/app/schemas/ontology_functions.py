@@ -274,6 +274,29 @@ class OntologyActionExecuteResponse(BaseModel):
     webhook: dict | None = None
 
 
+class OntologyActionBatchRequest(BaseModel):
+    """The same action over a set the exploration selected.
+
+    The set is chosen by the caller (an object set, not a query), so the API takes ids: whatever produced them — a
+    chart filter, a saved exploration, a Cypher query — the action runs on exactly those objects.
+    """
+
+    object_ids: list[str] = Field(default_factory=list)
+    input: dict = Field(default_factory=dict)
+
+
+class OntologyActionBatchItem(BaseModel):
+    object_id: str
+    status: str
+    error: str | None = None
+
+
+class OntologyActionBatchResponse(BaseModel):
+    succeeded: int
+    failed: int
+    results: list[OntologyActionBatchItem] = Field(default_factory=list)
+
+
 class OntologyActionLogResponse(BaseModel):
     id: str
     action_type_id: str

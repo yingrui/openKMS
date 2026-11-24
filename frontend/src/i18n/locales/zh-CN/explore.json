@@ -15,7 +15,9 @@
     "updateFailed": "更新失败",
     "deleteFailed": "删除失败",
     "name": "名称",
-    "description": "描述"
+    "description": "描述",
+    "yes": "是",
+    "no": "否"
   },
   "wiki": {
     "title": "Wiki 空间",
@@ -405,7 +407,18 @@
     "metricSum": "合计",
     "metricAvg": "平均",
     "metricMin": "最小",
-    "metricMax": "最大"
+    "metricMax": "最大",
+    "actionTitle": "动作",
+    "actionTitleCount": "动作（{{count}}）",
+    "actionCategory": "写回本体",
+    "actionNeedsSelection": "先选择对象——对整批执行是不可撤销的",
+    "actionRun": "对 {{count}} 个对象执行",
+    "actionNoParameters": "这个动作没有参数，将对选中的 {{count}} 个对象执行。",
+    "actionLeaveUnset": "保持不变",
+    "actionDone": "成功 {{succeeded}}，拒绝 {{failed}}",
+    "actionFailed": "动作未能执行",
+    "selectAll": "选中本页全部",
+    "selectObject": "选择 {{name}}"
   },
   "explorerSections": {
     "explorations": "探索",

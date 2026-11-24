@@ -101,6 +101,23 @@ export async function executeOntologyAction(
   );
 }
 
+export interface OntologyActionBatchResult {
+  succeeded: number;
+  failed: number;
+  results: { object_id: string; status: string; error?: string | null }[];
+}
+
+export async function executeOntologyActionBatch(
+  actionTypeId: string,
+  body: { object_ids: string[]; input?: Record<string, unknown> },
+): Promise<OntologyActionBatchResult> {
+  return ontologyFetch<OntologyActionBatchResult>(
+    `${base}/${actionTypeId}/execute-batch`,
+    { method: 'POST', body: JSON.stringify(body) },
+    'Action execution failed',
+  );
+}
+
 export async function fetchOntologyActionLogs(actionTypeId: string): Promise<OntologyActionLogResponse[]> {
   return ontologyFetch<OntologyActionLogResponse[]>(
     `${base}/${actionTypeId}/logs`,

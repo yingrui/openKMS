@@ -148,6 +148,27 @@ def cmd_delete(ns: argparse.Namespace) -> None:
     print(f"deleted action type {ns.id}", file=sys.stderr)
 
 
+def cmd_execute_batch(ns: argparse.Namespace) -> None:
+    """The same action over the objects a set (or an exploration) selected."""
+    body: dict[str, Any] = {
+        "object_ids": ns.object_id,
+        "input": _parse_json_arg("input-json", ns.input_json) if ns.input_json else {},
+    }
+    path = f"/api/ontology/action-types/{ns.id}/execute-batch"
+    confirm_or_abort(
+        action=f"execute action type {ns.id} over {len(ns.object_id)} objects",
+        method="POST",
+        path=path,
+        body=body,
+        yes=ns.yes,
+        dry_run=ns.dry_run,
+    )
+    with client() as s:
+        r = s.post(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
 def cmd_execute(ns: argparse.Namespace) -> None:
     body: dict[str, Any] = {
         "input": _parse_json_arg("input-json", ns.input_json) if ns.input_json else {},
@@ -251,6 +272,21 @@ def add_subparser(sub) -> None:
     ex.add_argument("--input-json", default="{}")
     add_write_flags(ex)
     ex.set_defaults(fn=cmd_execute)
+
+    bx = sp.add_parser(
+        "execute-batch",
+        help="Execute one action over a set of objects (an exploration selection), reporting per object",
+    )
+    bx.add_argument("--id", required=True)
+    bx.add_argument(
+        "--object-id",
+        action="append",
+        required=True,
+        help="repeatable: an instance id; at most 200 per call",
+    )
+    bx.add_argument("--input-json", default="{}")
+    add_write_flags(bx)
+    bx.set_defaults(fn=cmd_execute_batch)
 
     lg = sp.add_parser("logs", help="List action execution logs")
     lg.add_argument("--id", required=True)

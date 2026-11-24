@@ -1,0 +1,80 @@
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Zap } from 'lucide-react';
+import type { OntologyActionTypeResponse } from '../../data/ontologyActionsApi';
+
+/**
+ * Actions, on the objects this exploration selected.
+ *
+ * Palantir puts three categories in the corner of the perspective — Actions, Open In, Export — and passes the
+ * current selection (or all objects) to the action form as prefill. Ours does the same for Actions and refuses to
+ * guess the selection: an action over 180 objects because none were ticked is not a mistake you can undo.
+ */
+export function ObjectSetActionMenu({
+  actions,
+  count,
+  onPick,
+}: {
+  actions: OntologyActionTypeResponse[];
+  count: number;
+  onPick: (action: OntologyActionTypeResponse) => void;
+}) {
+  const { t } = useTranslation('explore');
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  if (actions.length === 0) return null;
+
+  return (
+    <div className="object-set-action-menu" ref={rootRef}>
+      <button
+        type="button"
+        className="btn btn-secondary"
+        aria-expanded={open}
+        disabled={count === 0}
+        title={count === 0 ? t('objectSet.actionNeedsSelection') : undefined}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <Zap size={14} aria-hidden />
+        {count > 0 ? t('objectSet.actionTitleCount', { count }) : t('objectSet.actionTitle')}
+      </button>
+      {open && count > 0 ? (
+        <div className="object-set-action-menu__panel" role="menu">
+          <p className="object-set-action-menu__label">{t('objectSet.actionCategory')}</p>
+          {actions.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onPick(action);
+              }}
+            >
+              <span className="object-set-action-menu__name">{action.display_name}</span>
+              {action.description ? (
+                <span className="object-set-action-menu__desc">{action.description}</span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}

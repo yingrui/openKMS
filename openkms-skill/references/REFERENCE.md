@@ -255,6 +255,8 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets quality run` *(write)* | POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | Prints the **run** it produced (`status`, `checked_count`, `failed_count`, `detail`) — the POST answers with the rule, which carries only `last_status`. |
 | `datasets quality runs` | GET | `/api/datasets/{id}/quality-rules/{rule_id}/runs` | A rule's run history, newest first. |
 | `datasets quality delete` *(write)* | DELETE | `/api/datasets/{id}/quality-rules/{rule_id}` | |
+| `action-types execute --id` *(write)* | POST | `/api/ontology/action-types/{id}/execute` | One object: `{"object_id": …, "input": {…}}`. |
+| `action-types execute-batch --id` *(write)* | POST | `/api/ontology/action-types/{id}/execute-batch` | A set the exploration selected: `{"object_ids": [...], "input": {…}}`, ≤ 200, per-object outcome. |
 | `explorations list` | GET | `/api/explorations` | Saved object sets — mine plus everything `shared`; `?object_type_id=`. |
 | `explorations get` | GET | `/api/explorations/{id}` | Its `filters` and `layout`, with the type name. |
 | `explorations add` *(write)* | POST | `/api/explorations` | Body `{name, object_type_id, filters, layout, visibility}`. `filters` are the UI's own strings (`prop:op:value`, `@link/prop:op:value`); `layout` is `{charts, sorts, perspective}` from `--chart` / `--sort` / `--perspective`; a chart is `{"prop": …}` plus optional `split` (cross-tab) or `metric`+`measure` (`sum|avg|min|max` of a numeric property, own or through one link) — pass the whole object as JSON. Stores **conditions, not results**. |

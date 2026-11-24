@@ -773,3 +773,67 @@
   font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
+
+/* The action menu: the exploration's one write path, and the rows it acts on. */
+.object-set-action-menu {
+  position: relative;
+}
+
+.object-set-action-menu__panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 16rem;
+  max-width: 22rem;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-lg);
+
+  button {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: var(--space-1) var(--space-2);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--color-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-bg-muted);
+    }
+  }
+}
+
+.object-set-action-menu__label {
+  margin: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.object-set-action-menu__name {
+  font-size: var(--text-sm);
+}
+
+.object-set-action-menu__desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.object-set-action-dialog__desc {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.object-set-select {
+  width: 2rem;
+}

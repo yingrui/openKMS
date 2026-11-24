@@ -15,7 +15,9 @@
     "updateFailed": "Update failed",
     "deleteFailed": "Delete failed",
     "name": "Name",
-    "description": "Description"
+    "description": "Description",
+    "yes": "Yes",
+    "no": "No"
   },
   "wiki": {
     "title": "Wiki spaces",
@@ -405,7 +407,18 @@
     "metricSum": "Sum",
     "metricAvg": "Average",
     "metricMin": "Minimum",
-    "metricMax": "Maximum"
+    "metricMax": "Maximum",
+    "actionTitle": "Actions",
+    "actionTitleCount": "Actions ({{count}})",
+    "actionCategory": "Write back to the ontology",
+    "actionNeedsSelection": "Select objects first — an action over a whole set is not undoable",
+    "actionRun": "Run on {{count}} objects",
+    "actionNoParameters": "This action takes no parameters; it runs on the {{count}} selected objects.",
+    "actionLeaveUnset": "Leave unchanged",
+    "actionDone": "{{succeeded}} done, {{failed}} refused",
+    "actionFailed": "The action could not run",
+    "selectAll": "Select all rows on this page",
+    "selectObject": "Select {{name}}"
   },
   "explorerSections": {
     "explorations": "Explorations",
