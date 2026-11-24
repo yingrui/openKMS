@@ -67,6 +67,16 @@ def cmd_add(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def merge_layout(current: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
+    """The API replaces `layout` wholesale; a patch only names the lists it changes.
+
+    `--chart` alone must not drop the stored sort and perspective — those were a decision too.
+    """
+    merged = dict(current or {})
+    merged.update(patch)
+    return merged
+
+
 def cmd_update(ns: argparse.Namespace) -> None:
     body: dict[str, Any] = {}
     if ns.name is not None:
@@ -75,9 +85,12 @@ def cmd_update(ns: argparse.Namespace) -> None:
         body["visibility"] = ns.visibility
     if ns.filter is not None:
         body["filters"] = ns.filter
-    layout = _layout_body(ns)
-    if layout:
-        body["layout"] = layout
+    patch = _layout_body(ns)
+    if patch:
+        with client() as s:
+            current = s.get(f"/api/explorations/{ns.id}")
+        current.raise_for_status()
+        body["layout"] = merge_layout(current.json().get("layout") or {}, patch)
     if not body:
         raise SystemExit("Nothing to update — pass at least one field.")
     path = f"/api/explorations/{ns.id}"
