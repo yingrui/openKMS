@@ -56,6 +56,9 @@ export function ObjectExplorationPage() {
   const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [rowsLoading, setRowsLoading] = useState(true);
+  /* A refusal is not an empty set: a restricted model says why, and that reason has to stay on the page rather
+     than fade out as a toast. */
+  const [rowsError, setRowsError] = useState<string | null>(null);
   /* The object search lives in the URL (`?q=`), so "find objects of this type matching X" is a linkable address —
      that is what the home page hands over when a query names an object rather than a type. */
   const search = searchParams.get('q') ?? '';
@@ -178,6 +181,7 @@ export function ObjectExplorationPage() {
   const loadRows = useCallback(async () => {
     if (!typeId) return;
     setRowsLoading(true);
+    setRowsError(null);
     try {
       const res = await fetchObjectInstances(typeId, {
         search: search.trim() || undefined,
@@ -188,9 +192,10 @@ export function ObjectExplorationPage() {
       setInstances(res.items);
       setTotal(res.total);
     } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : t('objectSet.rowsFailed');
       setInstances([]);
       setTotal(null);
-      toast.error(e instanceof Error ? e.message : t('objectSet.rowsFailed'));
+      setRowsError(message);
     } finally {
       setRowsLoading(false);
     }
@@ -286,6 +291,8 @@ export function ObjectExplorationPage() {
       params.append('f', `@${linkName}/${prop}:${op}:${rest.join(':')}`);
     }
     if (perspective === 'results') params.set('view', 'results');
+    // The word the caller typed stays their question across the hop; only the subject changes.
+    if (search.trim()) params.set('q', search.trim());
     const query = params.toString();
     navigate(`/object-explorer/explorations/${targetTypeId}${query ? `?${query}` : ''}`);
   };
@@ -527,6 +534,8 @@ export function ObjectExplorationPage() {
       </div>
 
       <ObjectSetFilters filters={filters} properties={properties} onChange={setFilters} />
+
+      {rowsError ? <p className="object-set-refusal">{rowsError}</p> : null}
 
       {perspective === 'explore' ? (
         <ObjectSetCharts
