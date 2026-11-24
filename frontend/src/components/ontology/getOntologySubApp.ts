@@ -35,6 +35,14 @@ export function isObjectExplorerExplorePath(pathname: string): boolean {
   return pathname === '/object-explorer/explore' || pathname === '/object-explorer';
 }
 
+/** Static routes under `/function-editor` that are list views, not a function's editor. */
+const FUNCTION_EDITOR_LIST_SEGMENTS = new Set(['logic']);
+
+/**
+ * A single segment after `/function-editor/` is a function id — except the static list routes. `/function-editor/logic`
+ * used to match here, which dropped the rail and gave the list the full-bleed editor layout.
+ */
 export function isFunctionEditorWorkspacePath(pathname: string): boolean {
-  return /^\/function-editor\/[^/]+$/.test(pathname);
+  const match = /^\/function-editor\/([^/]+)$/.exec(pathname);
+  return match !== null && !FUNCTION_EDITOR_LIST_SEGMENTS.has(match[1]);
 }
