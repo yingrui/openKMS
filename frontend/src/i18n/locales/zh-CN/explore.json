@@ -369,7 +369,14 @@
     "savedCreated": "已保存",
     "savedUpdated": "已更新",
     "savedFailed": "保存失败",
-    "savedLoadFailed": "打不开这个探索"
+    "savedLoadFailed": "打不开这个探索",
+    "layoutSave": "保存为我的布局",
+    "layoutSavedHint": "下次打开这个对象类型时按这个布局开始",
+    "layoutSaved": "已保存为你的默认布局",
+    "layoutResetButton": "恢复默认布局",
+    "layoutReset": "已恢复为内置布局",
+    "layoutFailed": "保存布局失败",
+    "layoutTitle": "布局"
   },
   "explorerSections": {
     "explorations": "探索",

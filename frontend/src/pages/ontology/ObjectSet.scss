@@ -544,3 +544,39 @@
   background: var(--color-border);
 }
 
+
+/* The layout menu: two actions behind one button, so the page header stays short. */
+.object-set-layout-menu {
+  position: relative;
+}
+
+.object-set-layout-menu__panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  min-width: 11rem;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-lg);
+}
+
+.object-set-layout-menu__panel button {
+  display: block;
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.object-set-layout-menu__panel button:hover {
+  background: var(--color-bg-muted);
+}

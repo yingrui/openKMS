@@ -369,7 +369,14 @@
     "savedCreated": "Saved",
     "savedUpdated": "Updated",
     "savedFailed": "Could not save",
-    "savedLoadFailed": "Could not open this exploration"
+    "savedLoadFailed": "Could not open this exploration",
+    "layoutSave": "Save as my layout",
+    "layoutSavedHint": "This type opens with this layout next time",
+    "layoutSaved": "Saved as your default layout",
+    "layoutResetButton": "Reset layout",
+    "layoutReset": "Back to the built-in layout",
+    "layoutFailed": "Could not save the layout",
+    "layoutTitle": "Layout"
   },
   "explorerSections": {
     "explorations": "Explorations",

@@ -15,8 +15,10 @@ import { Loading } from '../../styles/design-system/Loading';
 import {
   createExploration,
   fetchExploration,
+  fetchExplorationLayout,
   filterTexts,
   patchExploration,
+  saveExplorationLayout,
   type ExplorationResponse,
 } from '../../data/explorationsApi';
 import { Dialog, FormField } from '../../styles/design-system';
@@ -58,6 +60,10 @@ export function ObjectExplorationPage() {
   const [saveName, setSaveName] = useState('');
   const [saveShared, setSaveShared] = useState(false);
   const [saving, setSaving] = useState(false);
+  /* The layout this type opens with: personal, then global, then the built-in one (prominent props). */
+  const [chartProps, setChartProps] = useState<string[] | null>(null);
+  const [layoutSaving, setLayoutSaving] = useState(false);
+  const [layoutOpen, setLayoutOpen] = useState(false);
 
   const updateParams = (mutate: (params: URLSearchParams) => void) => {
     const params = new URLSearchParams(searchParams);
@@ -118,6 +124,24 @@ export function ObjectExplorationPage() {
       cancelled = true;
     };
   }, [typeId, t]);
+
+  useEffect(() => {
+    if (!typeId) return;
+    let cancelled = false;
+    void fetchExplorationLayout(typeId)
+      .then((res) => {
+        if (cancelled) return;
+        const charts = (res.layout?.charts as { prop: string }[] | undefined) ?? [];
+        const props = charts.map((chart) => chart.prop).filter(Boolean);
+        if (props.length > 0) setChartProps(props);
+      })
+      .catch(() => {
+        if (!cancelled) setChartProps(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [typeId]);
 
   const loadRows = useCallback(async () => {
     if (!typeId) return;
@@ -182,16 +206,53 @@ export function ObjectExplorationPage() {
     [objectType]
   );
 
-  const chartProperties = useMemo(
-    () =>
-      [
-        ...(objectType?.display_property ? [objectType.display_property] : []),
-        ...properties.map((p) => p.name),
-      ]
-        .filter((name, index, all) => all.indexOf(name) === index)
-        .slice(0, 6),
-    [objectType, properties]
-  );
+  const chartProperties = useMemo(() => {
+    const known = new Set(properties.map((p) => p.name));
+    if (chartProps) {
+      const ordered = chartProps.filter((name) => known.has(name));
+      if (ordered.length > 0) return ordered.slice(0, 8);
+    }
+    return [
+      ...(objectType?.display_property ? [objectType.display_property] : []),
+      ...properties.map((p) => p.name),
+    ]
+      .filter((name, index, all) => all.indexOf(name) === index)
+      .slice(0, 6);
+  }, [chartProps, objectType, properties]);
+
+  /** The layout currently on screen — what "save as my default" stores. */
+  const currentLayout = () => ({
+    charts: chartProperties.map((prop) => ({ prop })),
+    sorts: sort ? [{ prop: sort.replace(/^-/, ''), desc: sort.startsWith('-') }] : [],
+    perspective,
+  });
+
+  const saveAsMyLayout = async () => {
+    if (!typeId) return;
+    setLayoutSaving(true);
+    try {
+      await saveExplorationLayout(typeId, currentLayout(), 'personal');
+      toast.success(t('objectSet.layoutSaved'));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('objectSet.layoutFailed'));
+    } finally {
+      setLayoutSaving(false);
+    }
+  };
+
+  const resetLayout = async () => {
+    if (!typeId) return;
+    setLayoutSaving(true);
+    try {
+      await saveExplorationLayout(typeId, {}, 'personal');
+      setChartProps(null);
+      toast.success(t('objectSet.layoutReset'));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('objectSet.layoutFailed'));
+    } finally {
+      setLayoutSaving(false);
+    }
+  };
 
   const save = async () => {
     if (!typeId || !saveName.trim()) return;
@@ -248,6 +309,43 @@ export function ObjectExplorationPage() {
       actions={
         <>
           <ExplorerMenu />
+          <div className="object-set-layout-menu">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              aria-expanded={layoutOpen}
+              onClick={() => setLayoutOpen((value) => !value)}
+              title={t('objectSet.layoutSavedHint')}
+            >
+              {t('objectSet.layoutTitle')}
+            </button>
+            {layoutOpen ? (
+              <div className="object-set-layout-menu__panel" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={layoutSaving}
+                  onClick={() => {
+                    setLayoutOpen(false);
+                    void saveAsMyLayout();
+                  }}
+                >
+                  {t('objectSet.layoutSave')}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={layoutSaving}
+                  onClick={() => {
+                    setLayoutOpen(false);
+                    void resetLayout();
+                  }}
+                >
+                  {t('objectSet.layoutResetButton')}
+                </button>
+              </div>
+            ) : null}
+          </div>
           <button
             type="button"
             className="btn btn-primary"
