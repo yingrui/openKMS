@@ -1349,8 +1349,6 @@
     "archiveAndDeleteTitle": "This Function is published",
     "archiveAndDeleteMessage": "Published Functions can be called, so they are archived first and then deleted. Callers that use it by api name will break.",
     "archiveAndDelete": "Archive and delete",
-    "tabFunctions": "Functions",
-    "tabLogic": "LLM functions",
     "logicTitle": "LLM functions",
     "logicSubtitle": "Functions built from a prompt and ontology tools instead of source code.",
     "logicEmpty": "No LLM functions yet. Building them is not available in this editor yet — code functions live under Functions."

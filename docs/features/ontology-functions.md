@@ -119,8 +119,8 @@ restricted network — and then `k8s_service` (relayed by the backend) is the ki
 
 ## Two entries, one registry
 
-The Function Editor lists two authoring modes over the same table: **Functions** (`source='code'`, authored as Python
-source) and **LLM functions** (`source='llm'`). `source` is the only difference — same versions, same publish step,
+The Function Editor's left rail has two entries over the same table: **All functions** (`source='code'`, authored as
+Python source) and **LLM functions** (`source='llm'`). `source` is the only difference — same versions, same publish step,
 same `openkms_functions` call surface — so it is one list component filtered by `?source=`, not a second registry.
 
 LLM function *authoring* is not open yet: the entry lists what exists and says so. What it will add is a `flow_spec`

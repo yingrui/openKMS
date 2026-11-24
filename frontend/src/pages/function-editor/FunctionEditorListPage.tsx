@@ -35,26 +35,6 @@ export function FunctionEditorListPage() {
           </Link>
         )
       }
-      tabs={
-        <div className="settings-page-tabs" role="tablist" aria-label={t("editor.title")}>
-          <Link
-            to="/function-editor"
-            role="tab"
-            aria-selected={!isLogic}
-            className={`settings-page-tab${!isLogic ? " active" : ""}`}
-          >
-            {t("editor.tabFunctions")}
-          </Link>
-          <Link
-            to="/function-editor/logic"
-            role="tab"
-            aria-selected={isLogic}
-            className={`settings-page-tab${isLogic ? " active" : ""}`}
-          >
-            {t("editor.tabLogic")}
-          </Link>
-        </div>
-      }
     >
       <div className="ds-table-wrap">
         {loading ? (

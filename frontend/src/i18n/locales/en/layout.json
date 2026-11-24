@@ -115,5 +115,6 @@
   "externalServices": "External services",
   "appTaglineExternalServices": "Endpoints the ontology may call: Functions, and Action webhooks",
   "ontologyRules": "Rules",
-  "exploreHome": "Explorations"
+  "exploreHome": "Explorations",
+  "logicFunctions": "Logic functions"
 }
