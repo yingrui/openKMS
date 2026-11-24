@@ -37,6 +37,7 @@ from app.services.ontology.object_query import (
     parse_filters as parse_object_filters,
     parse_sort as parse_object_sort,
 )
+from app.services.explorer.object_visibility import require_object_rows_readable
 from app.services.ontology.object_neo4j_store import (
     aggregate_object_set,
     query_object_set,
@@ -845,6 +846,7 @@ async def aggregate_objects(
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
     await _require_object_type_read(request, db, object_type_id)
+    await require_object_rows_readable(db, request, obj_type)
     if not prop:
         raise HTTPException(status_code=400, detail="Pass at least one `prop` to aggregate")
     try:
@@ -903,6 +905,7 @@ async def list_object_instances(
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
     await _require_object_type_read(request, db, object_type_id)
+    await require_object_rows_readable(db, request, obj_type)
 
     legacy = parse_prop_filters(request)
     try:
