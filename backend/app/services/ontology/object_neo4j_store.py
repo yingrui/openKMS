@@ -651,9 +651,14 @@ def prune_object_nodes(session, *, label: str, columns: list[str], keep: set[str
     `keep` holds the API ids this run wrote (`encode_object_id`), so a composite key prunes as
     one identity instead of one column at a time.
     """
+    # A node **without** the identity column cannot be the object it claims to be — and `NOT toString(null) IN
+    # $keep` is null, so it would survive the comparison. Those are the orphan shells left by a writer that merged
+    # on a different column; deleting them is the point of pruning a mirror.
     if len(columns) == 1:
         result = session.run(
-            f"MATCH (n:{label}) WHERE NOT toString(n.`{columns[0]}`) IN $keep DETACH DELETE n",
+            f"MATCH (n:{label}) "
+            f"WHERE n.`{columns[0]}` IS NULL OR NOT toString(n.`{columns[0]}`) IN $keep "
+            "DETACH DELETE n",
             keep=list(keep),
         )
         return int(result.consume().counters.nodes_deleted)
@@ -661,8 +666,9 @@ def prune_object_nodes(session, *, label: str, columns: list[str], keep: set[str
     parts = " + '|' + ".join(
         f"toString(n.`{column}`)" for column in columns
     )
+    missing = " OR ".join(f"n.`{column}` IS NULL" for column in columns)
     result = session.run(
-        f"MATCH (n:{label}) WHERE NOT ({parts}) IN $keep DETACH DELETE n",
+        f"MATCH (n:{label}) WHERE {missing} OR NOT ({parts}) IN $keep DETACH DELETE n",
         keep=list(keep),
     )
     return int(result.consume().counters.nodes_deleted)
