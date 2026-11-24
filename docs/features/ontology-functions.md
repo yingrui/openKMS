@@ -1,6 +1,6 @@
 # Ontology Functions
 
-Author and run **Python Ontology Functions** — Palantir-style logic on top of the object/link schema. Functions are stored in PostgreSQL, edited in **Function Editor**, published in **Ontology Manager**, and executed in a subprocess via **ontology-function-service** (`:8105`).
+Author and run **Python Ontology Functions** — Palantir-style logic on top of the object/link schema. Functions are stored in PostgreSQL, edited and published in **Function Editor**, and executed in a subprocess via **ontology-function-service** (`:8105`).
 
 **Related:** [Ontology](ontology.md) · [Ontology SDK](ontology-sdk.md) · [Research](../research/ontology_functions_and_actions.md) · [Manager alignment (platform vs DIY)](../research/ontology_manager_alignment.md) · [Understanding the ontology](../tutorials/understanding-ontology.md) · [Tushare DIY](../tutorials/tushare-market-ontology.md)
 
@@ -8,7 +8,7 @@ Author and run **Python Ontology Functions** — Palantir-style logic on top of 
 
 | App | Route | Role |
 |-----|-------|------|
-| **Ontology Manager** | `/ontology-manager/functions` | Registry, optional primary object type, Usage (bound action types), publish, Observability |
+| **Ontology Manager** | `/ontology-manager/functions` | Registry (the same Functions), optional primary object type, Usage (bound action types), Observability |
 | **External services** | `/external-services` | The endpoints the ontology may call — a Function's `client.external(…)` **and** an Action's webhook share one registry: kind, target, credential, allowed paths, timeout, who uses it |
 | **Function Editor** | `/function-editor` | Create (optional primary object type), edit, validate, Live Preview. The workspace links to the **External services** app, so an author can register one without leaving the flow |
 | **Object Explorer** | — | Instance browse; Action triggers |
@@ -116,6 +116,13 @@ Who sends the request depends on the kind, and that is the whole reason there ar
 Neither kind gives a hard network boundary: for `http` the sandbox makes the call, so the allowlist is a
 rule the client keeps. A deployment that needs the boundary itself puts the function runner on a
 restricted network — and then `k8s_service` (relayed by the backend) is the kind that still works.
+
+## Editing and publishing
+
+The editor's header carries **Save** (writes a new draft version) and **Publish** (makes the latest draft callable). Publish
+is disabled when the latest draft is already the published version, so the button never means "nothing will happen".
+Back goes to the list this Function belongs to — `source='code'` → Functions, `source='logic'` → Logic functions — not to
+a fixed route.
 
 ## Two entries, one registry
 

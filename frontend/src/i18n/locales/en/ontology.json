@@ -1351,7 +1351,10 @@
     "archiveAndDelete": "Archive and delete",
     "logicTitle": "Logic functions",
     "logicSubtitle": "Functions built from a prompt and ontology tools instead of source code.",
-    "logicEmpty": "No Logic functions yet. Building them is not available in this editor yet — code functions live under Functions."
+    "logicEmpty": "No Logic functions yet. Building them is not available in this editor yet — code functions live under Functions.",
+    "publish": "Publish",
+    "publishing": "Publishing…",
+    "publishUpToDate": "The latest draft is already published."
   },
   "dataSources": {
     "title": "Data sources",

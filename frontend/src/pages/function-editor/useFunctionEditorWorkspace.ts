@@ -10,11 +10,13 @@ import {
   executeOntologyFunction,
   fetchFunctionVersions,
   fetchOntologyFunction,
+  publishOntologyFunction,
   saveFunctionVersion,
   updateOntologyFunction,
   validateFunctionSource,
 } from '../../data/ontologyFunctionsApi';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
+import { AUTHORING_OF_SOURCE, backToListPath, hasUnpublishedDraft, type Authoring } from './functionEditorState';
 import { useConfirm } from '../../contexts/ConfirmContext';
 
 export function useFunctionEditorWorkspace() {
@@ -38,6 +40,11 @@ export function useFunctionEditorWorkspace() {
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
   const [resolvedId, setResolvedId] = useState<string | null>(isNew ? null : functionId ?? null);
+  // Which list "back" returns to is a property of the function, not of the page.
+  const [authoring, setAuthoring] = useState<Authoring>('code');
+  const [latestVersion, setLatestVersion] = useState<number | null>(null);
+  const [publishedVersion, setPublishedVersion] = useState<number | null>(null);
+  const [publishing, setPublishing] = useState(false);
 
   const parseOptionalSchema = (text: string, label: string): Record<string, unknown> | null | undefined => {
     const trimmed = text.trim();
@@ -73,6 +80,9 @@ export function useFunctionEditorWorkspace() {
       setApiName(fn.api_name);
       setDisplayName(fn.display_name);
       setObjectTypeId(fn.object_type_id ?? '');
+      setAuthoring(AUTHORING_OF_SOURCE(fn.source));
+      setLatestVersion(fn.latest_version ?? null);
+      setPublishedVersion(fn.published_version ?? null);
       const versions = await fetchFunctionVersions(functionId);
       if (versions[0]) {
         setSourceCode(versions[0].source_code);
@@ -132,11 +142,12 @@ export function useFunctionEditorWorkspace() {
         navigate(`/function-editor/${fn.id}`, { replace: true });
         setResolvedId(fn.id);
       } else if (resolvedId) {
-        await saveFunctionVersion(resolvedId, {
+        const version = await saveFunctionVersion(resolvedId, {
           source_code: sourceCode,
           input_schema: inputSchema,
           output_schema: outputSchema,
         });
+        setLatestVersion(version?.version ?? latestVersion);
         toast.success(t('editor.saved'));
       }
     } catch (e: unknown) {
@@ -181,6 +192,22 @@ export function useFunctionEditorWorkspace() {
       toast.error(e instanceof Error ? e.message : t('functions.runFailed'));
     } finally {
       setRunning(false);
+    }
+  };
+
+  const onPublish = async () => {
+    const id = resolvedId;
+    if (!id) return;
+    setPublishing(true);
+    try {
+      const updated = await publishOntologyFunction(id);
+      setLatestVersion(updated.latest_version ?? latestVersion);
+      setPublishedVersion(updated.published_version ?? null);
+      toast.success(t('functions.published'));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('functions.publishFailed'));
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -253,6 +280,11 @@ export function useFunctionEditorWorkspace() {
     insertSnippet,
     onSave,
     onValidate,
+    onPublish,
+    publishing,
+    backTo: backToListPath(authoring),
+    isLogic: authoring === 'logic',
+    canPublish: Boolean(resolvedId) && !publishing && hasUnpublishedDraft(latestVersion, publishedVersion),
     onRun,
     onDelete,
   };

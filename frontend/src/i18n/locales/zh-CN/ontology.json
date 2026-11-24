@@ -1345,7 +1345,10 @@
     "logicTitle": "逻辑函数",
     "logicSubtitle": "由提示词与本体工具构成、而不是写源码的函数。",
     "logicEmpty": "还没有逻辑函数。这个编辑器暂时还不能创建它们 —— 代码函数请到「函数」页。",
-    "backToList": "函数"
+    "backToList": "函数",
+    "publish": "发布",
+    "publishing": "正在发布…",
+    "publishUpToDate": "最新草稿已发布。"
   },
   "dataSources": {
     "title": "数据源",

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Loader2, Plug, Play, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Play, Plug, Rocket, Save, Trash2 } from 'lucide-react';
 import { AvailableQueriesPanel } from './AvailableQueriesPanel';
 import { FunctionCodeEditor } from './FunctionCodeEditor';
 import { FunctionPreviewPanel } from './FunctionPreviewPanel';
@@ -10,6 +10,11 @@ export function FunctionEditorWorkspacePage() {
   const {
     t,
     isNew,
+    backTo,
+    isLogic,
+    canPublish,
+    publishing,
+    onPublish,
     apiName,
     setApiName,
     displayName,
@@ -49,9 +54,9 @@ export function FunctionEditorWorkspacePage() {
   return (
     <div className="function-editor-workspace">
       <header className="function-editor-workspace__topbar">
-        <Link to="/function-editor" className="function-editor-workspace__back">
+        <Link to={backTo} className="function-editor-workspace__back">
           <ArrowLeft size={16} aria-hidden />
-          {t('editor.allFunctions')}
+          {isLogic ? t('editor.logicTitle') : t('editor.allFunctions')}
         </Link>
         <div className="function-editor-workspace__title-block">
           <span className="function-editor-workspace__name">{isNew ? t('editor.create') : displayName || apiName}</span>
@@ -78,6 +83,16 @@ export function FunctionEditorWorkspacePage() {
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => void onRun()} disabled={!resolvedId || running}>
             <Play size={16} aria-hidden />
             {t('shared.run')}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => void onPublish()}
+            disabled={!canPublish}
+            title={canPublish ? t('functions.publish') : t('editor.publishUpToDate')}
+          >
+            <Rocket size={16} aria-hidden />
+            {publishing ? t('editor.publishing') : t('editor.publish')}
           </button>
           <button
             type="button"
