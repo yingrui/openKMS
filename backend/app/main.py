@@ -46,6 +46,8 @@ from app.api.agent_skills import router as agent_skills_router
 from app.api.projects import router as projects_router
 from app.api.user_git_credentials import router as user_git_credentials_router
 from app.api.glossaries import router as glossaries_router
+from app.api.explorations import layouts_router as exploration_layouts_router
+from app.api.explorations import router as explorations_router
 from app.api.object_types import router as object_types_router
 from app.api.link_types import router as link_types_router
 from app.api.ontology_explore import router as ontology_explore_router
@@ -241,6 +243,8 @@ app.include_router(agent_skills_router, prefix="/api")
 app.include_router(user_git_credentials_router, prefix="/api")
 app.include_router(glossaries_router, prefix="/api")
 app.include_router(object_types_router, prefix="/api")
+app.include_router(explorations_router, prefix="/api")
+app.include_router(exploration_layouts_router, prefix="/api")
 app.include_router(link_types_router, prefix="/api")
 app.include_router(ontology_explore_router, prefix="/api")
 app.include_router(ontology_functions_router, prefix="/api")

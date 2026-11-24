@@ -45,6 +45,7 @@ import app.models.link_instance  # noqa: F401 - register models with Base.metada
 import app.models.data_source  # noqa: F401 - register models with Base.metadata
 import app.models.dataset  # noqa: F401 - register models with Base.metadata
 import app.models.dataset_join  # noqa: F401 - register models with Base.metadata
+import app.models.exploration  # noqa: F401 - register models with Base.metadata
 import app.models.metric_run  # noqa: F401 - register models with Base.metadata
 import app.models.audit_event  # noqa: F401 - register models with Base.metadata
 import app.models.story  # noqa: F401 - register models with Base.metadata
