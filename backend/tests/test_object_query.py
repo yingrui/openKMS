@@ -158,6 +158,18 @@ def test_a_chart_can_be_split_by_a_second_property():
     assert "RETURN value, split, count(DISTINCT n) AS c WHERE" not in cypher
 
 
+def test_a_metric_chart_ranks_by_its_measure_not_by_how_many_objects():
+    cypher = aggregate_query(
+        "Transaction", "", "@onStock/industry", limit=10, metric="sum", measure="realized_pnl",
+        link_info={"onStock": ("onStock", "out")},
+    )
+    assert "ORDER BY v IS NULL, v DESC" in cypher
+
+
+def test_a_count_chart_still_ranks_by_count():
+    assert "ORDER BY c DESC" in aggregate_query("Distributor", "", "region", limit=10)
+
+
 def test_a_metric_turns_the_chart_from_how_many_into_how_much():
     cypher = aggregate_query(
         "Distributor", "", "region", limit=10, metric="avg", measure="lead_time_weeks"

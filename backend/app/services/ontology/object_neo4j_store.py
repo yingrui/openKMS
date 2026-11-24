@@ -402,7 +402,7 @@ def aggregate_object_set(
                     label,
                     combined,
                     prop,
-                    limit=limit + 1,
+                    limit=(limit * limit + 1) if split else limit + 1,
                     link_info=link_info,
                     metric=metric,
                     measure=measure,
@@ -412,11 +412,19 @@ def aggregate_object_set(
             )
         )
     if split:
+        # `limit` is per axis here: a matrix of 20 values × 20 splits is still one chart, and cutting it at 20 cells
+        # would silently drop the right-hand columns.
+        cell_limit = limit * limit
         cells = [
             {"value": record["value"], "split": record["split"], "count": record["c"]}
-            for record in records[:limit]
+            for record in records[:cell_limit]
         ]
-        return {"prop": prop, "split": split, "cells": cells, "truncated": len(records) > limit}
+        return {
+            "prop": prop,
+            "split": split,
+            "cells": cells,
+            "truncated": len(records) > cell_limit,
+        }
     rows = [
         {"value": record["value"], "count": record["c"]} for record in records[:limit]
     ]

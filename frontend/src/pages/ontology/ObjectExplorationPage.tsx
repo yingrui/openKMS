@@ -585,6 +585,14 @@ export function ObjectExplorationPage() {
             setChartSettings((current) => ({ ...current, [prop]: cleaned }));
           }}
           onPick={(prop, value) => setFilters([...filters, formatFilter(prop, 'eq', value)])}
+          onPickPair={(prop, value, splitProp, splitValue) =>
+            /* One cell, two conditions — the cell means "this row *and* this column". */
+            setFilters([
+              ...filters,
+              formatFilter(prop, 'eq', value),
+              formatFilter(splitProp, 'eq', splitValue),
+            ])
+          }
           onPickRange={(prop, from, to) =>
             /* An interval is two conditions: `>= from` and `< to`. One bar, one readable pair of chips. */
             setFilters([

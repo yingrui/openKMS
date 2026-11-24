@@ -33,6 +33,7 @@ export function ObjectSetCharts({
   options,
   onSettings,
   onPick,
+  onPickPair,
   onPickRange,
   onRemove,
   onMove,
@@ -50,6 +51,8 @@ export function ObjectSetCharts({
   options: { value: string; label: string }[];
   onSettings?: (prop: string, next: ChartSettings) => void;
   onPick: (prop: string, value: string) => void;
+  /** A cross-tab cell is two conditions, not one: the row *and* the column. */
+  onPickPair?: (prop: string, value: string, splitProp: string, splitValue: string) => void;
   /** A histogram bar is an interval, so picking one adds two conditions rather than one. */
   onPickRange?: (prop: string, from: number, to: number) => void;
   /** Chart editing: removing a chart is not removing its condition (the docs are explicit). */
@@ -234,7 +237,11 @@ export function ObjectSetCharts({
               <CrossTab
                 chart={chart}
                 applied={applied}
-                onPick={onPick}
+                onPick={(value, splitValue) =>
+                  onPickPair
+                    ? onPickPair(chart.prop, value, chart.split ?? '', splitValue)
+                    : onPick(chart.prop, value)
+                }
               />
             ) : data.length === 0 ? (
               <p className="object-set-chart__empty">{t('objectSet.chartNoValues')}</p>
@@ -314,6 +321,8 @@ function CrossTab({
   chart: ObjectAggregateChart;
   applied: Set<string>;
   onPick: (prop: string, value: string) => void;
+  /** A cross-tab cell is two conditions, not one: the row *and* the column. */
+  onPickPair?: (prop: string, value: string, splitProp: string, splitValue: string) => void;
 }) {
   const rows = [...new Set((chart.cells ?? []).map((cell) => cell.value))];
   const columns = [...new Set((chart.cells ?? []).map((cell) => cell.split))];
@@ -346,7 +355,7 @@ function CrossTab({
                       type="button"
                       className="object-set-crosstab__cell"
                       style={{ opacity: count === 0 ? 0.35 : Math.max(0.45, count / max) }}
-                      onClick={() => onPick(chart.prop, row)}
+                      onClick={() => onPick(row, column)}
                       title={`${row} · ${column}`}
                     >
                       <span className={selected ? 'is-selected' : undefined}>{count || '·'}</span>

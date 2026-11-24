@@ -274,15 +274,19 @@ def aggregate_query(
         f"WITH toString({dim_var}.`{dim_name}`) AS value{split_part}, n AS n{measure_expr} "
         f"WHERE {' AND '.join(null_filters)}"
     )
+    # A metric chart is a ranking of its measure ("which industry earned most"), not of how many objects it holds.
+    # `v IS NULL` first because descending order puts nulls on top, and a value with nothing to measure is not the
+    # largest one.
+    order = "v IS NULL, v DESC" if metric != "count" else "c DESC"
     if split:
         return (
             f"{match} {projection} "
-            f"RETURN value, split, count(DISTINCT n) AS c ORDER BY c DESC LIMIT {int(limit)}"
+            f"RETURN value, split, count(DISTINCT n) AS c ORDER BY {order} LIMIT {int(limit)}"
         )
     measured = f", {metric}(measure) AS v" if metric != "count" else ""
     return (
         f"{match} {projection} "
-        f"RETURN value, count(DISTINCT n) AS c{measured} ORDER BY c DESC LIMIT {int(limit)}"
+        f"RETURN value, count(DISTINCT n) AS c{measured} ORDER BY {order} LIMIT {int(limit)}"
     )
 
 
