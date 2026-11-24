@@ -324,6 +324,7 @@ def aggregate_object_set(
     split: str | None = None,
     compare_filters: list | None = None,
     compare_search: str | None = None,
+    chronological: bool = False,
 ) -> dict:
     """One chart's data for one property over the current object set.
 
@@ -424,6 +425,7 @@ def aggregate_object_set(
                     measure=measure,
                     split=split,
                     compare_where=compare_combined,
+                    chronological=chronological,
                 ),
                 **params,
             )
@@ -461,7 +463,7 @@ def aggregate_object_set(
                 row["measure"] = record["v"]
                 row["baseline_measure"] = record["basv"]
             rows.append(row)
-        return {"prop": prop, "values": rows, "truncated": len(records) > limit}
+        return _chart_result(prop, rows, truncated=len(records) > limit, chronological=chronological)
 
     rows = [
         {"value": record["value"], "count": record["c"]} for record in records[:limit]
@@ -477,7 +479,17 @@ def aggregate_object_set(
         for row, record in zip(rows, records[:limit], strict=True):
             if record["v"] is not None:
                 row["measure"] = record["v"]
-    return {"prop": prop, "values": rows, "truncated": len(records) > limit}
+    return _chart_result(prop, rows, truncated=len(records) > limit, chronological=chronological)
+
+
+def _chart_result(
+    prop: str, rows: list[dict], *, truncated: bool, chronological: bool
+) -> dict:
+    """One chart's payload. `order` tells the client to draw a trend instead of a ranking."""
+    result: dict = {"prop": prop, "values": rows, "truncated": truncated}
+    if chronological:
+        result["order"] = "chronological"
+    return result
 
 
 def get_neo4j_node_by_id(

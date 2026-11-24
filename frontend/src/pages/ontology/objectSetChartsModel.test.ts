@@ -3,6 +3,7 @@ import {
   dimensionalCharts,
   deltaLabel,
   diffCharts,
+  isTimeline,
   formatMeasure,
   groupBySettings,
   intervalLabel,
@@ -142,5 +143,15 @@ describe('an action is verified against the numbers it changed', () => {
     const before = [{ prop: 'x', values: [{ value: 'p', count: 2, measure: 10 }] }];
     const after = [{ prop: 'x', values: [{ value: 'p', count: 2, measure: 7 }] }];
     expect(diffCharts(before, after)[0].moved).toEqual([{ value: 'p', before: 10, after: 7 }]);
+  });
+});
+
+describe('a period axis is a timeline', () => {
+  it('is a timeline only when the server said so, and it is neither a histogram nor a cross-tab', () => {
+    expect(isTimeline({ prop: 'cycle', order: 'chronological', values: [] })).toBe(true);
+    expect(isTimeline({ prop: 'cycle', values: [] })).toBe(false);
+    expect(
+      isTimeline({ prop: 'cycle', order: 'chronological', buckets: [{ from: 0, to: 1, count: 1 }] })
+    ).toBe(false);
   });
 });

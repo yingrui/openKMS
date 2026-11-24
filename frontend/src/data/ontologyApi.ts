@@ -260,6 +260,8 @@ export interface ObjectAggregateChart {
   /** A cross-tab: one cell per (value, split) pair. */
   split?: string;
   cells?: { value: string; split: string; count: number }[];
+  /** `chronological`: the values are periods, in their own order — draw a trend, not a ranking. */
+  order?: 'chronological';
   /** Present when a second set was compared: the same value in that set. */
   baseline?: number;
   baseline_measure?: number;

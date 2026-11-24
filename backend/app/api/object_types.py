@@ -33,6 +33,8 @@ from app.models.object_instance import ObjectInstance
 from app.models.link_type import LinkType
 from app.models.object_type import ObjectType
 from app.services.ontology.api_names import ApiNameError, resolve_api_name
+from app.models.dataset_column import DatasetColumn
+from app.services.data.time_role import resolve_time_role
 from app.services.ontology.object_query import (
     METRICS,
     QueryError as ObjectQueryError,
@@ -896,6 +898,36 @@ def _check_property_names(
         )
 
 
+async def _temporal_properties(db: AsyncSession, obj_type: ObjectType) -> set[str]:
+    """Properties this type holds periods or dates in.
+
+    A chart of a period is a **timeline**: its values have an order of their own, and ranking them by how many
+    objects they hold scrambles the one reading a timeline exists for. The answer comes from the columns
+    (`time_format`) and the declared property type, not from the property's name.
+    """
+    columns = {
+        row.column_name: row
+        for row in (
+            await db.execute(
+                select(DatasetColumn).where(DatasetColumn.dataset_id == obj_type.dataset_id)
+            )
+        ).scalars().all()
+    } if obj_type.dataset_id else {}
+    out: set[str] = set()
+    for prop in obj_type.properties or []:
+        if not isinstance(prop, dict) or not prop.get("name"):
+            continue
+        name = str(prop["name"])
+        column = columns.get(name)
+        is_time, _ = resolve_time_role(
+            datatype=str(prop.get("type") or ""),
+            time_format=column.time_format if column else None,
+        )
+        if is_time:
+            out.add(name)
+    return out
+
+
 async def _object_link_info(db: AsyncSession, obj_type: ObjectType) -> dict[str, tuple[str, str]]:
     """`link api_name → (neo4j rel type, 'out'|'in')` for the links touching this type.
 
@@ -982,6 +1014,19 @@ async def aggregate_objects(
         raise HTTPException(status_code=409, detail="Ontology objects are read from the graph.")
     label = object_label(obj_type)
 
+    # Which charts are timelines: the queried type's own period properties, and a neighbour's through a link.
+    temporal = await _temporal_properties(db, obj_type)
+    link_targets = await _known_link_targets(db, obj_type)
+    timeline: set[str] = set()
+    for name in prop:
+        bare = name[1:].partition("/") if name.startswith("@") else None
+        if bare and bare[1]:
+            other = link_targets.get(bare[0])
+            if other and bare[1] in await _temporal_properties(db, other):
+                timeline.add(name)
+        elif name in temporal:
+            timeline.add(name)
+
     def _run(driver):
         return [
             aggregate_object_set(
@@ -1000,6 +1045,7 @@ async def aggregate_objects(
                     parse_object_filters(compare_f, []) if compare_f else None
                 ),
                 compare_search=compare_search,
+                chronological=name in timeline,
             )
             for name in prop
         ]

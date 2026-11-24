@@ -15,6 +15,11 @@ export function isIdentifierChart(chart: Pick<ObjectAggregateChart, 'values'>): 
   return values.length > 1 && values.every((value) => value.count === 1);
 }
 
+/** A chart of a period property: the values are in time order, so it is read as a trend. */
+export function isTimeline(chart: ObjectAggregateChart): boolean {
+  return chart.order === 'chronological' && !isHistogram(chart) && !chart.cells;
+}
+
 /** A histogram is drawn as it arrives; only value distributions can be identifiers. */
 export function isHistogram(chart: ObjectAggregateChart): boolean {
   return (chart.buckets?.length ?? 0) > 0;

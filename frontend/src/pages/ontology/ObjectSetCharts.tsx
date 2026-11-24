@@ -1,7 +1,17 @@
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import {
+  Bar,
+  BarChart,
+  Cell,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { fetchObjectAggregate, type ObjectAggregateChart } from '../../data/ontologyApi';
 import { EmptyState } from '../../styles/design-system/EmptyState';
 import { Loading } from '../../styles/design-system/Loading';
@@ -13,6 +23,7 @@ import {
   groupBySettings,
   intervalLabel,
   isHistogram,
+  isTimeline,
   type ChartSettings,
 } from './objectSetChartsModel';
 
@@ -277,6 +288,33 @@ export function ObjectSetCharts({
               />
             ) : data.length === 0 ? (
               <p className="object-set-chart__empty">{t('objectSet.chartNoValues')}</p>
+            ) : isTimeline(chart) ? (
+              /* Periods have an order of their own: a trend line says "getting better or worse", which bars ranked
+                 by size cannot say at all. */
+              <ResponsiveContainer width="100%" height={168}>
+                <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 8 }}>
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                  <YAxis hide />
+                  <Tooltip
+                    cursor={{ stroke: 'var(--color-border)' }}
+                    formatter={(value) => [
+                      formatMeasure(Number(value)),
+                      measureLabel ?? t('objectSet.chartCount'),
+                    ]}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="count"
+                    stroke="var(--color-accent)"
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: 'var(--color-accent)' }}
+                    activeDot={{
+                      r: 5,
+                      onClick: (entry: unknown) => pickFromDatum(entry),
+                    }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             ) : isHistogram(chart) ? (
               /* An interval distribution is read across a number line, so it is drawn on one: bars side by side on a
                  category axis of intervals would look exactly like a value distribution. */

@@ -291,6 +291,7 @@ def aggregate_query(
     measure: str | None = None,
     split: str | None = None,
     compare_where: str | None = None,
+    chronological: bool = False,
 ) -> str:
     """The data behind one chart: values of `prop`, optionally split, optionally against a second set.
 
@@ -300,6 +301,9 @@ def aggregate_query(
 
     `metric` turns the chart from "how many" into "how much": `sum`/`avg`/`min`/`max` of `measure` within each value,
     or `p50`/`p90` for the spread a mean hides.
+
+    `chronological` keeps the values' own order instead of ranking them by size: a period axis has one reading, and
+    "the three biggest weeks" is not it.
 
     `compare_where` aggregates **the same property** over a second set (last week, another scenario, everyone) and
     returns both numbers per value. The two sets are computed separately and unioned, because an object may belong to
@@ -332,11 +336,11 @@ def aggregate_query(
     # A metric chart is a ranking of its measure ("which industry earned most"), not of how many objects it holds.
     # `v IS NULL` first because descending order puts nulls on top, and a value with nothing to measure is not the
     # largest one.
-    order = "c DESC"
-    if metric == "avg":
+    order = "value ASC" if chronological else "c DESC"
+    if metric == "avg" and not chronological:
         # Ordering a mean by its sum would rank a big group above a large mean.
         order = "v IS NULL, (v / nv) DESC"
-    elif metric != "count":
+    elif metric != "count" and not chronological:
         order = "v IS NULL, v DESC"
     if split:
         return (

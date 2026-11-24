@@ -219,3 +219,13 @@ def test_a_percentile_is_asked_of_one_set_at_a_time():
     assert "percentileCont(measure, 0.9)" in aggregate_query(
         "Distributor", "", "region", limit=10, metric="p90", measure="lead_time_weeks"
     )
+
+
+def test_a_timeline_keeps_its_own_order_instead_of_ranking_by_size():
+    cypher = aggregate_query("Transaction", "", "trade_date", limit=20, chronological=True)
+    assert "ORDER BY value ASC" in cypher
+    assert "ORDER BY c DESC" not in cypher
+
+
+def test_a_timeline_still_ranks_when_asked_to():
+    assert "ORDER BY c DESC" in aggregate_query("Transaction", "", "trade_date", limit=20)
