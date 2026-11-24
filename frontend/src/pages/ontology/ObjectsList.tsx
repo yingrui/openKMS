@@ -154,6 +154,19 @@ export function ObjectsList() {
   /* Why a card is in the list: the property whose name hit the query, when the name and description did not. */
   const propertyHit = (typeId: string) => matchedProps[typeId];
 
+  /* Saved explorations are found by the same box: their name, or the name of the type they explore. A list that only
+     filters types leaves the explorations unfindable exactly once there are enough of them to matter. */
+  const savedHits = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return saved;
+    return saved.filter((row) =>
+      [row.name, row.object_type_name ?? '', row.object_type_id]
+        .join(' ')
+        .toLowerCase()
+        .includes(needle)
+    );
+  }, [saved, query]);
+
   const removeExploration = async (id: string) => {
     try {
       await deleteExploration(id);
@@ -184,8 +197,11 @@ export function ObjectsList() {
     count: group.object_type_ids.length,
   }));
 
-  const showSaved = nav === 'all' || nav === 'mine';
-  const empty = !loading && sections.length === 0 && !(showSaved && saved.length > 0);
+  /* A query searches the whole home: matching explorations stay visible even while a group is selected, because the
+     group narrows *types* and the caller is looking for a name. */
+  const showSaved =
+    nav === 'all' || nav === 'mine' || (query.trim() !== '' && savedHits.length > 0);
+  const empty = !loading && sections.length === 0 && !(showSaved && savedHits.length > 0);
 
   return (
     <ListPage
@@ -257,14 +273,14 @@ export function ObjectsList() {
 
           {loading ? <Loading label={t('shared.loading')} /> : null}
 
-          {showSaved && saved.length > 0 ? (
+          {showSaved && savedHits.length > 0 ? (
             <section className="ontology-home-group">
               <h2 className="ds-eyebrow ontology-home-group__title">
                 {t('objects.myExplorations')}
-                <span className="ontology-home-group__count">{saved.length}</span>
+                <span className="ontology-home-group__count">{savedHits.length}</span>
               </h2>
               <div className="ontology-home-grid">
-                {saved.map((row) => (
+                {savedHits.map((row) => (
                   <article key={row.id} className="ontology-home-card">
                     <span className="ontology-home-card__icon">
                       <Box size={20} strokeWidth={1.5} aria-hidden />

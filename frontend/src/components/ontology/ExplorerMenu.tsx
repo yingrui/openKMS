@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 import { fetchExplorations, type ExplorationResponse } from '../../data/explorationsApi';
+import { SearchField } from '../../styles/design-system/ListToolbar';
 import './ExplorerMenu.scss';
 
 /**
@@ -17,6 +18,7 @@ export function ExplorerMenu() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [recent, setRecent] = useState<ExplorationResponse[]>([]);
+  const [needle, setNeedle] = useState('');
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export function ExplorerMenu() {
     let cancelled = false;
     void fetchExplorations()
       .then((rows) => {
-        if (!cancelled) setRecent(rows.slice(0, 6));
+        if (!cancelled) setRecent(rows);
       })
       .catch(() => {
         if (!cancelled) setRecent([]);
@@ -43,6 +45,17 @@ export function ExplorerMenu() {
       document.removeEventListener('keydown', onKey);
     };
   }, [open]);
+
+  /* Six recent ones is a shortcut, not a list. Once someone has twenty explorations the menu still has to find one
+     by name, so the query filters the whole set and the recent cut only applies while it is empty. */
+  const matched = needle.trim()
+    ? recent.filter((row) =>
+        [row.name, row.object_type_name ?? '']
+          .join(' ')
+          .toLowerCase()
+          .includes(needle.trim().toLowerCase())
+      )
+    : recent.slice(0, 6);
 
   const go = (to: string) => {
     setOpen(false);
@@ -71,8 +84,21 @@ export function ExplorerMenu() {
           </button>
           {recent.length > 0 ? (
             <>
-              <p className="explorer-menu__label">{t('explorerSections.recent')}</p>
-              {recent.map((row) => (
+              <SearchField
+                compact
+                className="explorer-menu__search"
+                value={needle}
+                onChange={setNeedle}
+                label={t('explorerSections.findExploration')}
+                placeholder={t('explorerSections.findExploration')}
+              />
+              {!needle.trim() ? (
+                <p className="explorer-menu__label">{t('explorerSections.recent')}</p>
+              ) : null}
+              {matched.length === 0 ? (
+                <p className="explorer-menu__label">{t('explorerSections.noMatch')}</p>
+              ) : null}
+              {matched.map((row) => (
                 <Link
                   key={row.id}
                   role="menuitem"

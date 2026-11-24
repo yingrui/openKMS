@@ -400,6 +400,8 @@
     "query": "图查询",
     "aria": "探索与图查询",
     "allExplorations": "我的探索",
-    "recent": "最近打开"
+    "recent": "最近打开",
+    "findExploration": "查找探索",
+    "noMatch": "没有匹配的探索"
   }
 }

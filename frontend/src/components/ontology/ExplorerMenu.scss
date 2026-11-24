@@ -46,6 +46,11 @@
   background: var(--color-bg-muted);
 }
 
+/* The panel's own search: the shared compact pill, one row above the list it filters. */
+.explorer-menu__search {
+  margin-bottom: var(--space-1);
+}
+
 .explorer-menu__label {
   margin: var(--space-2) var(--space-2) var(--space-1);
   color: var(--color-text-muted);

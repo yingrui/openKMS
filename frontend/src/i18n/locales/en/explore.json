@@ -400,6 +400,8 @@
     "query": "Cypher Query",
     "aria": "Explorations and Cypher query",
     "allExplorations": "My explorations",
-    "recent": "Recently opened"
+    "recent": "Recently opened",
+    "findExploration": "Find an exploration",
+    "noMatch": "No exploration matches"
   }
 }

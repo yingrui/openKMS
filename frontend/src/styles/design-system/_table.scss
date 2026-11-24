@@ -134,8 +134,10 @@
 
 /* Inside a popover: the 36px box and the 200px floor are both larger than the panel. */
 .ds-search--compact {
+  /* 2rem rather than the toolbar's 2.25rem: a panel row, but still a readable field — `height: auto` collapsed it to
+     the input's line box, which read as a text input that had lost its box. */
   height: auto;
-  min-height: 0;
+  min-height: var(--space-8);
   max-width: none;
   min-width: 0;
   padding: 0 var(--space-2);
