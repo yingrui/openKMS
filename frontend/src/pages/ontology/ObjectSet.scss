@@ -199,6 +199,12 @@
   margin-bottom: var(--space-3);
 }
 
+.object-set-toolbar__total {
+  margin-right: auto;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 .object-set-toolbar__search {
   flex: 1 1 auto;
   width: auto;
@@ -836,4 +842,65 @@
 
 .object-set-select {
   width: 2rem;
+}
+
+/* Comparing the chart with a second set: the control, and the tooltip that explains the two bars. */
+.object-set-compare {
+  position: relative;
+}
+
+.object-set-compare__panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 15rem;
+  max-width: 22rem;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-lg);
+
+  button {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: var(--space-1) var(--space-2);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--color-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-bg-muted);
+    }
+  }
+}
+
+.object-set-compare__label,
+.object-set-compare__meta {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.object-set-compare__name {
+  font-size: var(--text-sm);
+}
+
+.object-set-chart__tip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  font-size: var(--text-xs);
+  color: var(--color-text);
 }

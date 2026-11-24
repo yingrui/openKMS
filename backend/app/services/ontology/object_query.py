@@ -150,6 +150,7 @@ def where_clause(
     *,
     link_info: dict[str, tuple[str, str]],
     prefix: str = "n",
+    param_prefix: str = "f",
 ) -> tuple[str, dict]:
     """`(WHERE … , params)` for a node variable.
 
@@ -160,7 +161,7 @@ def where_clause(
     parts: list[str] = []
     params: dict = {}
     for index, flt in enumerate(filters):
-        key = f"f_{index}"
+        key = f"{param_prefix}_{index}"
         if flt.via is None:
             parts.append(_comparison(f"{prefix}.`{flt.prop}`", flt.op, key, flt.value))
             params[key] = flt.value
@@ -208,7 +209,11 @@ def split_link_property(prop: str) -> tuple[str, str] | None:
     return link, name
 
 
-METRICS = ("count", "sum", "avg", "min", "max")
+METRICS = ("count", "sum", "avg", "min", "max", "p50", "p90")
+
+#: Metrics that can be compared against a second set. A percentile of two sets cannot be combined into one, and
+#: neither can a min or a max, so those are asked one set at a time.
+COMPARABLE_METRICS = ("count", "sum", "avg")
 
 
 def _link_step(
@@ -228,30 +233,18 @@ def _link_step(
     return f" MATCH (n){arrow}({alias})", alias, name, True
 
 
-def aggregate_query(
+def _aggregate_branch(
     label: str,
     where: str,
     prop: str,
     *,
     limit: int,
-    link_info: dict[str, tuple[str, str]] | None = None,
-    metric: str = "count",
-    measure: str | None = None,
-    split: str | None = None,
-) -> str:
-    """The data behind one chart: values of `prop`, optionally split by a second property.
-
-    A chart may read the queried type or a neighbour (Palantir's charts do both: "these distributors, by the cycle of
-    the plans they are in"). Counting is always `count(DISTINCT n)` — one object reachable twice through a
-    relationship is still one object, and with a split the count has to stay a count of objects too.
-
-    `metric` turns the chart from "how many" into "how much": `sum`/`avg`/`min`/`max` of `measure` within each value.
-    """
-    if metric not in METRICS:
-        raise QueryError(f"unknown metric `{metric}`; one of {', '.join(METRICS)}")
-    if metric != "count" and not measure:
-        raise QueryError(f"`{metric}` needs a `measure` property")
-
+    link_info: dict[str, tuple[str, str]] | None,
+    metric: str,
+    measure: str | None,
+    split: str | None,
+) -> tuple[str, str, dict]:
+    """One `MATCH … WITH … RETURN` block: `(match, projection, columns)` for a single set."""
     match = f"MATCH (n:{label}) {where}"
     step, dim_var, dim_name, _ = _link_step(prop, "m", link_info)
     match += step
@@ -268,25 +261,136 @@ def aggregate_query(
         match += step3
         measure_expr = f", toFloat({measure_var}.`{measure_name}`) AS measure"
 
-    # `WHERE` belongs before `RETURN`, so every filter lives in the projection's own WHERE.
     null_filters = ["value IS NOT NULL"] + (["split IS NOT NULL"] if split else [])
     projection = (
         f"WITH toString({dim_var}.`{dim_name}`) AS value{split_part}, n AS n{measure_expr} "
         f"WHERE {' AND '.join(null_filters)}"
     )
+    columns = "count(DISTINCT n) AS c"
+    if metric == "count":
+        pass
+    elif metric in ("p50", "p90"):
+        # `percentileCont(value, percentile)` — the value comes first, which reads backwards until it does not.
+        columns += f", percentileCont(measure, {0.5 if metric == 'p50' else 0.9}) AS v"
+    elif metric == "avg":
+        # A mean of one set cannot be averaged with a mean of another; carry the sum and the count.
+        columns += ", sum(measure) AS v, count(measure) AS nv"
+    else:
+        columns += f", {metric}(measure) AS v"
+    return match, projection, {"columns": columns}
+
+
+def aggregate_query(
+    label: str,
+    where: str,
+    prop: str,
+    *,
+    limit: int,
+    link_info: dict[str, tuple[str, str]] | None = None,
+    metric: str = "count",
+    measure: str | None = None,
+    split: str | None = None,
+    compare_where: str | None = None,
+) -> str:
+    """The data behind one chart: values of `prop`, optionally split, optionally against a second set.
+
+    A chart may read the queried type or a neighbour (Palantir's charts do both: "these distributors, by the cycle of
+    the plans they are in"). Counting is always `count(DISTINCT n)` — one object reachable twice through a
+    relationship is still one object, and with a split the count has to stay a count of objects too.
+
+    `metric` turns the chart from "how many" into "how much": `sum`/`avg`/`min`/`max` of `measure` within each value,
+    or `p50`/`p90` for the spread a mean hides.
+
+    `compare_where` aggregates **the same property** over a second set (last week, another scenario, everyone) and
+    returns both numbers per value. The two sets are computed separately and unioned, because an object may belong to
+    both and a single pass with a `CASE` would count it once.
+    """
+    if metric not in METRICS:
+        raise QueryError(f"unknown metric `{metric}`; one of {', '.join(METRICS)}")
+    if metric != "count" and not measure:
+        raise QueryError(f"`{metric}` needs a `measure` property")
+    if compare_where is not None and metric not in COMPARABLE_METRICS:
+        raise QueryError(
+            f"`{metric}` cannot be compared with another set; use one of {', '.join(COMPARABLE_METRICS)}"
+        )
+
+    if compare_where is not None:
+        return _compare_aggregate_query(
+            label,
+            where,
+            compare_where,
+            prop,
+            limit=limit,
+            link_info=link_info,
+            metric=metric,
+            measure=measure,
+        )
+
+    match, projection, columns = _aggregate_branch(
+        label, where, prop, limit=limit, link_info=link_info, metric=metric, measure=measure, split=split
+    )
     # A metric chart is a ranking of its measure ("which industry earned most"), not of how many objects it holds.
     # `v IS NULL` first because descending order puts nulls on top, and a value with nothing to measure is not the
     # largest one.
-    order = "v IS NULL, v DESC" if metric != "count" else "c DESC"
+    order = "c DESC"
+    if metric == "avg":
+        # Ordering a mean by its sum would rank a big group above a large mean.
+        order = "v IS NULL, (v / nv) DESC"
+    elif metric != "count":
+        order = "v IS NULL, v DESC"
     if split:
         return (
             f"{match} {projection} "
             f"RETURN value, split, count(DISTINCT n) AS c ORDER BY {order} LIMIT {int(limit)}"
         )
-    measured = f", {metric}(measure) AS v" if metric != "count" else ""
     return (
         f"{match} {projection} "
-        f"RETURN value, count(DISTINCT n) AS c{measured} ORDER BY {order} LIMIT {int(limit)}"
+        f"RETURN value, {columns['columns']} ORDER BY {order} LIMIT {int(limit)}"
+    )
+
+
+def _compare_aggregate_query(
+    label: str,
+    where: str,
+    compare_where: str,
+    prop: str,
+    *,
+    limit: int,
+    link_info: dict[str, tuple[str, str]] | None,
+    metric: str,
+    measure: str | None,
+) -> str:
+    """Both sets, one answer per value: current, baseline, and the delta the reader actually wants."""
+    current = _aggregate_branch(
+        label, where, prop, limit=limit, link_info=link_info, metric=metric, measure=measure, split=None
+    )
+    baseline = _aggregate_branch(
+        label, compare_where, prop, limit=limit, link_info=link_info, metric=metric, measure=measure, split=None
+    )
+    columns = [
+        "value",
+        "sum(CASE WHEN side = 'cur' THEN c ELSE 0 END) AS c",
+        "sum(CASE WHEN side = 'cmp' THEN c ELSE 0 END) AS base",
+    ]
+    if metric == "sum":
+        columns += [
+            "sum(CASE WHEN side = 'cur' THEN v ELSE 0 END) AS v",
+            "sum(CASE WHEN side = 'cmp' THEN v ELSE 0 END) AS basv",
+        ]
+    elif metric == "avg":
+        # A mean is carried as its sum and its count until the very end, so one set's mean is never averaged
+        # with another set's mean.
+        columns += [
+            "sum(CASE WHEN side = 'cur' THEN v ELSE 0 END) AS v",
+            "sum(CASE WHEN side = 'cmp' THEN v ELSE 0 END) AS basv",
+            "sum(CASE WHEN side = 'cur' THEN nv ELSE 0 END) AS nv",
+            "sum(CASE WHEN side = 'cmp' THEN nv ELSE 0 END) AS basnv",
+        ]
+    return (
+        f"CALL {{ {current[0]} {current[1]} RETURN value, {current[2]['columns']}, 'cur' AS side "
+        f"UNION ALL "
+        f"{baseline[0]} {baseline[1]} RETURN value, {baseline[2]['columns']}, 'cmp' AS side }} "
+        f"RETURN {', '.join(columns)} ORDER BY c DESC LIMIT {int(limit)}"
     )
 
 

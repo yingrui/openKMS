@@ -418,7 +418,14 @@
     "actionDone": "成功 {{succeeded}}，拒绝 {{failed}}",
     "actionFailed": "动作未能执行",
     "selectAll": "选中本页全部",
-    "selectObject": "选择 {{name}}"
+    "selectObject": "选择 {{name}}",
+    "compare": "对比",
+    "compareWith": "对比 {{name}}",
+    "compareNone": "不对比",
+    "compareAll": "全部对象（全量）",
+    "compareExplorations": "已保存的探索",
+    "chartComparedWith": "对比 {{name}}",
+    "chartBaseline": "对比集"
   },
   "explorerSections": {
     "explorations": "探索",

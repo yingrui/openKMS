@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { fetchOntologyFunctions, type OntologyFunctionResponse } from '../../data/ontologyFunctionsApi';
 
-export function useOntologyFunctionsList(source?: 'code' | 'llm') {
+export function useOntologyFunctionsList(source?: 'code' | 'logic') {
   const { t } = useTranslation('ontology');
   const [items, setItems] = useState<OntologyFunctionResponse[]>([]);
   const [loading, setLoading] = useState(true);

@@ -250,10 +250,19 @@ export interface ObjectAggregateChart {
   /** `prop` is the queried type's property, or `@link/property` when it reads a neighbour. */
   prop: string;
   /** A value distribution: the property as text, how many objects hold it, and the metric when one was asked for. */
-  values?: { value: string; count: number; measure?: number }[];
+  values?: {
+    value: string;
+    count: number;
+    measure?: number;
+    baseline?: number;
+    baseline_measure?: number;
+  }[];
   /** A cross-tab: one cell per (value, split) pair. */
   split?: string;
   cells?: { value: string; split: string; count: number }[];
+  /** Present when a second set was compared: the same value in that set. */
+  baseline?: number;
+  baseline_measure?: number;
   /** A numeric property arrives as intervals instead — the server decides, from the data. */
   buckets?: { from: number; to: number; count: number }[];
   min?: number;
@@ -277,9 +286,11 @@ export async function fetchObjectAggregate(
     limit?: number;
     /** Ask for intervals; a text property still comes back as values. */
     buckets?: number;
-    metric?: 'count' | 'sum' | 'avg' | 'min' | 'max';
+    metric?: 'count' | 'sum' | 'avg' | 'min' | 'max' | 'p50' | 'p90';
     measure?: string;
     split?: string;
+    /** A second set to aggregate the same chart over: what the numbers are compared against. */
+    compare?: { filters: string[]; search?: string };
   }
 ): Promise<{ charts: ObjectAggregateChart[] }> {
   const usp = new URLSearchParams();
@@ -288,6 +299,12 @@ export async function fetchObjectAggregate(
   if (params.metric && params.metric !== 'count') usp.set('metric', params.metric);
   if (params.measure) usp.set('measure', params.measure);
   if (params.split) usp.set('split', params.split);
+  if (params.compare) {
+    for (const filter of params.compare.filters) {
+      if (filter.trim()) usp.append('compare_f', filter);
+    }
+    if (params.compare.search) usp.set('compare_search', params.compare.search);
+  }
   if (params.search) usp.set('search', params.search);
   for (const filter of params.filters ?? []) {
     if (filter.trim()) usp.append('f', filter);

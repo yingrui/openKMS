@@ -939,6 +939,11 @@ async def aggregate_objects(
     metric: str = Query("count", description="count | sum | avg | min | max of `measure` within each value"),
     measure: str | None = Query(None, description="The numeric property a non-count metric aggregates"),
     split: str | None = Query(None, description="A second property: the chart becomes a cross-tab"),
+    compare_f: list[str] = Query(
+        default=[],
+        description="Conditions of a **second set** to compare against: the same chart, both numbers per value",
+    ),
+    compare_search: str | None = Query(None, description="Text search for that second set"),
     db: AsyncSession = Depends(get_db),
 ):
     """Property distributions over the current object set — one chart per `prop`.
@@ -991,6 +996,10 @@ async def aggregate_objects(
                 metric=metric,
                 measure=measure,
                 split=split,
+                compare_filters=(
+                    parse_object_filters(compare_f, []) if compare_f else None
+                ),
+                compare_search=compare_search,
             )
             for name in prop
         ]

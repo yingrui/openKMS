@@ -1262,7 +1262,7 @@
   "editor": {
     "title": "Functions",
     "subtitle": "Create and edit Python ontology functions.",
-    "allFunctions": "All functions",
+    "allFunctions": "Functions",
     "create": "Create function",
     "apiName": "API name",
     "displayName": "Display name",
@@ -1349,9 +1349,9 @@
     "archiveAndDeleteTitle": "This Function is published",
     "archiveAndDeleteMessage": "Published Functions can be called, so they are archived first and then deleted. Callers that use it by api name will break.",
     "archiveAndDelete": "Archive and delete",
-    "logicTitle": "LLM functions",
+    "logicTitle": "Logic functions",
     "logicSubtitle": "Functions built from a prompt and ontology tools instead of source code.",
-    "logicEmpty": "No LLM functions yet. Building them is not available in this editor yet — code functions live under Functions."
+    "logicEmpty": "No Logic functions yet. Building them is not available in this editor yet — code functions live under Functions."
   },
   "dataSources": {
     "title": "Data sources",

@@ -32,7 +32,7 @@ export function intervalLabel(from: number, to: number): string {
 
 /** What a chart measures and what it splits by, besides the property it groups on. */
 export interface ChartSettings {
-  metric?: 'count' | 'sum' | 'avg' | 'min' | 'max';
+  metric?: 'count' | 'sum' | 'avg' | 'min' | 'max' | 'p50' | 'p90';
   measure?: string;
   split?: string;
 }
@@ -80,4 +80,12 @@ export function settingsOf(charts: ChartSpec[]): Record<string, ChartSettings> {
     if (Object.keys(settings).length > 0) out[chart.prop] = settings;
   }
   return out;
+}
+
+/** `+12%` / `-3%` — a difference is easier to read as a share when the two numbers are far apart. */
+export function deltaLabel(current: number, baseline: number): string {
+  if (!baseline) return current ? '+∞' : '0';
+  const pct = ((current - baseline) / baseline) * 100;
+  const rounded = Math.round(pct);
+  return `${rounded > 0 ? '+' : ''}${rounded}%`;
 }

@@ -31,7 +31,7 @@
     "status": "状态",
     "developmentStatus": "开发状态",
     "createInEditor": "在函数编辑器中创建",
-    "backToList": "全部函数",
+    "backToList": "函数",
     "overview": "概览",
     "versions": "版本",
     "observability": "可观测性",
@@ -1255,7 +1255,7 @@
   "editor": {
     "title": "函数",
     "subtitle": "创建并编辑 Python 本体函数。",
-    "allFunctions": "全部函数",
+    "allFunctions": "函数",
     "create": "创建函数",
     "apiName": "API 名称",
     "displayName": "显示名称",
@@ -1342,9 +1342,10 @@
     "archiveAndDeleteTitle": "该 Function 处于已发布状态",
     "archiveAndDeleteMessage": "已发布的 Function 可被调用，因此先归档再删除。按 api name 调用它的地方会失败。",
     "archiveAndDelete": "归档并删除",
-    "logicTitle": "LLM 函数",
+    "logicTitle": "逻辑函数",
     "logicSubtitle": "由提示词与本体工具构成、而不是写源码的函数。",
-    "logicEmpty": "还没有 LLM 函数。这个编辑器暂时还不能创建它们 —— 代码函数请到「函数」页。"
+    "logicEmpty": "还没有逻辑函数。这个编辑器暂时还不能创建它们 —— 代码函数请到「函数」页。",
+    "backToList": "函数"
   },
   "dataSources": {
     "title": "数据源",

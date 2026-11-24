@@ -418,7 +418,14 @@
     "actionDone": "{{succeeded}} done, {{failed}} refused",
     "actionFailed": "The action could not run",
     "selectAll": "Select all rows on this page",
-    "selectObject": "Select {{name}}"
+    "selectObject": "Select {{name}}",
+    "compare": "Compare",
+    "compareWith": "vs {{name}}",
+    "compareNone": "No comparison",
+    "compareAll": "Everyone (all objects)",
+    "compareExplorations": "A saved exploration",
+    "chartComparedWith": "vs {{name}}",
+    "chartBaseline": "Baseline"
   },
   "explorerSections": {
     "explorations": "Explorations",

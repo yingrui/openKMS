@@ -76,9 +76,9 @@ export interface OntologyFunctionExecutionResponse {
 
 const base = `${config.apiUrl}/api/ontology/functions`;
 
-/** `source` is the authoring mode: `code` (today) or `llm` (Logic functions). Omitted = the whole registry. */
+/** `source` is the authoring mode: `code` (source files) or `logic` (Logic functions). Omitted = whole registry. */
 export async function fetchOntologyFunctions(params?: {
-  source?: 'code' | 'llm';
+  source?: 'code' | 'logic';
 }): Promise<OntologyFunctionListResponse> {
   const qs = params?.source ? `?source=${params.source}` : '';
   return ontologyFetch<OntologyFunctionListResponse>(

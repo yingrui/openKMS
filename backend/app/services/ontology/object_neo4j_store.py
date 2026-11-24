@@ -322,6 +322,8 @@ def aggregate_object_set(
     metric: str = "count",
     measure: str | None = None,
     split: str | None = None,
+    compare_filters: list | None = None,
+    compare_search: str | None = None,
 ) -> dict:
     """One chart's data for one property over the current object set.
 
@@ -341,6 +343,20 @@ def aggregate_object_set(
     if where:
         parts.append(where.removeprefix("WHERE "))
     combined = f"WHERE {' AND '.join(parts)}" if parts else ""
+
+    compare_combined: str | None = None
+    if compare_filters is not None or compare_search is not None:
+        # The baseline is a *set*, not "the rest": it is built exactly like the current one, with its own parameters,
+        # and may overlap it (an object can be in both, and then it counts in both).
+        compare_parts, compare_params = _search_clause(compare_search)
+        compare_where, compare_filter_params = where_clause(
+            compare_filters or [], link_info=link_info or {}, param_prefix="c"
+        )
+        params.update(compare_params)
+        params.update(compare_filter_params)
+        if compare_where:
+            compare_parts.append(compare_where.removeprefix("WHERE "))
+        compare_combined = f"WHERE {' AND '.join(compare_parts)}" if compare_parts else ""
 
     if buckets > 0:
         try:
@@ -407,6 +423,7 @@ def aggregate_object_set(
                     metric=metric,
                     measure=measure,
                     split=split,
+                    compare_where=compare_combined,
                 ),
                 **params,
             )
@@ -425,10 +442,37 @@ def aggregate_object_set(
             "cells": cells,
             "truncated": len(records) > cell_limit,
         }
+    if compare_combined is not None:
+        rows = []
+        for record in records[:limit]:
+            row = {
+                "value": record["value"],
+                "count": record["c"],
+                "baseline": record["base"],
+            }
+            if metric == "avg":
+                row["measure"] = (
+                    record["v"] / record["nv"] if record["nv"] else None
+                )
+                row["baseline_measure"] = (
+                    record["basv"] / record["basnv"] if record["basnv"] else None
+                )
+            elif metric != "count":
+                row["measure"] = record["v"]
+                row["baseline_measure"] = record["basv"]
+            rows.append(row)
+        return {"prop": prop, "values": rows, "truncated": len(records) > limit}
+
     rows = [
         {"value": record["value"], "count": record["c"]} for record in records[:limit]
     ]
-    if metric != "count":
+    if metric == "avg":
+        # The query carries a mean as sum + count, so that a comparison can combine two sets without averaging two
+        # means. One set, one division, here.
+        for row, record in zip(rows, records[:limit], strict=True):
+            if record["nv"]:
+                row["measure"] = record["v"] / record["nv"]
+    elif metric != "count":
         # A value can have objects but no measurement in it; the number is then absent, not zero.
         for row, record in zip(rows, records[:limit], strict=True):
             if record["v"] is not None:

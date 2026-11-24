@@ -175,7 +175,9 @@ def test_a_metric_turns_the_chart_from_how_many_into_how_much():
         "Distributor", "", "region", limit=10, metric="avg", measure="lead_time_weeks"
     )
     assert "toFloat(n.`lead_time_weeks`) AS measure" in cypher
-    assert "avg(measure) AS v" in cypher
+    # A mean is carried as sum + count all the way out, so it can be combined with another set's.
+    assert "sum(measure) AS v, count(measure) AS nv" in cypher
+    assert "ORDER BY v IS NULL, (v / nv) DESC" in cypher
     # Counting stays object based even when a second expression joins in.
     assert "count(DISTINCT n) AS c" in cypher
 
@@ -185,3 +187,35 @@ def test_a_metric_without_a_measure_or_an_unknown_one_is_refused():
         aggregate_query("Distributor", "", "region", limit=10, metric="avg")
     with pytest.raises(QueryError):
         aggregate_query("Distributor", "", "region", limit=10, metric="median", measure="x")
+
+
+def test_a_comparison_aggregates_both_sets_and_never_mixes_their_means():
+    cypher = aggregate_query(
+        "Distributor",
+        "WHERE n.`region` = $f_0",
+        "region",
+        limit=10,
+        metric="avg",
+        measure="lead_time_weeks",
+        compare_where="WHERE n.`country` = $c_0",
+    )
+    # Two branches, so an object in both sets counts in both.
+    assert cypher.count("UNION ALL") == 1
+    assert "sum(CASE WHEN side = 'cur' THEN c ELSE 0 END) AS c" in cypher
+    assert "sum(CASE WHEN side = 'cmp' THEN c ELSE 0 END) AS base" in cypher
+    # A mean is carried as sum + count to the end: one set's mean is never averaged with another's.
+    assert "AS basnv" in cypher
+
+
+def test_a_percentile_is_asked_of_one_set_at_a_time():
+    with pytest.raises(QueryError):
+        aggregate_query(
+            "Distributor", "", "region", limit=10, metric="p50", measure="lead_time_weeks",
+            compare_where="",
+        )
+    assert "percentileCont(measure, 0.5)" in aggregate_query(
+        "Distributor", "", "region", limit=10, metric="p50", measure="lead_time_weeks"
+    )
+    assert "percentileCont(measure, 0.9)" in aggregate_query(
+        "Distributor", "", "region", limit=10, metric="p90", measure="lead_time_weeks"
+    )

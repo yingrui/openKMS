@@ -7,6 +7,7 @@ import { EmptyState } from '../../styles/design-system/EmptyState';
 import { Loading } from '../../styles/design-system/Loading';
 import { ObjectSetChartSettings } from './ObjectSetChartSettings';
 import {
+  deltaLabel,
   dimensionalCharts,
   formatMeasure,
   groupBySettings,
@@ -31,6 +32,7 @@ export function ObjectSetCharts({
   properties,
   settings,
   options,
+  compare,
   onSettings,
   onPick,
   onPickPair,
@@ -49,6 +51,8 @@ export function ObjectSetCharts({
   settings?: Record<string, ChartSettings>;
   /** Properties a chart may measure or split by — the type's own and its neighbours'. */
   options: { value: string; label: string }[];
+  /** A second set to aggregate every chart over, when the caller asked for a comparison. */
+  compare?: { filters: string[]; search?: string; label: string };
   onSettings?: (prop: string, next: ChartSettings) => void;
   onPick: (prop: string, value: string) => void;
   /** A cross-tab cell is two conditions, not one: the row *and* the column. */
@@ -94,6 +98,7 @@ export function ObjectSetCharts({
             limit: 20,
             buckets: 8,
             ...group.settings,
+            compare: compare ? { filters: compare.filters, search: compare.search } : undefined,
           })
         )
       );
@@ -110,7 +115,7 @@ export function ObjectSetCharts({
     } finally {
       setLoading(false);
     }
-  }, [typeId, search, filters, groups]);
+  }, [typeId, search, filters, groups, compare]);
 
   useEffect(() => {
     void load();
@@ -159,6 +164,7 @@ export function ObjectSetCharts({
               key: value.value,
               label: value.value,
               count: value.measure ?? value.count,
+              baseline: value.baseline_measure ?? value.baseline,
               selected: applied.has(`${chart.prop}\u0000${value.value}`),
               pick: () => onPick(chart.prop, value.value),
             }));
@@ -173,6 +179,11 @@ export function ObjectSetCharts({
                   </span>
                 ) : null}
                 {measureLabel ? <span className="object-set-chart__more">{measureLabel}</span> : null}
+                {compare ? (
+                  <span className="object-set-chart__more">
+                    {t('objectSet.chartComparedWith', { name: compare.label })}
+                  </span>
+                ) : null}
                 {isHistogram(chart) && chart.min !== undefined && chart.max !== undefined ? (
                   <span className="object-set-chart__more">
                     {intervalLabel(chart.min, chart.max)}
@@ -276,16 +287,39 @@ export function ObjectSetCharts({
                   />
                   <Tooltip
                     cursor={{ fill: 'var(--color-bg-muted)' }}
-                    formatter={(value) => [
-                      formatMeasure(Number(value)),
-                      measureLabel ?? t('objectSet.chartCount'),
-                    ]}
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const row = payload[0]?.payload as
+                        | { label: string; count: number; baseline?: number }
+                        | undefined;
+                      if (!row) return null;
+                      return (
+                        <div className="object-set-chart__tip">
+                          <strong>{row.label}</strong>
+                          <span>
+                            {formatMeasure(row.count)} {measureLabel ?? t('objectSet.chartCount')}
+                          </span>
+                          {row.baseline !== undefined ? (
+                            <>
+                              <span>
+                                {formatMeasure(row.baseline)}{' '}
+                                {compare?.label ?? t('objectSet.chartBaseline')}
+                              </span>
+                              <span>{deltaLabel(row.count, row.baseline)}</span>
+                            </>
+                          ) : null}
+                        </div>
+                      );
+                    }}
                   />
                   <Bar dataKey="count" radius={[0, 3, 3, 0]} onClick={pickFromDatum}>
                     {data.map((entry) => (
                       <Cell key={entry.key} cursor="pointer" fill={fillFor(entry.selected)} />
                     ))}
                   </Bar>
+                  {compare ? (
+                    <Bar dataKey="baseline" fill="var(--color-border)" radius={[0, 3, 3, 0]} />
+                  ) : null}
                 </BarChart>
               </ResponsiveContainer>
             )}

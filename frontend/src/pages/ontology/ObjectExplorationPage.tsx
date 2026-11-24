@@ -10,7 +10,6 @@ import {
   type ObjectInstanceResponse,
   type ObjectTypeResponse,
   type LinkTypeResponse,
-  type PropertyDef,
 } from '../../data/ontologyApi';
 import { EmptyState } from '../../styles/design-system/EmptyState';
 import { ListPage } from '../../styles/design-system/ListPage';
@@ -19,6 +18,7 @@ import {
   createExploration,
   fetchExploration,
   fetchExplorationLayout,
+  fetchExplorations,
   filterTexts,
   type ExplorationLayoutChoice,
   patchExploration,
@@ -31,6 +31,8 @@ import { ExplorerMenu } from '../../components/ontology/ExplorerMenu';
 import { fetchOntologyActionTypes, type OntologyActionTypeResponse } from '../../data/ontologyActionsApi';
 import { ObjectSetActionDialog } from './ObjectSetActionDialog';
 import { ObjectSetChartAdd } from './ObjectSetChartAdd';
+import { ObjectSetComparePicker } from './ObjectSetComparePicker';
+import { useObjectSetCompare } from './useObjectSetCompare';
 import { ObjectSetActionMenu } from './ObjectSetActionMenu';
 import { ObjectSetResultsTable } from './ObjectSetResultsTable';
 import { useObjectSetAction } from './useObjectSetAction';
@@ -40,7 +42,7 @@ import { ObjectSetCharts } from './ObjectSetCharts';
 import { ObjectSetFilters } from './ObjectSetFilters';
 import { formatFilter } from './objectSetCondition';
 import { settingsOf, type ChartSettings, type ChartSpec } from './objectSetChartsModel';
-import { linkedChartOptions as linkedChartOptionsFor } from './linkedChartOptions';
+import { useChartCatalog } from './useChartCatalog';
 import './ObjectSet.scss';
 
 /**
@@ -103,6 +105,8 @@ export function ObjectExplorationPage() {
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
   const [layoutChoices, setLayoutChoices] = useState<ExplorationLayoutChoice[]>([]);
+  const [allSaved, setAllSaved] = useState<ExplorationResponse[]>([]);
+  const { set: compareSet } = useObjectSetCompare();
   const { isAdmin } = useAuth();
 
   const updateParams = (mutate: (params: URLSearchParams) => void) => {
@@ -166,6 +170,13 @@ export function ObjectExplorationPage() {
       })
       .catch(() => {
         if (!cancelled) setTypeById({});
+      });
+    void fetchExplorations()
+      .then((rows) => {
+        if (!cancelled) setAllSaved(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setAllSaved([]);
       });
     void fetchOntologyActionTypes({ object_type_id: typeId })
       .then((rows) => {
@@ -289,47 +300,13 @@ export function ObjectExplorationPage() {
     };
   }, [savedId, setSearchParams, t]);
 
-  const properties: PropertyDef[] = useMemo(
-    () => (objectType?.properties ?? []),
-    [objectType]
-  );
-
-  /* The charts on screen: a layout seeds them once, then the caller edits the list — add, remove, move. */
-  const builtinCharts = useMemo(
-    () =>
-      [
-        ...(objectType?.display_property ? [objectType.display_property] : []),
-        ...properties.map((p) => p.name),
-      ]
-        .filter((name, index, all) => all.indexOf(name) === index)
-        .slice(0, 6),
-    [objectType, properties]
-  );
-
-  /* Properties reachable through one link, spelled `@<link>/<prop>` — the same string the filters use. */
-  const linkedChartOptions = useMemo(
-    () => linkedChartOptionsFor(links, typeById, typeId),
-    [links, typeById, typeId]
-  );
-
-  const knownChartProps = useMemo(
-    () =>
-      new Set([
-        ...properties.map((p) => p.name),
-        ...linkedChartOptions.map((option) => option.value),
-      ]),
-    [linkedChartOptions, properties]
-  );
-
-  const chartProperties = useMemo(() => {
-    const source = chartProps ?? builtinCharts;
-    return source.filter((name) => knownChartProps.has(name));
-  }, [chartProps, builtinCharts, knownChartProps]);
-
-  const addable = [
-    ...properties.map((p) => ({ value: p.name, label: p.name })),
-    ...linkedChartOptions,
-  ].filter((option) => !chartProperties.includes(option.value));
+  const { properties, options: chartOptions, chartProperties, addable } = useChartCatalog({
+    typeId,
+    objectType,
+    links,
+    typeById,
+    chartProps,
+  });
 
   const removeChart = (prop: string) => {
     setChartProps(chartProperties.filter((name) => name !== prop));
@@ -586,16 +563,29 @@ export function ObjectExplorationPage() {
       {rowsError ? <p className="object-set-refusal">{rowsError}</p> : null}
 
       {perspective === 'explore' ? (
-        <ObjectSetCharts
+        <>
+          <div className="object-set-toolbar">
+            <span className="object-set-toolbar__total">
+              {total === null ? null : t('objectSet.objectCount', { count: total })}
+            </span>
+            <ObjectSetComparePicker
+              label={compareSet?.label ?? null}
+              explorations={saved ? allSaved.filter((row) => row.id !== saved.id) : allSaved}
+              onChange={(next) =>
+                updateParams((params) => {
+                  if (next) params.set('vs', next);
+                  else params.delete('vs');
+                })
+              }
+            />
+          </div>
+          <ObjectSetCharts
           typeId={typeId}
           search={search}
           filters={filters}
           properties={chartProperties}
           settings={chartSettings}
-          options={[
-            ...properties.map((p) => ({ value: p.name, label: p.name })),
-            ...linkedChartOptions,
-          ]}
+          options={chartOptions}
           onSettings={(prop, next) => {
             /* A setting that says nothing is not a setting: drop the keys instead of storing empty ones. */
             const cleaned: ChartSettings = {};
@@ -626,8 +616,10 @@ export function ObjectExplorationPage() {
           onRemove={removeChart}
           onMove={moveChart}
           canMove={chartProperties.length > 1}
+          compare={compareSet ?? undefined}
           footer={<ObjectSetChartAdd options={addable} onAdd={(prop) => setChartProps([...chartProperties, prop])} />}
         />
+        </>
       ) : rowsLoading ? (
         <Loading label={t('objectSet.rowsLoading')} />
       ) : instances.length === 0 ? (

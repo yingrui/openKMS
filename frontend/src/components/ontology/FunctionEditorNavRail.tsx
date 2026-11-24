@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Code2, List, Workflow } from 'lucide-react';
+import { List, Workflow } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export function FunctionEditorNavRail() {
@@ -38,14 +38,6 @@ export function FunctionEditorNavRail() {
         >
           <Workflow size={16} strokeWidth={1.75} aria-hidden />
           <span>{t('logicFunctions')}</span>
-        </NavLink>
-        <NavLink
-          to="/function-editor/new"
-          className={`filter-rail__link${location.pathname === '/function-editor/new' ? ' filter-rail__link--active' : ''}`}
-          title={t('createFunction')}
-        >
-          <Code2 size={16} strokeWidth={1.75} aria-hidden />
-          <span>{t('createFunction')}</span>
         </NavLink>
       </nav>
     </aside>

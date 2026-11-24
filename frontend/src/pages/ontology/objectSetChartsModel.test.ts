@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   dimensionalCharts,
+  deltaLabel,
   formatMeasure,
   groupBySettings,
   intervalLabel,
@@ -94,5 +95,14 @@ describe('measure labels stay readable', () => {
     expect(formatMeasure(1234567)).toBe('1.2M');
     expect(formatMeasure(7)).toBe('7');
     expect(formatMeasure(2.3456)).toBe('2.35');
+  });
+});
+
+describe('a difference reads as a share', () => {
+  it('signs, rounds, and survives a zero baseline', () => {
+    expect(deltaLabel(36, 180)).toBe('-80%');
+    expect(deltaLabel(12, 10)).toBe('+20%');
+    expect(deltaLabel(5, 0)).toBe('+∞');
+    expect(deltaLabel(0, 0)).toBe('0');
   });
 });

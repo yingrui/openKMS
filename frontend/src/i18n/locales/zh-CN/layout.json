@@ -58,7 +58,7 @@
   "ontologyActions": "操作类型",
   "ontologyActionTypes": "操作类型",
   "explore": "探索",
-  "allFunctions": "全部函数",
+  "allFunctions": "函数",
   "createFunction": "创建函数",
   "ontologyManagerNav": "本体管理器导航",
   "objectExplorerNav": "对象浏览器导航",
@@ -116,5 +116,5 @@
   "appTaglineExternalServices": "本体可调用的外部端点：Function 与 Action 的 webhook",
   "ontologyRules": "规则",
   "exploreHome": "探索",
-  "logicFunctions": "LLM 函数"
+  "logicFunctions": "逻辑函数"
 }

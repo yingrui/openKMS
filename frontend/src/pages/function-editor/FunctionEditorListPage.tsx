@@ -6,20 +6,20 @@ import { useOntologyFunctionsList } from "./useOntologyFunctionsList";
 import "../ontology/ontology-admin.scss";
 import "./function-editor.scss";
 
-type Authoring = 'code' | 'llm';
+type Authoring = 'code' | 'logic';
 
 /**
  * One list for both authoring modes — `source` is the only difference.
  *
  * The registry is shared (same table, same versions, same call surface), so two pages would be two copies of this
- * table that drift. The `LLM 函数` entry exists to *find* those functions, not to invent a second kind of artifact.
+ * table that drift. The Logic functions entry exists to *find* those functions, not to invent a second artifact.
  */
 export function FunctionEditorListPage() {
   const { t } = useTranslation("ontology");
   const location = useLocation();
-  const source: Authoring = location.pathname.endsWith("/logic") ? "llm" : "code";
+  const source: Authoring = location.pathname.endsWith("/logic") ? "logic" : "code";
   const { items, loading } = useOntologyFunctionsList(source);
-  const isLogic = source === "llm";
+  const isLogic = source === "logic";
 
   return (
     <ListPage
