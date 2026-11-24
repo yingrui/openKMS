@@ -104,13 +104,19 @@ def normalize_layout(raw: dict | None) -> dict:
         if not isinstance(charts, list):
             raise ExplorationError("layout.charts must be a list of {prop}")
         out["charts"] = [_normalize_chart(entry) for entry in charts]
-    for key in ("columns", "sorts"):
-        value = raw.get(key)
-        if value is None:
-            continue
-        if not isinstance(value, list):
-            raise ExplorationError(f"layout.{key} must be a list")
-        out[key] = value
+    columns = raw.get("columns")
+    if columns is not None:
+        if not isinstance(columns, list):
+            raise ExplorationError("layout.columns must be a list of property names")
+        names = [str(entry).strip() for entry in columns]
+        if any(not name for name in names):
+            raise ExplorationError("layout.columns cannot hold an empty name")
+        out["columns"] = names
+    sorts = raw.get("sorts")
+    if sorts is not None:
+        if not isinstance(sorts, list):
+            raise ExplorationError("layout.sorts must be a list")
+        out["sorts"] = sorts
     perspective = raw.get("perspective")
     if perspective is not None:
         if perspective not in PERSPECTIVES:

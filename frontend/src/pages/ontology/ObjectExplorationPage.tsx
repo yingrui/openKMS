@@ -30,20 +30,19 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ExplorerMenu } from '../../components/ontology/ExplorerMenu';
 import { fetchOntologyActionTypes, type OntologyActionTypeResponse } from '../../data/ontologyActionsApi';
 import { ObjectSetActionDialog } from './ObjectSetActionDialog';
-import { ObjectSetChartAdd } from './ObjectSetChartAdd';
-import { ObjectSetComparePicker } from './ObjectSetComparePicker';
+import { ObjectSetChartBoard } from './ObjectSetChartBoard';
+import { ObjectSetResults } from './ObjectSetResults';
 import { useObjectSetCompare } from './useObjectSetCompare';
 import { ObjectSetActionMenu } from './ObjectSetActionMenu';
-import { ObjectSetActionOutcome } from './ObjectSetActionOutcome';
-import { ObjectSetResultsTable } from './ObjectSetResultsTable';
+
 import { useObjectSetAction } from './useObjectSetAction';
 import { useObjectSetOutcome } from './useObjectSetOutcome';
 import { ExplorationLayoutMenu } from './ExplorationLayoutMenu';
 import { ObjectExplorationSaveDialog } from './ObjectExplorationSaveDialog';
-import { ObjectSetCharts } from './ObjectSetCharts';
 import { ObjectSetFilters } from './ObjectSetFilters';
 import { formatFilter } from './objectSetCondition';
 import { settingsOf, type ChartSettings, type ChartSpec } from './objectSetChartsModel';
+import { parseSortList, toggleSortTerm } from './objectSetSort';
 import { useChartCatalog } from './useChartCatalog';
 import './ObjectSet.scss';
 
@@ -96,6 +95,8 @@ export function ObjectExplorationPage() {
   /* A chart's metric/measure/split, keyed by the property string: the property names the chart, the settings say
      what it asks. Keeping them apart leaves ordering and the layout's chart list exactly as they were. */
   const [chartSettings, setChartSettings] = useState<Record<string, ChartSettings>>({});
+  /* Which properties the results table shows, in order — part of the layout, so it is saved with the exploration. */
+  const [layoutColumns, setLayoutColumns] = useState<string[]>([]);
   const [links, setLinks] = useState<LinkTypeResponse[]>([]);
   /* Actions are the one write an exploration offers: they run on the rows the caller ticked, never on the whole set. */
   const [actions, setActions] = useState<OntologyActionTypeResponse[]>([]);
@@ -130,12 +131,28 @@ export function ObjectExplorationPage() {
       else params.delete('view');
     });
 
+  const toggleRow = (id: string) =>
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const toggleAllRows = () =>
+    setSelected((current) => {
+      /* "Select all" means this page: the table shows one page, and ticking it twice clears it. */
+      const all = instances.every((row) => current.has(row.id));
+      const next = new Set(current);
+      for (const row of instances) {
+        if (all) next.delete(row.id);
+        else next.add(row.id);
+      }
+      return next;
+    });
+
   const toggleSort = (prop: string) => {
-    const term = sort
-      .split(',')
-      .map((entry) => entry.trim())
-      .find((entry) => entry.replace(/^-/, '') === prop);
-    const next = !term ? prop : term.startsWith('-') ? '' : `-${prop}`;
+    const next = toggleSortTerm(sort, prop);
     updateParams((params) => {
       if (next) params.set('sort', next);
       else params.delete('sort');
@@ -222,6 +239,7 @@ export function ObjectExplorationPage() {
         if (!savedId) {
           setChartProps(props.length > 0 ? props : null);
           setChartSettings(props.length > 0 ? settingsOf(charts) : {});
+          setLayoutColumns((res.layout?.columns as string[] | undefined) ?? []);
         }
         setLayoutChoices(res.available ?? []);
       })
@@ -280,6 +298,7 @@ export function ObjectExplorationPage() {
           setChartProps(chartNames);
           setChartSettings(settingsOf(charts));
         }
+        setLayoutColumns((row.layout?.columns as string[] | undefined) ?? []);
         // The updater form keeps the current params without making this effect depend on them.
         setSearchParams(
           (previous) => {
@@ -310,6 +329,12 @@ export function ObjectExplorationPage() {
     typeById,
     chartProps,
   });
+
+  const visibleColumns = useMemo(() => {
+    const known = new Set(properties.map((property) => property.name));
+    const chosen = layoutColumns.filter((name) => known.has(name));
+    return chosen.length > 0 ? chosen : properties.map((property) => property.name);
+  }, [layoutColumns, properties]);
 
   const removeChart = (prop: string) => {
     setChartProps(chartProperties.filter((name) => name !== prop));
@@ -370,7 +395,8 @@ export function ObjectExplorationPage() {
   /** The layout currently on screen — what "save as my default" stores. */
   const currentLayout = () => ({
     charts: chartProperties.map((prop) => ({ prop, ...(chartSettings[prop] ?? {}) })),
-    sorts: sort ? [{ prop: sort.replace(/^-/, ''), desc: sort.startsWith('-') }] : [],
+    columns: visibleColumns,
+    sorts: parseSortList(sort).map((term) => ({ prop: term.prop, desc: term.desc })),
     perspective,
   });
 
@@ -482,6 +508,7 @@ export function ObjectExplorationPage() {
               const props = charts.map((chart) => chart.prop).filter(Boolean);
               setChartProps(props.length > 0 ? props : null);
               setChartSettings(props.length > 0 ? settingsOf(charts) : {});
+              setLayoutColumns((choice.layout?.columns as string[] | undefined) ?? []);
             }}
             onSave={(scope) => {
               setLayoutOpen(false);
@@ -567,37 +594,28 @@ export function ObjectExplorationPage() {
       {rowsError ? <p className="object-set-refusal">{rowsError}</p> : null}
 
       {perspective === 'explore' ? (
-        <>
-          <div className="object-set-toolbar">
-            <span className="object-set-toolbar__total">
-              {total === null ? null : t('objectSet.objectCount', { count: total })}
-            </span>
-            <ObjectSetComparePicker
-              label={compareSet?.label ?? null}
-              explorations={saved ? allSaved.filter((row) => row.id !== saved.id) : allSaved}
-              onChange={(next) =>
-                updateParams((params) => {
-                  if (next) params.set('vs', next);
-                  else params.delete('vs');
-                })
-              }
-            />
-          </div>
-          {outcome.result ? (
-            <ObjectSetActionOutcome
-              actionName={outcome.result.name}
-              changed={outcome.result.succeeded}
-              changes={outcome.result.changes}
-              onDismiss={outcome.dismiss}
-            />
-          ) : null}
-          <ObjectSetCharts
+        <ObjectSetChartBoard
+          total={total}
+          compareLabel={compareSet?.label ?? null}
+          explorations={saved ? allSaved.filter((row) => row.id !== saved.id) : allSaved}
+          onCompare={(next) =>
+            updateParams((params) => {
+              if (next) params.set('vs', next);
+              else params.delete('vs');
+            })
+          }
+          outcome={outcome.result}
+          onDismissOutcome={outcome.dismiss}
           typeId={typeId}
           search={search}
           filters={filters}
-          properties={chartProperties}
-          settings={chartSettings}
-          options={chartOptions}
+          chartProperties={chartProperties}
+          chartSettings={chartSettings}
+          chartOptions={chartOptions}
+          addable={addable}
+          compare={compareSet ?? undefined}
+          refreshKey={outcome.refreshKey}
+          onLoaded={outcome.onLoaded}
           onSettings={(prop, next) => {
             /* A setting that says nothing is not a setting: drop the keys instead of storing empty ones. */
             const cleaned: ChartSettings = {};
@@ -627,43 +645,24 @@ export function ObjectExplorationPage() {
           }
           onRemove={removeChart}
           onMove={moveChart}
-          canMove={chartProperties.length > 1}
-          compare={compareSet ?? undefined}
-          refreshKey={outcome.refreshKey}
-          onLoaded={outcome.onLoaded}
-          footer={<ObjectSetChartAdd options={addable} onAdd={(prop) => setChartProps([...chartProperties, prop])} />}
+          onAdd={(prop) => setChartProps([...chartProperties, prop])}
         />
-        </>
       ) : rowsLoading ? (
         <Loading label={t('objectSet.rowsLoading')} />
       ) : instances.length === 0 ? (
         <EmptyState title={t('objectSet.rowsEmpty')} />
       ) : (
-        <ObjectSetResultsTable
+        <ObjectSetResults
+          total={total}
           instances={instances}
           properties={properties}
+          visible={visibleColumns}
           sort={sort}
-          onSort={toggleSort}
           selected={selected}
-          onToggle={(id) =>
-            setSelected((current) => {
-              const next = new Set(current);
-              if (next.has(id)) next.delete(id);
-              else next.add(id);
-              return next;
-            })
-          }
-          onToggleAll={() =>
-            setSelected((current) => {
-              const all = instances.every((row) => current.has(row.id));
-              const next = new Set(current);
-              for (const row of instances) {
-                if (all) next.delete(row.id);
-                else next.add(row.id);
-              }
-              return next;
-            })
-          }
+          onSort={toggleSort}
+          onColumns={setLayoutColumns}
+          onToggle={toggleRow}
+          onToggleAll={toggleAllRows}
         />
       )}
 

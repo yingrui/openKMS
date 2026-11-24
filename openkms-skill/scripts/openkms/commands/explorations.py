@@ -43,6 +43,8 @@ def _layout_body(ns: argparse.Namespace) -> dict[str, Any]:
     layout: dict[str, Any] = {}
     if getattr(ns, "chart", None):
         layout["charts"] = [_chart_entry(name) for name in ns.chart]
+    if getattr(ns, "column", None):
+        layout["columns"] = list(ns.column)
     if getattr(ns, "sort", None):
         layout["sorts"] = [
             {"prop": entry.lstrip("-"), "desc": entry.startswith("-")} for entry in ns.sort
@@ -183,6 +185,12 @@ def add_subparser(sub) -> None:
         "`{\"prop\":\"region\",\"metric\":\"avg\",\"measure\":\"lead_time_weeks\"}`",
     )
     a.add_argument("--sort", action="append", default=[], help="repeatable: `prop` or `-prop` (descending)")
+    a.add_argument(
+        "--column",
+        action="append",
+        default=[],
+        help="repeatable: a property the results table shows, in order (its whole column set when given)",
+    )
     a.add_argument("--perspective", default=None, choices=PERSPECTIVES)
     a.add_argument("--visibility", default="private", choices=VISIBILITIES)
     add_write_flags(a)
@@ -226,6 +234,7 @@ def add_layout_subparser(sub) -> None:
         help="repeatable, in order: `region`, or the chart as JSON (see `explorations add --help`)",
     )
     s_.add_argument("--sort", action="append", default=[], help="repeatable: `prop` or `-prop`")
+    s_.add_argument("--column", action="append", default=[], help="repeatable: results-table column, in order")
     s_.add_argument("--perspective", default=None, choices=PERSPECTIVES)
     add_write_flags(s_)
     s_.set_defaults(fn=cmd_layout_set)

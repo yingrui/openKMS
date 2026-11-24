@@ -129,3 +129,12 @@ def test_a_metric_without_a_measure_is_refused_not_ignored():
         normalize_layout({"charts": [{"prop": "region", "metric": "avg"}]})
     with pytest.raises(ExplorationError):
         normalize_layout({"charts": [{"prop": "region", "metric": "median", "measure": "x"}]})
+
+
+def test_the_results_table_columns_are_part_of_the_layout():
+    layout = normalize_layout({"columns": ["region", " tier "], "charts": [{"prop": "region"}]})
+    assert layout["columns"] == ["region", "tier"]
+    with pytest.raises(ExplorationError):
+        normalize_layout({"columns": "region"})
+    with pytest.raises(ExplorationError):
+        normalize_layout({"columns": [""]})

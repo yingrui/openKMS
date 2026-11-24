@@ -993,3 +993,81 @@
 .object-set-outcome__now {
   color: var(--color-accent);
 }
+
+/* The column chooser: which properties the results table shows, in which order. */
+.object-set-columns {
+  position: relative;
+}
+
+.object-set-columns__panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 14rem;
+  max-height: 20rem;
+  overflow-y: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--text-sm);
+}
+
+.object-set-columns__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.object-set-columns__check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.object-set-columns__actions {
+  display: inline-flex;
+  gap: 2px;
+
+  button {
+    padding: 0 var(--space-1);
+    border: none;
+    background: none;
+    color: var(--color-text-muted);
+    font: inherit;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+  }
+}
+
+.object-set-columns__all {
+  margin-top: var(--space-1);
+  padding: var(--space-1) 0 0;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  font-size: var(--text-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+/* The precedence of a column in a multi-column sort: the second term is written small, after the arrow. */
+.object-set-sort__rank {
+  margin-left: 2px;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  vertical-align: super;
+}

@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { ObjectInstanceResponse, PropertyDef } from '../../data/ontologyApi';
+import { parseSortList, sortRank } from './objectSetSort';
 
 const cellText = (value: unknown): string => {
   if (value === null || value === undefined || value === '') return '—';
@@ -15,7 +16,7 @@ const cellText = (value: unknown): string => {
  */
 export function ObjectSetResultsTable({
   instances,
-  properties,
+  columns,
   sort,
   onSort,
   selected,
@@ -23,7 +24,8 @@ export function ObjectSetResultsTable({
   onToggleAll,
 }: {
   instances: ObjectInstanceResponse[];
-  properties: PropertyDef[];
+  /** The properties to show, in the order chosen — part of the layout, not of the table. */
+  columns: PropertyDef[];
   sort: string;
   onSort: (prop: string) => void;
   selected: Set<string>;
@@ -32,9 +34,9 @@ export function ObjectSetResultsTable({
 }) {
   const { t } = useTranslation('explore');
   const sortState = (name: string): 'ascending' | 'descending' | 'none' => {
-    if (sort === name) return 'ascending';
-    if (sort === `-${name}`) return 'descending';
-    return 'none';
+    const term = parseSortList(sort).find((entry) => entry.prop === name);
+    if (!term) return 'none';
+    return term.desc ? 'descending' : 'ascending';
   };
   const allSelected = instances.length > 0 && instances.every((row) => selected.has(row.id));
   return (
@@ -50,8 +52,9 @@ export function ObjectSetResultsTable({
                 aria-label={t('objectSet.selectAll')}
               />
             </th>
-            {properties.map((p) => {
+            {columns.map((p) => {
               const state = sortState(p.name);
+              const rank = sortRank(sort, p.name);
               return (
                 <th key={p.name} aria-sort={state}>
                   <button
@@ -62,6 +65,9 @@ export function ObjectSetResultsTable({
                   >
                     {p.name}
                     {state === 'ascending' ? ' ↑' : state === 'descending' ? ' ↓' : ''}
+                    {rank > 1 ? (
+                      <span className="object-set-sort__rank">{rank}</span>
+                    ) : null}
                   </button>
                 </th>
               );
@@ -77,11 +83,11 @@ export function ObjectSetResultsTable({
                   checked={selected.has(row.id)}
                   onChange={() => onToggle(row.id)}
                   aria-label={t('objectSet.selectObject', {
-                    name: String(row.data?.[properties[0]?.name ?? ''] ?? row.id),
+                    name: String(row.data?.[columns[0]?.name ?? ''] ?? row.id),
                   })}
                 />
               </td>
-              {properties.map((p) => (
+              {columns.map((p) => (
                 <td key={p.name}>{cellText(row.data?.[p.name])}</td>
               ))}
             </tr>

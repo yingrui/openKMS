@@ -429,7 +429,13 @@
     "outcomeTitle": "{{name}} ran on {{count}} objects — what moved",
     "outcomeNothing": "No chart changed. The action did not touch a property these charts count.",
     "outcomeDismiss": "Dismiss",
-    "outcomeMore": "+{{count}} more"
+    "outcomeMore": "+{{count}} more",
+    "columnsCount": "Columns ({{count}})",
+    "columnShow": "Show {{name}}",
+    "columnEarlier": "Move {{name}} earlier",
+    "columnLater": "Move {{name}} later",
+    "columnsAll": "Show every property",
+    "sortRank": "sort {{rank}}"
   },
   "explorerSections": {
     "explorations": "Explorations",

@@ -429,7 +429,13 @@
     "outcomeTitle": "「{{name}}」执行于 {{count}} 个对象——变化如下",
     "outcomeNothing": "图表没有变化：这个动作没有改动这几张图统计的属性。",
     "outcomeDismiss": "收起",
-    "outcomeMore": "另有 {{count}} 项"
+    "outcomeMore": "另有 {{count}} 项",
+    "columnsCount": "列（{{count}}）",
+    "columnShow": "显示 {{name}}",
+    "columnEarlier": "{{name}} 前移",
+    "columnLater": "{{name}} 后移",
+    "columnsAll": "显示全部属性",
+    "sortRank": "第 {{rank}} 排序"
   },
   "explorerSections": {
     "explorations": "探索",
