@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
+  fetchLinkTypes,
   fetchObjectType,
   fetchObjectInstances,
   type ObjectInstanceResponse,
   type ObjectTypeResponse,
+  type LinkTypeResponse,
   type PropertyDef,
 } from '../../data/ontologyApi';
 import { EmptyState } from '../../styles/design-system/EmptyState';
@@ -38,6 +40,7 @@ import './ObjectSet.scss';
 export function ObjectExplorationPage() {
   const { t } = useTranslation('explore');
   const { typeId = '' } = useParams();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const filters = useMemo(() => searchParams.getAll('f'), [searchParams]);
@@ -62,6 +65,8 @@ export function ObjectExplorationPage() {
   const [saving, setSaving] = useState(false);
   /* The layout this type opens with: personal, then global, then the built-in one (prominent props). */
   const [chartProps, setChartProps] = useState<string[] | null>(null);
+  const [links, setLinks] = useState<LinkTypeResponse[]>([]);
+  const [pivotOpen, setPivotOpen] = useState(false);
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
 
@@ -124,6 +129,20 @@ export function ObjectExplorationPage() {
       cancelled = true;
     };
   }, [typeId, t]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchLinkTypes()
+      .then((res) => {
+        if (!cancelled) setLinks(res.items);
+      })
+      .catch(() => {
+        if (!cancelled) setLinks([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!typeId) return;
@@ -219,6 +238,44 @@ export function ObjectExplorationPage() {
       .filter((name, index, all) => all.indexOf(name) === index)
       .slice(0, 6);
   }, [chartProps, objectType, properties]);
+
+  /* Pivot targets: every link touching this type, pointing at the object on the other side. */
+  const pivots = useMemo(
+    () =>
+      links
+        .filter(
+          (link) =>
+            link.source_object_type_id === typeId || link.target_object_type_id === typeId
+        )
+        .map((link) => {
+          const outward = link.source_object_type_id === typeId;
+          return {
+            key: `${link.id}:${outward ? 'out' : 'in'}`,
+            link: link.api_name ?? link.id,
+            label: outward
+              ? link.target_object_type_name ?? link.target_object_type_id
+              : link.source_object_type_name ?? link.source_object_type_id,
+            targetTypeId: outward ? link.target_object_type_id : link.source_object_type_id,
+            viaName: link.name,
+          };
+        }),
+    [links, typeId]
+  );
+
+  /* A pivot keeps the caller's conditions by moving them one hop out; a set that already crossed a link cannot be
+     expressed on the other side without a second hop, so it is refused rather than widened. */
+  const canPivot = filters.every((filter) => !filter.startsWith('@'));
+  const pivotTo = (targetTypeId: string, linkName: string) => {
+    setPivotOpen(false);
+    const params = new URLSearchParams();
+    for (const filter of filters) {
+      const [prop, op, ...rest] = filter.split(':');
+      params.append('f', `@${linkName}/${prop}:${op}:${rest.join(':')}`);
+    }
+    if (perspective === 'results') params.set('view', 'results');
+    const query = params.toString();
+    navigate(`/object-explorer/explorations/${targetTypeId}${query ? `?${query}` : ''}`);
+  };
 
   /** The layout currently on screen — what "save as my default" stores. */
   const currentLayout = () => ({
@@ -367,6 +424,37 @@ export function ObjectExplorationPage() {
           placeholder={t('objectSet.searchPlaceholder')}
           aria-label={t('objectSet.searchPlaceholder')}
         />
+        {pivots.length > 0 ? (
+          <div className="object-set-pivot">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              aria-expanded={pivotOpen}
+              disabled={!canPivot}
+              title={canPivot ? undefined : t('objectSet.pivotNeedsPlainSet')}
+              onClick={() => setPivotOpen((value) => !value)}
+            >
+              {t('objectSet.pivot')}
+            </button>
+            {pivotOpen && canPivot ? (
+              <div className="object-set-pivot__panel" role="menu">
+                {pivots.map((pivot) => (
+                  <button
+                    key={pivot.key}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => pivotTo(pivot.targetTypeId, pivot.link)}
+                  >
+                    <span>{pivot.label}</span>
+                    <span className="object-set-pivot__via">
+                      {t('objectSet.pivotVia', { name: pivot.viaName })}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {(['explore', 'results'] as const).map((mode) => (
           <button
             key={mode}

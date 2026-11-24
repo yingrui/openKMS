@@ -376,7 +376,10 @@
     "layoutResetButton": "Reset layout",
     "layoutReset": "Back to the built-in layout",
     "layoutFailed": "Could not save the layout",
-    "layoutTitle": "Layout"
+    "layoutTitle": "Layout",
+    "pivot": "Pivot to",
+    "pivotVia": "via {{name}}",
+    "pivotNeedsPlainSet": "This set already crosses a relationship; pivoting again is not supported yet"
   },
   "explorerSections": {
     "explorations": "Explorations",

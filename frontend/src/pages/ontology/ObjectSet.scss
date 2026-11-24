@@ -580,3 +580,46 @@
 .object-set-layout-menu__panel button:hover {
   background: var(--color-bg-muted);
 }
+
+/* Pivot: the adjacent types this set can be carried to. */
+.object-set-pivot {
+  position: relative;
+}
+
+.object-set-pivot__panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  min-width: 15rem;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-lg);
+}
+
+.object-set-pivot__panel button {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.object-set-pivot__panel button:hover {
+  background: var(--color-bg-muted);
+}
+
+.object-set-pivot__via {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}

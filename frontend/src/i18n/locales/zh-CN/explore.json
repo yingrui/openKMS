@@ -376,7 +376,10 @@
     "layoutResetButton": "恢复默认布局",
     "layoutReset": "已恢复为内置布局",
     "layoutFailed": "保存布局失败",
-    "layoutTitle": "布局"
+    "layoutTitle": "布局",
+    "pivot": "沿关系跳到",
+    "pivotVia": "经 {{name}}",
+    "pivotNeedsPlainSet": "当前集合已经跨过关系，暂不支持再跳"
   },
   "explorerSections": {
     "explorations": "探索",
