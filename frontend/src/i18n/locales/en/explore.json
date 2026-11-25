@@ -442,7 +442,9 @@
     "actionCriteria": "Applies to: {{criteria}}",
     "actionRefPick": "Pick a {{type}}",
     "actionRefEmpty": "Nothing matches",
-    "actionRefSelected": "Ticked objects ({{count}})"
+    "actionRefSelected": "Ticked objects ({{count}})",
+    "actionRefChosen": "{{count}} {{type}} chosen",
+    "actionRefRemove": "Remove {{name}}"
   },
   "explorerSections": {
     "explorations": "Explorations",

@@ -1465,7 +1465,9 @@
     "logicPickClear": "Clear",
     "logicPickEmpty": "No matching instances.",
     "logicToolApply": "Propose an edit",
-    "logicToolActionType": "Action api_name"
+    "logicToolActionType": "Action api_name",
+    "logicToolCalculator": "Calculator",
+    "logicToolCalculatorNote": "exact arithmetic, no configuration"
   },
   "dataSources": {
     "title": "Data sources",

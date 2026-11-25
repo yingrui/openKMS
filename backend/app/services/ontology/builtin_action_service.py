@@ -47,18 +47,20 @@ def object_ref_params(parameters: object | None) -> dict[str, dict[str, str | No
     raw = action_parameters_dict(parameters).get("object_refs")
     if not isinstance(raw, dict):
         return {}
-    out: dict[str, dict[str, str | None]] = {}
+    out: dict[str, dict] = {}
     for param, spec in raw.items():
         name = str(param).strip()
         if not name:
             continue
         if isinstance(spec, str) and spec.strip():
-            out[name] = {"type": spec.strip(), "property": None}
+            out[name] = {"type": spec.strip(), "property": None, "many": False}
         elif isinstance(spec, dict) and str(spec.get("type") or "").strip():
             prop = spec.get("property")
             out[name] = {
                 "type": str(spec["type"]).strip(),
                 "property": str(prop).strip() if prop else None,
+                # A list-valued reference: "assign these six" is one parameter, not six actions.
+                "many": bool(spec.get("many")),
             }
     return out
 

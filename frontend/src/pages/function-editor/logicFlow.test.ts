@@ -436,3 +436,13 @@ describe('apply_action tools', () => {
     expect(result.errors).toEqual(['#1: tool 1 needs an action type']);
   });
 });
+
+describe('calculator tools', () => {
+  it('round-trips with no configuration at all', () => {
+    const opened = draftFromSpec({
+      nodes: [{ id: 'n1', kind: 'model', prompt: 'x', tools: [{ kind: 'calculator' }] }],
+    });
+    expect(opened.nodes[0].tools).toEqual([{ id: 'tool-0', kind: 'calculator' }]);
+    expect(specFromDraft(opened).spec?.nodes[0]).toMatchObject({ tools: [{ kind: 'calculator' }] });
+  });
+});

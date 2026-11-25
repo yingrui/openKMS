@@ -44,5 +44,6 @@ export function refPrefillFromSelection(
   rows: SelectionRow[]
 ): RefOption | null {
   const options = refOptionsFromSelection(spec, selectionTypeId, rows);
+  if (spec.many) return null;
   return options.length === 1 ? options[0] : null;
 }

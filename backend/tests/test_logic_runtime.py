@@ -1205,3 +1205,71 @@ class TestApplyActionTool:
         assert "apply_addHolding" in names
         schema = next(t.parameters_json_schema for t in offered["tools"] if t.name == "apply_addHolding")
         assert sorted(schema["properties"]) == ["note", "ts_code"]
+
+
+class TestCalculatorTool:
+    """A calculator the model can call: no configuration, and arithmetic that is exact rather than plausible."""
+
+    def _spec(self):
+        return {
+            "nodes": [
+                {
+                    "id": "n1",
+                    "kind": "model",
+                    "prompt": "What is the annual growth?",
+                    "tools": [{"kind": "calculator"}],
+                }
+            ]
+        }
+
+    def test_a_calculator_takes_no_configuration(self):
+        assert validate_flow_spec(self._spec()) == []
+
+    @pytest.mark.asyncio
+    async def test_the_model_computes_exactly_and_the_call_is_traced(self):
+        turns = {"n": 0}
+        tool_return: list[str] = []
+
+        def handler(messages, _info: AgentInfo) -> ModelResponse:
+            turns["n"] += 1
+            if turns["n"] == 1:
+                return ModelResponse(
+                    parts=[ToolCallPart(tool_name="calculator", args={"expression": "(1 + 0.03) ** 12 - 1"})]
+                )
+            tool_return.append(str(messages[-1]))
+            return ModelResponse(parts=[TextPart('{"edits": []}')])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        async def runner(_tool: dict, _arguments: dict):
+            raise AssertionError("the calculator runs in-process; it needs no runner")
+
+        outcome = await run_flow(self._spec(), {}, model_factory=factory, tool_runner=runner)
+
+        assert outcome.status == "ok", outcome.error
+        call = outcome.trace["nodes"][0]["tool_calls"][0]
+        assert call["tool"] == "calculator"
+        assert call["ok"] is True
+        assert call["result"] == pytest.approx(0.42576, rel=1e-4)
+        assert "0.42576" in "".join(tool_return)
+
+    @pytest.mark.asyncio
+    async def test_a_bad_expression_comes_back_as_the_tools_answer(self):
+        turns = {"n": 0}
+
+        def handler(messages, _info: AgentInfo) -> ModelResponse:
+            turns["n"] += 1
+            if turns["n"] == 1:
+                return ModelResponse(parts=[ToolCallPart(tool_name="calculator", args={"expression": "1 / 0"})])
+            return ModelResponse(parts=[TextPart('{"edits": []}')])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        outcome = await run_flow(self._spec(), {}, model_factory=factory)
+
+        assert outcome.status == "ok", outcome.error
+        call = outcome.trace["nodes"][0]["tool_calls"][0]
+        assert call["ok"] is False
+        assert "division by zero" in call["error"]

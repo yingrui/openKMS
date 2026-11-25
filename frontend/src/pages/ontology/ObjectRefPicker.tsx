@@ -9,6 +9,8 @@ export interface ObjectRefSpec {
   property: string;
   /** The property to show in the list. */
   label_property: string;
+  /** The parameter takes a list of objects ("assign these six"), not one. */
+  many?: boolean;
 }
 
 /**
@@ -21,17 +23,24 @@ export interface ObjectRefSpec {
 export function ObjectRefPicker({
   spec,
   value,
+  values,
   onChange,
+  onToggle,
   label,
   selected,
 }: {
   spec: ObjectRefSpec;
+  /** Single-valued: the chosen value. */
   value: string;
+  /** List-valued: the chosen values, in the order they were added. */
+  values?: string[];
   onChange: (next: { value: string; label: string } | null) => void;
+  onToggle?: (next: { value: string; label: string }) => void;
   label: string;
   /** The ticked objects of this type — the answer is usually one of them. */
   selected?: { value: string; label: string }[];
 }) {
+  const isList = Boolean(spec.many);
   const { t } = useTranslation('explore');
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
@@ -61,10 +70,17 @@ export function ObjectRefPicker({
     };
   }, [open, query, spec.label_property, spec.property, spec.type_id]);
 
-  const title = useMemo(
-    () => (value ? `${chosen || value} · ${spec.type_name}` : t('objectSet.actionRefPick', { type: spec.type_name })),
-    [chosen, spec.type_name, t, value]
-  );
+  const chosenValues = values ?? (value ? [value] : []);
+  const title = useMemo(() => {
+    if (isList) {
+      return chosenValues.length > 0
+        ? t('objectSet.actionRefChosen', { count: chosenValues.length, type: spec.type_name })
+        : t('objectSet.actionRefPick', { type: spec.type_name });
+    }
+    return value
+      ? `${chosen || value} · ${spec.type_name}`
+      : t('objectSet.actionRefPick', { type: spec.type_name });
+  }, [chosen, chosenValues.length, isList, spec.type_name, t, value]);
 
   return (
     <div className="object-set-ref">
@@ -79,6 +95,22 @@ export function ObjectRefPicker({
         }}
         onChange={(e) => setQuery(e.target.value)}
       />
+      {isList && chosenValues.length > 0 ? (
+        <div className="object-set-ref__chips">
+          {chosenValues.map((entry) => (
+            <span key={entry} className="object-set-ref__chip">
+              {entry}
+              <button
+                type="button"
+                aria-label={t('objectSet.actionRefRemove', { name: entry })}
+                onClick={() => onToggle?.({ value: entry, label: entry })}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : null}
       {open ? (
         <div className="object-set-ref__panel" role="listbox">
           {selected && selected.length > 0 ? (
@@ -113,12 +145,18 @@ export function ObjectRefPicker({
                 aria-selected={option.value === value}
                 onClick={() => {
                   setChosen(option.label);
+                  if (isList) {
+                    onToggle?.({ value: option.value, label: option.label });
+                    return;
+                  }
                   setOpen(false);
                   onChange({ value: option.value, label: option.label });
                 }}
               >
                 <span>{option.label}</span>
-                <span className="object-set-ref__meta">{option.value}</span>
+                <span className="object-set-ref__meta">
+                  {isList && chosenValues.includes(option.value) ? '✓' : option.value}
+                </span>
               </button>
             ))
           )}

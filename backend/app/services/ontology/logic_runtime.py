@@ -30,7 +30,7 @@ from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
 from pydantic_ai.usage import UsageLimitExceeded, UsageLimits
 
 SUPPORTED_NODE_KINDS = ("model", "action", "transform", "condition", "loop")
-SUPPORTED_TOOL_KINDS = ("query_objects", "call_function", "apply_action")
+SUPPORTED_TOOL_KINDS = ("query_objects", "call_function", "apply_action", "calculator")
 PROMPT_REF = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\}\}")
 DEFAULT_NODE_TIMEOUT_S = 60.0
 DEFAULT_NODE_TOKEN_LIMIT = 8192
@@ -696,14 +696,56 @@ async def _build_tools(
     from pydantic_ai.tools import Tool
 
     configured = node.get("tools")
-    if not isinstance(configured, list) or not configured or tool_runner is None:
+    if not isinstance(configured, list) or not configured:
         return []
 
     tools: list[Any] = []
     for tool in configured:
         if not isinstance(tool, dict):
             continue
+        if tool.get("kind") == "calculator":
+            from app.services.ontology.logic_calculator import CalculatorError, evaluate
+
+            async def calculate(**arguments: Any) -> str:
+                # `Tool.from_schema` passes the model's JSON by keyword, so the name must match the schema's.
+                expression = str(arguments.get("expression") or "")
+                started = time.perf_counter()
+                entry: dict[str, Any] = {"tool": "calculator", "arguments": {"expression": expression}}
+                try:
+                    value = evaluate(expression)
+                except CalculatorError as e:
+                    entry.update({"ok": False, "error": str(e), "duration_ms": _ms(started)})
+                    calls.append(entry)
+                    # A bad expression is the model's mistake to fix, so it comes back as the tool's answer.
+                    return f"error: {e}"
+                entry.update({"ok": True, "result": value, "duration_ms": _ms(started)})
+                calls.append(entry)
+                return json.dumps(value, ensure_ascii=False)
+
+            tools.append(
+                Tool.from_schema(
+                    calculate,
+                    name="calculator",
+                    description=(
+                        "Evaluate an arithmetic expression exactly. Use it instead of computing in your head: "
+                        "numbers, + - * / ** %, parentheses, and abs/round/min/max/sqrt/floor/ceil."
+                    ),
+                    json_schema={
+                        "type": "object",
+                        "properties": {
+                            "expression": {
+                                "type": "string",
+                                "description": "e.g. (1 + 0.03) ** 12 - 1",
+                            }
+                        },
+                        "required": ["expression"],
+                    },
+                )
+            )
+            continue
         if tool.get("kind") == "apply_action":
+            if tool_runner is None:
+                continue
             action_type = str(tool.get("action_type") or "").strip()
             parameters = (
                 await action_schema_resolver(action_type)
@@ -746,6 +788,8 @@ async def _build_tools(
             )
             continue
         if tool.get("kind") == "call_function":
+            if tool_runner is None:
+                continue
             function = str(tool.get("function") or "").strip()
             parameters = (
                 await schema_resolver(function) if schema_resolver is not None else None
@@ -784,7 +828,7 @@ async def _build_tools(
                 )
             )
             continue
-        if tool.get("kind") != "query_objects":
+        if tool.get("kind") != "query_objects" or tool_runner is None:
             continue
         object_type = str(tool.get("object_type") or "").strip()
         properties = [str(p) for p in (tool.get("properties") or []) if str(p).strip()]

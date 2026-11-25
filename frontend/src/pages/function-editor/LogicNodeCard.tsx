@@ -88,6 +88,20 @@ export function LogicNodeCard({
       <div className="logic-node__head">
         <span className="logic-node__index">{t('editor.logicNodeLabel', { index: index + 1 })}</span>
         <code className="logic-node__id">{node.id || '—'}</code>
+        <select
+          className="ds-control logic-node__model-select"
+          value={node.model_id}
+          aria-label={t('editor.logicNodeModel')}
+          onChange={(e) => onChange({ model_id: e.target.value })}
+          disabled={disabled || node.kind !== 'model'}
+        >
+          <option value="">{t('editor.logicModelDefault')}</option>
+          {models.map((model) => (
+            <option key={model.id} value={model.id}>
+              {model.label}
+            </option>
+          ))}
+        </select>
         <span className="logic-node__type">
           {node.kind === 'action'
             ? t('editor.logicTypeEdits')
@@ -250,20 +264,6 @@ export function LogicNodeCard({
           <option value="text">{t('editor.logicOutputText')}</option>
           <option value="fields">{t('editor.logicOutputFields')}</option>
         </select>
-        <select
-          className="ds-control logic-node__model-select"
-          value={node.model_id}
-          aria-label={t('editor.logicNodeModel')}
-          onChange={(e) => onChange({ model_id: e.target.value })}
-          disabled={disabled}
-        >
-          <option value="">{t('editor.logicModelDefault')}</option>
-          {models.map((model) => (
-            <option key={model.id} value={model.id}>
-              {model.label}
-            </option>
-          ))}
-        </select>
       </div>
 
       {structured ? (
@@ -271,6 +271,7 @@ export function LogicNodeCard({
           {fields.length === 0 ? (
             <p className="logic-node__hint">{t('editor.logicFieldsEmpty')}</p>
           ) : (
+            <div className="ds-table-wrap">
             <table className="ds-table logic-node__fields-table">
               <thead>
                 <tr>
@@ -334,6 +335,7 @@ export function LogicNodeCard({
                 ))}
               </tbody>
             </table>
+            </div>
           )}
           <button
             type="button"
@@ -368,6 +370,7 @@ export function LogicNodeCard({
               <option value="query_objects">{t('editor.logicToolQuery')}</option>
               <option value="call_function">{t('editor.logicToolCall')}</option>
               <option value="apply_action">{t('editor.logicToolApply')}</option>
+              <option value="calculator">{t('editor.logicToolCalculator')}</option>
             </select>
 
             {tool.kind === 'apply_action' ? (
@@ -446,6 +449,8 @@ export function LogicNodeCard({
                   disabled={disabled}
                 />
               </>
+            ) : tool.kind === 'calculator' ? (
+              <span className="logic-node__tool-note">{t('editor.logicToolCalculatorNote')}</span>
             ) : tool.kind === 'call_function' ? (
               <>
                 <input
@@ -567,6 +572,7 @@ export function LogicNodeCard({
 /** Action parameters: key + template. Editing vs the spec is one row each, in order. */
 function newTool(kind: NodeTool['kind']): NodeTool {
   const id = `tool-${Date.now()}`;
+  if (kind === 'calculator') return { id, kind };
   if (kind === 'call_function') return { id, kind, function: '', description: '' };
   if (kind === 'apply_action') return { id, kind, actionType: '', description: '' };
   return { id, kind, object_type: '', properties: [], limit: 5 };

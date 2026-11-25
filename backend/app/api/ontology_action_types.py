@@ -411,7 +411,10 @@ async def _annotate_object_refs(
             "type_name": target.name,
             "property": spec["property"] or (target.key_properties or ["id"])[0],
             "label_property": target.display_property or (target.key_properties or ["id"])[0],
+            "many": bool(spec.get("many")),
         }
+        if spec.get("many"):
+            entry["type"] = "array"
     return schema
 
 
@@ -429,8 +432,9 @@ async def _validate_object_refs(
     neo4j_ds = await get_first_neo4j_datasource(db)
     for param, spec in refs.items():
         value = payload.get(param)
-        if value in (None, ""):
+        if value in (None, "", []):
             continue
+        values = value if isinstance(value, list) else [value]
         target = (
             await db.execute(select(ObjectType).where(ObjectType.name == spec["type"]))
         ).scalars().first()
@@ -440,17 +444,20 @@ async def _validate_object_refs(
         if not neo4j_ds:
             continue
         label = object_label(target)
+        wanted = [str(entry) for entry in values]
         found = await run_with_neo4j_driver(
             neo4j_ds,
-            lambda driver, label=label, prop=property_name, val=value: driver.session().run(
-                f"MATCH (n:{label}) WHERE toString(n.`{prop}`) = $v RETURN count(n) AS c",
-                v=str(val),
-            ).single()["c"],
+            lambda driver, label=label, prop=property_name, vals=wanted: {
+                str(record["v"])
+                for record in driver.session().run(
+                    f"MATCH (n:{label}) WHERE toString(n.`{prop}`) IN $vals RETURN DISTINCT toString(n.`{prop}`) AS v",
+                    vals=vals,
+                )
+            },
         )
-        if not found:
-            return (
-                f"`{param}`: no {target.name} has {property_name} = {value!r}"
-            )
+        missing = [entry for entry in wanted if entry not in found]
+        if missing:
+            return f"`{param}`: no {target.name} has {property_name} = {missing[0]!r}"
     return None
 
 

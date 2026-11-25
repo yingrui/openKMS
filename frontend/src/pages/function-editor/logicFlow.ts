@@ -89,7 +89,10 @@ export type ApplyTool = {
   description: string;
 };
 
-export type NodeTool = QueryTool | CallTool | ApplyTool;
+/** No configuration: the calculator runs in-process and takes only an expression. */
+export type CalculatorTool = { id: string; kind: 'calculator' };
+
+export type NodeTool = QueryTool | CallTool | ApplyTool | CalculatorTool;
 
 export type FlowDraft = {
   nodes: ModelNode[];
@@ -522,6 +525,7 @@ function toolsFromSpec(raw: unknown): NodeTool[] {
   return raw
     .filter((tool): tool is Record<string, unknown> => Boolean(tool) && typeof tool === 'object')
     .map((tool, index): NodeTool | null => {
+      if (tool.kind === 'calculator') return { id: `tool-${index}`, kind: 'calculator' };
       if (tool.kind === 'apply_action') {
         return {
           id: `tool-${index}`,
@@ -552,6 +556,7 @@ function toolsFromSpec(raw: unknown): NodeTool[] {
 
 function toolsForSpec(node: ModelNode, where: string, errors: string[]): Record<string, unknown>[] {
   return node.tools.map((tool, index) => {
+    if (tool.kind === 'calculator') return { kind: 'calculator' };
     if (tool.kind === 'apply_action') {
       const actionType = tool.actionType.trim();
       if (!actionType) errors.push(`${where}: tool ${index + 1} needs an action type`);

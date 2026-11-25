@@ -5,6 +5,7 @@ import {
   Bar,
   BarChart,
   Cell,
+  LabelList,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -313,7 +314,13 @@ export function ObjectSetCharts({
                  by size cannot say at all. */
               <ResponsiveContainer width="100%" height={168}>
                 <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 8 }}>
-                  <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval="preserveStartEnd"
+                  />
                   <YAxis hide />
                   <Tooltip
                     cursor={{ stroke: 'var(--color-border)' }}
@@ -340,7 +347,16 @@ export function ObjectSetCharts({
                  category axis of intervals would look exactly like a value distribution. */
               <ResponsiveContainer width="100%" height={168}>
                 <BarChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 8 }}>
-                  <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={0} angle={-35} height={46} textAnchor="end" />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={0}
+                    angle={-35}
+                    height={46}
+                    textAnchor="end"
+                  />
                   <YAxis hide />
                   <Tooltip
                     cursor={{ fill: 'var(--color-bg-muted)' }}
@@ -360,8 +376,10 @@ export function ObjectSetCharts({
                   <YAxis
                     type="category"
                     dataKey="label"
-                    width={120}
-                    tick={{ fontSize: 12 }}
+                    width={118}
+                    tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
+                    axisLine={false}
+                    tickLine={false}
                     interval={0}
                   />
                   <Tooltip
@@ -391,13 +409,29 @@ export function ObjectSetCharts({
                       );
                     }}
                   />
-                  <Bar dataKey="count" radius={[0, 3, 3, 0]} onClick={pickFromDatum}>
+                  <Bar
+                    dataKey="count"
+                    radius={[0, 4, 4, 0]}
+                    maxBarSize={18}
+                    onClick={pickFromDatum}
+                  >
                     {data.map((entry) => (
                       <Cell key={entry.key} cursor="pointer" fill={fillFor(entry.selected)} />
                     ))}
+                    <LabelList
+                      dataKey="count"
+                      position="right"
+                      formatter={(value: unknown) => formatMeasure(Number(value))}
+                      style={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
+                    />
                   </Bar>
                   {compare ? (
-                    <Bar dataKey="baseline" fill="var(--color-border)" radius={[0, 3, 3, 0]} />
+                    <Bar
+                      dataKey="baseline"
+                      fill="var(--color-border)"
+                      radius={[0, 4, 4, 0]}
+                      maxBarSize={18}
+                    />
                   ) : null}
                 </BarChart>
               </ResponsiveContainer>

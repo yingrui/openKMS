@@ -31,10 +31,18 @@ def test_an_object_reference_names_a_type_and_how_it_is_identified():
 
     assert object_ref_params(
         {"object_refs": {"product_code": {"type": "Product", "property": "code"}}}
-    ) == {"product_code": {"type": "Product", "property": "code"}}
+    ) == {"product_code": {"type": "Product", "property": "code", "many": False}}
     # A bare type name is the common case: the reference is the object's key.
     assert object_ref_params({"object_refs": {"scenario": "AllocationScenario"}}) == {
-        "scenario": {"type": "AllocationScenario", "property": None}
+        "scenario": {"type": "AllocationScenario", "property": None, "many": False}
     }
+
+
+def test_a_reference_can_be_a_list_of_objects():
+    from app.services.ontology.builtin_action_service import object_ref_params
+
+    assert object_ref_params(
+        {"object_refs": {"distributors": {"type": "Distributor", "property": "code", "many": True}}}
+    ) == {"distributors": {"type": "Distributor", "property": "code", "many": True}}
     assert object_ref_params({"object_refs": {"x": {"property": "code"}}}) == {}
     assert object_ref_params({"fields": ["x"]}) == {}

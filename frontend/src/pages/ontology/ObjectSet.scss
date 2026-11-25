@@ -70,27 +70,44 @@
 
 .object-set-charts {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: var(--space-4);
+  align-items: start;
 }
 
+/* A chart is a card: one surface, one padding, one radius, and a title that separates itself from the plot rather
+   than floating over it. The height floor keeps a row of short charts from looking ragged. */
 .object-set-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 180px;
   margin: 0;
-  padding: var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-4);
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+
+  &:hover {
+    border-color: var(--color-border-strong);
+    box-shadow: var(--shadow-sm);
+  }
 }
 
 .object-set-chart__title {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border-subtle);
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text);
-  margin-bottom: var(--space-2);
+  margin: 0;
 }
 
 .object-set-chart__name {
@@ -108,6 +125,13 @@
   align-items: center;
   gap: 2px;
   flex: 0 0 auto;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+
+  .object-set-chart:hover &,
+  .object-set-chart:focus-within & {
+    opacity: 1;
+  }
 }
 
 .object-set-chart__action {
@@ -726,7 +750,8 @@
 
 .object-set-crosstab {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 2px;
   font-size: var(--text-xs);
 
   th {
@@ -737,8 +762,12 @@
     white-space: nowrap;
   }
 
+  tbody th {
+    color: var(--color-text-secondary);
+  }
+
   td {
-    padding: 1px;
+    padding: 0;
   }
 }
 
@@ -1100,4 +1129,36 @@
 .object-set-ref__empty {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
+}
+
+/* A list-valued reference: chosen values are chips beside the picker, so "six of them" is visible as six. */
+.object-set-ref__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.object-set-ref__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-muted);
+  font-size: var(--text-xs);
+  color: var(--color-text);
+
+  button {
+    border: none;
+    background: none;
+    color: var(--color-text-muted);
+    font: inherit;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--color-text);
+    }
+  }
 }

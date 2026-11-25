@@ -88,9 +88,19 @@ export function ObjectSetActionDialog({
   const [values, setValues] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     for (const field of action ? fieldsOf(action) : []) {
-      if (!field.objectRef) continue;
+      if (!field.objectRef || field.objectRef.many) continue;
       const picked = refPrefillFromSelection(field.objectRef, selectionTypeId, selection);
       if (picked) initial[field.name] = picked.value;
+    }
+    return initial;
+  });
+  /* A list-valued reference keeps its own state: adding one more must not replace the three already chosen. */
+  const [refLists, setRefLists] = useState<Record<string, string[]>>(() => {
+    const initial: Record<string, string[]> = {};
+    for (const field of action ? fieldsOf(action) : []) {
+      if (!field.objectRef?.many) continue;
+      const picked = refOptionsFromSelection(field.objectRef, selectionTypeId, selection);
+      if (picked.length > 0) initial[field.name] = picked.map((option) => option.value);
     }
     return initial;
   });
@@ -101,6 +111,11 @@ export function ObjectSetActionDialog({
   const submit = () => {
     const input: Record<string, unknown> = {};
     for (const field of fields) {
+      if (field.objectRef?.many) {
+        const list = refLists[field.name] ?? [];
+        if (list.length > 0) input[field.name] = list;
+        continue;
+      }
       if (field.fixed !== undefined) {
         input[field.name] = field.fixed;
         continue;
@@ -161,6 +176,18 @@ export function ObjectSetActionDialog({
               <ObjectRefPicker
                 spec={field.objectRef}
                 value={values[field.name] ?? ''}
+                values={refLists[field.name] ?? []}
+                onToggle={(picked) =>
+                  setRefLists((current) => {
+                    const list = current[field.name] ?? [];
+                    return {
+                      ...current,
+                      [field.name]: list.includes(picked.value)
+                        ? list.filter((entry) => entry !== picked.value)
+                        : [...list, picked.value],
+                    };
+                  })
+                }
                 label={field.name}
                 selected={refOptionsFromSelection(field.objectRef, selectionTypeId, selection)}
                 onChange={(picked) =>
