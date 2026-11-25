@@ -226,6 +226,26 @@ async def plan_action_edits(
     return edits
 
 
+async def action_parameter_schema(db: AsyncSession, api_name: str) -> dict | None:
+    """An Action's declared parameters as a JSON schema, so the model fills real names instead of guessing."""
+    from app.models.ontology_function import OntologyActionType
+
+    at = (
+        await db.execute(select(OntologyActionType).where(OntologyActionType.api_name == api_name))
+    ).scalar_one_or_none()
+    if not at:
+        return None
+    raw = at.parameters or {}
+    fields = raw.get("fields") if isinstance(raw, dict) else None
+    if not isinstance(fields, list) or not fields:
+        return None
+    return {
+        "type": "object",
+        "properties": {str(field): {"type": "string"} for field in fields},
+        "required": [],
+    }
+
+
 async def dry_run_flow(
     db: AsyncSession,
     fn: OntologyFunction,
@@ -249,7 +269,14 @@ async def dry_run_flow(
         flow_spec,
         input_payload,
         model_factory=model_factory,
-        tool_runner=tool_runner or make_tool_runner(caller_token),
+        tool_runner=tool_runner
+        or make_tool_runner(
+            caller_token,
+            action_planner=lambda api_name, params: plan_action_edits(
+                db, api_name, params, caller_token=caller_token
+            ),
+        ),
+        action_schema_resolver=lambda api_name: action_parameter_schema(db, api_name),
         action_planner=lambda api_name, params: plan_action_edits(
             db, api_name, params, caller_token=caller_token
         ),
@@ -290,8 +317,19 @@ async def _run_flow(
         input_payload,
         model_factory=model_factory,
         tool_runner=make_tool_runner(
-            caller_token, call_depth=call_depth, call_stack=tuple(call_stack or ())
+            caller_token,
+            call_depth=call_depth,
+            call_stack=tuple(call_stack or ()),
+            action_planner=lambda api_name, params: plan_action_edits(
+                db,
+                api_name,
+                params,
+                caller_token=caller_token,
+                call_depth=call_depth,
+                call_stack=tuple(call_stack or ()),
+            ),
         ),
+        action_schema_resolver=lambda api_name: action_parameter_schema(db, api_name),
         action_planner=lambda api_name, params: plan_action_edits(
             db,
             api_name,

@@ -184,11 +184,20 @@ async def function_input_schema(
 
 
 def make_tool_runner(
-    caller_token: str, *, call_depth: int = 0, call_stack: tuple[str, ...] = ()
+    caller_token: str,
+    *,
+    call_depth: int = 0,
+    call_stack: tuple[str, ...] = (),
+    action_planner: Any = None,
 ) -> Any:
     """`(tool, arguments) -> result`, bound to one caller and to its place in the call graph."""
 
     async def run(tool: dict, arguments: dict) -> Any:
+        if tool.get("kind") == "apply_action":
+            # Compose the batch, never apply it: the flow's output carries the edits out.
+            if action_planner is None:
+                raise FlowError("this flow has an apply_action tool but nothing can compose edits")
+            return await action_planner(str(tool.get("action_type") or ""), arguments)
         if tool.get("kind") == "call_function":
             return await call_function(
                 caller_token=caller_token,

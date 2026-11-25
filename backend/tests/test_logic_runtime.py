@@ -1118,3 +1118,90 @@ class TestObjectInputs:
 
         assert outcome.status == "ok", outcome.error
         assert outcome.trace["nodes"][0]["prompt_sent"] == "Customer Ada is on plan pro"
+
+
+class TestApplyActionTool:
+    """`apply_action`: the model proposes, the flow composes the batch, nothing is written."""
+
+    def _spec(self, **tool):
+        return {
+            "nodes": [
+                {
+                    "id": "n1",
+                    "kind": "model",
+                    "prompt": "Open a holding",
+                    "tools": [{"kind": "apply_action", "action_type": "addHolding", **tool}],
+                }
+            ]
+        }
+
+    def test_the_action_type_is_required(self):
+        errors = validate_flow_spec(
+            {"nodes": [{"id": "n1", "kind": "model", "prompt": "x", "tools": [{"kind": "apply_action"}]}]}
+        )
+        assert any("action_type is required" in e for e in errors)
+
+    @pytest.mark.asyncio
+    async def test_the_model_proposes_and_the_edits_come_out_with_the_output(self):
+        composed: list[tuple[str, dict]] = []
+        turns = {"n": 0}
+
+        async def runner(tool: dict, arguments: dict):
+            composed.append((tool["action_type"], arguments))
+            return [{"op": "create", "object_type": "Holding", "properties": arguments}]
+
+        def handler(_messages, _info: AgentInfo) -> ModelResponse:
+            turns["n"] += 1
+            if turns["n"] == 1:
+                return ModelResponse(
+                    parts=[ToolCallPart(tool_name="apply_addHolding", args={"ts_code": "TSM"})]
+                )
+            return ModelResponse(parts=[TextPart('{"edits": []}')])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        outcome = await run_flow(self._spec(), {}, model_factory=factory, tool_runner=runner)
+
+        assert outcome.status == "ok", outcome.error
+        assert composed == [("addHolding", {"ts_code": "TSM"})]
+        call = outcome.trace["nodes"][0]["tool_calls"][0]
+        assert call["tool"] == "apply_action"
+        assert call["edits"] == 1
+        # The model sees the composed batch (it can reason about it), and nothing was written by us.
+        assert outcome.output is not None
+
+    @pytest.mark.asyncio
+    async def test_the_tool_describes_itself_from_the_actions_parameters(self):
+        offered: dict = {}
+
+        def handler(_messages, info: AgentInfo) -> ModelResponse:
+            offered["tools"] = list(info.model_request_parameters.function_tools or [])
+            return ModelResponse(parts=[TextPart('{"edits": []}')])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        async def runner(_tool: dict, _arguments: dict):
+            return []
+
+        async def action_schema(_api_name: str):
+            return {
+                "type": "object",
+                "properties": {"ts_code": {"type": "string"}, "note": {"type": "string"}},
+                "required": [],
+            }
+
+        outcome = await run_flow(
+            self._spec(),
+            {},
+            model_factory=factory,
+            tool_runner=runner,
+            action_schema_resolver=action_schema,
+        )
+
+        assert outcome.status == "ok", outcome.error
+        names = [tool.name for tool in offered["tools"]]
+        assert "apply_addHolding" in names
+        schema = next(t.parameters_json_schema for t in offered["tools"] if t.name == "apply_addHolding")
+        assert sorted(schema["properties"]) == ["note", "ts_code"]

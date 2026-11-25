@@ -30,7 +30,7 @@ from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
 from pydantic_ai.usage import UsageLimitExceeded, UsageLimits
 
 SUPPORTED_NODE_KINDS = ("model", "action", "transform", "condition", "loop")
-SUPPORTED_TOOL_KINDS = ("query_objects", "call_function")
+SUPPORTED_TOOL_KINDS = ("query_objects", "call_function", "apply_action")
 PROMPT_REF = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\}\}")
 DEFAULT_NODE_TIMEOUT_S = 60.0
 DEFAULT_NODE_TOKEN_LIMIT = 8192
@@ -267,6 +267,8 @@ def _validate_tools(node: dict, where: str) -> list[str]:
                 errors.append(f"{at}.limit must be an integer between 1 and {MAX_TOOL_LIMIT}")
         if kind == "call_function" and not str(tool.get("function") or "").strip():
             errors.append(f"{at}.function is required (the api_name of a published function)")
+        if kind == "apply_action" and not str(tool.get("action_type") or "").strip():
+            errors.append(f"{at}.action_type is required (the api_name of an Action)")
     return errors
 
 
@@ -309,6 +311,7 @@ async def _run_loop(
     model_factory: ModelFactory,
     tool_runner: ToolRunner | None,
     schema_resolver: SchemaResolver | None,
+    action_schema_resolver: ActionSchemaResolver | None,
     action_planner: ActionPlanner | None,
     node_timeout_s: float,
     node_token_limit: int,
@@ -329,6 +332,7 @@ async def _run_loop(
             model_factory=model_factory,
             tool_runner=tool_runner,
             schema_resolver=schema_resolver,
+            action_schema_resolver=action_schema_resolver,
             action_planner=action_planner,
             node_timeout_s=node_timeout_s,
             node_token_limit=node_token_limit,
@@ -396,6 +400,7 @@ async def _run_nodes(
     model_factory: ModelFactory,
     tool_runner: ToolRunner | None,
     schema_resolver: SchemaResolver | None,
+    action_schema_resolver: ActionSchemaResolver | None,
     action_planner: ActionPlanner | None,
     node_timeout_s: float,
     node_token_limit: int,
@@ -436,6 +441,7 @@ async def _run_nodes(
                     model_factory=model_factory,
                     tool_runner=tool_runner,
                     schema_resolver=schema_resolver,
+                    action_schema_resolver=action_schema_resolver,
                     action_planner=action_planner,
                     node_timeout_s=node_timeout_s,
                     node_token_limit=node_token_limit,
@@ -451,6 +457,7 @@ async def _run_nodes(
                     model_factory=model_factory,
                     tool_runner=tool_runner,
                     schema_resolver=schema_resolver,
+                    action_schema_resolver=action_schema_resolver,
                     action_planner=action_planner,
                     node_timeout_s=node_timeout_s,
                     node_token_limit=node_token_limit,
@@ -469,6 +476,7 @@ async def _run_nodes(
                     model_factory=model_factory,
                     tool_runner=tool_runner,
                     schema_resolver=schema_resolver,
+                    action_schema_resolver=action_schema_resolver,
                     calls=calls,
                     timeout_s=node_timeout_s,
                     token_limit=node_token_limit,
@@ -563,6 +571,8 @@ ToolRunner = Callable[[dict, dict], Awaitable[Any]]
 ActionPlanner = Callable[[str, dict], Awaitable[list[dict]]]
 #: `(function_api_name) -> input_schema | None`. Lets a `call_function` tool describe its own parameters.
 SchemaResolver = Callable[[str], Awaitable[dict | None]]
+#: `(action_type_api_name) -> JSON schema of its parameters`. Lets an `apply_action` tool describe itself.
+ActionSchemaResolver = Callable[[str], Awaitable[dict | None]]
 
 
 async def run_flow(
@@ -572,6 +582,7 @@ async def run_flow(
     model_factory: ModelFactory,
     tool_runner: ToolRunner | None = None,
     schema_resolver: SchemaResolver | None = None,
+    action_schema_resolver: ActionSchemaResolver | None = None,
     action_planner: ActionPlanner | None = None,
     node_timeout_s: float = DEFAULT_NODE_TIMEOUT_S,
     node_token_limit: int = DEFAULT_NODE_TOKEN_LIMIT,
@@ -602,6 +613,7 @@ async def run_flow(
             model_factory=model_factory,
             tool_runner=tool_runner,
             schema_resolver=schema_resolver,
+            action_schema_resolver=action_schema_resolver,
             action_planner=action_planner,
             node_timeout_s=node_timeout_s,
             node_token_limit=node_token_limit,
@@ -627,6 +639,7 @@ async def _run_model_node(
     model_factory: ModelFactory,
     tool_runner: ToolRunner | None,
     schema_resolver: SchemaResolver | None,
+    action_schema_resolver: ActionSchemaResolver | None,
     calls: list[dict[str, Any]],
     timeout_s: float,
     token_limit: int,
@@ -636,7 +649,9 @@ async def _run_model_node(
     model = await model_factory(node.get("model_id"))
     output_type: Any = PromptedOutput(StructuredDict(schema)) if isinstance(schema, dict) else str
     system = str(node.get("system") or "").strip()
-    tools = await _build_tools(node, tool_runner, schema_resolver, calls)
+    tools = await _build_tools(
+        node, tool_runner, schema_resolver, action_schema_resolver, calls
+    )
     kwargs: dict[str, Any] = {"output_type": output_type}
     if tools:
         kwargs["tools"] = tools
@@ -674,6 +689,7 @@ async def _build_tools(
     node: dict,
     tool_runner: ToolRunner | None,
     schema_resolver: SchemaResolver | None,
+    action_schema_resolver: ActionSchemaResolver | None,
     calls: list[dict[str, Any]],
 ) -> list[Any]:
     """One pydantic-ai tool per configured tool. Every call is recorded, including the rows it returned."""
@@ -686,6 +702,48 @@ async def _build_tools(
     tools: list[Any] = []
     for tool in configured:
         if not isinstance(tool, dict):
+            continue
+        if tool.get("kind") == "apply_action":
+            action_type = str(tool.get("action_type") or "").strip()
+            parameters = (
+                await action_schema_resolver(action_type)
+                if action_schema_resolver is not None
+                else None
+            ) or {"type": "object", "properties": {}, "additionalProperties": True}
+
+            async def apply(
+                _action_type: str = action_type, **arguments: Any
+            ) -> str:
+                started = time.perf_counter()
+                entry: dict[str, Any] = {
+                    "tool": "apply_action",
+                    "action_type": _action_type,
+                    "arguments": arguments,
+                }
+                try:
+                    edits = await tool_runner(
+                        {"kind": "apply_action", "action_type": _action_type}, arguments
+                    )
+                except FlowError as e:
+                    entry.update({"ok": False, "error": str(e), "duration_ms": _ms(started)})
+                    calls.append(entry)
+                    raise
+                entry.update({"ok": True, "edits": len(edits or []), "duration_ms": _ms(started)})
+                calls.append(entry)
+                # The edit batch travels out with the flow's output; nothing is written here.
+                return json.dumps({"edits": edits}, ensure_ascii=False, default=str)
+
+            tools.append(
+                Tool.from_schema(
+                    apply,
+                    name=f"apply_{action_type}"[:64],
+                    description=(
+                        str(tool.get("description") or "").strip()
+                        or f"Propose the ontology edit that '{action_type}' describes."
+                    ),
+                    json_schema=parameters,
+                )
+            )
             continue
         if tool.get("kind") == "call_function":
             function = str(tool.get("function") or "").strip()

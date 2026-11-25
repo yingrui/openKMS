@@ -517,18 +517,37 @@ function jsonSchemaToType(schema: unknown): FieldType {
   return (FIELD_TYPES as string[]).includes(primitive) ? (primitive as FieldType) : 'string';
 }
 
-function toolsFromSpec(raw: unknown): QueryTool[] {
+function toolsFromSpec(raw: unknown): NodeTool[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .filter((tool): tool is Record<string, unknown> => Boolean(tool) && typeof tool === 'object')
-    .filter((tool) => tool.kind === 'query_objects')
-    .map((tool, index) => ({
-      id: `tool-${index}`,
-      kind: 'query_objects' as const,
-      object_type: String(tool.object_type ?? ''),
-      properties: Array.isArray(tool.properties) ? tool.properties.map((p) => String(p)) : [],
-      limit: typeof tool.limit === 'number' ? tool.limit : 5,
-    }));
+    .map((tool, index): NodeTool | null => {
+      if (tool.kind === 'apply_action') {
+        return {
+          id: `tool-${index}`,
+          kind: 'apply_action',
+          actionType: String(tool.action_type ?? ''),
+          description: String(tool.description ?? ''),
+        };
+      }
+      if (tool.kind === 'call_function') {
+        return {
+          id: `tool-${index}`,
+          kind: 'call_function',
+          function: String(tool.function ?? ''),
+          description: String(tool.description ?? ''),
+        };
+      }
+      if (tool.kind !== 'query_objects') return null;
+      return {
+        id: `tool-${index}`,
+        kind: 'query_objects',
+        object_type: String(tool.object_type ?? ''),
+        properties: Array.isArray(tool.properties) ? tool.properties.map((p) => String(p)) : [],
+        limit: typeof tool.limit === 'number' ? tool.limit : 5,
+      };
+    })
+    .filter((tool): tool is NodeTool => tool !== null);
 }
 
 function toolsForSpec(node: ModelNode, where: string, errors: string[]): Record<string, unknown>[] {

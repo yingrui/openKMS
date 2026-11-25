@@ -214,6 +214,12 @@ backend calls `GET /api/object-types/{type}/objects` **with the caller's token**
 `ontology:read` apply to the person running it, not to the platform), and only the granted properties are returned —
 that is both the token budget and the data minimisation. `limit` is capped at 25.
 
+**`apply_action`.** A node may let the model *propose* an ontology edit:
+`{kind: "apply_action", action_type, description}`. The action's declared parameters become the tool's arguments, so the
+model fills `ts_code` because it was told to; the backend composes the edit batch with the same builder the Action path
+uses and hands the batch back to the model (which can reason about what it asked for). **Nothing is written**: the batch
+travels out with the flow's output and is applied only when an Action calls the function.
+
 **`call_function`.** A node may also call an already-published function:
 `{kind: "call_function", function: "<api_name>", description}`. The target's **published input schema becomes the
 tool's parameters**, so the model fills in real arguments instead of guessing; the call carries the same depth and
