@@ -325,6 +325,11 @@ class OntologyActionBatchRequest(BaseModel):
 
     object_ids: list[str] = Field(default_factory=list)
     input: dict = Field(default_factory=dict)
+    #: Run over the exploration's **set** instead of its selection. Explicit, because acting on everything because
+    #: nothing was ticked is how a whole dataset gets changed by accident.
+    apply_to_set: bool = False
+    conditions: list[str] = Field(default_factory=list)
+    search: str | None = None
 
 
 class OntologyActionBatchItem(BaseModel):

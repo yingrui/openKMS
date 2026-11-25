@@ -14,10 +14,13 @@ export function ObjectSetActionMenu({
   actions,
   count,
   onPick,
+  onPickSet,
 }: {
   actions: ActionApplicability[];
   count: number;
   onPick: (action: ActionApplicability) => void;
+  /** Run over the whole set — offered only where the action is applicable to at least one object in it. */
+  onPickSet: (action: ActionApplicability) => void;
 }) {
   const { t } = useTranslation('explore');
   const [open, setOpen] = useState(false);
@@ -68,6 +71,30 @@ export function ObjectSetActionMenu({
           {offered.length === 0 ? (
             <p className="object-set-action-menu__label">{t('objectSet.actionNoEligible')}</p>
           ) : null}
+          {count === 0
+            ? offered.map((action) => (
+                <button
+                  key={`set-${action.id}`}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpen(false);
+                    onPickSet(action);
+                  }}
+                >
+                  <span className="object-set-action-menu__name">
+                    {t('objectSet.actionOnSet', { name: action.display_name, count: action.eligible })}
+                  </span>
+                  <span className="object-set-action-menu__desc">
+                    {action.submission_criteria.length > 0
+                      ? t('objectSet.actionCriteria', {
+                          criteria: action.submission_criteria.join(', '),
+                        })
+                      : action.description ?? ''}
+                  </span>
+                </button>
+              ))
+            : null}
           {count > 0
             ? offered.map((action) => {
                 const blocked = action.selected_eligible === 0;

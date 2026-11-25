@@ -446,7 +446,8 @@
     "actionRefChosen": "{{count}} {{type}} chosen",
     "actionRefRemove": "Remove {{name}}",
     "undo": "Undo",
-    "redo": "Redo"
+    "redo": "Redo",
+    "actionOnSet": "{{name}} — run on all {{count}}"
   },
   "explorerSections": {
     "explorations": "Explorations",

@@ -485,6 +485,19 @@ def require_permission(permission: str):
     return _check
 
 
+async def holds_permission(request: Request, db: AsyncSession, permission: str) -> bool:
+    """Same rules as `ensure_permission`, as a question instead of an error.
+
+    A menu has to ask "may this caller use this?" while drawing itself; raising 403 there would fail the whole list
+    because of one entry nobody asked about.
+    """
+    try:
+        await ensure_permission(request, db, permission)
+    except HTTPException:
+        return False
+    return True
+
+
 async def ensure_any_permission(
     request: Request, db: AsyncSession, *permissions: str, session_only: bool = False
 ) -> None:

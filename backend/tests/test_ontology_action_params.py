@@ -46,3 +46,11 @@ def test_a_reference_can_be_a_list_of_objects():
     ) == {"distributors": {"type": "Distributor", "property": "code", "many": True}}
     assert object_ref_params({"object_refs": {"x": {"property": "code"}}}) == {}
     assert object_ref_params({"fields": ["x"]}) == {}
+
+
+def test_submission_permissions_are_required_keys():
+    from app.services.ontology.builtin_action_service import submission_permissions
+
+    assert submission_permissions({"submission_permissions": ["ontology:write"]}) == ["ontology:write"]
+    assert submission_permissions({"submission_permissions": "ontology:write"}) == []
+    assert submission_permissions({}) == []

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_any_permission, require_auth
+from app.api.auth import holds_permission, require_any_permission, require_auth
 from app.api.ontology.deps import jwt_user_from_request, require_caller_token, validate_api_name
 from app.database import get_db
 from app.models.external_service import ExternalService
@@ -38,6 +38,7 @@ from app.services.ontology.builtin_action_service import (
     object_param_map,
     object_ref_params,
     submission_criteria,
+    submission_permissions,
 )
 from app.services.ontology.input_schema import validate_input_against_schema
 from app.services.ontology.object_query import QueryError, parse_filter
@@ -47,6 +48,7 @@ from app.services.ontology.object_neo4j_store import (
     ids_satisfying,
     link_rel_type,
     object_label,
+    query_object_set,
     refresh_object_type_from_source,
     resolve_id_properties,
     resolve_object_props_for_action,
@@ -461,6 +463,40 @@ async def _validate_object_refs(
     return None
 
 
+async def _set_object_ids(
+    db: AsyncSession, at: OntologyActionType, conditions: list[str], search: str | None
+) -> list[str]:
+    """The ids of the exploration's set, resolved here because the client only holds one page of it."""
+    obj_type = await db.get(ObjectType, at.object_type_id)
+    if obj_type is None:
+        raise HTTPException(status_code=404, detail="Object type not found")
+    try:
+        filters = [parse_filter(text) for text in conditions]
+    except QueryError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    neo4j_ds = await get_first_neo4j_datasource(db)
+    if not neo4j_ds:
+        raise HTTPException(status_code=409, detail="Ontology objects are read from the graph.")
+    link_info = await _link_info(db, obj_type)
+    label = object_label(obj_type)
+    columns = resolve_id_properties(obj_type)
+
+    def run(driver):
+        rows, _total = query_object_set(
+            driver,
+            label,
+            search=search,
+            limit=BATCH_MAX + 1,
+            offset=0,
+            key_properties=columns,
+            filters=filters,
+            link_info=link_info,
+        )
+        return [row["id"] for row in rows if row.get("id")]
+
+    return await run_with_neo4j_driver(neo4j_ds, run)
+
+
 async def _refresh_after_action(
     db: AsyncSession, at: OntologyActionType, result: OntologyActionExecuteResponse | None
 ) -> bool:
@@ -493,6 +529,13 @@ async def _execute_one(
 ) -> OntologyActionExecuteResponse:
     """One action, one object — the body both the single and the batch entry point share."""
     input_payload = dict(input_payload or {})
+    needed = submission_permissions(at.parameters)
+    for permission in needed:
+        if not await holds_permission(request, db, permission):
+            return OntologyActionExecuteResponse(
+                status="error",
+                error=f"this action needs the `{permission}` permission",
+            )
     criteria = submission_criteria(at.parameters)
     if object_id:
         ot = await db.get(ObjectType, at.object_type_id)
@@ -610,6 +653,15 @@ async def execute_action_type_batch(
     if at.status != "active":
         raise HTTPException(status_code=400, detail="Action type is not active")
     object_ids = list(dict.fromkeys(body.object_ids))
+    if body.apply_to_set and not object_ids:
+        object_ids = await _set_object_ids(db, at, body.conditions, body.search)
+        if len(object_ids) > BATCH_MAX:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"the set holds {len(object_ids)} objects; narrow it to {BATCH_MAX} or select the ones you want"
+                ),
+            )
     if not object_ids:
         raise HTTPException(status_code=400, detail="Pass at least one object id")
     if len(object_ids) > BATCH_MAX:
@@ -698,6 +750,17 @@ async def applicable_actions(
 
     out: list[ActionApplicability] = []
     for action in actions:
+        needed = submission_permissions(action.parameters)
+        if needed:
+            allowed = True
+            for permission in needed:
+                if not await holds_permission(request, db, permission):
+                    allowed = False
+                    break
+            if not allowed:
+                # Not offered at all: an action a caller may not use is not a disabled button, it is none of their
+                # business.
+                continue
         criteria = submission_criteria(action.parameters)
         if not criteria:
             eligible = await count_set(set_filters)

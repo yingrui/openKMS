@@ -446,7 +446,8 @@
     "actionRefChosen": "已选 {{count}} 个{{type}}",
     "actionRefRemove": "移除 {{name}}",
     "undo": "撤销",
-    "redo": "重做"
+    "redo": "重做",
+    "actionOnSet": "{{name}} — 对全部 {{count}} 个执行"
   },
   "explorerSections": {
     "explorations": "探索",

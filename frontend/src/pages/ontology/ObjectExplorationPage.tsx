@@ -546,7 +546,8 @@ export function ObjectExplorationPage() {
           <ObjectSetActionMenu
             actions={actions}
             count={selected.size}
-            onPick={action.setOpenAction}
+            onPick={(picked) => action.openFor(picked, 'selection')}
+            onPickSet={(picked) => action.openFor(picked, 'set')}
           />
           <button
             type="button"
@@ -660,12 +661,21 @@ export function ObjectExplorationPage() {
       <ObjectSetActionDialog
         key={action.openAction?.id ?? 'none'}
         action={action.openAction}
-        count={selected.size}
+        count={
+          action.scope === 'set'
+            ? (action.openAction?.eligible ?? 0)
+            : selected.size
+        }
         selectionTypeId={typeId}
         selection={instances.filter((row) => selected.has(row.id))}
         busy={action.busy}
         onClose={() => action.setOpenAction(null)}
-        onSubmit={(input) => void action.run([...selected], input)}
+        onSubmit={(input) =>
+          void action.run(
+            action.scope === 'set' ? { conditions: filters } : { ids: [...selected] },
+            input
+          )
+        }
       />
 
       <ObjectExplorationSaveDialog

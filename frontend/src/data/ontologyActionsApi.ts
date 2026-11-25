@@ -138,7 +138,13 @@ export interface OntologyActionBatchResult {
 
 export async function executeOntologyActionBatch(
   actionTypeId: string,
-  body: { object_ids: string[]; input?: Record<string, unknown> },
+  body: {
+    object_ids: string[];
+    /** Run over the exploration's set instead of the selection — explicit, never a default. */
+    apply_to_set?: boolean;
+    conditions?: string[];
+    input?: Record<string, unknown>;
+  },
 ): Promise<OntologyActionBatchResult> {
   return ontologyFetch<OntologyActionBatchResult>(
     `${base}/${actionTypeId}/execute-batch`,

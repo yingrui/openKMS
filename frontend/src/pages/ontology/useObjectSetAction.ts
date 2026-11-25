@@ -18,14 +18,22 @@ export function useObjectSetAction(
 ) {
   const { t } = useTranslation('explore');
   const [openAction, setOpenAction] = useState<ActionApplicability | null>(null);
+  /** Whether the action runs over the ticked rows or over the set the exploration is showing. */
+  const [scope, setScope] = useState<'selection' | 'set'>('selection');
   const [busy, setBusy] = useState(false);
 
-  const run = async (objectIds: string[], input: Record<string, unknown>) => {
-    if (!openAction || objectIds.length === 0) return;
+  const run = async (
+    target: { ids?: string[]; conditions?: string[] },
+    input: Record<string, unknown>
+  ) => {
+    if (!openAction) return;
+    if (!target.conditions && (target.ids ?? []).length === 0) return;
     setBusy(true);
     try {
       const result = await executeOntologyActionBatch(openAction.id, {
-        object_ids: objectIds,
+        object_ids: target.ids ?? [],
+        apply_to_set: Boolean(target.conditions),
+        conditions: target.conditions ?? [],
         input,
       });
       const message = t('objectSet.actionDone', {
@@ -44,5 +52,10 @@ export function useObjectSetAction(
     }
   };
 
-  return { openAction, setOpenAction, busy, run };
+  const openFor = (action: ActionApplicability, next: 'selection' | 'set') => {
+    setScope(next);
+    setOpenAction(action);
+  };
+
+  return { openAction, openFor, scope, setOpenAction, busy, run };
 }

@@ -37,6 +37,18 @@ def submission_criteria(parameters: object | None) -> list[str]:
     return [str(entry).strip() for entry in raw if str(entry).strip()]
 
 
+def submission_permissions(parameters: object | None) -> list[str]:
+    """Permissions the caller must hold for this action to be offered at all.
+
+    Object criteria answer "does this object qualify"; this answers "does this person". Both are part of the same
+    promise the menu makes, so both are asked before the button exists.
+    """
+    raw = action_parameters_dict(parameters).get("submission_permissions")
+    if not isinstance(raw, list):
+        return []
+    return [str(entry).strip() for entry in raw if str(entry).strip()]
+
+
 def object_ref_params(parameters: object | None) -> dict[str, dict[str, str | None]]:
     """Parameters whose value is a property of **another object** — an object reference.
 
