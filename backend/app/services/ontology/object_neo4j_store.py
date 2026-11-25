@@ -592,6 +592,44 @@ def _chart_result(
     return result
 
 
+def ids_satisfying(
+    driver,
+    label: str,
+    key_properties: list[str],
+    candidate_ids: list[str],
+    filters: list,
+    link_info: dict | None = None,
+) -> set[str]:
+    """Which of `candidate_ids` satisfy `filters` — one query, never one round trip per object.
+
+    This is what makes a submission criterion a *rule* rather than a promise: the set the caller selected is
+    intersected with the set the action accepts, before anything is executed.
+    """
+    from app.services.ontology.object_query import where_clause
+
+    if not candidate_ids or not filters:
+        return set(candidate_ids)
+    where, params = where_clause(filters, link_info=link_info or {})
+    first = key_properties[0]
+    candidates = []
+    for object_id in candidate_ids:
+        values = decode_object_id(object_id, key_properties)
+        candidates.append(values[0])
+    combined = f"{where} AND " if where else "WHERE "
+    projection = ", ".join(f"n.`{column}` AS `{column}`" for column in key_properties)
+    query = (
+        f"MATCH (n:{label}) {combined}n.`{first}` IN $candidates "
+        f"RETURN {projection}"
+    )
+    with driver.session() as session:
+        rows = list(session.run(query, candidates=candidates, **params))
+    out: set[str] = set()
+    for record in rows:
+        values = [record[column] for column in key_properties]
+        out.add(encode_object_id(values))
+    return out & set(candidate_ids)
+
+
 def get_neo4j_node_by_id(
     driver, label: str, columns: list[str], values: list[Any]
 ) -> dict | None:

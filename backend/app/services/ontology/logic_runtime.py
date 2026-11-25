@@ -493,9 +493,21 @@ def _input_errors(inputs: object, payload: dict) -> list[str]:
     return errors
 
 
+WHOLE_REFERENCE = re.compile(r"^\{\{\s*([A-Za-z0-9_.]+)\s*\}\}$")
+
+
 def _render_value(value: Any, variables: dict[str, Any]) -> Any:
-    """Params are strings with references, or literals of any JSON type."""
+    """Params are strings with references, or literals of any JSON type.
+
+    A value that is *only* a reference keeps the referenced value's type: `{"confirm": "{{n1.confirm}}"}` must pass a
+    boolean to the action, not the string "true". Mixed text still renders as text.
+    """
     if isinstance(value, str):
+        whole = WHOLE_REFERENCE.match(value.strip())
+        if whole:
+            referenced = _lookup(variables, whole.group(1))
+            if referenced is not None:
+                return referenced
         return render_template(value, variables)
     if isinstance(value, dict):
         return {key: _render_value(item, variables) for key, item in value.items()}

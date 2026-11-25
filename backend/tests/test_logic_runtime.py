@@ -814,3 +814,182 @@ class TestLoopNode:
                 {"op": "create", "object_type": "Holding", "properties": {"ts_code": "CCC"}},
             ]
         }
+
+
+class TestFunctionBackedAction:
+    """A function-backed Action inside a flow: run the bound function, take its edits, apply nothing."""
+
+    @pytest.mark.asyncio
+    async def test_edits_come_from_the_bound_function(self, monkeypatch):
+        from types import SimpleNamespace
+
+        from app.services.ontology import execution_service as svc
+
+        action_type = SimpleNamespace(
+            api_name="createForecastAdjustment",
+            rule_type="function",
+            function_id="fn-1",
+            function_version=None,
+            object_type_id="ot-1",
+            parameters=None,
+        )
+
+        class FakeDb:
+            async def execute(self, _stmt):
+                return SimpleNamespace(scalar_one_or_none=lambda: action_type)
+
+            async def get(self, _model, _pk):
+                return SimpleNamespace(id="ot-1", name="ForecastAdjustment")
+
+        fn = SimpleNamespace(api_name="capacityCreateAdjustment", source="code")
+        ver = SimpleNamespace(id="v1", version=1, flow_spec=None)
+
+        async def resolve(_db, _function_id, *, pinned_version=None):
+            return fn, ver
+
+        async def run_ofs(**_kwargs):
+            from app.services.ontology.execution_service import ExecutionOutcome
+
+            return ExecutionOutcome(
+                status="ok",
+                output={"edits": [{"op": "create", "object_type": "ForecastAdjustment", "properties": {}}]},
+                error=None,
+                duration_ms=5,
+            )
+
+        monkeypatch.setattr(svc, "resolve_published_version_for_function", resolve)
+        monkeypatch.setattr(svc, "_run_ofs", run_ofs)
+
+        edits = await svc.plan_action_edits(FakeDb(), "createForecastAdjustment", {"cycle": "2026-W46"})
+
+        assert edits == [
+            {"op": "create", "object_type": "ForecastAdjustment", "properties": {}}
+        ]
+
+    @pytest.mark.asyncio
+    async def test_an_action_that_writes_outward_is_refused(self, monkeypatch):
+        from types import SimpleNamespace
+
+        from app.services.ontology import execution_service as svc
+
+        action_type = SimpleNamespace(
+            api_name="confirmForecastAdjustment",
+            rule_type="function",
+            function_id="fn-2",
+            function_version=None,
+            object_type_id="ot-1",
+            parameters=None,
+        )
+
+        class FakeDb:
+            async def execute(self, _stmt):
+                return SimpleNamespace(scalar_one_or_none=lambda: action_type)
+
+            async def get(self, _model, _pk):
+                return SimpleNamespace(id="ot-1", name="ForecastAdjustment")
+
+        fn = SimpleNamespace(api_name="capacityConfirmAdjustment", source="code")
+        ver = SimpleNamespace(id="v2", version=1, flow_spec=None)
+
+        async def resolve(_db, _function_id, *, pinned_version=None):
+            return fn, ver
+
+        async def run_ofs(**_kwargs):
+            from app.services.ontology.execution_service import ExecutionOutcome
+
+            return ExecutionOutcome(status="ok", output={"applied": True}, error=None, duration_ms=5)
+
+        monkeypatch.setattr(svc, "resolve_published_version_for_function", resolve)
+        monkeypatch.setattr(svc, "_run_ofs", run_ofs)
+
+        with pytest.raises(FlowError) as exc:
+            await svc.plan_action_edits(FakeDb(), "confirmForecastAdjustment", {})
+
+        assert "writes through an external service" in str(exc.value)
+
+    @pytest.mark.asyncio
+    async def test_a_cycle_between_action_functions_is_refused(self, monkeypatch):
+        from types import SimpleNamespace
+
+        from app.services.ontology import execution_service as svc
+
+        action_type = SimpleNamespace(
+            api_name="addHolding",
+            rule_type="function",
+            function_id="fn-3",
+            function_version=None,
+            object_type_id="ot-1",
+            parameters=None,
+        )
+
+        class FakeDb:
+            async def execute(self, _stmt):
+                return SimpleNamespace(scalar_one_or_none=lambda: action_type)
+
+            async def get(self, _model, _pk):
+                return SimpleNamespace(id="ot-1", name="Holding")
+
+        fn = SimpleNamespace(api_name="loopingFn", source="code")
+        ver = SimpleNamespace(id="v3", version=1, flow_spec=None)
+
+        async def resolve(_db, _function_id, *, pinned_version=None):
+            return fn, ver
+
+        monkeypatch.setattr(svc, "resolve_published_version_for_function", resolve)
+
+        with pytest.raises(FlowError) as exc:
+            await svc.plan_action_edits(
+                FakeDb(), "addHolding", {}, call_stack=("loopingFn",)
+            )
+
+        assert "cycle detected" in str(exc.value)
+
+
+class TestReferenceTypes:
+    """A parameter that is exactly one reference keeps the referenced type; mixed text renders as text."""
+
+    @pytest.mark.asyncio
+    async def test_a_boolean_reference_reaches_the_action_as_a_boolean(self):
+        seen: list[dict] = []
+
+        async def planner(_api_name: str, params: dict) -> list[dict]:
+            seen.append(params)
+            return []
+
+        spec = {
+            "nodes": [
+                {
+                    "id": "n1",
+                    "kind": "model",
+                    "prompt": "decide",
+                    "output_schema": {
+                        "type": "object",
+                        "properties": {"confirm": {"type": "boolean"}, "note": {"type": "string"}},
+                        "required": ["confirm", "note"],
+                    },
+                },
+                {
+                    "id": "a1",
+                    "kind": "action",
+                    "action_type": "addHolding",
+                    "params": {
+                        "confirm": "{{n1.confirm}}",
+                        "note": "why: {{n1.note}}",
+                        "label": "{{n1.note}}",
+                    },
+                },
+            ]
+        }
+
+        def handler(_messages, _info: AgentInfo) -> ModelResponse:
+            return ModelResponse(parts=[TextPart(json.dumps({"confirm": True, "note": "yes"}))])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        outcome = await run_flow(spec, {}, model_factory=factory, action_planner=planner)
+
+        assert outcome.status == "ok", outcome.error
+        assert seen[0]["confirm"] is True, "a whole reference must keep its type"
+        assert seen[0]["note"] == "why: yes"
+        assert seen[0]["label"] == "yes"

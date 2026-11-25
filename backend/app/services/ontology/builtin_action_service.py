@@ -25,6 +25,18 @@ def action_parameters_dict(parameters: object | None) -> dict[str, Any]:
     return {}
 
 
+def submission_criteria(parameters: object | None) -> list[str]:
+    """Conditions an object must satisfy before this action applies to it.
+
+    Declared on the action, in the same grammar as an object-set filter (`status:eq:proposed`), so the answer to
+    "may I run this?" is the same whether it is asked by the menu, by the form or by the executor.
+    """
+    raw = action_parameters_dict(parameters).get("submission_criteria")
+    if not isinstance(raw, list):
+        return []
+    return [str(entry).strip() for entry in raw if str(entry).strip()]
+
+
 def object_param_map(parameters: object | None) -> dict[str, str]:
     """Action parameters whose value is a property of the object the action runs on.
 

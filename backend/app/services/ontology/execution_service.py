@@ -122,10 +122,23 @@ async def _run_ofs(
     )
 
 
-async def plan_action_edits(db: AsyncSession, api_name: str, params: dict) -> list[dict]:
-    """Compose an action's edit batch without applying it — applying belongs to the Action execute path."""
+async def plan_action_edits(
+    db: AsyncSession,
+    api_name: str,
+    params: dict,
+    *,
+    caller_token: str = "",
+    call_depth: int = 0,
+    call_stack: tuple[str, ...] = (),
+) -> list[dict]:
+    """Compose an action's edit batch without applying it — applying belongs to the Action execute path.
+
+    Built-in rules build the batch directly. A function-backed Action runs its bound function and takes the edits the
+    function returned, which is the same computation the Action itself performs — minus the write.
+    """
     from app.models.ontology_function import OntologyActionType
     from app.services.ontology.builtin_action_service import build_edits_for_builtin_action
+    from app.services.ontology.action_rule_types import BUILTIN_OBJECT_RULE_TYPES
 
     at = (
         await db.execute(select(OntologyActionType).where(OntologyActionType.api_name == api_name))
@@ -137,14 +150,79 @@ async def plan_action_edits(db: AsyncSession, api_name: str, params: dict) -> li
     ot = await db.get(ObjectType, at.object_type_id)
     if not ot:
         raise FlowError(f"object type of action '{api_name}' not found")
-    edits, errors = build_edits_for_builtin_action(
-        at=at,
-        ot=ot,
-        input_payload=params,
-        object_id=str(params.get("object_id") or "") or None,
-    )
-    if errors:
-        raise FlowError("; ".join(errors))
+
+    if at.rule_type in BUILTIN_OBJECT_RULE_TYPES:
+        edits, errors = build_edits_for_builtin_action(
+            at=at,
+            ot=ot,
+            input_payload=params,
+            object_id=str(params.get("object_id") or "") or None,
+        )
+        if errors:
+            raise FlowError("; ".join(errors))
+        return edits
+
+    if at.rule_type != "function":
+        raise FlowError(f"action rule_type '{at.rule_type}' is not supported here")
+    if not at.function_id:
+        raise FlowError(f"action '{api_name}' has no bound function")
+
+    try:
+        fn, ver = await resolve_published_version_for_function(
+            db, at.function_id, pinned_version=at.function_version
+        )
+    except ValueError as e:
+        raise FlowError(str(e)) from e
+    if fn.api_name in call_stack:
+        raise FlowError(
+            f"action cycle detected: {' → '.join((*call_stack, fn.api_name))}"
+        )
+
+    stack = (*call_stack, fn.api_name)
+    if getattr(fn, "source", "code") == "logic":
+        flow = await logic_runtime.run_flow(
+            ver.flow_spec,
+            params,
+            model_factory=lambda model_id: resolve_model(db, model_id),
+            tool_runner=make_tool_runner(
+                caller_token, call_depth=call_depth + 1, call_stack=stack
+            ),
+            action_planner=lambda name, values: plan_action_edits(
+                db,
+                name,
+                values,
+                caller_token=caller_token,
+                call_depth=call_depth + 1,
+                call_stack=stack,
+            ),
+            schema_resolver=lambda name: function_input_schema(
+                caller_token=caller_token, api_name=name
+            ),
+        )
+        if flow.status != "ok":
+            raise FlowError(flow.error or f"action function '{fn.api_name}' failed")
+        output = flow.output
+    else:
+        outcome = await _run_ofs(
+            ver=ver,
+            fn=fn,
+            input_payload=params,
+            caller_token=caller_token,
+            call_depth=call_depth + 1,
+            call_stack=list(stack),
+        )
+        if outcome.status != "ok":
+            raise FlowError(outcome.error or f"action function '{fn.api_name}' failed")
+        output = outcome.output
+
+    edits = extract_edits(output)
+    if not edits:
+        # An Action whose function writes through an external service returns no edits — running it inside a flow
+        # would perform that write during a preview. Flows compose ontology edits; outward calls stay in the Action.
+        raise FlowError(
+            f"action function '{fn.api_name}' returned no ontology edits — this Action writes through an external "
+            "service, so it cannot be used as a flow node"
+        )
     return edits
 
 
@@ -172,7 +250,9 @@ async def dry_run_flow(
         input_payload,
         model_factory=model_factory,
         tool_runner=tool_runner or make_tool_runner(caller_token),
-        action_planner=lambda api_name, params: plan_action_edits(db, api_name, params),
+        action_planner=lambda api_name, params: plan_action_edits(
+            db, api_name, params, caller_token=caller_token
+        ),
         schema_resolver=(
             None
             if caller_token == ""
@@ -212,7 +292,14 @@ async def _run_flow(
         tool_runner=make_tool_runner(
             caller_token, call_depth=call_depth, call_stack=tuple(call_stack or ())
         ),
-        action_planner=lambda api_name, params: plan_action_edits(db, api_name, params),
+        action_planner=lambda api_name, params: plan_action_edits(
+            db,
+            api_name,
+            params,
+            caller_token=caller_token,
+            call_depth=call_depth,
+            call_stack=tuple(call_stack or ()),
+        ),
         schema_resolver=lambda api_name: function_input_schema(
             caller_token=caller_token, api_name=api_name
         ),

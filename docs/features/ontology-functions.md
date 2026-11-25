@@ -184,7 +184,14 @@ truthy unless it renders to empty, `false`, `0`, `no`, `null` or `none`.
 parameters from earlier node outputs (`{"ts_code": "{{n1.ticker}}"}`), resolves the action type, and produces an edit
 batch with the same builder the built-in action path uses. The flow's output then carries `{"edits": [...]}`, which is
 applied only when an Action calls the function — the same invariant code functions have, now true in the flow shape too.
-A dry run shows the batch and writes nothing. Function-backed (non-built-in) action types are refused for now.
+A dry run shows the batch and writes nothing. **Function-backed actions work, with one boundary.** For a `rule_type='function'` action the flow runs the bound
+function (code → ofs, logic → the flow executor, with the same depth/cycle guard) and takes the ontology edits it
+returns. An action whose function writes through an **external service** instead — calling out to another system rather
+than returning edits — is refused with a message that says so: a preview must not perform that write, and a flow's
+output is edits, not outward calls. Those actions stay callable as Actions, just not as flow nodes.
+
+A parameter that is exactly one reference keeps the referenced type (`{"confirm": "{{n1.confirm}}"}` passes a boolean),
+because an action's function receives typed input, not strings.
 
 **Typed inputs.** `flow_spec.inputs` declares `{name, type}` with `string` / `number` / `integer` / `boolean` /
 `object`. Declared inputs are checked before the first model call: a missing or mistyped value fails with the input's
