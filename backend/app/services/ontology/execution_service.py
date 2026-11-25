@@ -35,7 +35,7 @@ from fastapi import HTTPException
 from app.services.ontology.function_runtime import FunctionExecutionError, execute_in_ofs
 from app.services.ontology import logic_runtime
 from app.services.ontology.logic_model_registry import resolve_model
-from app.services.ontology.logic_tools import make_tool_runner
+from app.services.ontology.logic_tools import function_input_schema, make_tool_runner
 from app.services.ontology.function_service import get_function, get_function_by_api_name, resolve_version_for_execute
 from app.services.ontology.input_schema import validate_input_against_schema
 from app.models.object_type import ObjectType
@@ -145,6 +145,13 @@ async def dry_run_flow(
         input_payload,
         model_factory=model_factory,
         tool_runner=tool_runner or make_tool_runner(caller_token),
+        schema_resolver=(
+            None
+            if caller_token == ""
+            else lambda api_name: function_input_schema(
+                caller_token=caller_token, api_name=api_name
+            )
+        ),
     )
     return OntologyFunctionExecuteResponse(
         status=flow.status,
@@ -162,6 +169,8 @@ async def _run_flow(
     ver: OntologyFunctionVersion,
     input_payload: dict,
     caller_token: str = "",
+    call_depth: int = 0,
+    call_stack: list[str] | None = None,
 ) -> ExecutionOutcome:
     """Logic functions: the backend orchestrates, so a node failure is recorded with its trace."""
 
@@ -172,7 +181,12 @@ async def _run_flow(
         ver.flow_spec,
         input_payload,
         model_factory=model_factory,
-        tool_runner=make_tool_runner(caller_token),
+        tool_runner=make_tool_runner(
+            caller_token, call_depth=call_depth, call_stack=tuple(call_stack or ())
+        ),
+        schema_resolver=lambda api_name: function_input_schema(
+            caller_token=caller_token, api_name=api_name
+        ),
     )
     return ExecutionOutcome(
         status=flow.status,
@@ -212,7 +226,12 @@ async def execute_function_and_audit(
     await db.commit()
     if getattr(fn, "source", "code") == "logic":
         outcome = await _run_flow(
-            db, ver=ver, input_payload=input_payload, caller_token=caller_token
+            db,
+            ver=ver,
+            input_payload=input_payload,
+            caller_token=caller_token,
+            call_depth=call_depth,
+            call_stack=stack,
         )
     else:
         outcome = await _run_ofs(

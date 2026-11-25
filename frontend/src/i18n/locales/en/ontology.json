@@ -1417,7 +1417,12 @@
     "logicAddTool": "Allow reading a type",
     "logicInputObjectHint": "object — edit as JSON when running",
     "logicObjectInputJson": "{{name}} must be valid JSON",
-    "logicToolCalls": "{{count}} tool call(s)"
+    "logicToolCalls": "{{count}} tool call(s)",
+    "logicToolKind": "Tool",
+    "logicToolQuery": "Read objects",
+    "logicToolCall": "Call a function",
+    "logicToolFunction": "Function api_name (published)",
+    "logicToolWhen": "When should the model use it?"
   },
   "dataSources": {
     "title": "Data sources",

@@ -14,6 +14,7 @@ from urllib.parse import quote, urlencode
 
 import httpx
 
+from app.services.ontology.constants import CALL_DEPTH_HEADER, CALL_STACK_HEADER
 from app.services.ontology.function_runtime import function_client_base_url
 from app.services.ontology.logic_runtime import FlowError, MAX_TOOL_LIMIT
 
@@ -93,10 +94,109 @@ async def _resolve_object_type_id(
     raise FlowError(f"object type '{object_type}' not found")
 
 
-def make_tool_runner(caller_token: str) -> Any:
-    """`(tool, arguments) -> rows`, bound to one caller."""
+async def call_function(
+    *,
+    caller_token: str,
+    tool: dict,
+    arguments: dict,
+    base_url: str | None = None,
+    call_depth: int = 0,
+    call_stack: tuple[str, ...] = (),
+) -> Any:
+    """Call a published function. Depth and stack travel with the request, so a cycle is refused, not looped."""
+    api_name = str(tool.get("function") or "").strip()
+    if not api_name:
+        raise FlowError("call_function tool has no function")
+    if api_name in call_stack:
+        raise FlowError(f"function call cycle detected: {' → '.join((*call_stack, api_name))}")
 
-    async def run(tool: dict, arguments: dict) -> list[dict[str, Any]]:
+    base = (base_url or function_client_base_url()).rstrip("/")
+    headers = {"Authorization": f"Bearer {caller_token}"} if caller_token else {}
+    headers[CALL_DEPTH_HEADER] = str(call_depth + 1)
+    # The callee appends itself to the stack on arrival (same contract as the SDK client); sending it here too would
+    # make every call look like a one-hop cycle.
+    headers[CALL_STACK_HEADER] = ",".join(call_stack)
+    url = f"{base}/api/ontology/functions/by-api-name/{quote(api_name, safe='')}/execute"
+    try:
+        async with httpx.AsyncClient(timeout=TIMEOUT_S) as client:
+            resp = await client.post(url, json={"input": arguments, "use_published": True}, headers=headers)
+    except httpx.RequestError as e:
+        raise FlowError(f"call_function could not reach openKMS: {e}") from e
+
+    if resp.status_code >= 400:
+        detail = resp.text[:300]
+        raise FlowError(f"call_function '{api_name}' failed ({resp.status_code}): {detail}")
+    data = resp.json()
+    if not isinstance(data, dict) or data.get("status") != "ok":
+        error = data.get("error") if isinstance(data, dict) else None
+        raise FlowError(f"call_function '{api_name}' failed: {error or 'invalid response'}")
+    return data.get("output")
+
+
+async def function_input_schema(
+    *, caller_token: str, api_name: str, base_url: str | None = None
+) -> dict | None:
+    """The *published* version's input schema, so the model is told what arguments the function wants.
+
+    Without it a `call_function` tool is a guessing game: the model invents keys, the target answers with its own
+    validation errors, and the model has to recover from them.
+    """
+    base = (base_url or function_client_base_url()).rstrip("/")
+    headers = {"Authorization": f"Bearer {caller_token}"} if caller_token else {}
+    try:
+        async with httpx.AsyncClient(timeout=TIMEOUT_S) as client:
+            listing = await client.get(f"{base}/api/ontology/functions", headers=headers)
+            if listing.status_code >= 400:
+                return None
+            data = listing.json()
+            items = data.get("items") if isinstance(data, dict) else data
+            fn_row = next(
+                (
+                    row
+                    for row in (items or [])
+                    if isinstance(row, dict) and row.get("api_name") == api_name
+                ),
+                None,
+            )
+            if not fn_row or not fn_row.get("id"):
+                return None
+            if not fn_row.get("published_version_id"):
+                return None
+
+            versions = await client.get(
+                f"{base}/api/ontology/functions/{fn_row['id']}/versions", headers=headers
+            )
+            if versions.status_code >= 400:
+                return None
+            rows = versions.json()
+            published = next(
+                (
+                    row
+                    for row in (rows or [])
+                    if isinstance(row, dict) and row.get("id") == fn_row["published_version_id"]
+                ),
+                None,
+            )
+            schema = (published or {}).get("input_schema")
+            return schema if isinstance(schema, dict) else None
+    except (httpx.RequestError, ValueError):
+        return None
+
+
+def make_tool_runner(
+    caller_token: str, *, call_depth: int = 0, call_stack: tuple[str, ...] = ()
+) -> Any:
+    """`(tool, arguments) -> result`, bound to one caller and to its place in the call graph."""
+
+    async def run(tool: dict, arguments: dict) -> Any:
+        if tool.get("kind") == "call_function":
+            return await call_function(
+                caller_token=caller_token,
+                tool=tool,
+                arguments=arguments,
+                call_depth=call_depth,
+                call_stack=call_stack,
+            )
         return await query_objects(caller_token=caller_token, tool=tool, arguments=arguments)
 
     return run

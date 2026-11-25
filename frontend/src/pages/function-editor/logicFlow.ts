@@ -32,8 +32,8 @@ export type ModelNode = {
   /** Raw JSON, kept for the escape hatch and to round-trip a spec the UI cannot express as fields. */
   outputSchema: string;
   tokenLimit: string;
-  /** `query_objects` tools: what this node may read, and how much of it. */
-  tools: QueryTool[];
+  /** Tools this node may use: read objects, or call a published function. */
+  tools: NodeTool[];
 };
 
 export type QueryTool = {
@@ -44,6 +44,16 @@ export type QueryTool = {
   properties: string[];
   limit: number;
 };
+
+export type CallTool = {
+  id: string;
+  kind: 'call_function';
+  /** api_name of a published function; its input schema becomes the tool's parameters. */
+  function: string;
+  description: string;
+};
+
+export type NodeTool = QueryTool | CallTool;
 
 export type FlowDraft = {
   nodes: ModelNode[];
@@ -350,6 +360,15 @@ function toolsFromSpec(raw: unknown): QueryTool[] {
 
 function toolsForSpec(node: ModelNode, where: string, errors: string[]): Record<string, unknown>[] {
   return node.tools.map((tool, index) => {
+    if (tool.kind === 'call_function') {
+      const fn = tool.function.trim();
+      if (!fn) errors.push(`${where}: tool ${index + 1} needs a function`);
+      return {
+        kind: 'call_function',
+        function: fn,
+        ...(tool.description.trim() ? { description: tool.description.trim() } : {}),
+      };
+    }
     const objectType = tool.object_type.trim();
     if (!objectType) errors.push(`${where}: tool ${index + 1} needs an object type`);
     if (!tool.properties.some((prop) => prop.trim())) {

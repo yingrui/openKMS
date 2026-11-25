@@ -176,8 +176,15 @@ declaration and the text cannot disagree — but the declaration is what the exe
 `{kind: "query_objects", object_type, properties, limit}`. The model never sees a table: it asks for a search, the
 backend calls `GET /api/object-types/{type}/objects` **with the caller's token** (so the object-type ACL and
 `ontology:read` apply to the person running it, not to the platform), and only the granted properties are returned —
-that is both the token budget and the data minimisation. `limit` is capped at 25; a node gets at most four model
-round trips and six tool calls. Every call lands in the trace with its arguments, row count, duration and error,
+that is both the token budget and the data minimisation. `limit` is capped at 25.
+
+**`call_function`.** A node may also call an already-published function:
+`{kind: "call_function", function: "<api_name>", description}`. The target's **published input schema becomes the
+tool's parameters**, so the model fills in real arguments instead of guessing; the call carries the same depth and
+call-stack headers the SDK client sends, so the cycle guard applies to flows exactly as it does to code functions (the
+caller does not append itself — the callee does, on arrival).
+
+Either way a node gets at most four model round trips and six tool calls. Every call lands in the trace with its arguments, row count, duration and error,
 including a failed one — a denied read is exactly what you need to see afterwards.
 
 Invariants:

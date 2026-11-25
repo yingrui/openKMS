@@ -1411,7 +1411,12 @@
     "logicAddTool": "允许读一个类型",
     "logicInputObjectHint": "object —— 运行时按 JSON 填",
     "logicObjectInputJson": "{{name}} 必须是合法 JSON",
-    "logicToolCalls": "{{count}} 次工具调用"
+    "logicToolCalls": "{{count}} 次工具调用",
+    "logicToolKind": "工具",
+    "logicToolQuery": "读对象",
+    "logicToolCall": "调用函数",
+    "logicToolFunction": "函数 api_name（已发布）",
+    "logicToolWhen": "什么情况下用它？"
   },
   "dataSources": {
     "title": "数据源",

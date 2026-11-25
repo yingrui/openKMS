@@ -29,7 +29,7 @@ from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
 from pydantic_ai.usage import UsageLimitExceeded, UsageLimits
 
 SUPPORTED_NODE_KINDS = ("model",)
-SUPPORTED_TOOL_KINDS = ("query_objects",)
+SUPPORTED_TOOL_KINDS = ("query_objects", "call_function")
 PROMPT_REF = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\}\}")
 DEFAULT_NODE_TIMEOUT_S = 60.0
 DEFAULT_NODE_TOKEN_LIMIT = 8192
@@ -141,11 +141,14 @@ def _validate_tools(node: dict, where: str) -> list[str]:
                 f"{at}.kind '{kind}' is not supported yet (only {', '.join(SUPPORTED_TOOL_KINDS)})"
             )
             continue
-        if not str(tool.get("object_type") or "").strip():
-            errors.append(f"{at}.object_type is required")
-        limit = tool.get("limit")
-        if limit is not None and (not isinstance(limit, int) or not 1 <= limit <= MAX_TOOL_LIMIT):
-            errors.append(f"{at}.limit must be an integer between 1 and {MAX_TOOL_LIMIT}")
+        if kind == "query_objects":
+            if not str(tool.get("object_type") or "").strip():
+                errors.append(f"{at}.object_type is required")
+            limit = tool.get("limit")
+            if limit is not None and (not isinstance(limit, int) or not 1 <= limit <= MAX_TOOL_LIMIT):
+                errors.append(f"{at}.limit must be an integer between 1 and {MAX_TOOL_LIMIT}")
+        if kind == "call_function" and not str(tool.get("function") or "").strip():
+            errors.append(f"{at}.function is required (the api_name of a published function)")
     return errors
 
 
@@ -195,7 +198,9 @@ def _resolve_output(spec: dict, variables: dict[str, Any], last_node_id: str) ->
 ModelFactory = Callable[[str | None], Awaitable[Any]]
 #: `(tool, arguments) -> rows`. Injected so tests (and the dry run) do not need a live API; the real one calls
 #: openKMS with the caller's token, which is what keeps permissions honest.
-ToolRunner = Callable[[dict, dict], Awaitable[list[dict]]]
+ToolRunner = Callable[[dict, dict], Awaitable[Any]]
+#: `(function_api_name) -> input_schema | None`. Lets a `call_function` tool describe its own parameters.
+SchemaResolver = Callable[[str], Awaitable[dict | None]]
 
 
 async def run_flow(
@@ -204,6 +209,7 @@ async def run_flow(
     *,
     model_factory: ModelFactory,
     tool_runner: ToolRunner | None = None,
+    schema_resolver: SchemaResolver | None = None,
     node_timeout_s: float = DEFAULT_NODE_TIMEOUT_S,
     node_token_limit: int = DEFAULT_NODE_TOKEN_LIMIT,
 ) -> FlowOutcome:
@@ -248,6 +254,7 @@ async def run_flow(
                 prompt=prompt,
                 model_factory=model_factory,
                 tool_runner=tool_runner,
+                schema_resolver=schema_resolver,
                 calls=calls,
                 timeout_s=node_timeout_s,
                 token_limit=node_token_limit,
@@ -317,6 +324,7 @@ async def _run_model_node(
     prompt: str,
     model_factory: ModelFactory,
     tool_runner: ToolRunner | None,
+    schema_resolver: SchemaResolver | None,
     calls: list[dict[str, Any]],
     timeout_s: float,
     token_limit: int,
@@ -326,7 +334,7 @@ async def _run_model_node(
     model = await model_factory(node.get("model_id"))
     output_type: Any = PromptedOutput(StructuredDict(schema)) if isinstance(schema, dict) else str
     system = str(node.get("system") or "").strip()
-    tools = _build_tools(node, tool_runner, calls)
+    tools = await _build_tools(node, tool_runner, schema_resolver, calls)
     kwargs: dict[str, Any] = {"output_type": output_type}
     if tools:
         kwargs["tools"] = tools
@@ -360,7 +368,12 @@ async def _run_model_node(
     }
 
 
-def _build_tools(node: dict, tool_runner: ToolRunner | None, calls: list[dict[str, Any]]) -> list[Any]:
+async def _build_tools(
+    node: dict,
+    tool_runner: ToolRunner | None,
+    schema_resolver: SchemaResolver | None,
+    calls: list[dict[str, Any]],
+) -> list[Any]:
     """One pydantic-ai tool per configured tool. Every call is recorded, including the rows it returned."""
     from pydantic_ai.tools import Tool
 
@@ -370,7 +383,48 @@ def _build_tools(node: dict, tool_runner: ToolRunner | None, calls: list[dict[st
 
     tools: list[Any] = []
     for tool in configured:
-        if not isinstance(tool, dict) or tool.get("kind") != "query_objects":
+        if not isinstance(tool, dict):
+            continue
+        if tool.get("kind") == "call_function":
+            function = str(tool.get("function") or "").strip()
+            parameters = (
+                await schema_resolver(function) if schema_resolver is not None else None
+            ) or {"type": "object", "properties": {}, "additionalProperties": True}
+
+            async def call(
+                _function: str = function, **arguments: Any
+            ) -> str:
+                started = time.perf_counter()
+                entry: dict[str, Any] = {
+                    "tool": "call_function",
+                    "function": _function,
+                    "arguments": arguments,
+                }
+                try:
+                    output = await tool_runner(
+                        {"kind": "call_function", "function": _function}, arguments
+                    )
+                except FlowError as e:
+                    entry.update({"ok": False, "error": str(e), "duration_ms": _ms(started)})
+                    calls.append(entry)
+                    raise
+                entry.update({"ok": True, "duration_ms": _ms(started)})
+                calls.append(entry)
+                return json.dumps(output, ensure_ascii=False, default=str)
+
+            tools.append(
+                Tool.from_schema(
+                    call,
+                    name=f"call_{function}"[:64],
+                    description=(
+                        str(tool.get("description") or "").strip()
+                        or f"Call the published function '{function}'. Pass its inputs as arguments."
+                    ),
+                    json_schema=parameters,
+                )
+            )
+            continue
+        if tool.get("kind") != "query_objects":
             continue
         object_type = str(tool.get("object_type") or "").strip()
         properties = [str(p) for p in (tool.get("properties") or []) if str(p).strip()]

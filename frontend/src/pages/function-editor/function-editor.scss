@@ -815,8 +815,18 @@
   gap: var(--space-2);
 }
 
+.logic-node__tool-kind {
+  width: 9rem;
+  font-size: var(--text-sm);
+}
+
 .logic-node__tool-type {
-  min-width: 12rem;
+  min-width: 10rem;
+  font-size: var(--text-sm);
+}
+
+.logic-node__tool-desc {
+  flex: 1;
   font-size: var(--text-sm);
 }
 

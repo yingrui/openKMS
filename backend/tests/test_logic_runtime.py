@@ -338,3 +338,118 @@ class TestTools:
         assert outcome.status == "error"
         assert "not allowed to read" in (outcome.error or "")
         assert outcome.trace["nodes"][0]["ok"] is False
+
+
+class TestCallFunctionTool:
+    """Calling a published function from a flow: same depth/cycle guard the SDK path has."""
+
+    def _spec(self, **tool):
+        return {
+            "nodes": [
+                {
+                    "id": "n1",
+                    "kind": "model",
+                    "prompt": "Use the tool",
+                    "output_schema": SCHEMA,
+                    "tools": [{"kind": "call_function", "function": "findSimilarComplaint", **tool}],
+                }
+            ]
+        }
+
+    def test_the_function_name_is_required(self):
+        errors = validate_flow_spec(
+            {"nodes": [{"id": "n1", "kind": "model", "prompt": "x", "tools": [{"kind": "call_function"}]}]}
+        )
+        assert any("function is required" in e for e in errors)
+
+    @pytest.mark.asyncio
+    async def test_the_model_can_call_a_published_function(self):
+        asked: list[dict] = []
+        turns = {"n": 0}
+
+        async def runner(tool: dict, arguments: dict):
+            asked.append({"tool": tool, "arguments": arguments})
+            return {"similar": ["a", "b"]}
+
+        def handler(_messages, _info: AgentInfo) -> ModelResponse:
+            turns["n"] += 1
+            if turns["n"] == 1:
+                return ModelResponse(
+                    parts=[ToolCallPart(tool_name="call_findSimilarComplaint", args={"text": "invoice"})]
+                )
+            return ModelResponse(parts=[TextPart(json.dumps({"answer": "42"}))])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        outcome = await run_flow(self._spec(), {}, model_factory=factory, tool_runner=runner)
+
+        assert outcome.status == "ok", outcome.error
+        assert asked[0]["tool"]["function"] == "findSimilarComplaint"
+        assert asked[0]["arguments"] == {"text": "invoice"}
+        call = outcome.trace["nodes"][0]["tool_calls"][0]
+        assert call["tool"] == "call_function"
+        assert call["ok"] is True
+        assert call["function"] == "findSimilarComplaint"
+
+    @pytest.mark.asyncio
+    async def test_a_cycle_is_refused_by_the_runner(self):
+        from app.services.ontology.logic_tools import call_function
+
+        with pytest.raises(FlowError) as exc:
+            await call_function(
+                caller_token="t",
+                tool={"kind": "call_function", "function": "a"},
+                arguments={},
+                call_stack=("a",),
+            )
+        assert "cycle detected" in str(exc.value)
+
+
+class TestCallFunctionSchema:
+    """The target's published input schema becomes the tool's parameters, so the model does not guess."""
+
+    @pytest.mark.asyncio
+    async def test_the_resolved_schema_is_what_the_model_is_offered(self):
+        offered: dict = {}
+
+        def handler(_messages, info: AgentInfo) -> ModelResponse:
+            # The tools the provider actually sees, with the parameters we resolved for the target function.
+            offered["tools"] = list(info.model_request_parameters.function_tools or [])
+            return ModelResponse(parts=[TextPart(json.dumps({"answer": "42"}))])
+
+        async def runner(_tool: dict, _arguments: dict):
+            return {"ok": True}
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        async def resolver(_api_name: str) -> dict | None:
+            return {
+                "type": "object",
+                "properties": {"portfolio": {"type": "string"}},
+                "required": ["portfolio"],
+            }
+
+        spec = {
+            "nodes": [
+                {
+                    "id": "n1",
+                    "kind": "model",
+                    "prompt": "x",
+                    "output_schema": SCHEMA,
+                    "tools": [{"kind": "call_function", "function": "startSimulation"}],
+                }
+            ]
+        }
+        outcome = await run_flow(
+            spec, {}, model_factory=factory, tool_runner=runner, schema_resolver=resolver
+        )
+
+        assert outcome.status == "ok"
+        assert outcome.status == "ok", outcome.error
+        names = [tool.name for tool in offered["tools"]]
+        assert "call_startSimulation" in names
+        # The target's own input schema is what the model is asked to fill in — not a free-form object.
+        schema = next(tool.parameters_json_schema for tool in offered["tools"] if tool.name == "call_startSimulation")
+        assert schema["required"] == ["portfolio"]

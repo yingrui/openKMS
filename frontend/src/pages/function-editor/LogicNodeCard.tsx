@@ -7,6 +7,7 @@ import {
   unknownReferences,
   type FieldType,
   type ModelNode,
+  type NodeTool,
   type OutputField,
 } from './logicFlow';
 
@@ -273,51 +274,96 @@ export function LogicNodeCard({
         {node.tools.map((tool, toolIndex) => (
           <div key={tool.id} className="logic-node__tool">
             <select
-              className="ds-control logic-node__tool-type"
-              value={tool.object_type}
-              aria-label={t('editor.logicToolObjectType')}
-              onChange={(e) =>
-                onChange({ tools: replaceAt(node.tools, toolIndex, { object_type: e.target.value }) })
-              }
-              disabled={disabled}
-            >
-              <option value="">{t('editor.logicToolPickType')}</option>
-              {objectTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-              {/* A saved flow may name a type that no longer exists; keep it selectable so it is visible. */}
-              {tool.object_type && !objectTypes.includes(tool.object_type) ? (
-                <option value={tool.object_type}>{tool.object_type}</option>
-              ) : null}
-            </select>
-            <input
-              className="ds-control logic-node__tool-props"
-              value={tool.properties.join(', ')}
-              placeholder={t('editor.logicToolProperties')}
-              aria-label={t('editor.logicToolProperties')}
+              className="ds-control logic-node__tool-kind"
+              value={tool.kind}
+              aria-label={t('editor.logicToolKind')}
               onChange={(e) =>
                 onChange({
-                  tools: replaceAt(node.tools, toolIndex, {
-                    properties: e.target.value.split(',').map((prop) => prop.trim()),
-                  }),
+                  tools: replaceAt(node.tools, toolIndex, newTool(e.target.value as 'query_objects' | 'call_function')),
                 })
               }
               disabled={disabled}
-            />
-            <input
-              className="ds-control logic-node__tool-limit"
-              type="number"
-              min={1}
-              max={25}
-              value={tool.limit}
-              aria-label={t('editor.logicToolLimit')}
-              onChange={(e) =>
-                onChange({ tools: replaceAt(node.tools, toolIndex, { limit: Number(e.target.value) || 1 }) })
-              }
-              disabled={disabled}
-            />
+            >
+              <option value="query_objects">{t('editor.logicToolQuery')}</option>
+              <option value="call_function">{t('editor.logicToolCall')}</option>
+            </select>
+
+            {tool.kind === 'query_objects' ? (
+              <>
+                <select
+                  className="ds-control logic-node__tool-type"
+                  value={tool.object_type}
+                  aria-label={t('editor.logicToolObjectType')}
+                  onChange={(e) =>
+                    onChange({ tools: replaceAt(node.tools, toolIndex, { object_type: e.target.value }) })
+                  }
+                  disabled={disabled}
+                >
+                  <option value="">{t('editor.logicToolPickType')}</option>
+                  {objectTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                  {/* A saved flow may name a type that no longer exists; keep it selectable so it stays visible. */}
+                  {tool.object_type && !objectTypes.includes(tool.object_type) ? (
+                    <option value={tool.object_type}>{tool.object_type}</option>
+                  ) : null}
+                </select>
+                <input
+                  className="ds-control logic-node__tool-props"
+                  value={tool.properties.join(', ')}
+                  placeholder={t('editor.logicToolProperties')}
+                  aria-label={t('editor.logicToolProperties')}
+                  onChange={(e) =>
+                    onChange({
+                      tools: replaceAt(node.tools, toolIndex, {
+                        properties: e.target.value.split(',').map((prop) => prop.trim()),
+                      }),
+                    })
+                  }
+                  disabled={disabled}
+                />
+                <input
+                  className="ds-control logic-node__tool-limit"
+                  type="number"
+                  min={1}
+                  max={25}
+                  value={tool.limit}
+                  aria-label={t('editor.logicToolLimit')}
+                  onChange={(e) =>
+                    onChange({
+                      tools: replaceAt(node.tools, toolIndex, { limit: Number(e.target.value) || 1 }),
+                    })
+                  }
+                  disabled={disabled}
+                />
+              </>
+            ) : (
+              <>
+                <input
+                  className="ds-control logic-node__tool-props"
+                  value={tool.function}
+                  placeholder={t('editor.logicToolFunction')}
+                  aria-label={t('editor.logicToolFunction')}
+                  onChange={(e) =>
+                    onChange({ tools: replaceAt(node.tools, toolIndex, { function: e.target.value }) })
+                  }
+                  disabled={disabled}
+                />
+                <input
+                  className="ds-control logic-node__tool-desc"
+                  value={tool.description}
+                  placeholder={t('editor.logicToolWhen')}
+                  aria-label={t('editor.logicToolWhen')}
+                  onChange={(e) =>
+                    onChange({ tools: replaceAt(node.tools, toolIndex, { description: e.target.value }) })
+                  }
+                  disabled={disabled}
+                />
+              </>
+            )}
+
             <button
               type="button"
               className="ds-table-icon-link"
@@ -334,10 +380,7 @@ export function LogicNodeCard({
           className="btn btn-secondary btn-sm"
           onClick={() =>
             onChange({
-              tools: [
-                ...node.tools,
-                { id: `tool-${Date.now()}`, kind: 'query_objects', object_type: '', properties: [], limit: 5 },
-              ],
+              tools: [...node.tools, newTool('query_objects')],
             })
           }
           disabled={disabled}
@@ -451,6 +494,12 @@ function NodeRunValue({
       )}
     </div>
   );
+}
+
+function newTool(kind: 'query_objects' | 'call_function'): NodeTool {
+  return kind === 'call_function'
+    ? { id: `tool-${Date.now()}`, kind, function: '', description: '' }
+    : { id: `tool-${Date.now()}`, kind, object_type: '', properties: [], limit: 5 };
 }
 
 function replaceAt<T>(rows: T[], index: number, patch: Partial<T>): T[] {
