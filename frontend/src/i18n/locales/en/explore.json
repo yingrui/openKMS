@@ -409,7 +409,7 @@
     "actionTitle": "Actions",
     "actionTitleCount": "Actions ({{count}})",
     "actionCategory": "Write back to the ontology",
-    "actionNeedsSelection": "Select objects first — an action over a whole set is not undoable",
+    "actionNeedsSelection": "Tick rows in the table below, then pick an action",
     "actionRun": "Run on {{count}} objects",
     "actionNoParameters": "This action takes no parameters; it runs on the {{count}} selected objects.",
     "actionLeaveUnset": "Leave unchanged",

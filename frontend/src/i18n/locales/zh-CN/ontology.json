@@ -1434,7 +1434,14 @@
     "logicBranchAddNode": "加一个节点",
     "logicAddBranch": "加一个分支",
     "logicBranchesHint": "第一个条件成立的分支执行；`when` 留空即兜底分支（必须放最后）。",
-    "logicTypeBranch": "分支"
+    "logicTypeBranch": "分支",
+    "logicNodeKindLoop": "循环",
+    "logicLoopOver": "遍历",
+    "logicLoopAs": "元素名",
+    "logicLoopConcurrency": "并发数",
+    "logicLoopBody": "每个元素执行",
+    "logicLoopHint": "在循环体里用 {{element}} 引用当前元素。含写操作的循环按顺序逐条执行，所以编辑顺序稳定。",
+    "logicTypeLoop": "循环"
   },
   "dataSources": {
     "title": "数据源",

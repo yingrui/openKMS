@@ -47,17 +47,23 @@ export function ObjectSetActionMenu({
         type="button"
         className="btn btn-secondary"
         aria-expanded={open}
-        disabled={count === 0}
-        title={count === 0 ? t('objectSet.actionNeedsSelection') : undefined}
         onClick={() => setOpen((value) => !value)}
       >
         <Zap size={14} aria-hidden />
         {count > 0 ? t('objectSet.actionTitleCount', { count }) : t('objectSet.actionTitle')}
       </button>
-      {open && count > 0 ? (
+      {open ? (
         <div className="object-set-action-menu__panel" role="menu">
-          <p className="object-set-action-menu__label">{t('objectSet.actionCategory')}</p>
-          {actions.map((action) => (
+          {count === 0 ? (
+            /* A disabled button explains nothing. Opening the menu and saying what is missing is the same refusal,
+               with the instruction attached. */
+            <p className="object-set-action-menu__label">{t('objectSet.actionNeedsSelection')}</p>
+          ) : null}
+          {count > 0 ? (
+            <p className="object-set-action-menu__label">{t('objectSet.actionCategory')}</p>
+          ) : null}
+          {count > 0
+            ? actions.map((action) => (
             <button
               key={action.id}
               type="button"
@@ -72,7 +78,8 @@ export function ObjectSetActionMenu({
                 <span className="object-set-action-menu__desc">{action.description}</span>
               ) : null}
             </button>
-          ))}
+              ))
+            : null}
         </div>
       ) : null}
     </div>

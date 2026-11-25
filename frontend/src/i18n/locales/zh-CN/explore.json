@@ -409,7 +409,7 @@
     "actionTitle": "动作",
     "actionTitleCount": "动作（{{count}}）",
     "actionCategory": "写回本体",
-    "actionNeedsSelection": "先选择对象——对整批执行是不可撤销的",
+    "actionNeedsSelection": "先在下方表格里勾选要处理的对象，再选择动作",
     "actionRun": "对 {{count}} 个对象执行",
     "actionNoParameters": "这个动作没有参数，将对选中的 {{count}} 个对象执行。",
     "actionLeaveUnset": "保持不变",
