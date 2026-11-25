@@ -245,3 +245,11 @@ def test_a_measured_cross_tab_cannot_be_compared():
             "Distributor", "", "channel_type", limit=20, split="tier",
             metric="sum", measure="lead_time_weeks", compare_where="",
         )
+
+
+def test_a_measured_cross_tab_is_refused_rather_than_dropping_the_measure():
+    with pytest.raises(QueryError):
+        aggregate_query(
+            "Distributor", "", "channel_type", limit=20, split="tier",
+            metric="avg", measure="lead_time_weeks",
+        )

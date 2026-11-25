@@ -1108,6 +1108,10 @@ async def aggregate_objects(
 
     try:
         charts = await run_with_neo4j_driver(neo4j_ds, _run)
+    except ObjectQueryError as e:
+        # A refused question is the caller's, not the graph's: it is raised while building the Cypher, inside the
+        # worker, so it has to be caught here or it surfaces as a 500.
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except NEO4J_ERRORS as e:
         raise HTTPException(status_code=503, detail=f"Ontology graph unavailable: {e}") from e
     return {"charts": charts}

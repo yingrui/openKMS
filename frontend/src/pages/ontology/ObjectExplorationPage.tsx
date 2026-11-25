@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -220,6 +220,19 @@ export function ObjectExplorationPage() {
   useEffect(() => {
     setSelected(new Set());
   }, [filters, search]);
+
+  /* A chart list belongs to one type: clear it on a type change, before either layout request answers. */
+  const loadedType = useRef<string | null>(null);
+  const dismissOutcome = useRef(outcome.dismiss);
+  dismissOutcome.current = outcome.dismiss;
+  useEffect(() => {
+    if (loadedType.current === typeId) return;
+    loadedType.current = typeId;
+    setChartSpecs(null);
+    setLayoutColumns([]);
+    setSelected(new Set());
+    dismissOutcome.current();
+  }, [typeId]);
 
   useEffect(() => {
     if (!typeId) return;
@@ -590,7 +603,11 @@ export function ObjectExplorationPage() {
         <ObjectSetChartBoard
           total={total}
           compareLabel={compareSet?.label ?? null}
-          explorations={saved ? allSaved.filter((row) => row.id !== saved.id) : allSaved}
+          explorations={allSaved.filter(
+            /* A baseline is the same set of things measured differently: another type's conditions cannot apply to
+               this one, and offering them produced a refused request instead of a comparison. */
+            (row) => row.object_type_id === typeId && row.id !== saved?.id
+          )}
           onCompare={(next) =>
             updateParams((params) => {
               if (next) params.set('vs', next);

@@ -317,6 +317,10 @@ def aggregate_query(
         raise QueryError(
             f"`{metric}` cannot be compared with another set; use one of {', '.join(COMPARABLE_METRICS)}"
         )
+    if split and metric != "count":
+        # A cell shows how many objects it holds; a measured cross-tab has no place to put the measure, and silently
+        # dropping it left an `ORDER BY` naming a variable the query never selected.
+        raise QueryError("a cross-tab counts objects; drop the metric to split")
     if compare_where is not None and split and metric != "count":
         # A measured cross-tab compared with another set needs four numbers per cell; the cells are counts.
         raise QueryError("a compared cross-tab counts objects; drop the metric")

@@ -94,7 +94,7 @@ export function ObjectSetCharts({
      the settings are what tell them apart. */
   const [rows, setRows] = useState<{ spec: ChartSpec; chart: ObjectAggregateChart }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
 
   /* Settings are part of the request, so charts that share them travel in one call and keep their order. */
   const groups = useMemo(() => groupBySettings(specs), [specs]);
@@ -106,7 +106,7 @@ export function ObjectSetCharts({
       return;
     }
     setLoading(true);
-    setFailed(false);
+    setFailed(null);
     try {
       const responses = await Promise.all(
         groups.map((group) =>
@@ -142,9 +142,11 @@ export function ObjectSetCharts({
         );
       setRows(drawn);
       loadedRef.current?.(drawn.map((row) => row.chart));
-    } catch {
+    } catch (error) {
       setRows([]);
-      setFailed(true);
+      /* The message names what actually happened: "graph unavailable" was the answer for a refused request too,
+         which sent the reader looking at the wrong component. */
+      setFailed(error instanceof Error ? error.message : '');
     } finally {
       setLoading(false);
     }
@@ -174,7 +176,14 @@ export function ObjectSetCharts({
   }, [filters]);
 
   if (loading) return <Loading label={t('objectSet.chartsLoading')} />;
-  if (failed) return <EmptyState title={t('objectSet.chartsFailed')} />;
+  if (failed !== null) {
+    return (
+      <EmptyState
+        title={t('objectSet.chartsFailed')}
+        description={failed || undefined}
+      />
+    );
+  }
   if (rows.length === 0) return <EmptyState title={t('objectSet.chartsEmpty')} />;
 
   return (
