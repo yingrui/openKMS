@@ -164,8 +164,12 @@ Executor | `app/services/ontology/logic_runtime.py` — **the backend orchestrat
 Model | a node's `model_id` resolves through the platform registry (`api_models` / `api_providers`); omitted → the default `chat-completions` model |
 Trace | `ontology_function_executions.trace` — per node: prompt as sent, tokens, duration, error; read via `GET …/{id}/executions` |
 
-Supported node kinds today: **`model`**, **`action`**, **`condition`** and **`loop`**. `function` / `transform` are
-rejected at save time with a message that says they are not implemented yet, rather than half-working.
+Supported node kinds today: **`model`**, **`action`**, **`transform`**, **`condition`** and **`loop`** — every block
+AIP Logic has except `Create variable`, whose job the transform covers.
+
+**`transform` is the deterministic step.** `{kind: "transform", template: {…}}` renders a JSON object from the
+variables with no model call and no tokens, which is what keeps a flow from asking the model to do arithmetic, renaming
+or assembly. A field that is exactly one reference keeps the referenced type; mixed text renders as text.
 
 **`loop` maps a list through a body.** `{kind: "loop", over: "{{n1.items}}", as: "item", nodes: […], concurrency}`
 runs the body once per element with `{{item}}` bound (plus `{{index}}`), and the body may be `model` or `action` nodes —
