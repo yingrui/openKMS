@@ -1422,7 +1422,17 @@
     "logicToolQuery": "Read objects",
     "logicToolCall": "Call a function",
     "logicToolFunction": "Function api_name (published)",
-    "logicToolWhen": "When should the model use it?"
+    "logicToolWhen": "When should the model use it?",
+    "logicNodeKind": "Kind",
+    "logicNodeKindModel": "Model call",
+    "logicNodeKindAction": "Ontology edit",
+    "logicActionType": "Action type api_name",
+    "logicParams": "Parameters",
+    "logicParamKey": "parameter",
+    "logicParamValue": "value or {{reference}}",
+    "logicAddParam": "Add a parameter",
+    "logicParamsHint": "Edits are composed here; nothing is written until an Action calls this function.",
+    "logicTypeEdits": "Edits"
   },
   "dataSources": {
     "title": "Data sources",

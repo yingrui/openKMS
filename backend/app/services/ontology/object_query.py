@@ -209,7 +209,7 @@ def split_link_property(prop: str) -> tuple[str, str] | None:
     return link, name
 
 
-METRICS = ("count", "sum", "avg", "min", "max", "p50", "p90")
+METRICS = ("count", "sum", "avg", "min", "max", "p50", "p90", "linked")
 
 #: Metrics that can be compared against a second set. A percentile of two sets cannot be combined into one, and
 #: neither can a min or a max, so those are asked one set at a time.
@@ -255,7 +255,7 @@ def _aggregate_branch(
         split_part = f", toString({split_var}.`{split_name}`) AS split"
 
     measure_expr = ""
-    if metric != "count":
+    if metric not in ("count", "linked"):
         assert measure is not None
         step3, measure_var, measure_name, _ = _link_step(measure, "m3", link_info)
         match += step3
@@ -266,8 +266,10 @@ def _aggregate_branch(
         f"WITH toString({dim_var}.`{dim_name}`) AS value{split_part}, n AS n{measure_expr} "
         f"WHERE {' AND '.join(null_filters)}"
     )
-    columns = "count(DISTINCT n) AS c"
-    if metric == "count":
+    # `linked` answers "how many of them" for an m2m: a plan covering 180 distributors is 180, not 1 plan.
+    counted = "count(DISTINCT m)" if metric == "linked" else "count(DISTINCT n)"
+    columns = f"{counted} AS c"
+    if metric in ("count", "linked"):
         pass
     elif metric in ("p50", "p90"):
         # `percentileCont(value, percentile)` — the value comes first, which reads backwards until it does not.
@@ -311,13 +313,15 @@ def aggregate_query(
     """
     if metric not in METRICS:
         raise QueryError(f"unknown metric `{metric}`; one of {', '.join(METRICS)}")
-    if metric != "count" and not measure:
+    if metric == "linked" and split_link_property(prop) is None:
+        raise QueryError("`linked` counts the objects on the other side of a link; chart `@link/property`")
+    if metric not in ("count", "linked") and not measure:
         raise QueryError(f"`{metric}` needs a `measure` property")
     if compare_where is not None and metric not in COMPARABLE_METRICS:
         raise QueryError(
             f"`{metric}` cannot be compared with another set; use one of {', '.join(COMPARABLE_METRICS)}"
         )
-    if split and metric != "count":
+    if split and metric not in ("count", "linked"):
         # A cell shows how many objects it holds; a measured cross-tab has no place to put the measure, and silently
         # dropping it left an `ORDER BY` naming a variable the query never selected.
         raise QueryError("a cross-tab counts objects; drop the metric to split")
@@ -348,12 +352,14 @@ def aggregate_query(
     if metric == "avg" and not chronological:
         # Ordering a mean by its sum would rank a big group above a large mean.
         order = "v IS NULL, (v / nv) DESC"
-    elif metric != "count" and not chronological:
+    elif metric not in ("count", "linked") and not chronological:
         order = "v IS NULL, v DESC"
     if split:
+        # A cell is a count; `linked` changes what is counted, not the shape of the answer.
+        counted = "count(DISTINCT m)" if metric == "linked" else "count(DISTINCT n)"
         return (
             f"{match} {projection} "
-            f"RETURN value, split, count(DISTINCT n) AS c ORDER BY {order} LIMIT {int(limit)}"
+            f"RETURN value, split, {counted} AS c ORDER BY {order} LIMIT {int(limit)}"
         )
     return (
         f"{match} {projection} "

@@ -177,3 +177,41 @@ describe('structured output', () => {
     expect(result.errors).toEqual(['#1: a structured output needs at least one named field']);
   });
 });
+
+describe('action nodes', () => {
+  it('round-trips an edit node through spec and back', () => {
+    const opened = draftFromSpec({
+      nodes: [
+        { id: 'n1', kind: 'model', prompt: 'Summarise', output_schema: { type: 'object' } },
+        { id: 'n2', kind: 'action', action_type: 'addHolding', params: { ts_code: '{{n1.ticker}}' } },
+      ],
+    });
+    expect(opened.nodes[1].kind).toBe('action');
+    expect(opened.nodes[1].actionType).toBe('addHolding');
+    expect(opened.nodes[1].params).toEqual([{ key: 'ts_code', value: '{{n1.ticker}}' }]);
+
+    const rebuilt = specFromDraft(opened).spec;
+    expect(rebuilt?.nodes[1]).toEqual({
+      id: 'n2',
+      kind: 'action',
+      action_type: 'addHolding',
+      params: { ts_code: '{{n1.ticker}}' },
+    });
+  });
+
+  it('needs an action type, and does not ask for a prompt', () => {
+    const missing = specFromDraft({
+      nodes: [{ ...newNode(0), kind: 'action', actionType: '' }],
+      inputs: [],
+      output: '',
+    });
+    expect(missing.errors).toEqual(['#1: an action type is required']);
+
+    const fine = specFromDraft({
+      nodes: [{ ...newNode(0), kind: 'action', actionType: 'addHolding' }],
+      inputs: [],
+      output: '',
+    });
+    expect(fine.errors).toEqual([]);
+  });
+});

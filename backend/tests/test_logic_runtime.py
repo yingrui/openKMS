@@ -46,8 +46,8 @@ class TestValidation:
         assert validate_flow_spec({}) == ["flow_spec.nodes must be a non-empty list"]
 
     def test_rejects_node_kinds_that_are_not_implemented_yet(self):
-        errors = validate_flow_spec({"nodes": [{"id": "n1", "kind": "action"}]})
-        assert any("'action' is not supported yet" in e for e in errors)
+        errors = validate_flow_spec({"nodes": [{"id": "n1", "kind": "loop"}]})
+        assert any("'loop' is not supported yet" in e for e in errors)
 
     def test_rejects_duplicate_ids_and_missing_prompts(self):
         errors = validate_flow_spec(
@@ -453,3 +453,56 @@ class TestCallFunctionSchema:
         # The target's own input schema is what the model is asked to fill in — not a free-form object.
         schema = next(tool.parameters_json_schema for tool in offered["tools"] if tool.name == "call_startSimulation")
         assert schema["required"] == ["portfolio"]
+
+
+class TestActionNode:
+    """An `action` node composes an edit batch; nothing is applied until an Action calls the function."""
+
+    def _spec(self, **node):
+        return {
+            "nodes": [
+                {"id": "n1", "kind": "model", "prompt": "Summarise", "output_schema": SCHEMA},
+                {
+                    "id": "n2",
+                    "kind": "action",
+                    "action_type": "addHolding",
+                    "params": {"name": "{{n1.answer}}"},
+                    **node,
+                },
+            ]
+        }
+
+    def test_an_action_node_needs_a_type(self):
+        errors = validate_flow_spec({"nodes": [{"id": "n1", "kind": "action"}]})
+        assert any("action_type is required" in e for e in errors)
+
+    @pytest.mark.asyncio
+    async def test_the_action_receives_rendered_params_and_returns_edits(self):
+        asked: list[tuple[str, dict]] = []
+
+        async def planner(api_name: str, params: dict) -> list[dict]:
+            asked.append((api_name, params))
+            return [{"op": "create", "object_type": "Holding", "properties": {"name": params["name"]}}]
+
+        outcome = await run_flow(self._spec(), {}, model_factory=_factory, action_planner=planner)
+
+        assert outcome.status == "ok", outcome.error
+        assert asked == [("addHolding", {"name": "42"})]
+        assert outcome.output == {
+            "edits": [{"op": "create", "object_type": "Holding", "properties": {"name": "42"}}]
+        }
+        node = outcome.trace["nodes"][1]
+        assert node["kind"] == "action"
+        assert node["ok"] is True
+        assert node["params"] == {"name": "42"}
+
+    @pytest.mark.asyncio
+    async def test_an_action_failure_stops_the_flow_and_is_traced(self):
+        async def planner(_api_name: str, _params: dict) -> list[dict]:
+            raise FlowError("create requires at least one property value in input")
+
+        outcome = await run_flow(self._spec(), {}, model_factory=_factory, action_planner=planner)
+
+        assert outcome.status == "error"
+        assert outcome.error is not None and outcome.error.startswith("n2:")
+        assert outcome.trace["nodes"][1]["ok"] is False

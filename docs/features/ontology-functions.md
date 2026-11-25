@@ -164,8 +164,14 @@ Executor | `app/services/ontology/logic_runtime.py` — **the backend orchestrat
 Model | a node's `model_id` resolves through the platform registry (`api_models` / `api_providers`); omitted → the default `chat-completions` model |
 Trace | `ontology_function_executions.trace` — per node: prompt as sent, tokens, duration, error; read via `GET …/{id}/executions` |
 
-Supported node kinds today: **`model` only**, in a linear chain. `function` / `action` / `transform` / `condition` /
+Supported node kinds today: **`model`** and **`action`**, in a linear chain. `function` / `transform` / `condition` /
 `loop` are rejected at save time with a message that says they are not implemented yet, rather than half-working.
+
+**`action` nodes compose edits; they never apply them.** `{id, kind: "action", action_type, params}` renders its
+parameters from earlier node outputs (`{"ts_code": "{{n1.ticker}}"}`), resolves the action type, and produces an edit
+batch with the same builder the built-in action path uses. The flow's output then carries `{"edits": [...]}`, which is
+applied only when an Action calls the function — the same invariant code functions have, now true in the flow shape too.
+A dry run shows the batch and writes nothing. Function-backed (non-built-in) action types are refused for now.
 
 **Typed inputs.** `flow_spec.inputs` declares `{name, type}` with `string` / `number` / `integer` / `boolean` /
 `object`. Declared inputs are checked before the first model call: a missing or mistyped value fails with the input's

@@ -1416,7 +1416,17 @@
     "logicToolQuery": "读对象",
     "logicToolCall": "调用函数",
     "logicToolFunction": "函数 api_name（已发布）",
-    "logicToolWhen": "什么情况下用它？"
+    "logicToolWhen": "什么情况下用它？",
+    "logicNodeKind": "类型",
+    "logicNodeKindModel": "模型调用",
+    "logicNodeKindAction": "本体编辑",
+    "logicActionType": "Action 类型的 api_name",
+    "logicParams": "参数",
+    "logicParamKey": "参数名",
+    "logicParamValue": "值或 {{引用}}",
+    "logicAddParam": "加一个参数",
+    "logicParamsHint": "这里只组合编辑；只有从 Action 调用这个函数时才会真正写入。",
+    "logicTypeEdits": "编辑"
   },
   "dataSources": {
     "title": "数据源",

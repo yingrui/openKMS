@@ -793,6 +793,38 @@
   border-style: dashed;
 }
 
+/* ---------- Logic function: an action node's parameters ---------- */
+
+.logic-node__action-type {
+  min-width: 14rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.logic-node__params {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.logic-node__param {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.logic-node__param-key {
+  width: 12rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.logic-node__param-value {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
 /* ---------- Logic function: a node's tools ---------- */
 
 .logic-node__tools {

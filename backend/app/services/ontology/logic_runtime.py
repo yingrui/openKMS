@@ -28,7 +28,7 @@ from pydantic_ai import Agent, PromptedOutput, StructuredDict
 from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
 from pydantic_ai.usage import UsageLimitExceeded, UsageLimits
 
-SUPPORTED_NODE_KINDS = ("model",)
+SUPPORTED_NODE_KINDS = ("model", "action")
 SUPPORTED_TOOL_KINDS = ("query_objects", "call_function")
 PROMPT_REF = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\}\}")
 DEFAULT_NODE_TIMEOUT_S = 60.0
@@ -86,6 +86,12 @@ def validate_flow_spec(spec: dict | None) -> list[str]:
             )
         if kind == "model" and not str(node.get("prompt") or "").strip():
             errors.append(f"{where}.prompt is required")
+        if kind == "action":
+            if not str(node.get("action_type") or "").strip():
+                errors.append(f"{where}.action_type is required")
+            params = node.get("params")
+            if params is not None and not isinstance(params, dict):
+                errors.append(f"{where}.params must be an object")
         errors.extend(_validate_tools(node, where))
 
     output = spec.get("output")
@@ -184,6 +190,17 @@ def _lookup(variables: dict[str, Any], path: str) -> Any:
     return current
 
 
+def _render_value(value: Any, variables: dict[str, Any]) -> Any:
+    """Params are strings with references, or literals of any JSON type."""
+    if isinstance(value, str):
+        return render_template(value, variables)
+    if isinstance(value, dict):
+        return {key: _render_value(item, variables) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_render_value(item, variables) for item in value]
+    return value
+
+
 def _resolve_output(spec: dict, variables: dict[str, Any], last_node_id: str) -> dict | None:
     """`output` is a single reference; without one, the last node's output is the answer."""
     reference = spec.get("output")
@@ -199,6 +216,8 @@ ModelFactory = Callable[[str | None], Awaitable[Any]]
 #: `(tool, arguments) -> rows`. Injected so tests (and the dry run) do not need a live API; the real one calls
 #: openKMS with the caller's token, which is what keeps permissions honest.
 ToolRunner = Callable[[dict, dict], Awaitable[Any]]
+#: `(action_type_api_name, params) -> edits`. Composes an edit batch; applying it is the Action path's job.
+ActionPlanner = Callable[[str, dict], Awaitable[list[dict]]]
 #: `(function_api_name) -> input_schema | None`. Lets a `call_function` tool describe its own parameters.
 SchemaResolver = Callable[[str], Awaitable[dict | None]]
 
@@ -210,6 +229,7 @@ async def run_flow(
     model_factory: ModelFactory,
     tool_runner: ToolRunner | None = None,
     schema_resolver: SchemaResolver | None = None,
+    action_planner: ActionPlanner | None = None,
     node_timeout_s: float = DEFAULT_NODE_TIMEOUT_S,
     node_token_limit: int = DEFAULT_NODE_TOKEN_LIMIT,
 ) -> FlowOutcome:
@@ -237,6 +257,47 @@ async def run_flow(
 
     for node in nodes:
         node_id = str(node["id"])
+        if node.get("kind") == "action":
+            entry_started = time.perf_counter()
+            action_entry: dict[str, Any] = {
+                "id": node_id,
+                "kind": "action",
+                "action_type": node.get("action_type"),
+                "tool_calls": [],
+            }
+            try:
+                rendered_params = {
+                    str(key): _render_value(value, variables)
+                    for key, value in (node.get("params") or {}).items()
+                }
+                action_entry["params"] = rendered_params
+                if action_planner is None:
+                    raise FlowError("this flow has an action node but nothing can compose edits")
+                edits = await action_planner(
+                    str(node.get("action_type") or ""), rendered_params
+                )
+            except FlowError as e:
+                action_entry.update(
+                    {"ok": False, "error": str(e), "duration_ms": _ms(entry_started)}
+                )
+                trace["nodes"].append(action_entry)
+                return FlowOutcome(
+                    status="error",
+                    output=None,
+                    error=f"{node_id}: {e}",
+                    duration_ms=_ms(started),
+                    trace=trace,
+                )
+            # Edits are composed, never applied: the write happens when an Action calls this function.
+            output = {"edits": edits}
+            action_entry.update(
+                {"ok": True, "output": output, "duration_ms": _ms(entry_started)}
+            )
+            trace["nodes"].append(action_entry)
+            variables[node_id] = output
+            last_node_id = node_id
+            continue
+
         prompt = render_template(str(node["prompt"]), variables)
         node_started = time.perf_counter()
         calls: list[dict[str, Any]] = []

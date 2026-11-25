@@ -35,6 +35,7 @@ from fastapi import HTTPException
 from app.services.ontology.function_runtime import FunctionExecutionError, execute_in_ofs
 from app.services.ontology import logic_runtime
 from app.services.ontology.logic_model_registry import resolve_model
+from app.services.ontology.logic_runtime import FlowError
 from app.services.ontology.logic_tools import function_input_schema, make_tool_runner
 from app.services.ontology.function_service import get_function, get_function_by_api_name, resolve_version_for_execute
 from app.services.ontology.input_schema import validate_input_against_schema
@@ -121,6 +122,32 @@ async def _run_ofs(
     )
 
 
+async def plan_action_edits(db: AsyncSession, api_name: str, params: dict) -> list[dict]:
+    """Compose an action's edit batch without applying it — applying belongs to the Action execute path."""
+    from app.models.ontology_function import OntologyActionType
+    from app.services.ontology.builtin_action_service import build_edits_for_builtin_action
+
+    at = (
+        await db.execute(select(OntologyActionType).where(OntologyActionType.api_name == api_name))
+    ).scalar_one_or_none()
+    if not at:
+        raise FlowError(f"action type '{api_name}' not found")
+    if not at.object_type_id:
+        raise FlowError(f"action type '{api_name}' has no object type")
+    ot = await db.get(ObjectType, at.object_type_id)
+    if not ot:
+        raise FlowError(f"object type of action '{api_name}' not found")
+    edits, errors = build_edits_for_builtin_action(
+        at=at,
+        ot=ot,
+        input_payload=params,
+        object_id=str(params.get("object_id") or "") or None,
+    )
+    if errors:
+        raise FlowError("; ".join(errors))
+    return edits
+
+
 async def dry_run_flow(
     db: AsyncSession,
     fn: OntologyFunction,
@@ -145,6 +172,7 @@ async def dry_run_flow(
         input_payload,
         model_factory=model_factory,
         tool_runner=tool_runner or make_tool_runner(caller_token),
+        action_planner=lambda api_name, params: plan_action_edits(db, api_name, params),
         schema_resolver=(
             None
             if caller_token == ""
@@ -184,6 +212,7 @@ async def _run_flow(
         tool_runner=make_tool_runner(
             caller_token, call_depth=call_depth, call_stack=tuple(call_stack or ())
         ),
+        action_planner=lambda api_name, params: plan_action_edits(db, api_name, params),
         schema_resolver=lambda api_name: function_input_schema(
             caller_token=caller_token, api_name=api_name
         ),

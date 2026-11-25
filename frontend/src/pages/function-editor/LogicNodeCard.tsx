@@ -78,7 +78,11 @@ export function LogicNodeCard({
         <span className="logic-node__index">{t('editor.logicNodeLabel', { index: index + 1 })}</span>
         <code className="logic-node__id">{node.id || '—'}</code>
         <span className="logic-node__type">
-          {structured ? t('editor.logicTypeFields', { count: fields.length }) : t('editor.logicTypeText')}
+          {node.kind === 'action'
+            ? t('editor.logicTypeEdits')
+            : structured
+              ? t('editor.logicTypeFields', { count: fields.length })
+              : t('editor.logicTypeText')}
         </span>
         {index > 0 ? (
           <span className="logic-node__flow">
@@ -120,6 +124,38 @@ export function LogicNodeCard({
         </div>
       </div>
 
+      <div className="logic-node__row">
+        <label className="logic-node__label" htmlFor={`logic-kind-${index}`}>
+          {t('editor.logicNodeKind')}
+        </label>
+        <select
+          id={`logic-kind-${index}`}
+          className="ds-control logic-node__mode"
+          value={node.kind}
+          onChange={(e) => onChange({ kind: e.target.value as 'model' | 'action' })}
+          disabled={disabled}
+        >
+          <option value="model">{t('editor.logicNodeKindModel')}</option>
+          <option value="action">{t('editor.logicNodeKindAction')}</option>
+        </select>
+        {node.kind === 'action' ? (
+          <input
+            className="ds-control logic-node__action-type"
+            value={node.actionType}
+            placeholder={t('editor.logicActionType')}
+            aria-label={t('editor.logicActionType')}
+            onChange={(e) => onChange({ actionType: e.target.value })}
+            disabled={disabled}
+          />
+        ) : null}
+      </div>
+
+      {node.kind === 'action' ? (
+        <ActionParams node={node} references={references} disabled={disabled} onChange={onChange} />
+      ) : null}
+
+      {node.kind === 'model' ? (
+      <>
       <label className="logic-node__label" htmlFor={`logic-prompt-${index}`}>
         {t('editor.logicPrompt')}
       </label>
@@ -390,6 +426,9 @@ export function LogicNodeCard({
         </button>
       </div>
 
+      </>
+      ) : null}
+
       {runValue ? <NodeRunValue value={runValue} /> : null}
 
       <details className="logic-node__advanced">
@@ -492,6 +531,65 @@ function NodeRunValue({
       ) : (
         <p className="logic-node__result-text">{typeof output === 'string' ? output : JSON.stringify(output)}</p>
       )}
+    </div>
+  );
+}
+
+/** Action parameters: key + template. Editing vs the spec is one row each, in order. */
+function ActionParams({
+  node,
+  references,
+  disabled,
+  onChange,
+}: {
+  node: ModelNode;
+  references: string[];
+  disabled: boolean;
+  onChange: (changes: Partial<ModelNode>) => void;
+}) {
+  const { t } = useTranslation('ontology');
+  return (
+    <div className="logic-node__params">
+      <span className="logic-node__label">{t('editor.logicParams')}</span>
+      {node.params.map((param, index) => (
+        <div key={index} className="logic-node__param">
+          <input
+            className="ds-control logic-node__param-key"
+            value={param.key}
+            placeholder={t('editor.logicParamKey')}
+            aria-label={t('editor.logicParamKey')}
+            onChange={(e) => onChange({ params: replaceAt(node.params, index, { key: e.target.value }) })}
+            disabled={disabled}
+          />
+          <input
+            className="ds-control logic-node__param-value"
+            value={param.value}
+            placeholder={`{{${references[references.length - 1] ?? 'input'}.field}}`}
+            aria-label={t('editor.logicParamValue')}
+            onChange={(e) => onChange({ params: replaceAt(node.params, index, { value: e.target.value }) })}
+            disabled={disabled}
+          />
+          <button
+            type="button"
+            className="ds-table-icon-link"
+            aria-label={t('shared.delete')}
+            onClick={() => onChange({ params: node.params.filter((_, i) => i !== index) })}
+            disabled={disabled}
+          >
+            <Trash2 size={14} aria-hidden />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm"
+        onClick={() => onChange({ params: [...node.params, { key: '', value: '' }] })}
+        disabled={disabled}
+      >
+        <Plus size={14} aria-hidden />
+        {t('editor.logicAddParam')}
+      </button>
+      <p className="logic-node__hint">{t('editor.logicParamsHint')}</p>
     </div>
   );
 }

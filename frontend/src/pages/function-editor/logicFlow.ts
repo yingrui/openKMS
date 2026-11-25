@@ -20,9 +20,15 @@ export type InputField = { name: string; type: InputType; description: string };
 
 export const INPUT_TYPES: InputType[] = ['string', 'number', 'integer', 'boolean', 'object'];
 
+export type NodeParam = { key: string; value: string };
+
 export type ModelNode = {
   id: string;
-  kind: 'model';
+  kind: 'model' | 'action';
+  /** `action` only: the action type's api_name; its edits are composed, never applied here. */
+  actionType: string;
+  /** `action` only: parameters, each a template like `{{n1.summary}}`. */
+  params: NodeParam[];
   /** Registry model id; empty means "the default chat model". */
   model_id: string;
   system: string;
@@ -71,6 +77,8 @@ export function newNode(index: number): ModelNode {
   return {
     id: `n${index + 1}`,
     kind: 'model',
+    actionType: '',
+    params: [],
     model_id: '',
     system: '',
     prompt: '',
@@ -93,12 +101,18 @@ export function draftFromSpec(spec: unknown): FlowDraft {
   if (!Array.isArray(raw)) return emptyDraft();
   const nodes = raw
     .filter((node): node is Record<string, unknown> => Boolean(node) && typeof node === 'object')
-    .filter((node) => node.kind === 'model')
+    .filter((node) => node.kind === 'model' || node.kind === 'action')
     .map((node, index) => {
       const fields = fieldsFromSchema(node.output_schema);
+      const isAction = node.kind === 'action';
       return {
         id: String(node.id ?? `n${index + 1}`),
-        kind: 'model' as const,
+        kind: (isAction ? 'action' : 'model') as 'model' | 'action',
+        actionType: String(node.action_type ?? ''),
+        params: Object.entries((node.params as Record<string, unknown>) ?? {}).map(([key, value]) => ({
+          key,
+          value: typeof value === 'string' ? value : JSON.stringify(value),
+        })),
         model_id: String(node.model_id ?? ''),
         system: String(node.system ?? ''),
         prompt: String(node.prompt ?? ''),
@@ -173,6 +187,19 @@ export function specFromDraft(draft: FlowDraft): DraftResult {
     if (!id) errors.push(`${where}: an id is required`);
     else if (seen.has(id)) errors.push(`${where}: id "${id}" is used twice`);
     else seen.add(id);
+
+    if (node.kind === 'action') {
+      const actionType = node.actionType.trim();
+      if (!actionType) errors.push(`${where}: an action type is required`);
+      const params: Record<string, string> = {};
+      for (const param of node.params) {
+        const key = param.key.trim();
+        if (!key) continue;
+        params[key] = param.value;
+      }
+      nodes.push({ id, kind: 'action', action_type: actionType, params });
+      return;
+    }
 
     if (!node.prompt.trim()) errors.push(`${where}: a prompt is required`);
 
