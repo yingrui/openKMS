@@ -27,6 +27,10 @@ export const RUN_TYPES_BY_KIND: Record<string, string[]> = {
   answer: ['search_retrieval', 'qa_answer'],
   query: ['data_query'],
   content: ['wiki_content_coverage'],
+  // A function is measured by calling its published version with each case's input.
+  function: ['function_output'],
 };
 
 export const isQueryKind = (kind: string | undefined) => (kind ?? 'answer') === 'query';
+/** A function evaluation: its target is a function and its cases are JSON in and out. */
+export const isFunctionKind = (kind: string | undefined) => kind === 'function';

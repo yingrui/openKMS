@@ -157,6 +157,9 @@ class EvaluationRunResult(BaseModel):
     extra_sources: int = 0
     #: The judge's structured verdict (verdict / checks / model / prompt_version).
     judge: dict[str, Any] | None = None
+    #: Function evaluations: what the function returned, and the nodes that produced it.
+    output: dict[str, Any] | None = None
+    trace_nodes: list[dict[str, Any]] = []
     pass_: bool = Field(False, alias="pass")
     score: float = 0.0
     reasoning: str = ""

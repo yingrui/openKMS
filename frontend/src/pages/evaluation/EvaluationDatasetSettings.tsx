@@ -50,7 +50,7 @@ export function EvaluationDatasetSettings() {
       setDataset(data);
       setNameField(data.name);
       setDescriptionField(data.description ?? '');
-      setKnowledgeBaseIdField(data.knowledge_base_id);
+      setKnowledgeBaseIdField(data.knowledge_base_id ?? '');
       setWikiSpaceIdField(data.wiki_space_id ?? '');
       setWikiSpaces(wikiList ?? []);
       setKnowledgeBases(kbList ?? []);
@@ -89,7 +89,8 @@ export function EvaluationDatasetSettings() {
       toast.error(t('evaluationSettings.nameRequired'));
       return;
     }
-    if (!knowledgeBaseIdField.trim()) {
+    const isFunctionTarget = dataset.kind === 'function';
+    if (!isFunctionTarget && !knowledgeBaseIdField.trim()) {
       toast.error(t('evaluationSettings.knowledgeBaseRequired'));
       return;
     }
@@ -98,7 +99,9 @@ export function EvaluationDatasetSettings() {
       const updated = await updateEvaluation(evaluationId, {
         name,
         description: descriptionField.trim() || null,
-        knowledge_base_id: knowledgeBaseIdField.trim(),
+        // A function evaluation has no knowledge base to change, and sending an empty one would be a request to
+        // re-target it — which the API refuses, correctly.
+        ...(isFunctionTarget ? {} : { knowledge_base_id: knowledgeBaseIdField.trim() }),
         wiki_space_id: wikiSpaceIdField.trim() || null,
         semantic_model_id: semanticModelIdField.trim() || null,
       });
@@ -107,7 +110,7 @@ export function EvaluationDatasetSettings() {
       setDataset(updated);
       setNameField(updated.name);
       setDescriptionField(updated.description ?? '');
-      setKnowledgeBaseIdField(updated.knowledge_base_id);
+      setKnowledgeBaseIdField(updated.knowledge_base_id ?? '');
       setWikiSpaceIdField(updated.wiki_space_id ?? '');
       setSemanticModelIdField(updated.semantic_model_id ?? '');
       toast.success(t('evaluation.updatedToast'));
@@ -218,6 +221,27 @@ export function EvaluationDatasetSettings() {
         </div>
       </EntityViewPanel>
 
+      {dataset.kind === 'function' ? (
+        <EntityViewPanel title={t('evaluationSettings.target')} description={t('evaluationSettings.targetHint')}>
+          <div className="entity-view__form">
+            <FormField label={t('evaluationSettings.targetFunction')}>
+              <div className="eval-settings-target">
+                <span className="eval-settings-fn">{dataset.function_display_name || dataset.function_api_name}</span>
+                <code>{dataset.function_api_name}</code>
+                {dataset.function_id ? (
+                  <Link to={`/function-editor/${dataset.function_id}`} className="eval-settings-link">
+                    {t('evaluationSettings.openFunction')}
+                  </Link>
+                ) : null}
+              </div>
+            </FormField>
+            <p className="eval-settings-note">{t('evaluationSettings.targetFunctionNote')}</p>
+          </div>
+        </EntityViewPanel>
+      ) : null}
+
+      {dataset.kind === 'function' ? null : (
+      <>
       <EntityViewPanel
         title={t('evaluationSettings.knowledgeBase')}
         description={t('evaluationSettings.knowledgeBaseHint')}
@@ -282,7 +306,10 @@ export function EvaluationDatasetSettings() {
           </FormField>
         </div>
       </EntityViewPanel>
+      </>
+      )}
 
+      {dataset.kind === 'function' ? null : (
       <EntityViewPanel
         title={t('evaluationSettings.wikiSpace')}
         description={t('evaluationSettings.wikiSpaceHint')}
@@ -323,6 +350,7 @@ export function EvaluationDatasetSettings() {
           </FormField>
         </div>
       </EntityViewPanel>
+      )}
 
       <section className="account-card eval-settings-danger">
         <div className="account-card-head">

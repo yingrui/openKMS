@@ -11,6 +11,10 @@ import {
   type EvaluationResponse,
 } from '../../data/evaluationsApi';
 import { fetchAllKnowledgeBases, type KnowledgeBaseResponse } from '../../data/knowledgeBasesApi';
+import {
+  fetchOntologyFunctions,
+  type OntologyFunctionResponse,
+} from '../../data/ontologyFunctionsApi';
 import { fetchAllWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import {
   CARD_PREVIEW_LIMIT,
@@ -32,12 +36,16 @@ export function EvaluationDatasetList() {
   const [listPage, setListPage] = useState(0);
   const [listPageSize, setListPageSize] = useState(LIST_PAGE_SIZE_DEFAULT);
   const [kbs, setKbs] = useState<KnowledgeBaseResponse[]>([]);
+  const [functions, setFunctions] = useState<OntologyFunctionResponse[]>([]);
   const [wikiSpaces, setWikiSpaces] = useState<WikiSpaceResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [editDs, setEditDs] = useState<EvaluationResponse | null>(null);
   const [formName, setFormName] = useState('');
   const [formKbId, setFormKbId] = useState('');
+  /** Which thing this evaluation measures: a knowledge base, or a function. */
+  const [formTarget, setFormTarget] = useState<'kb' | 'function'>('kb');
+  const [formFunctionId, setFormFunctionId] = useState('');
   const [formWikiSpaceId, setFormWikiSpaceId] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [saving, setSaving] = useState(false);
@@ -66,12 +74,15 @@ export function EvaluationDatasetList() {
 
   const loadDropdowns = useCallback(async () => {
     try {
-      const [kbItems, wikiData] = await Promise.all([
+      const [kbItems, wikiData, fns] = await Promise.all([
         fetchAllKnowledgeBases(),
         fetchAllWikiSpaces().catch(() => []),
+        fetchOntologyFunctions().catch(() => ({ items: [] })),
       ]);
       setKbs(kbItems);
       setWikiSpaces(Array.isArray(wikiData) ? wikiData : []);
+      // Only published functions can be evaluated: a run measures the published version.
+      setFunctions((fns?.items ?? []).filter((fn) => fn.published_version_id));
     } catch {
       // Dropdown options are optional; list load shows its own error.
     }
@@ -102,18 +113,26 @@ export function EvaluationDatasetList() {
   };
 
   const handleCreate = async () => {
-    if (!formName.trim() || !formKbId) return;
+    if (!formName.trim()) return;
+    if (formTarget === 'kb' && !formKbId) return;
+    if (formTarget === 'function' && !formFunctionId) return;
     setSaving(true);
     try {
       await createEvaluation({
         name: formName.trim(),
-        knowledge_base_id: formKbId,
-        wiki_space_id: formWikiSpaceId.trim() || null,
+        kind: formTarget === 'function' ? 'function' : 'answer',
+        ...(formTarget === 'function'
+          ? { function_id: formFunctionId }
+          : {
+              knowledge_base_id: formKbId,
+              wiki_space_id: formWikiSpaceId.trim() || null,
+            }),
         description: formDesc.trim() || undefined,
       });
       setShowCreate(false);
       setFormName('');
       setFormKbId('');
+      setFormFunctionId('');
       setFormWikiSpaceId('');
       setFormDesc('');
       toast.success(t('evaluation.createdToast'));
@@ -318,7 +337,12 @@ export function EvaluationDatasetList() {
             <button
               type="button"
               className="btn btn-primary"
-              disabled={!formName.trim() || (showCreate && !formKbId) || saving}
+              disabled={
+                !formName.trim() ||
+                (showCreate && formTarget === 'kb' && !formKbId) ||
+                (showCreate && formTarget === 'function' && !formFunctionId) ||
+                saving
+              }
               onClick={() => void (editDs ? handleEdit() : handleCreate())}
             >
               {saving ? t('evaluation.saving') : editDs ? t('shared.save') : t('shared.create')}
@@ -335,6 +359,17 @@ export function EvaluationDatasetList() {
           />
         </FormField>
         {showCreate ? (
+          <FormField label={t('evaluation.target')}>
+            <select
+              value={formTarget}
+              onChange={(e) => setFormTarget(e.target.value as 'kb' | 'function')}
+            >
+              <option value="kb">{t('evaluation.targetKb')}</option>
+              <option value="function">{t('evaluation.targetFunction')}</option>
+            </select>
+          </FormField>
+        ) : null}
+        {showCreate && formTarget === 'kb' ? (
           <FormField label={t('evaluation.knowledgeBase')}>
             <select value={formKbId} onChange={(e) => setFormKbId(e.target.value)} required>
               <option value="">{t('evaluation.selectKb')}</option>
@@ -346,7 +381,23 @@ export function EvaluationDatasetList() {
             </select>
           </FormField>
         ) : null}
-        {showCreate ? (
+        {showCreate && formTarget === 'function' ? (
+          <FormField label={t('evaluation.function')} hint={t('evaluation.functionHint')}>
+            <select
+              value={formFunctionId}
+              onChange={(e) => setFormFunctionId(e.target.value)}
+              required
+            >
+              <option value="">{t('evaluation.selectFunction')}</option>
+              {functions.map((fn) => (
+                <option key={fn.id} value={fn.id}>
+                  {fn.display_name} · {fn.api_name}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        ) : null}
+        {showCreate && formTarget === 'kb' ? (
           <FormField label={t('evaluation.wikiSpaceOptional')}>
             <select value={formWikiSpaceId} onChange={(e) => setFormWikiSpaceId(e.target.value)}>
               <option value="">{t('evaluation.noWikiSpace')}</option>

@@ -6,6 +6,7 @@ const EVAL_TYPE_SEARCH = 'search_retrieval';
 const EVAL_TYPE_QA = 'qa_answer';
 const EVAL_TYPE_WIKI_COVERAGE = 'wiki_content_coverage';
 const EVAL_TYPE_DATA_QUERY = 'data_query';
+const EVAL_TYPE_FUNCTION = 'function_output';
 
 function evalShowsSearchSnippets(evaluationType: string): boolean {
   return evaluationType === EVAL_TYPE_SEARCH || evaluationType === EVAL_TYPE_WIKI_COVERAGE;
@@ -39,6 +40,7 @@ export function RunResultRow({
     return [...seen.values()];
   })();
   const isDataQuery = evaluationType === EVAL_TYPE_DATA_QUERY;
+  const isFunction = evaluationType === EVAL_TYPE_FUNCTION;
 
   return (
     <details id={`eval-result-${r.item_id}`} className={`eval-result eval-result--${outcome}`} open={!r.pass}>
@@ -142,6 +144,27 @@ export function RunResultRow({
                 {a.suggestion || a.claim}
               </p>
             ))}
+          </div>
+        ) : null}
+
+        {isFunction && r.output ? (
+          <div>
+            <span className="eval-body-label">{t('evaluationDetail.functionOutput')}</span>
+            <pre className="eval-result-pre">{JSON.stringify(r.output, null, 2)}</pre>
+            {r.trace_nodes?.length ? (
+              <p className="eval-result-note">
+                {t('evaluationDetail.functionTrace', {
+                  nodes: r.trace_nodes.map((node) => `${node.id}${node.ok ? '' : ' ✗'}`).join(' · '),
+                })}
+              </p>
+            ) : null}
+            {r.judge ? (
+              <p className="eval-result-note">
+                {t('evaluationDetail.functionJudge', {
+                  verdict: String((r.judge as { verdict?: string }).verdict ?? ''),
+                })}
+              </p>
+            ) : null}
           </div>
         ) : null}
 

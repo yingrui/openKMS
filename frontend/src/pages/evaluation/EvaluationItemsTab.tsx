@@ -20,7 +20,7 @@ import {
 } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from '../shared/EntityViewShell';
 import { useEvaluationDetail } from './EvaluationDetailContext';
-import { isQueryKind } from './EvaluationDetailContext';
+import { isFunctionKind, isQueryKind } from './EvaluationDetailContext';
 import { expectedQueryLines } from './expectedQueryText';
 
 const PAGE_SIZE_DEFAULT = 25;
@@ -30,6 +30,8 @@ export function EvaluationItemsTab() {
   const { t } = useTranslation('workspace');
   const { evaluationId, dataset, itemTotal, reload } = useEvaluationDetail();
   const isQuery = isQueryKind(dataset.kind);
+  // A function case is JSON in and out: prose columns would be the wrong editor for it.
+  const isFunction = isFunctionKind(dataset.kind);
 
   const [items, setItems] = useState<EvaluationItemResponse[]>([]);
   const [total, setTotal] = useState(itemTotal);
@@ -43,6 +45,9 @@ export function EvaluationItemsTab() {
   const [topic, setTopic] = useState('');
   const [query, setQuery] = useState('');
   const [expected, setExpected] = useState('');
+  const [inputJson, setInputJson] = useState('');
+  const [outputJson, setOutputJson] = useState('');
+  const [jsonError, setJsonError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -69,6 +74,9 @@ export function EvaluationItemsTab() {
     setTopic('');
     setQuery('');
     setExpected('');
+    setInputJson('');
+    setOutputJson('');
+    setJsonError(null);
   };
 
   const openAdd = () => {
@@ -81,10 +89,54 @@ export function EvaluationItemsTab() {
     setTopic(item.topic ?? '');
     setQuery(item.query);
     setExpected(item.expected_answer ?? '');
+    setInputJson(item.input_payload ? JSON.stringify(item.input_payload, null, 2) : '');
+    setOutputJson(item.expected_output ? JSON.stringify(item.expected_output, null, 2) : '');
+    setJsonError(null);
     setFormOpen(true);
   };
 
+  /** Function cases arrive as JSON; parsing here keeps the error next to the field instead of in a 400. */
+  const parseJson = (text: string, label: string): Record<string, unknown> | null => {
+    const trimmed = text.trim();
+    if (!trimmed) return null;
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        setJsonError(`${label}: must be a JSON object`);
+        return null;
+      }
+      return parsed as Record<string, unknown>;
+    } catch {
+      setJsonError(`${label}: not valid JSON`);
+      return null;
+    }
+  };
+
   const save = async () => {
+    if (isFunction) {
+      setJsonError(null);
+      const input = parseJson(inputJson, t('evaluationDetail.functionInput'));
+      if (!input) return;
+      const expectedOutput = parseJson(outputJson, t('evaluationDetail.functionExpected'));
+      if (!expectedOutput) return;
+      setSaving(true);
+      try {
+        const body = { input_payload: input, expected_output: expectedOutput };
+        if (editing) await updateEvaluationItem(evaluationId, editing.id, body);
+        else await createEvaluationItem(evaluationId, { query: '', ...body });
+        toast.success(
+          editing ? t('evaluationDetail.toastUpdateSuccess') : t('evaluationDetail.toastAddSuccess'),
+        );
+        resetForm();
+        await load();
+        reload();
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastAddFailed'));
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     if (!query.trim()) return;
     if (!isQuery && !expected.trim()) return;
     setSaving(true);
@@ -200,7 +252,11 @@ export function EvaluationItemsTab() {
                 items.map((item) => (
                   <tr key={item.id}>
                     <td className="eval-item-topic">{item.topic ?? t('shared.dash')}</td>
-                    <td className="eval-item-query">{item.query}</td>
+                    <td className="eval-item-query">
+                      {isFunction && item.input_payload
+                        ? JSON.stringify(item.input_payload)
+                        : item.query}
+                    </td>
                     <td className="eval-item-expected">
                       {isQuery ? (
                         (() => {
@@ -217,6 +273,10 @@ export function EvaluationItemsTab() {
                             </ul>
                           );
                         })()
+                      ) : isFunction ? (
+                        <code className="eval-item-json">
+                          {item.expected_output ? JSON.stringify(item.expected_output) : t('shared.dash')}
+                        </code>
                       ) : (
                         item.expected_answer
                       )}
@@ -272,7 +332,11 @@ export function EvaluationItemsTab() {
             <button
               type="button"
               className="btn btn-primary"
-              disabled={!query.trim() || (!isQuery && !expected.trim()) || saving}
+              disabled={
+                isFunction
+                  ? !inputJson.trim() || !outputJson.trim() || saving
+                  : !query.trim() || (!isQuery && !expected.trim()) || saving
+              }
               onClick={() => void save()}
             >
               {saving ? t('evaluationDetail.saving') : editing ? t('evaluationDetail.save') : t('evaluationDetail.add')}
@@ -283,10 +347,37 @@ export function EvaluationItemsTab() {
         <FormField label={t('evaluationDetail.topicOptional')}>
           <input type="text" className="ds-control" value={topic} onChange={(e) => setTopic(e.target.value)} />
         </FormField>
+        {isFunction ? (
+          <>
+            <FormField label={t('evaluationDetail.functionInput')} hint={t('evaluationDetail.functionInputHint')}>
+              <textarea
+                rows={4}
+                className="ds-control eval-json-field"
+                spellCheck={false}
+                value={inputJson}
+                onChange={(e) => setInputJson(e.target.value)}
+              />
+            </FormField>
+            <FormField
+              label={t('evaluationDetail.functionExpected')}
+              hint={t('evaluationDetail.functionExpectedHint')}
+            >
+              <textarea
+                rows={4}
+                className="ds-control eval-json-field"
+                spellCheck={false}
+                value={outputJson}
+                onChange={(e) => setOutputJson(e.target.value)}
+              />
+            </FormField>
+            {jsonError ? <p className="eval-json-error" role="alert">{jsonError}</p> : null}
+          </>
+        ) : (
         <FormField label={t('evaluationDetail.queryLabelForm')}>
           <textarea rows={3} className="ds-control" value={query} onChange={(e) => setQuery(e.target.value)} />
         </FormField>
-        {isQuery ? (
+        )}
+        {isFunction ? null : isQuery ? (
           <div className="eval-expected-readonly">
             <span>{t('evaluationDetail.colExpectedQuery')}</span>
             <ul>

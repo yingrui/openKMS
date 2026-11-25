@@ -1,15 +1,19 @@
 /** API for evaluations (KB search retrieval and QA evaluation). */
 import { request } from './apiClient';
 
-export type EvaluationKind = 'answer' | 'query' | 'content';
+export type EvaluationKind = 'answer' | 'query' | 'content' | 'function';
 
 export interface EvaluationResponse {
   id: string;
   name: string;
   /** What the items hold. Decides the editor's columns and which runs are allowed. */
   kind?: EvaluationKind;
-  knowledge_base_id: string;
+  /** Exactly one target: a knowledge base, or a function. */
+  knowledge_base_id: string | null;
   knowledge_base_name?: string | null;
+  function_id?: string | null;
+  function_api_name?: string | null;
+  function_display_name?: string | null;
   wiki_space_id?: string | null;
   wiki_space_name?: string | null;
   /** A data-query evaluation judges this semantic model's answers. */
@@ -37,6 +41,9 @@ export interface EvaluationItemResponse {
   topic?: string | null;
   sort_order: number;
   expected_query?: ExpectedQuery[] | null;
+  /** Function evaluations: JSON in and out instead of prose. */
+  input_payload?: Record<string, unknown> | null;
+  expected_output?: Record<string, unknown> | null;
   created_at: string;
 }
 
@@ -134,6 +141,9 @@ export interface EvaluationRunResult {
   extra_sources?: number;
   /** The judge's structured verdict. */
   judge?: JudgeVerdict | null;
+  /** Function evaluations: the function's output and the flow nodes that produced it. */
+  output?: Record<string, unknown> | null;
+  trace_nodes?: { id?: string; kind?: string; ok?: boolean }[];
   pass: boolean;
   score: number;
   reasoning: string;
@@ -242,7 +252,9 @@ export async function fetchEvaluation(id: string): Promise<EvaluationResponse> {
 
 export async function createEvaluation(data: {
   name: string;
-  knowledge_base_id: string;
+  kind?: EvaluationKind;
+  function_id?: string | null;
+  knowledge_base_id?: string | null;
   wiki_space_id?: string | null;
   semantic_model_id?: string | null;
   data_resource_id?: string | null;
@@ -295,6 +307,9 @@ export async function createEvaluationItem(
     sort_order?: number;
     /** Data-query ground truth: every query the answer should have made (dict of features, or a raw SQL string). */
     expected_query?: ExpectedQuery[] | null;
+    /** Function evaluations: JSON in and out instead of prose. */
+    input_payload?: Record<string, unknown> | null;
+    expected_output?: Record<string, unknown> | null;
   }
 ): Promise<EvaluationItemResponse> {
   return request<EvaluationItemResponse>(`/api/evaluations/${evaluationId}/items`, {
@@ -313,6 +328,8 @@ export async function updateEvaluationItem(
     topic?: string | null;
     sort_order?: number;
     expected_query?: ExpectedQuery[] | null;
+    input_payload?: Record<string, unknown> | null;
+    expected_output?: Record<string, unknown> | null;
   }
 ): Promise<EvaluationItemResponse> {
   return request<EvaluationItemResponse>(`/api/evaluations/${evaluationId}/items/${itemId}`, {

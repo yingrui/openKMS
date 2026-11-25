@@ -206,7 +206,13 @@
     "wikiSpaceOptional": "Wiki 空间（可选）",
     "noWikiSpace": "不关联",
     "descPlaceholder": "可选描述",
-    "saving": "保存中..."
+    "saving": "保存中...",
+    "target": "评估对象",
+    "targetKb": "知识库",
+    "targetFunction": "函数",
+    "function": "函数",
+    "functionHint": "只有已发布的函数可选：运行评估的是已发布版本。",
+    "selectFunction": "选一个函数"
   },
   "evaluationSettings": {
     "pageTitle": "数据集设置",
@@ -242,7 +248,12 @@
     "settingsHint": "名称与说明、知识库，以及共享。",
     "unsaved": "有未保存的改动",
     "sharing": "共享",
-    "sharingHint": "谁可以查看并运行这个测试集。"
+    "sharingHint": "谁可以查看并运行这个测试集。",
+    "target": "评估对象",
+    "targetHint": "这个评估衡量什么。",
+    "targetFunction": "函数",
+    "openFunction": "打开这个函数",
+    "targetFunctionNote": "每次运行都会按用例调用已发布版本一次，并记录测的是哪个版本。"
   },
   "evaluationDetail": {
     "toastLoadDatasetFailed": "无法加载评测数据集",
@@ -434,7 +445,14 @@
     "toastRunQueued": "已排队运行 {{runId}}。",
     "notFound": "这个评测已不存在。",
     "emptyRunsHint": "开始运行后，这里会列出每一次运行。",
-    "overviewHint": "这个测试集是什么，上一次评测的结果如何。"
+    "overviewHint": "这个测试集是什么，上一次评测的结果如何。",
+    "functionInput": "输入（JSON）",
+    "functionInputHint": "函数被调用时收到的对象，一条用例一个。",
+    "functionExpected": "期望输出（必须匹配的键）",
+    "functionExpectedHint": "只比较这些键，输出里的其他键忽略；措辞不同的散文由判官复核。",
+    "functionOutput": "输出",
+    "functionTrace": "流程节点：{{nodes}}",
+    "functionJudge": "判官：{{verdict}}"
   },
   "models": {
     "title": "模型",

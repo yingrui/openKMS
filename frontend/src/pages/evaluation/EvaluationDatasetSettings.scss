@@ -32,3 +32,27 @@
 .eval-settings-delete:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-error) 12%, transparent);
 }
+
+/* The function target is shown, not edited: items belong to it, and swapping it would invalidate them. */
+.eval-settings-target {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+
+  code {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+}
+
+.eval-settings-fn {
+  font-weight: 600;
+}
+
+.eval-settings-note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}

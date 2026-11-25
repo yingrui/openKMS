@@ -206,7 +206,13 @@
     "wikiSpaceOptional": "Wiki space (optional)",
     "noWikiSpace": "None",
     "descPlaceholder": "Optional description",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "target": "Measures",
+    "targetKb": "A knowledge base",
+    "targetFunction": "A function",
+    "function": "Function",
+    "functionHint": "Only published functions: a run measures the published version.",
+    "selectFunction": "Pick a function"
   },
   "evaluationSettings": {
     "pageTitle": "Dataset settings",
@@ -242,7 +248,12 @@
     "settingsHint": "Name, description, knowledge base and sharing.",
     "unsaved": "Unsaved changes",
     "sharing": "Sharing",
-    "sharingHint": "Who can see and run this test set."
+    "sharingHint": "Who can see and run this test set.",
+    "target": "Target",
+    "targetHint": "What this evaluation measures.",
+    "targetFunction": "Function",
+    "openFunction": "Open the function",
+    "targetFunctionNote": "A run calls the published version once per case and records which version it measured."
   },
   "evaluationDetail": {
     "toastLoadDatasetFailed": "Failed to load evaluation dataset",
@@ -434,7 +445,14 @@
     "toastRunQueued": "Run {{runId}} queued.",
     "notFound": "This evaluation no longer exists.",
     "emptyRunsHint": "Runs appear here once you start one.",
-    "overviewHint": "What this test set is, and how the last run went."
+    "overviewHint": "What this test set is, and how the last run went.",
+    "functionInput": "Input (JSON)",
+    "functionInputHint": "What the function is called with, one object per case.",
+    "functionExpected": "Expected output (keys that must match)",
+    "functionExpectedHint": "Only these keys are compared. Other keys in the output are ignored; prose that differs in wording is judged.",
+    "functionOutput": "Output",
+    "functionTrace": "Flow nodes: {{nodes}}",
+    "functionJudge": "Judge: {{verdict}}"
   },
   "models": {
     "title": "Models",

@@ -193,3 +193,46 @@ class TestJudge:
         assert rows[0]["passed"] is True
         assert "judge accepted it" in rows[0]["reasoning"]
         assert rows[0]["detail"]["judge"]["verdict"] == "pass"
+
+
+class TestTargetValidation:
+    """An evaluation measures exactly one thing, and the kind has to agree with the target."""
+
+    @pytest.mark.asyncio
+    async def test_both_targets_are_refused(self):
+        from app.api.evaluations import create_evaluation
+        from app.schemas.evaluation import EvaluationCreate
+
+        with pytest.raises(HTTPException) as exc:
+            await create_evaluation(
+                EvaluationCreate(name="x", knowledge_base_id="kb-1", function_id="fn-1", kind="function"),
+                SimpleNamespace(state=SimpleNamespace(openkms_jwt_payload={})),
+                db=SimpleNamespace(),
+            )
+        assert "exactly one thing" in str(exc.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_no_target_is_refused(self):
+        from app.api.evaluations import create_evaluation
+        from app.schemas.evaluation import EvaluationCreate
+
+        with pytest.raises(HTTPException) as exc:
+            await create_evaluation(
+                EvaluationCreate(name="x"),
+                SimpleNamespace(state=SimpleNamespace(openkms_jwt_payload={})),
+                db=SimpleNamespace(),
+            )
+        assert "exactly one thing" in str(exc.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_a_function_target_needs_the_function_kind(self):
+        from app.api.evaluations import create_evaluation
+        from app.schemas.evaluation import EvaluationCreate
+
+        with pytest.raises(HTTPException) as exc:
+            await create_evaluation(
+                EvaluationCreate(name="x", function_id="fn-1", kind="answer"),
+                SimpleNamespace(state=SimpleNamespace(openkms_jwt_payload={})),
+                db=SimpleNamespace(),
+            )
+        assert "kind must be 'function'" in str(exc.value.detail)
