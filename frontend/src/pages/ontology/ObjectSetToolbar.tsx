@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Redo2, Undo2 } from 'lucide-react';
 
 export interface PivotOption {
   key: string;
@@ -69,7 +70,7 @@ export function ObjectSetToolbar({
           title={t('objectSet.undo')}
           onClick={onUndo}
         >
-          ↶
+          <Undo2 size={14} aria-hidden />
         </button>
         <button
           type="button"
@@ -79,7 +80,7 @@ export function ObjectSetToolbar({
           title={t('objectSet.redo')}
           onClick={onRedo}
         >
-          ↷
+          <Redo2 size={14} aria-hidden />
         </button>
       </div>
       <input

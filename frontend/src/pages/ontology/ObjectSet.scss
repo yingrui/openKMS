@@ -265,6 +265,10 @@
 .object-set-undo {
   display: inline-flex;
   gap: 2px;
+
+  .btn {
+    padding-inline: var(--space-2);
+  }
 }
 
 .object-set-toolbar__total {
