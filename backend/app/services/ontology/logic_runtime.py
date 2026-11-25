@@ -296,6 +296,59 @@ def _lookup(variables: dict[str, Any], path: str) -> Any:
     return current
 
 
+async def _run_loop(
+    node: dict,
+    *,
+    variables: dict[str, Any],
+    model_factory: ModelFactory,
+    tool_runner: ToolRunner | None,
+    schema_resolver: SchemaResolver | None,
+    action_planner: ActionPlanner | None,
+    node_timeout_s: float,
+    node_token_limit: int,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Run the body once per element. Writes go one at a time so the edit batch keeps the caller's order."""
+    element_name = str(node.get("as") or "item")
+    items = _loop_items(node, variables)
+    body = list(node.get("nodes") or [])
+    has_action = any(isinstance(child, dict) and child.get("kind") == "action" for child in body)
+    iterations: list[dict[str, Any]] = []
+
+    async def one(index: int, element: Any) -> Any:
+        scoped = {**variables, element_name: element, "index": index}
+        nested: dict[str, Any] = {"nodes": []}
+        result, _ = await _run_nodes(
+            body,
+            variables=scoped,
+            model_factory=model_factory,
+            tool_runner=tool_runner,
+            schema_resolver=schema_resolver,
+            action_planner=action_planner,
+            node_timeout_s=node_timeout_s,
+            node_token_limit=node_token_limit,
+            trace=nested,
+        )
+        iterations.append({"index": index, "ok": True, "output": result, "nodes": nested["nodes"]})
+        return result
+
+    if has_action:
+        results = [await one(index, element) for index, element in enumerate(items)]
+    else:
+        limit = int(node.get("concurrency") or DEFAULT_LOOP_CONCURRENCY)
+        semaphore = asyncio.Semaphore(limit)
+
+        async def guarded(index: int, element: Any) -> Any:
+            async with semaphore:
+                return await one(index, element)
+
+        results = list(await asyncio.gather(*(guarded(index, element) for index, element in enumerate(items))))
+        iterations.sort(key=lambda row: row["index"])
+
+    edits = [edit for result in results if isinstance(result, dict) for edit in (result.get("edits") or [])]
+    values = [result for result in results if not (isinstance(result, dict) and "edits" in result)]
+    return ({"edits": edits} if edits else {"items": values}), iterations
+
+
 def _loop_items(node: dict, variables: dict[str, Any]) -> list:
     """`over` may point at a list or render to one; either way it must be a list and it must be bounded."""
     rendered = render_template(str(node.get("over") or ""), variables)
@@ -371,54 +424,16 @@ async def _run_nodes(
                 # Deterministic on purpose: no model call, no tokens, no variance.
                 output = _render_value(node.get("template") or {}, variables)
             elif node.get("kind") == "loop":
-                element_name = str(node.get("as") or "item")
-                items = _loop_items(node, variables)
-                body = list(node.get("nodes") or [])
-                has_action = any(
-                    isinstance(child, dict) and child.get("kind") == "action" for child in body
+                output, iterations = await _run_loop(
+                    node,
+                    variables=variables,
+                    model_factory=model_factory,
+                    tool_runner=tool_runner,
+                    schema_resolver=schema_resolver,
+                    action_planner=action_planner,
+                    node_timeout_s=node_timeout_s,
+                    node_token_limit=node_token_limit,
                 )
-                iterations: list[dict[str, Any]] = []
-                results: list[Any] = []
-
-                async def one(index: int, element: Any) -> Any:
-                    scoped = {**variables, element_name: element, "index": index}
-                    nested_trace: dict[str, Any] = {"nodes": []}
-                    result, _ = await _run_nodes(
-                        body,
-                        variables=scoped,
-                        model_factory=model_factory,
-                        tool_runner=tool_runner,
-                        schema_resolver=schema_resolver,
-                        action_planner=action_planner,
-                        node_timeout_s=node_timeout_s,
-                        node_token_limit=node_token_limit,
-                        trace=nested_trace,
-                    )
-                    iterations.append(
-                        {"index": index, "ok": True, "output": result, "nodes": nested_trace["nodes"]}
-                    )
-                    return result
-
-                # Edits must keep the caller's order, so a loop that writes runs one iteration at a time.
-                if has_action:
-                    results = [await one(index, element) for index, element in enumerate(items)]
-                else:
-                    limit = int(node.get("concurrency") or DEFAULT_LOOP_CONCURRENCY)
-                    semaphore = asyncio.Semaphore(limit)
-
-                    async def guarded(index: int, element: Any) -> Any:
-                        async with semaphore:
-                            return await one(index, element)
-
-                    results = await asyncio.gather(
-                        *(guarded(index, element) for index, element in enumerate(items))
-                    )
-                    results = list(results)
-                    iterations.sort(key=lambda row: row["index"])
-
-                edits = [edit for result in results if isinstance(result, dict) for edit in (result.get("edits") or [])]
-                item_outputs = [result for result in results if not (isinstance(result, dict) and "edits" in result)]
-                output = {"edits": edits} if edits else {"items": item_outputs}
                 entry["iterations"] = iterations
             elif node.get("kind") == "condition":
                 branch = _pick_branch(node, variables)

@@ -14,6 +14,7 @@ from app.jobs.defer import defer_task
 from app.models.evaluation import Evaluation, EvaluationItem
 from app.models.evaluation_run import EvaluationRun, EvaluationRunItem
 from app.models.knowledge_base import KnowledgeBase
+from app.models.ontology_function import OntologyFunction
 from app.models.semantic_model import SemanticModel
 from app.models.wiki_models import WikiSpace
 from app.schemas.evaluation import (
@@ -196,8 +197,24 @@ def _validate_kind_inputs(kind: EvaluationKind, *, semantic_model_id: str | None
         raise HTTPException(status_code=400, detail="A content evaluation must name the wiki space it covers.")
 
 
-def _validate_item_for_kind(ev: Evaluation, *, expected_answer: str | None, expected_query: list | None) -> None:
-    """A query item is answered by a query; an answer item is answered by a sentence."""
+def _validate_item_for_kind(
+    ev: Evaluation,
+    *,
+    expected_answer: str | None,
+    expected_query: list | None,
+    input_payload: dict | None = None,
+    expected_output: dict | None = None,
+) -> None:
+    """A query item is answered by a query; an answer item by a sentence; a function item by JSON in and out."""
+    if ev.kind == "function":
+        if input_payload is None:
+            raise HTTPException(status_code=400, detail="A function item needs input_payload.")
+        if not expected_output:
+            raise HTTPException(
+                status_code=400,
+                detail="A function item needs expected_output: the keys the function must produce.",
+            )
+        return
     if ev.kind == "query":
         if not expected_query:
             raise HTTPException(status_code=400, detail="A query item needs expected_query.")
@@ -232,12 +249,26 @@ async def create_evaluation(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    kb = await db.get(KnowledgeBase, body.knowledge_base_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
+    if bool(body.knowledge_base_id) == bool(body.function_id):
+        raise HTTPException(
+            status_code=400,
+            detail="An evaluation targets exactly one thing: a knowledge base or a function",
+        )
+    fn = None
+    kb = None
+    if body.function_id:
+        if body.kind != "function":
+            raise HTTPException(status_code=400, detail="kind must be 'function' for a function target")
+        fn = await db.get(OntologyFunction, body.function_id)
+        if not fn:
+            raise HTTPException(status_code=404, detail="Function not found")
+    else:
+        kb = await db.get(KnowledgeBase, body.knowledge_base_id)
+        if not kb:
+            raise HTTPException(status_code=404, detail="Knowledge base not found")
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
-    if isinstance(sub, str) and not await knowledge_base_visible(db, p, sub, kb):
+    if kb is not None and isinstance(sub, str) and not await knowledge_base_visible(db, p, sub, kb):
         raise HTTPException(status_code=404, detail="Knowledge base not found")
     wiki_name = None
     if body.wiki_space_id:
@@ -258,6 +289,7 @@ async def create_evaluation(
         name=body.name,
         kind=body.kind,
         knowledge_base_id=body.knowledge_base_id,
+        function_id=body.function_id,
         wiki_space_id=body.wiki_space_id,
         semantic_model_id=body.semantic_model_id,
         data_resource_id=body.data_resource_id,
@@ -272,7 +304,13 @@ async def create_evaluation(
         await bootstrap_owner_acl(db, RT_EVALUATION, ev.id, sub)
     await db.commit()
     await db.refresh(ev)
-    return evaluation_to_response(ev, kb.name, wiki_name, 0)
+    return evaluation_to_response(
+        ev,
+        kb.name if kb else None,
+        wiki_name,
+        0,
+        (fn.api_name, fn.display_name) if fn else (None, None),
+    )
 
 
 @router.get("/{evaluation_id}", response_model=EvaluationResponse)
@@ -371,7 +409,13 @@ async def create_evaluation_item(
     ev: Evaluation = Depends(get_evaluation_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
-    _validate_item_for_kind(ev, expected_answer=body.expected_answer, expected_query=body.expected_query)
+    _validate_item_for_kind(
+        ev,
+        expected_answer=body.expected_answer,
+        expected_query=body.expected_query,
+        input_payload=body.input_payload,
+        expected_output=body.expected_output,
+    )
     item = EvaluationItem(
         id=str(uuid.uuid4()),
         evaluation_id=evaluation_id,
@@ -380,6 +424,8 @@ async def create_evaluation_item(
         topic=body.topic,
         sort_order=body.sort_order,
         expected_query=body.expected_query,
+        input_payload=body.input_payload,
+        expected_output=body.expected_output,
     )
     db.add(item)
     await db.flush()
@@ -403,6 +449,8 @@ async def update_evaluation_item(
         ev,
         expected_answer=patch.get("expected_answer", item.expected_answer),
         expected_query=patch.get("expected_query", item.expected_query),
+        input_payload=patch.get("input_payload", item.input_payload),
+        expected_output=patch.get("expected_output", item.expected_output),
     )
     for field, value in patch.items():
         setattr(item, field, value)
@@ -639,11 +687,17 @@ async def run_evaluation(
     The response carries the run id and the job id; results arrive in the run, minutes later, and the page follows both.
     """
     eval_type = _resolve_run_type(ev, body.evaluation_type)
-    kb = await db.get(KnowledgeBase, ev.knowledge_base_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
-    _require_run_prerequisites(ev, kb, eval_type)
-    judge_model_id, _judge_config = await resolve_judge_override(db, kb, body.judge_model_id)
+    if ev.function_id:
+        # A function evaluation has no knowledge base: its target is the function's published version.
+        kb = None
+        _require_run_prerequisites(ev, None, eval_type)
+        judge_model_id = body.judge_model_id
+    else:
+        kb = await db.get(KnowledgeBase, ev.knowledge_base_id)
+        if not kb:
+            raise HTTPException(status_code=404, detail="Knowledge base not found")
+        _require_run_prerequisites(ev, kb, eval_type)
+        judge_model_id, _judge_config = await resolve_judge_override(db, kb, body.judge_model_id)
     language = body.language or "en"
     wiki = await db.get(WikiSpace, ev.wiki_space_id) if ev.wiki_space_id else None
     requested_by = getattr(request.state, "openkms_jwt_payload", {}).get("sub")
@@ -661,7 +715,7 @@ async def run_evaluation(
         item_ids=item_ids,
         language=language,
         requested_by=requested_by if isinstance(requested_by, str) else None,
-        config_snapshot=_config_snapshot(ev, eval_type, judge_model_id, language, wiki),
+    config_snapshot=await _config_snapshot(db, ev, eval_type, judge_model_id, language, wiki),
     )
     await db.commit()
 
@@ -704,8 +758,13 @@ def _resolve_run_type(ev: Evaluation, requested: str | None) -> str:
     return eval_type
 
 
-def _require_run_prerequisites(ev: Evaluation, kb: KnowledgeBase, eval_type: str) -> None:
+def _require_run_prerequisites(ev: Evaluation, kb: KnowledgeBase | None, eval_type: str) -> None:
     """What the chosen run type needs to exist before it can start."""
+    if eval_type == "function_output":
+        if not ev.function_id:
+            raise HTTPException(status_code=400, detail="This evaluation has no function")
+        return
+    assert kb is not None  # every other run type needs the knowledge base it was created with
     if eval_type == EVALUATION_TYPE_SEARCH_RETRIEVAL and not kb.embedding_model_id:
         raise HTTPException(
             status_code=400,
@@ -727,13 +786,21 @@ def _resolve_item_scope(body: EvaluationRunRequestBody) -> list[str] | None:
     return body.item_ids if body.item_scope == "subset" else None
 
 
-def _config_snapshot(
+async def _config_snapshot(
+    db: AsyncSession,
     ev: Evaluation,
     eval_type: str,
     judge_model_id: str,
     language: str,
     wiki: WikiSpace | None,
 ) -> dict[str, Any]:
+    if eval_type == "function_output" and ev.function_id:
+        from app.models.ontology_function import OntologyFunction
+        from app.services.workspace.evaluations.function_execute import version_snapshot
+
+        fn = await db.get(OntologyFunction, ev.function_id)
+        snapshot = version_snapshot(fn, None) if fn is not None else {"target": "function"}
+        return {"judge_model_id": judge_model_id, "language": language, **snapshot}
     if eval_type == EVALUATION_TYPE_WIKI_CONTENT_COVERAGE:
         return {
             "judge_model_id": judge_model_id,

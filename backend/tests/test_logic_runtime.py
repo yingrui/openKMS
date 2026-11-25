@@ -712,7 +712,6 @@ class TestLoopNode:
     @pytest.mark.asyncio
     async def test_each_item_reaches_the_body_as_the_element_variable(self):
         prompts: list[str] = []
-        turns = {"n": 0}
 
         def handler(messages, _info: AgentInfo) -> ModelResponse:
             text = str(messages[-1])

@@ -21,7 +21,8 @@ class EvaluationRun(Base):
         nullable=False,
         index=True,
     )
-    knowledge_base_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    #: Null for a function evaluation: its target is recorded in `config_snapshot`.
+    knowledge_base_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     evaluation_type: Mapped[str] = mapped_column(String(64), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="completed")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)

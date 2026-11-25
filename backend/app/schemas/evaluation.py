@@ -6,18 +6,22 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 #: What an item holds. Decides the editor's columns and which run types are allowed.
-EvaluationKind = Literal["answer", "query", "content"]
+EvaluationKind = Literal["answer", "query", "content", "function"]
 
 KIND_RUN_TYPES: dict[str, tuple[str, ...]] = {
     "answer": ("search_retrieval", "qa_answer"),
     "query": ("data_query",),
     "content": ("wiki_content_coverage",),
+    # A function is measured at its published version; the version actually used is recorded with the run.
+    "function": ("function_output",),
 }
 
 
 class EvaluationCreate(BaseModel):
     name: str
-    knowledge_base_id: str
+    #: One target: a knowledge base, or a function. The service rejects neither-or-both.
+    knowledge_base_id: str | None = None
+    function_id: str | None = None
     kind: EvaluationKind = "answer"
     wiki_space_id: str | None = None
     description: str | None = None
@@ -30,6 +34,7 @@ class EvaluationUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     knowledge_base_id: str | None = None
+    function_id: str | None = None
     wiki_space_id: str | None = None
     semantic_model_id: str | None = None
     data_resource_id: str | None = None
@@ -39,8 +44,11 @@ class EvaluationResponse(BaseModel):
     id: str
     name: str
     kind: EvaluationKind = "answer"
-    knowledge_base_id: str
+    knowledge_base_id: str | None = None
     knowledge_base_name: str | None = None
+    function_id: str | None = None
+    function_api_name: str | None = None
+    function_display_name: str | None = None
     wiki_space_id: str | None = None
     wiki_space_name: str | None = None
     semantic_model_id: str | None = None
@@ -61,13 +69,17 @@ class EvaluationListResponse(BaseModel):
 
 
 class EvaluationItemCreate(BaseModel):
-    query: str
+    #: Function evaluations key on JSON, not on prose; `query` stays required for the RAG kinds.
+    query: str = ""
     #: Required for `answer`/`content` items; absent for `query` items, whose ground truth is `expected_query`.
     expected_answer: str | None = None
     topic: str | None = None
     sort_order: int = 0
     #: Data-query ground truth: every query the answer should have made.
     expected_query: list[dict[str, Any]] | None = None
+    #: Function evaluations: what the function is called with, and the output keys it must produce.
+    input_payload: dict[str, Any] | None = None
+    expected_output: dict[str, Any] | None = None
 
 
 class EvaluationItemUpdate(BaseModel):
@@ -76,6 +88,8 @@ class EvaluationItemUpdate(BaseModel):
     topic: str | None = None
     sort_order: int | None = None
     expected_query: list[dict[str, Any]] | None = None
+    input_payload: dict[str, Any] | None = None
+    expected_output: dict[str, Any] | None = None
 
 
 class EvaluationItemResponse(BaseModel):
@@ -86,6 +100,8 @@ class EvaluationItemResponse(BaseModel):
     topic: str | None = None
     sort_order: int
     expected_query: list[dict[str, Any]] | None = None
+    input_payload: dict[str, Any] | None = None
+    expected_output: dict[str, Any] | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

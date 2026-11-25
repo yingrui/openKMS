@@ -194,6 +194,30 @@ async def _execute_strategy(
     )
     from app.services.workspace.evaluations.wiki_execute import run_wiki_content_coverage_evaluation
 
+    if evaluation_type == "function_output":
+        from app.services.workspace.evaluations.function_execute import run_function_evaluation
+
+        return await run_function_evaluation(
+            db,
+            evaluation,
+            access_token=access_token,
+            judge_model_id=None,
+            item_ids=item_ids,
+            should_abort=should_abort,
+        )
+
+    if evaluation.function_id is not None:
+        from app.services.workspace.evaluations.function_execute import run_function_evaluation
+
+        return await run_function_evaluation(
+            db,
+            evaluation,
+            access_token=access_token,
+            judge_model_id=None,
+            item_ids=item_ids,
+            should_abort=should_abort,
+        )
+
     if evaluation_type == EVALUATION_TYPE_SEARCH_RETRIEVAL:
         return await run_search_retrieval_evaluation(
             db, evaluation.knowledge_base_id, evaluation.id, judge_config, item_ids, should_abort

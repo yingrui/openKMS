@@ -9,14 +9,19 @@ from app.database import Base
 
 
 class Evaluation(Base):
-    """Evaluation: query + expected answer pairs for a knowledge base (and optional wiki space)."""
+    """A case set with one target: a knowledge base (and optional wiki space), or a Function."""
 
     __tablename__ = "evaluations"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(256), nullable=False)
-    knowledge_base_id: Mapped[str] = mapped_column(
-        String(64), ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, index=True
+    #: Null when the target is a Function: an evaluation measures exactly one thing.
+    knowledge_base_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    #: The other possible target: a function's published version, per item input.
+    function_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("ontology_functions.id", ondelete="CASCADE"), nullable=True, index=True
     )
     #: What an item holds: `answer` (prose ground truth), `query` (the query an answer must cite), `content`
     #: (text a wiki answer must cover). It decides which columns the editor shows and which run types are allowed,
@@ -63,6 +68,10 @@ class EvaluationItem(Base):
     expected_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
     #: Data-query ground truth: every query the answer should have made (see docs/features/data-query-evaluation.md).
     expected_query: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    #: Function evaluations: the input the function is called with, and the output (or its keys) it must produce.
+    #: Absent `expected_output` means "judge against `expected_answer` as a rubric".
+    input_payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    expected_output: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     topic: Mapped[str | None] = mapped_column(String(256), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

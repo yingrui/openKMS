@@ -19,6 +19,7 @@ def evaluation_to_response(
     kb_name: str | None,
     wiki_name: str | None,
     item_count: int,
+    function_name: tuple[str | None, str | None] = (None, None),
 ) -> EvaluationResponse:
     return EvaluationResponse(
         id=ev.id,
@@ -26,6 +27,9 @@ def evaluation_to_response(
         kind=ev.kind,
         knowledge_base_id=ev.knowledge_base_id,
         knowledge_base_name=kb_name,
+        function_id=ev.function_id,
+        function_api_name=function_name[0],
+        function_display_name=function_name[1],
         wiki_space_id=ev.wiki_space_id,
         wiki_space_name=wiki_name,
         semantic_model_id=ev.semantic_model_id,
