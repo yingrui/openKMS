@@ -8,6 +8,7 @@ import {
   inputSchemaFromDraft,
   newNode,
   schemaFromFields,
+  syncInputs,
   specFromDraft,
   unknownReferences,
   type FlowDraft,
@@ -15,6 +16,8 @@ import {
 
 const draft = (over: Partial<FlowDraft> = {}): FlowDraft => ({
   nodes: [{ ...newNode(0), prompt: 'Summarise {{input.email}}' }],
+  inputs: [{ name: 'email', type: 'string', description: '' }],
+  output: '',
   ...over,
 });
 
@@ -69,6 +72,8 @@ describe('specFromDraft', () => {
         { ...newNode(0), id: 'n1', prompt: 'ok' },
         { ...newNode(1), id: 'n1', prompt: '' },
       ],
+      inputs: [],
+      output: '',
     });
     expect(result.spec).toBeNull();
     expect(result.errors).toEqual(['#2: id "n1" is used twice', '#2: a prompt is required']);
@@ -77,6 +82,8 @@ describe('specFromDraft', () => {
   it('rejects an output schema that is not a JSON object, and a bad token limit', () => {
     const result = specFromDraft({
       nodes: [{ ...newNode(0), prompt: 'ok', outputSchema: '[1,2]', tokenLimit: '0' }],
+      inputs: [],
+      output: '',
     });
     expect(result.errors).toEqual([
       '#1: token limit must be a positive integer',
@@ -109,14 +116,19 @@ describe('emptyDraft', () => {
 
 describe('inputs follow the prompt', () => {
   it('asks for the variables the prompts mention, not a second declaration', () => {
-    const draft = {
+    const flow = {
       nodes: [
         { ...newNode(0), id: 'n1', prompt: 'Summarise {{input.email}} for {{input.customer}}' },
         { ...newNode(1), id: 'n2', prompt: 'Now use {{n1}} and {{input.email}}' },
       ],
+      inputs: [],
+      output: '',
     };
-    expect(inputNames(draft)).toEqual(['email', 'customer']);
-    expect(inputSchemaFromDraft(draft)).toEqual({
+    expect(inputNames(flow)).toEqual(['email', 'customer']);
+    // The board is filled from the prompts; the schema then comes from the board, with its types and descriptions.
+    const synced = syncInputs(flow);
+    expect(synced.inputs.map((field) => field.name)).toEqual(['email', 'customer']);
+    expect(inputSchemaFromDraft(synced)).toEqual({
       type: 'object',
       properties: { email: { type: 'string' }, customer: { type: 'string' } },
       required: ['email', 'customer'],
@@ -124,7 +136,9 @@ describe('inputs follow the prompt', () => {
   });
 
   it('has no input schema when nothing is referenced', () => {
-    expect(inputSchemaFromDraft({ nodes: [{ ...newNode(0), prompt: 'Say hello' }] })).toBeNull();
+    expect(
+      inputSchemaFromDraft({ nodes: [{ ...newNode(0), prompt: 'Say hello' }], inputs: [], output: '' }),
+    ).toBeNull();
   });
 });
 
@@ -156,6 +170,8 @@ describe('structured output', () => {
   it('refuses a structured output with no named field', () => {
     const result = specFromDraft({
       nodes: [{ ...newNode(0), prompt: 'ok', outputMode: 'fields' }],
+      inputs: [],
+      output: '',
     });
     expect(result.spec).toBeNull();
     expect(result.errors).toEqual(['#1: a structured output needs at least one named field']);

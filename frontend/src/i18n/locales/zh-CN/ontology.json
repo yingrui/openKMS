@@ -1393,7 +1393,15 @@
     "logicOutputSchemaRaw": "原始输出结构（JSON）",
     "logicRunDraft": "运行",
     "logicRunNoInputs": "这个流程不需要输入 —— 提示词没有引用流程之外的东西。",
-    "logicRunInputHint": "在提示词里写作 {{input.%s}}"
+    "logicRunInputHint": "在提示词里写作 {{input.%s}}",
+    "logicInputs": "输入",
+    "logicInputsHint": "从提示词里自动得到 —— 写 {{input.x}} 就会多一行。",
+    "logicInputsEmpty": "还没有输入。在提示词里输入 {{input.}} 这里就会出现一行。",
+    "logicInputUnused": "提示词里没有用到",
+    "logicTypeText": "文本",
+    "logicTypeFields": "{{count}} 个字段",
+    "logicOutputLast": "最后一个节点（默认）",
+    "logicTraceError": "失败"
   },
   "dataSources": {
     "title": "数据源",

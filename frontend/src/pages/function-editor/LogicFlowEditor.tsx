@@ -1,34 +1,50 @@
 import { useTranslation } from 'react-i18next';
 import { Plus } from 'lucide-react';
+import { LogicInputsBoard } from './LogicInputsBoard';
 import { LogicNodeCard } from './LogicNodeCard';
-import { newNode, type FlowDraft, type ModelNode } from './logicFlow';
+import {
+  newNode,
+  outputLabel,
+  syncInputs,
+  unusedInputs,
+  type FlowDraft,
+  type ModelNode,
+} from './logicFlow';
 
 export type ModelOption = { id: string; label: string; isDefault: boolean };
 
+export type NodeRunValue = { output?: unknown; error?: string; tokens?: number; ms?: number };
+
 /**
- * The flow, as a stack of prompt cards.
+ * Inputs at the top, then the chain of prompt cards, then which card answers.
  *
- * Flows in practice are chains, so the chain is the layout: each node is a card you read top to bottom, and a branch
- * (when branches exist) will indent under its condition rather than becoming a box on a canvas. What the card does not
- * show, it derives — ids, input schema, reference list — because those were the parts people had to type twice.
+ * That is the shape AIP Logic puts on screen (inputs board → blocks → output), and the reason it works is that each
+ * part is visible as itself: inputs are typed rows, a block shows the shape and the value it produced, and the output
+ * is picked from what exists instead of typed as a reference.
  */
 export function LogicFlowEditor({
   draft,
   models,
   errors,
+  runValues,
   disabled,
   onChange,
 }: {
   draft: FlowDraft;
   models: ModelOption[];
   errors: string[];
+  /** Last run, keyed by node id — the value each card produced. */
+  runValues: Record<string, NodeRunValue>;
   disabled: boolean;
   onChange: (next: FlowDraft) => void;
 }) {
   const { t } = useTranslation('ontology');
 
+  /** Every edit re-syncs the input board, so a new `{{input.x}}` shows up as a row without a second step. */
+  const update = (next: FlowDraft) => onChange(syncInputs(next));
+
   const patch = (index: number, changes: Partial<ModelNode>) => {
-    onChange({
+    update({
       ...draft,
       nodes: draft.nodes.map((node, i) => (i === index ? { ...node, ...changes } : node)),
     });
@@ -39,18 +55,18 @@ export function LogicFlowEditor({
     if (target < 0 || target >= draft.nodes.length) return;
     const nodes = [...draft.nodes];
     [nodes[index], nodes[target]] = [nodes[target], nodes[index]];
-    onChange({ nodes });
+    update({ ...draft, nodes });
   };
 
   const remove = (index: number) => {
     if (draft.nodes.length <= 1) return;
-    onChange({ nodes: draft.nodes.filter((_, i) => i !== index) });
+    update({ ...draft, nodes: draft.nodes.filter((_, i) => i !== index) });
   };
-
-  const add = () => onChange({ nodes: [...draft.nodes, newNode(draft.nodes.length)] });
 
   return (
     <div className="logic-flow">
+      <LogicInputsBoard draft={draft} unused={unusedInputs(draft)} disabled={disabled} onChange={update} />
+
       <ol className="logic-flow__nodes">
         {draft.nodes.map((node, index) => (
           <LogicNodeCard
@@ -60,6 +76,7 @@ export function LogicFlowEditor({
             index={index}
             nodes={draft.nodes}
             fields={node.fields}
+            runValue={runValues[node.id]}
             disabled={disabled}
             onChange={(changes) => patch(index, changes)}
             onMove={(by) => move(index, by)}
@@ -69,10 +86,35 @@ export function LogicFlowEditor({
         ))}
       </ol>
 
-      <button type="button" className="logic-flow__add" onClick={add} disabled={disabled}>
-        <Plus size={15} aria-hidden />
-        {t('editor.logicAddNode')}
-      </button>
+      <div className="logic-flow__footer">
+        <button
+          type="button"
+          className="logic-flow__add"
+          onClick={() => update({ ...draft, nodes: [...draft.nodes, newNode(draft.nodes.length)] })}
+          disabled={disabled}
+        >
+          <Plus size={15} aria-hidden />
+          {t('editor.logicAddNode')}
+        </button>
+
+        <label className="logic-flow__output" htmlFor="logic-output-node">
+          {t('editor.logicOutput')}
+          <select
+            id="logic-output-node"
+            className="ds-control"
+            value={draft.output}
+            onChange={(e) => update({ ...draft, output: e.target.value })}
+            disabled={disabled}
+          >
+            <option value="">{t('editor.logicOutputLast')}</option>
+            {draft.nodes.map((node, index) => (
+              <option key={index} value={node.id.trim()}>
+                {outputLabel(node, index)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       {errors.length ? (
         <ul className="logic-flow__errors" role="alert">

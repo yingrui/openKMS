@@ -9,6 +9,27 @@ import { LogicTracePanel } from './LogicTracePanel';
 import { useFunctionEditorWorkspace } from './useFunctionEditorWorkspace';
 import './function-editor.scss';
 
+/** The last run's per-node values, keyed by node id, so each card can show what it produced. */
+function traceValuesByNode(trace: Record<string, unknown> | null): Record<
+  string,
+  { output?: unknown; error?: string; tokens?: number; ms?: number }
+> {
+  const nodes = Array.isArray(trace?.nodes) ? (trace?.nodes as Record<string, unknown>[]) : [];
+  const out: Record<string, { output?: unknown; error?: string; tokens?: number; ms?: number }> = {};
+  for (const node of nodes) {
+    const id = String(node.id ?? '');
+    if (!id) continue;
+    const usage = (node.usage ?? {}) as { total_tokens?: number };
+    out[id] = {
+      output: node.output,
+      error: typeof node.error === 'string' ? node.error : undefined,
+      tokens: usage.total_tokens,
+      ms: typeof node.duration_ms === 'number' ? node.duration_ms : undefined,
+    };
+  }
+  return out;
+}
+
 export function FunctionEditorWorkspacePage() {
   const {
     t,
@@ -52,6 +73,8 @@ export function FunctionEditorWorkspacePage() {
     onRun,
     onDelete,
   } = useFunctionEditorWorkspace();
+
+  const runValuesByNode = traceValuesByNode(trace);
 
   if (loading) {
     return (
@@ -145,6 +168,8 @@ export function FunctionEditorWorkspacePage() {
             </label>
           </>
         ) : null}
+        {/* Code functions declare their I/O as JSON; a Logic function derives both from its prompts and fields. */}
+        {isLogic ? null : (
         <label className="function-editor-workspace__schema-field">
           {t('editor.inputSchema')}
           <textarea
@@ -156,6 +181,8 @@ export function FunctionEditorWorkspacePage() {
             spellCheck={false}
           />
         </label>
+        )}
+        {isLogic ? null : (
         <label className="function-editor-workspace__schema-field">
           {t('editor.outputSchema')}
           <textarea
@@ -167,6 +194,7 @@ export function FunctionEditorWorkspacePage() {
             spellCheck={false}
           />
         </label>
+        )}
       </div>
 
       <div className="function-editor-workspace__main">
@@ -186,6 +214,7 @@ export function FunctionEditorWorkspacePage() {
                   draft={flow}
                   models={models}
                   errors={flowErrors}
+                  runValues={runValuesByNode}
                   disabled={saving}
                   onChange={setFlow}
                 />

@@ -1399,7 +1399,15 @@
     "logicOutputSchemaRaw": "Raw output schema (JSON)",
     "logicRunDraft": "Run",
     "logicRunNoInputs": "This flow takes no input — the prompts reference nothing outside the flow.",
-    "logicRunInputHint": "Available in your prompts as {{input.%s}}"
+    "logicRunInputHint": "Available in your prompts as {{input.%s}}",
+    "logicInputs": "Inputs",
+    "logicInputsHint": "Derived from your prompts — {{input.x}} becomes an input.",
+    "logicInputsEmpty": "No inputs yet. Type {{input.}} in a prompt and the row appears here.",
+    "logicInputUnused": "not used by a prompt",
+    "logicTypeText": "Text",
+    "logicTypeFields": "{{count}} fields",
+    "logicOutputLast": "Last node (default)",
+    "logicTraceError": "Error"
   },
   "dataSources": {
     "title": "Data sources",

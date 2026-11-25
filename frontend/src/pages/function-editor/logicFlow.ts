@@ -14,6 +14,12 @@ export const FIELD_TYPES: FieldType[] = ['string', 'number', 'integer', 'boolean
 
 export type OutputMode = 'text' | 'fields';
 
+export type InputType = 'string' | 'number' | 'integer' | 'boolean';
+
+export type InputField = { name: string; type: InputType; description: string };
+
+export const INPUT_TYPES: InputType[] = ['string', 'number', 'integer', 'boolean'];
+
 export type ModelNode = {
   id: string;
   kind: 'model';
@@ -28,7 +34,13 @@ export type ModelNode = {
   tokenLimit: string;
 };
 
-export type FlowDraft = { nodes: ModelNode[] };
+export type FlowDraft = {
+  nodes: ModelNode[];
+  /** Declared inputs, synced from the prompts but visible and typed — the board AIP Logic starts with. */
+  inputs: InputField[];
+  /** Which node answers, as `n1`; empty means the last one. */
+  output: string;
+};
 
 export type FlowSpec = { nodes: Record<string, unknown>[]; output?: string };
 
@@ -49,7 +61,7 @@ export function newNode(index: number): ModelNode {
 }
 
 export function emptyDraft(): FlowDraft {
-  return { nodes: [newNode(0)] };
+  return { nodes: [newNode(0)], inputs: [], output: '' };
 }
 
 /** Open a stored spec in the editor. Kinds the editor cannot edit are dropped, never shown as editable shells. */
@@ -75,10 +87,56 @@ export function draftFromSpec(spec: unknown): FlowDraft {
         tokenLimit: node.token_limit == null ? '' : String(node.token_limit),
       };
     });
-  return { nodes: nodes.length ? nodes : [newNode(0)] };
+  const draft: FlowDraft = {
+    nodes: nodes.length ? nodes : [newNode(0)],
+    inputs: inputsFromSchema((spec as { input_schema?: unknown }).input_schema),
+    output: typeof (spec as FlowSpec).output === 'string' ? String((spec as FlowSpec).output).replace(/[{}]/g, '').trim() : '',
+  };
+  return syncInputs(draft);
+}
+
+function inputsFromSchema(schema: unknown): InputField[] {
+  if (!schema || typeof schema !== 'object') return [];
+  const properties = (schema as { properties?: unknown }).properties;
+  if (!properties || typeof properties !== 'object') return [];
+  return Object.entries(properties as Record<string, unknown>).map(([name, definition]) => {
+    const raw = definition && typeof definition === 'object' ? (definition as { type?: unknown; description?: unknown }) : {};
+    const type = String(raw.type ?? 'string');
+    return {
+      name,
+      type: (INPUT_TYPES as string[]).includes(type) ? (type as InputType) : 'string',
+      description: String(raw.description ?? ''),
+    };
+  });
+}
+
+/**
+ * Keep the input board honest: every variable a prompt mentions gets a row, and rows nothing mentions are marked —
+ * not deleted, because an input can be intentional before the node that uses it exists.
+ */
+export function syncInputs(draft: FlowDraft): FlowDraft {
+  const used = inputNames(draft);
+  const next = (draft.inputs ?? []).map((field) => ({ ...field }));
+  for (const name of used) {
+    if (!next.some((field) => field.name.trim() === name)) {
+      next.push({ name, type: 'string', description: '' });
+    }
+  }
+  return { ...draft, inputs: next };
+}
+
+/** Input rows the prompts never reference. */
+export function unusedInputs(draft: FlowDraft): string[] {
+  const used = new Set(inputNames(draft));
+  return (draft.inputs ?? []).map((field) => field.name.trim()).filter((name) => name && !used.has(name));
 }
 
 export type DraftResult = { spec: FlowSpec | null; errors: string[] };
+
+/** Name a node's output can be referenced by, for the output picker. */
+export function outputLabel(node: ModelNode, index: number): string {
+  return `#${index + 1} · ${node.id || '—'}`;
+}
 
 /** Draft → spec. Returns errors instead of throwing, each named against the node it belongs to. */
 export function specFromDraft(draft: FlowDraft): DraftResult {
@@ -111,7 +169,8 @@ export function specFromDraft(draft: FlowDraft): DraftResult {
   });
 
   if (errors.length) return { spec: null, errors };
-  return { spec: { nodes }, errors: [] };
+  const output = (draft.output ?? '').trim();
+  return { spec: output ? { nodes, output: `{{${output}}}` } : { nodes }, errors: [] };
 }
 
 /** Raw JSON wins over the field table: it is the escape hatch, and it round-trips whatever was stored. */
@@ -206,11 +265,18 @@ export function inputNames(draft: FlowDraft): string[] {
  * first version feel like paperwork: type the variable, then be told the input it obviously needs is missing.
  */
 export function inputSchemaFromDraft(draft: FlowDraft): Record<string, unknown> | null {
-  const names = inputNames(draft);
-  if (!names.length) return null;
+  const rows = (draft.inputs ?? [])
+    .map((field) => ({ ...field, name: field.name.trim() }))
+    .filter((field) => field.name);
+  if (!rows.length) return null;
   const properties: Record<string, unknown> = {};
-  for (const name of names) properties[name] = { type: 'string' };
-  return { type: 'object', properties, required: names };
+  for (const field of rows) {
+    properties[field.name] = {
+      type: field.type,
+      ...(field.description.trim() ? { description: field.description.trim() } : {}),
+    };
+  }
+  return { type: 'object', properties, required: rows.map((field) => field.name) };
 }
 
 export function fieldsFromSchema(schema: unknown): OutputField[] {

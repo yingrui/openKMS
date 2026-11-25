@@ -24,6 +24,7 @@ export function LogicNodeCard({
   index,
   nodes,
   fields,
+  runValue,
   disabled,
   onChange,
   onMove,
@@ -35,6 +36,8 @@ export function LogicNodeCard({
   index: number;
   nodes: ModelNode[];
   fields: OutputField[];
+  /** What this node returned in the last run — shown here, so the flow reads as data moving through it. */
+  runValue?: { output?: unknown; error?: string; tokens?: number; ms?: number } | null;
   disabled: boolean;
   onChange: (changes: Partial<ModelNode>) => void;
   onMove: (by: -1 | 1) => void;
@@ -70,6 +73,9 @@ export function LogicNodeCard({
       <div className="logic-node__head">
         <span className="logic-node__index">{t('editor.logicNodeLabel', { index: index + 1 })}</span>
         <code className="logic-node__id">{node.id || '—'}</code>
+        <span className="logic-node__type">
+          {structured ? t('editor.logicTypeFields', { count: fields.length }) : t('editor.logicTypeText')}
+        </span>
         {index > 0 ? (
           <span className="logic-node__flow">
             {t('editor.logicNodeUses', {
@@ -256,6 +262,8 @@ export function LogicNodeCard({
         </div>
       ) : null}
 
+      {runValue ? <NodeRunValue value={runValue} /> : null}
+
       <details className="logic-node__advanced">
         <summary>
           <ChevronRight size={14} aria-hidden className="logic-node__chevron" />
@@ -313,6 +321,50 @@ export function LogicNodeCard({
         </div>
       </details>
     </li>
+  );
+}
+
+/** A node's answer, rendered as fields rather than a JSON blob — the point of a structured output. */
+function NodeRunValue({
+  value,
+}: {
+  value: { output?: unknown; error?: string; tokens?: number; ms?: number };
+}) {
+  const { t } = useTranslation('ontology');
+  if (value.error) {
+    return (
+      <div className="logic-node__result logic-node__result--failed">
+        <span className="logic-node__result-label">{t('editor.logicTraceError')}</span>
+        <span>{value.error}</span>
+      </div>
+    );
+  }
+  const output = value.output;
+  const rows =
+    output && typeof output === 'object' && !Array.isArray(output)
+      ? Object.entries(output as Record<string, unknown>)
+      : null;
+  return (
+    <div className="logic-node__result">
+      <div className="logic-node__result-head">
+        <span className="logic-node__result-label">{t('editor.logicTraceOutput')}</span>
+        <span className="logic-node__result-meta">
+          {t('editor.logicTraceMeta', { tokens: value.tokens ?? 0, ms: value.ms ?? 0 })}
+        </span>
+      </div>
+      {rows ? (
+        <dl className="logic-node__result-fields">
+          {rows.map(([key, field]) => (
+            <div key={key} className="logic-node__result-field">
+              <dt>{key}</dt>
+              <dd>{typeof field === 'string' ? field : JSON.stringify(field)}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="logic-node__result-text">{typeof output === 'string' ? output : JSON.stringify(output)}</p>
+      )}
+    </div>
   );
 }
 
