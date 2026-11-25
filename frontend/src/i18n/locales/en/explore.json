@@ -441,7 +441,8 @@
     "actionSelectionIneligible": "The ticked objects do not satisfy this action's conditions",
     "actionCriteria": "Applies to: {{criteria}}",
     "actionRefPick": "Pick a {{type}}",
-    "actionRefEmpty": "Nothing matches"
+    "actionRefEmpty": "Nothing matches",
+    "actionRefSelected": "Ticked objects ({{count}})"
   },
   "explorerSections": {
     "explorations": "Explorations",

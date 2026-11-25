@@ -402,3 +402,37 @@ describe('object inputs', () => {
     expect(opened.inputs[0]).toMatchObject({ name: 'customer', type: 'object', objectType: 'Customer' });
   });
 });
+
+describe('apply_action tools', () => {
+  it('round-trips the action type', () => {
+    const opened = draftFromSpec({
+      nodes: [
+        {
+          id: 'n1',
+          kind: 'model',
+          prompt: 'x',
+          tools: [{ kind: 'apply_action', action_type: 'addHolding', description: 'when a new idea appears' }],
+        },
+      ],
+    });
+    expect(opened.nodes[0].tools[0]).toMatchObject({
+      kind: 'apply_action',
+      actionType: 'addHolding',
+      description: 'when a new idea appears',
+    });
+    expect(specFromDraft(opened).spec?.nodes[0]).toMatchObject({
+      tools: [{ kind: 'apply_action', action_type: 'addHolding', description: 'when a new idea appears' }],
+    });
+  });
+
+  it('refuses a tool with no action type', () => {
+    const result = specFromDraft({
+      nodes: [
+        { ...newNode(0), prompt: 'x', tools: [{ id: 't1', kind: 'apply_action', actionType: '', description: '' }] },
+      ],
+      inputs: [],
+      output: '',
+    });
+    expect(result.errors).toEqual(['#1: tool 1 needs an action type']);
+  });
+});

@@ -441,7 +441,8 @@
     "actionSelectionIneligible": "勾选的对象不满足这个动作的提交条件",
     "actionCriteria": "适用条件：{{criteria}}",
     "actionRefPick": "选择一个{{type}}",
-    "actionRefEmpty": "没有匹配的对象"
+    "actionRefEmpty": "没有匹配的对象",
+    "actionRefSelected": "当前选中（{{count}}）"
   },
   "explorerSections": {
     "explorations": "探索",

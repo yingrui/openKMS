@@ -1457,7 +1457,9 @@
     "logicPickFind": "查找",
     "logicPickSelected": "已选",
     "logicPickClear": "清除",
-    "logicPickEmpty": "没有匹配的实例。"
+    "logicPickEmpty": "没有匹配的实例。",
+    "logicToolApply": "提议编辑",
+    "logicToolActionType": "Action 的 api_name"
   },
   "dataSources": {
     "title": "数据源",

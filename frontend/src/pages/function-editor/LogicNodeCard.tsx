@@ -360,14 +360,40 @@ export function LogicNodeCard({
               aria-label={t('editor.logicToolKind')}
               onChange={(e) =>
                 onChange({
-                  tools: replaceAt(node.tools, toolIndex, newTool(e.target.value as 'query_objects' | 'call_function')),
+                  tools: replaceAt(node.tools, toolIndex, newTool(e.target.value as NodeTool['kind'])),
                 })
               }
               disabled={disabled}
             >
               <option value="query_objects">{t('editor.logicToolQuery')}</option>
               <option value="call_function">{t('editor.logicToolCall')}</option>
+              <option value="apply_action">{t('editor.logicToolApply')}</option>
             </select>
+
+            {tool.kind === 'apply_action' ? (
+              <>
+                <input
+                  className="ds-control logic-node__tool-props"
+                  value={tool.actionType}
+                  placeholder={t('editor.logicToolActionType')}
+                  aria-label={t('editor.logicToolActionType')}
+                  onChange={(e) =>
+                    onChange({ tools: replaceAt(node.tools, toolIndex, { actionType: e.target.value }) })
+                  }
+                  disabled={disabled}
+                />
+                <input
+                  className="ds-control logic-node__tool-desc"
+                  value={tool.description}
+                  placeholder={t('editor.logicToolWhen')}
+                  aria-label={t('editor.logicToolWhen')}
+                  onChange={(e) =>
+                    onChange({ tools: replaceAt(node.tools, toolIndex, { description: e.target.value }) })
+                  }
+                  disabled={disabled}
+                />
+              </>
+            ) : null}
 
             {tool.kind === 'query_objects' ? (
               <>
@@ -420,7 +446,7 @@ export function LogicNodeCard({
                   disabled={disabled}
                 />
               </>
-            ) : (
+            ) : tool.kind === 'call_function' ? (
               <>
                 <input
                   className="ds-control logic-node__tool-props"
@@ -443,7 +469,7 @@ export function LogicNodeCard({
                   disabled={disabled}
                 />
               </>
-            )}
+            ) : null}
 
             <button
               type="button"
@@ -539,10 +565,11 @@ export function LogicNodeCard({
 /** A node's answer, rendered as fields rather than a JSON blob — the point of a structured output. */
 /** Ordered branches: a `when` template and a body of nested nodes; the empty `when` is the fallback. */
 /** Action parameters: key + template. Editing vs the spec is one row each, in order. */
-function newTool(kind: 'query_objects' | 'call_function'): NodeTool {
-  return kind === 'call_function'
-    ? { id: `tool-${Date.now()}`, kind, function: '', description: '' }
-    : { id: `tool-${Date.now()}`, kind, object_type: '', properties: [], limit: 5 };
+function newTool(kind: NodeTool['kind']): NodeTool {
+  const id = `tool-${Date.now()}`;
+  if (kind === 'call_function') return { id, kind, function: '', description: '' };
+  if (kind === 'apply_action') return { id, kind, actionType: '', description: '' };
+  return { id, kind, object_type: '', properties: [], limit: 5 };
 }
 
 function replaceAt<T>(rows: T[], index: number, patch: Partial<T>): T[] {

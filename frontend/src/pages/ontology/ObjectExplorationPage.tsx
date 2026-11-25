@@ -672,8 +672,11 @@ export function ObjectExplorationPage() {
       )}
 
       <ObjectSetActionDialog
+        key={action.openAction?.id ?? 'none'}
         action={action.openAction}
         count={selected.size}
+        selectionTypeId={typeId}
+        selection={instances.filter((row) => selected.has(row.id))}
         busy={action.busy}
         onClose={() => action.setOpenAction(null)}
         onSubmit={(input) => void action.run([...selected], input)}

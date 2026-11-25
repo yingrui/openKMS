@@ -1463,7 +1463,9 @@
     "logicPickFind": "Find",
     "logicPickSelected": "Selected",
     "logicPickClear": "Clear",
-    "logicPickEmpty": "No matching instances."
+    "logicPickEmpty": "No matching instances.",
+    "logicToolApply": "Propose an edit",
+    "logicToolActionType": "Action api_name"
   },
   "dataSources": {
     "title": "Data sources",

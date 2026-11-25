@@ -3,6 +3,11 @@ import { useTranslation } from 'react-i18next';
 import type { ActionApplicability } from '../../data/ontologyActionsApi';
 import { Dialog, FormField } from '../../styles/design-system';
 import { ObjectRefPicker, type ObjectRefSpec } from './ObjectRefPicker';
+import {
+  refOptionsFromSelection,
+  refPrefillFromSelection,
+  type SelectionRow,
+} from './actionRefPrefill';
 
 /** The parameters an action wants from the caller — the object identity is already decided by the selection. */
 interface Field {
@@ -63,17 +68,32 @@ export function ObjectSetActionDialog({
   action,
   count,
   busy,
+  selectionTypeId,
+  selection,
   onClose,
   onSubmit,
 }: {
   action: ActionApplicability | null;
   count: number;
   busy: boolean;
+  /** The type the ticked rows belong to, and the rows themselves — a reference parameter is usually about them. */
+  selectionTypeId: string;
+  selection: SelectionRow[];
   onClose: () => void;
   onSubmit: (input: Record<string, unknown>) => void;
 }) {
   const { t } = useTranslation('explore');
-  const [values, setValues] = useState<Record<string, string>>({});
+  /* One ticked object answers a single-valued reference, so the form opens already holding it. Several do not: the
+     picker lists them and the reader says which. */
+  const [values, setValues] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    for (const field of action ? fieldsOf(action) : []) {
+      if (!field.objectRef) continue;
+      const picked = refPrefillFromSelection(field.objectRef, selectionTypeId, selection);
+      if (picked) initial[field.name] = picked.value;
+    }
+    return initial;
+  });
   if (!action) return null;
   const fields = fieldsOf(action).filter((field) => field.fixed === undefined);
   const hasFixed = fieldsOf(action).some((field) => field.fixed !== undefined);
@@ -142,6 +162,7 @@ export function ObjectSetActionDialog({
                 spec={field.objectRef}
                 value={values[field.name] ?? ''}
                 label={field.name}
+                selected={refOptionsFromSelection(field.objectRef, selectionTypeId, selection)}
                 onChange={(picked) =>
                   setValues((current) => ({
                     ...current,

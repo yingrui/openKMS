@@ -81,7 +81,15 @@ export type CallTool = {
   description: string;
 };
 
-export type NodeTool = QueryTool | CallTool;
+export type ApplyTool = {
+  id: string;
+  kind: 'apply_action';
+  /** api_name of an Action; its declared parameters become the tool's arguments, and its edits are composed. */
+  actionType: string;
+  description: string;
+};
+
+export type NodeTool = QueryTool | CallTool | ApplyTool;
 
 export type FlowDraft = {
   nodes: ModelNode[];
@@ -525,6 +533,15 @@ function toolsFromSpec(raw: unknown): QueryTool[] {
 
 function toolsForSpec(node: ModelNode, where: string, errors: string[]): Record<string, unknown>[] {
   return node.tools.map((tool, index) => {
+    if (tool.kind === 'apply_action') {
+      const actionType = tool.actionType.trim();
+      if (!actionType) errors.push(`${where}: tool ${index + 1} needs an action type`);
+      return {
+        kind: 'apply_action',
+        action_type: actionType,
+        ...(tool.description.trim() ? { description: tool.description.trim() } : {}),
+      };
+    }
     if (tool.kind === 'call_function') {
       const fn = tool.function.trim();
       if (!fn) errors.push(`${where}: tool ${index + 1} needs a function`);

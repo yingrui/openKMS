@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
   executeOntologyActionBatch,
-  type OntologyActionTypeResponse,
+  type ActionApplicability,
 } from '../../data/ontologyActionsApi';
 
 /**
@@ -17,7 +17,7 @@ export function useObjectSetAction(
   onFinished: (outcome: { name: string; succeeded: number }) => void
 ) {
   const { t } = useTranslation('explore');
-  const [openAction, setOpenAction] = useState<OntologyActionTypeResponse | null>(null);
+  const [openAction, setOpenAction] = useState<ActionApplicability | null>(null);
   const [busy, setBusy] = useState(false);
 
   const run = async (objectIds: string[], input: Record<string, unknown>) => {

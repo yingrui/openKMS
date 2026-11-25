@@ -23,11 +23,14 @@ export function ObjectRefPicker({
   value,
   onChange,
   label,
+  selected,
 }: {
   spec: ObjectRefSpec;
   value: string;
   onChange: (next: { value: string; label: string } | null) => void;
   label: string;
+  /** The ticked objects of this type — the answer is usually one of them. */
+  selected?: { value: string; label: string }[];
 }) {
   const { t } = useTranslation('explore');
   const [query, setQuery] = useState('');
@@ -78,7 +81,28 @@ export function ObjectRefPicker({
       />
       {open ? (
         <div className="object-set-ref__panel" role="listbox">
-          {options.length === 0 ? (
+          {selected && selected.length > 0 ? (
+            <>
+              <p className="object-set-ref__meta">{t('objectSet.actionRefSelected', { count: selected.length })}</p>
+              {selected.map((option) => (
+                <button
+                  key={`sel-${option.value}`}
+                  type="button"
+                  role="option"
+                  aria-selected={option.value === value}
+                  onClick={() => {
+                    setChosen(option.label);
+                    setOpen(false);
+                    onChange({ value: option.value, label: option.label });
+                  }}
+                >
+                  <span>{option.label}</span>
+                  <span className="object-set-ref__meta">{option.value}</span>
+                </button>
+              ))}
+            </>
+          ) : null}
+          {options.length === 0 && (!selected || selected.length === 0) ? (
             <p className="object-set-ref__empty">{t('objectSet.actionRefEmpty')}</p>
           ) : (
             options.map((option) => (
