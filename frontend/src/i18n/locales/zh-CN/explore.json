@@ -438,7 +438,8 @@
     "sortRank": "第 {{rank}} 排序",
     "actionFixedParams": "部分参数由动作固定，提交时自动带上。",
     "actionJsonValue": "JSON，例如 {\"uplift\": 0.05}",
-    "viewResultsCount": "表格（{{count}}）"
+    "viewResultsCount": "表格（{{count}}）",
+    "metricLinked": "关联对象数"
   },
   "explorerSections": {
     "explorations": "探索",

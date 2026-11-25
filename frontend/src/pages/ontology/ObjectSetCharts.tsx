@@ -192,9 +192,11 @@ export function ObjectSetCharts({
         const chartSettings: ChartSettings = spec;
         const key = chartKey(spec);
         const measureLabel =
-          chartSettings.metric && chartSettings.metric !== 'count'
-            ? `${chartSettings.metric} ${chartSettings.measure ?? ''}`.trim()
-            : null;
+          chartSettings.metric === 'linked'
+            ? t('objectSet.metricLinked')
+            : chartSettings.metric && chartSettings.metric !== 'count'
+              ? `${chartSettings.metric} ${chartSettings.measure ?? ''}`.trim()
+              : null;
         /* One bar list for every shape: a value bar narrows to one value, an interval bar to a range. */
         const data = isHistogram(chart)
           ? (chart.buckets ?? []).map((bucket) => {
@@ -256,6 +258,7 @@ export function ObjectSetCharts({
                   {onSettings ? (
                     <ObjectSetChartSettings
                       settings={chartSettings}
+                      prop={chart.prop}
                       options={options}
                       onChange={(next) => onSettings(key, next)}
                     />

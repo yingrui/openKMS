@@ -288,7 +288,7 @@ export async function fetchObjectAggregate(
     limit?: number;
     /** Ask for intervals; a text property still comes back as values. */
     buckets?: number;
-    metric?: 'count' | 'sum' | 'avg' | 'min' | 'max' | 'p50' | 'p90';
+    metric?: 'count' | 'sum' | 'avg' | 'min' | 'max' | 'p50' | 'p90' | 'linked';
     measure?: string;
     split?: string;
     /** A second set to aggregate the same chart over: what the numbers are compared against. */

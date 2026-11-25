@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.exploration import VISIBILITIES, ExplorationLayout
-from app.services.ontology.object_query import OPS, QueryError, parse_filter
+from app.services.ontology.object_query import METRICS, OPS, QueryError, parse_filter
 
 #: The four things a layout can carry. `perspective` decides which rendering an exploration opens with.
 LAYOUT_KEYS = ("charts", "columns", "sorts", "perspective")
@@ -57,7 +57,9 @@ def validate_filters(raw: list[str] | list[dict] | None) -> list[dict]:
     return out
 
 
-CHART_METRICS = ("count", "sum", "avg", "min", "max")
+#: One list, shared with the query builder: two lists of metrics drift, and a chart saved with a metric the reader
+#: no longer accepts cannot be opened.
+CHART_METRICS = METRICS
 
 
 def _normalize_chart(entry: Any) -> dict:
@@ -81,7 +83,7 @@ def _normalize_chart(entry: Any) -> dict:
         value = entry.get(key)
         if value is not None:
             out[key] = str(value)
-    if out.get("metric", "count") != "count" and not out.get("measure"):
+    if out.get("metric", "count") not in ("count", "linked") and not out.get("measure"):
         raise ExplorationError("a chart with a metric needs a `measure`")
     return out
 

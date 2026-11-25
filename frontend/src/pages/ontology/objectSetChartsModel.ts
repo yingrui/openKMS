@@ -40,7 +40,7 @@ export function intervalLabel(from: number, to: number): string {
 
 /** What a chart measures and what it splits by, besides the property it groups on. */
 export interface ChartSettings {
-  metric?: 'count' | 'sum' | 'avg' | 'min' | 'max' | 'p50' | 'p90';
+  metric?: 'count' | 'sum' | 'avg' | 'min' | 'max' | 'p50' | 'p90' | 'linked';
   measure?: string;
   split?: string;
 }

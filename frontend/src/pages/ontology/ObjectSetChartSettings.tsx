@@ -11,10 +11,13 @@ import type { ChartSettings } from './objectSetChartsModel';
  */
 export function ObjectSetChartSettings({
   settings,
+  prop,
   options,
   onChange,
 }: {
   settings: ChartSettings;
+  /** The charted property: only a linked one can count the objects on the other side. */
+  prop: string;
   options: { value: string; label: string }[];
   onChange: (next: ChartSettings) => void;
 }) {
@@ -68,13 +71,16 @@ export function ObjectSetChartSettings({
               }}
             >
               <option value="count">{t('objectSet.metricCount')}</option>
+              {prop.startsWith('@') ? (
+                <option value="linked">{t('objectSet.metricLinked')}</option>
+              ) : null}
               <option value="sum">{t('objectSet.metricSum')}</option>
               <option value="avg">{t('objectSet.metricAvg')}</option>
               <option value="min">{t('objectSet.metricMin')}</option>
               <option value="max">{t('objectSet.metricMax')}</option>
             </select>
           </label>
-          {metric !== 'count' ? (
+          {metric !== 'count' && metric !== 'linked' ? (
             <label>
               <span>{t('objectSet.chartMeasure')}</span>
               <select

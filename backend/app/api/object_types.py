@@ -1049,7 +1049,7 @@ async def aggregate_objects(
         raise HTTPException(
             status_code=400, detail=f"unknown metric `{metric}`; one of {', '.join(METRICS)}"
         )
-    if metric != "count" and not measure:
+    if metric not in ("count", "linked") and not measure:
         raise HTTPException(status_code=400, detail=f"`{metric}` needs a `measure` property")
     try:
         filters = parse_object_filters(f, parse_prop_filters(request))

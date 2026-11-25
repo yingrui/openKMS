@@ -438,7 +438,8 @@
     "sortRank": "sort {{rank}}",
     "actionFixedParams": "Some parameters are fixed by the action and sent as they are.",
     "actionJsonValue": "JSON, e.g. {\"uplift\": 0.05}",
-    "viewResultsCount": "Table ({{count}})"
+    "viewResultsCount": "Table ({{count}})",
+    "metricLinked": "Linked objects"
   },
   "explorerSections": {
     "explorations": "Explorations",

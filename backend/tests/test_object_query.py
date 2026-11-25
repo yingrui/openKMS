@@ -253,3 +253,27 @@ def test_a_measured_cross_tab_is_refused_rather_than_dropping_the_measure():
             "Distributor", "", "channel_type", limit=20, split="tier",
             metric="avg", measure="lead_time_weeks",
         )
+
+
+def test_counting_the_neighbour_is_its_own_metric():
+    """An m2m chart asks "how many of them": a plan covering 180 distributors is 180, not one plan."""
+    cypher = aggregate_query(
+        "AllocationScenario", "", "@allocates/region", limit=10, metric="linked",
+        link_info={"allocates": ("allocates", "out")},
+    )
+    assert "count(DISTINCT m) AS c" in cypher
+    assert "ORDER BY c DESC" in cypher
+
+
+def test_counting_the_neighbour_needs_a_link():
+    with pytest.raises(QueryError):
+        aggregate_query("Distributor", "", "region", limit=10, metric="linked")
+
+
+def test_counting_the_neighbour_carries_it_past_the_projection():
+    cypher = aggregate_query(
+        "AllocationScenario", "", "@allocates/region", limit=10, metric="linked",
+        link_info={"allocates": ("allocates", "out")},
+    )
+    # A WITH replaces the scope: without `m` beside `n`, the count names a variable that is gone.
+    assert ", n AS n, m AS m" in cypher

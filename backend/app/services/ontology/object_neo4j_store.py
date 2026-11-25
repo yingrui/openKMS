@@ -559,7 +559,7 @@ def aggregate_object_set(
                 row["baseline_measure"] = (
                     record["basv"] / record["basnv"] if record["basnv"] else None
                 )
-            elif metric != "count":
+            elif metric not in ("count", "linked"):
                 row["measure"] = record["v"]
                 row["baseline_measure"] = record["basv"]
             rows.append(row)
@@ -574,7 +574,7 @@ def aggregate_object_set(
         for row, record in zip(rows, records[:limit], strict=True):
             if record["nv"]:
                 row["measure"] = record["v"] / record["nv"]
-    elif metric != "count":
+    elif metric not in ("count", "linked"):
         # A value can have objects but no measurement in it; the number is then absent, not zero.
         for row, record in zip(rows, records[:limit], strict=True):
             if record["v"] is not None:

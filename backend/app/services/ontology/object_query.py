@@ -262,8 +262,10 @@ def _aggregate_branch(
         measure_expr = f", toFloat({measure_var}.`{measure_name}`) AS measure"
 
     null_filters = ["value IS NOT NULL"] + (["split IS NOT NULL"] if split else [])
+    # `linked` counts the neighbour, and a WITH replaces the scope: `m` has to be carried to the RETURN that counts it.
+    carried = ", m AS m" if metric == "linked" else ""
     projection = (
-        f"WITH toString({dim_var}.`{dim_name}`) AS value{split_part}, n AS n{measure_expr} "
+        f"WITH toString({dim_var}.`{dim_name}`) AS value{split_part}, n AS n{carried}{measure_expr} "
         f"WHERE {' AND '.join(null_filters)}"
     )
     # `linked` answers "how many of them" for an m2m: a plan covering 180 distributors is 180, not 1 plan.
