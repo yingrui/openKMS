@@ -83,6 +83,11 @@ def _normalize_chart(entry: Any) -> dict:
         value = entry.get(key)
         if value is not None:
             out[key] = str(value)
+    buckets = entry.get("buckets")
+    if buckets is not None:
+        if not isinstance(buckets, int) or not 2 <= buckets <= 40:
+            raise ExplorationError("chart buckets must be an integer between 2 and 40")
+        out["buckets"] = buckets
     if out.get("metric", "count") not in ("count", "linked") and not out.get("measure"):
         raise ExplorationError("a chart with a metric needs a `measure`")
     return out

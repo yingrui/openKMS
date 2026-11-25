@@ -45,6 +45,8 @@ export function FunctionEditorWorkspacePage() {
     setRunValues,
     pickedInstances,
     setPickedInstances,
+    recentRuns,
+    onSelectRun,
     canPublish,
     publishing,
     onPublish,
@@ -257,6 +259,7 @@ export function FunctionEditorWorkspacePage() {
                 fields={flow.inputs}
                 values={runValues}
                 picked={pickedInstances}
+                recent={recentRuns}
                 objectTypeIds={objectTypeIdsByName}
                 running={running}
                 canRun={Boolean(resolvedId)}
@@ -265,6 +268,7 @@ export function FunctionEditorWorkspacePage() {
                   setPickedInstances((prev) => ({ ...prev, [name]: instance }))
                 }
                 onRun={() => void onRun()}
+                onSelectRun={onSelectRun}
               />
               <LogicTracePanel trace={trace} />
               {previewOutput ? (

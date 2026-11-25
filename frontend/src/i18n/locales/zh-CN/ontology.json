@@ -1461,7 +1461,11 @@
     "logicToolApply": "提议编辑",
     "logicToolActionType": "Action 的 api_name",
     "logicToolCalculator": "计算器",
-    "logicToolCalculatorNote": "精确算术，无需配置"
+    "logicToolCalculatorNote": "精确算术，无需配置",
+    "logicRunTitle": "运行",
+    "logicRecentRuns": "最近运行（{{count}}）",
+    "logicRunTokens": "{{tokens}} token",
+    "logicRunDraftTag": "草稿"
   },
   "dataSources": {
     "title": "数据源",

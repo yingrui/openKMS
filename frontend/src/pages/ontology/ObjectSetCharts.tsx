@@ -22,6 +22,7 @@ import {
   deltaLabel,
   dimensionalCharts,
   formatMeasure,
+  DEFAULT_BUCKETS,
   groupBySettings,
   intervalLabel,
   isHistogram,
@@ -115,8 +116,8 @@ export function ObjectSetCharts({
             props: group.props,
             search: search.trim() || undefined,
             filters,
+            buckets: group.settings.buckets ?? DEFAULT_BUCKETS,
             limit: 20,
-            buckets: 8,
             ...group.settings,
             compare: compare ? { filters: compare.filters, search: compare.search } : undefined,
           })
@@ -260,6 +261,7 @@ export function ObjectSetCharts({
                     <ObjectSetChartSettings
                       settings={chartSettings}
                       prop={chart.prop}
+                      numeric={isHistogram(chart)}
                       options={options}
                       onChange={(next) => onSettings(key, next)}
                     />

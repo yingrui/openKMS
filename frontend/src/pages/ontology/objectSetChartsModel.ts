@@ -43,6 +43,8 @@ export interface ChartSettings {
   metric?: 'count' | 'sum' | 'avg' | 'min' | 'max' | 'p50' | 'p90' | 'linked';
   measure?: string;
   split?: string;
+  /** Intervals for a numeric property; 8 when not chosen. A text property ignores it. */
+  buckets?: number;
 }
 
 export interface ChartSpec extends ChartSettings {
@@ -58,7 +60,7 @@ export interface ChartSpec extends ChartSettings {
  */
 export function chartKey(spec: ChartSpec): string {
   const metric = spec.metric && spec.metric !== 'count' ? spec.metric : 'count';
-  return [spec.prop, metric, spec.measure ?? '', spec.split ?? ''].join('\u0000');
+  return [spec.prop, metric, spec.measure ?? '', spec.split ?? '', String(spec.buckets ?? '')].join('\u0000');
 }
 
 export function addSpec(specs: ChartSpec[], spec: ChartSpec): ChartSpec[] {
@@ -78,6 +80,8 @@ export function groupBySettings(specs: ChartSpec[]): { settings: ChartSettings; 
     if (spec.metric && spec.metric !== 'count') settings.metric = spec.metric;
     if (settings.metric) settings.measure = spec.measure;
     if (spec.split) settings.split = spec.split;
+    /* The interval count is part of the request, so two charts that disagree about it are two calls. */
+    if (spec.buckets && spec.buckets !== DEFAULT_BUCKETS) settings.buckets = spec.buckets;
     const key = JSON.stringify(settings);
     const group = groups.get(key) ?? { settings, props: [] };
     group.props.push(spec.prop);
@@ -85,6 +89,9 @@ export function groupBySettings(specs: ChartSpec[]): { settings: ChartSettings; 
   }
   return [...groups.values()];
 }
+
+/** How many intervals a numeric property is split into unless the caller says otherwise. */
+export const DEFAULT_BUCKETS = 8;
 
 /** `1.4 万` style labels, so an average of 12,345 is readable in a 12px chart. */
 export function formatMeasure(value: number): string {

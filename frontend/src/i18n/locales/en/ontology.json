@@ -1398,7 +1398,7 @@
     "logicAdvanced": "Advanced: system prompt, token limit, node id, raw schema",
     "logicOutputSchemaRaw": "Raw output schema (JSON)",
     "logicRunDraft": "Run",
-    "logicRunNoInputs": "This flow takes no input — the prompts reference nothing outside the flow.",
+    "logicRunNoInputs": "This flow takes no input — its prompts reference nothing outside the flow.",
     "logicRunInputHint": "Available in your prompts as {{input.%s}}",
     "logicInputs": "Inputs",
     "logicInputsHint": "Derived from your prompts — {{input.x}} becomes an input.",
@@ -1467,7 +1467,11 @@
     "logicToolApply": "Propose an edit",
     "logicToolActionType": "Action api_name",
     "logicToolCalculator": "Calculator",
-    "logicToolCalculatorNote": "exact arithmetic, no configuration"
+    "logicToolCalculatorNote": "exact arithmetic, no configuration",
+    "logicRunTitle": "Run",
+    "logicRecentRuns": "Recent runs ({{count}})",
+    "logicRunTokens": "{{tokens}} tokens",
+    "logicRunDraftTag": "draft"
   },
   "dataSources": {
     "title": "Data sources",

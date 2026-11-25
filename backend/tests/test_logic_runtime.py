@@ -9,6 +9,7 @@ the prompt that was actually sent.
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 
 import pytest
 from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
@@ -157,12 +158,37 @@ class TestDraftExecution:
     """The editor runs what is on screen; that path must not depend on a saved version."""
 
     @pytest.mark.asyncio
-    async def test_a_draft_runs_the_spec_it_is_given(self):
+    async def test_a_draft_runs_the_spec_it_is_given(self, monkeypatch):
+        from app.services.ontology import function_service
         from app.services.ontology.execution_service import dry_run_flow
 
-        fn = type("Fn", (), {"source": "logic"})()
+        async def fake_latest(_db, _function_id):
+            return SimpleNamespace(id="v-1")
+
+        monkeypatch.setattr(function_service, "latest_version", fake_latest)
+
+        class FakeDb:
+            """Enough session for the draft record: it is written, and marked as a draft."""
+
+            def __init__(self):
+                self.added: list = []
+                self.commits = 0
+                self.rollbacks = 0
+
+            async def commit(self):
+                self.commits += 1
+
+            async def rollback(self):
+                self.rollbacks += 1
+
+            def add(self, row):
+                self.added.append(row)
+
+        db = FakeDb()
+        fn = type("Fn", (), {"id": "fn-1", "source": "logic"})()
+        # `latest_version` reads the session; the record itself is what this case is about.
         outcome = await dry_run_flow(
-            None,  # no db use: the model factory is injected instead of reading the registry
+            db,
             fn,
             flow_spec=_spec(output_schema=SCHEMA),
             input_payload={"q": "life"},
@@ -171,7 +197,9 @@ class TestDraftExecution:
 
         assert outcome.status == "ok"
         assert outcome.output == {"answer": "42"}
-        assert outcome.execution_id is None, "a draft run is not an execution record"
+        # A preview is a run: recorded, but flagged so the history never reads it as production behaviour.
+        assert outcome.trace is not None and outcome.trace.get("draft") is True
+        assert db.commits == 1
 
     @pytest.mark.asyncio
     async def test_a_code_function_has_no_flow_to_run(self):

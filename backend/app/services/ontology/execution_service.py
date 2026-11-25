@@ -256,7 +256,12 @@ async def dry_run_flow(
     model_factory: logic_runtime.ModelFactory | None = None,
     tool_runner: logic_runtime.ToolRunner | None = None,
 ) -> OntologyFunctionExecuteResponse:
-    """Execute the spec on screen. Nothing is recorded: a draft is not a fact about the function."""
+    """Execute the spec on screen and record it as a *draft* run.
+
+    The run is recorded (it really ran, and cost tokens), but marked `draft` in its trace: a preview must be visible in
+    the run panel's history without pretending to be the function's production behaviour. Nothing is written to the
+    ontology — that is a different promise, and it still holds.
+    """
     if getattr(fn, "source", "code") != "logic":
         raise HTTPException(status_code=400, detail="Only Logic functions have a flow to run")
 
@@ -288,14 +293,66 @@ async def dry_run_flow(
             )
         ),
     )
+    trace = dict(flow.trace or {})
+    trace["draft"] = True
+    execution_id = await _record_draft_run(
+        db,
+        fn,
+        input_payload=input_payload,
+        status=flow.status,
+        output=normalize_output(flow.output),
+        error=flow.error,
+        duration_ms=flow.duration_ms,
+        trace=trace,
+    )
     return OntologyFunctionExecuteResponse(
         status=flow.status,
         output=normalize_output(flow.output),
         error=flow.error,
         duration_ms=flow.duration_ms,
-        execution_id=None,
-        trace=flow.trace or None,
+        execution_id=execution_id,
+        trace=trace,
     )
+
+
+async def _record_draft_run(
+    db: AsyncSession,
+    fn: OntologyFunction,
+    *,
+    input_payload: dict,
+    status: str,
+    output: dict | None,
+    error: str | None,
+    duration_ms: int | None,
+    trace: dict,
+) -> str | None:
+    """One row per preview, flagged in the trace as a draft. Best effort: a failed insert must not lose the answer."""
+    from app.services.ontology.function_service import latest_version
+
+    version = await latest_version(db, fn.id)
+    if version is None:
+        return None
+    exec_id = new_execution_id()
+    db.add(
+        OntologyFunctionExecution(
+            id=exec_id,
+            function_id=fn.id,
+            version_id=version.id,
+            caller_user_id=None,
+            duration_ms=duration_ms,
+            status=status,
+            input_payload=input_payload,
+            output_payload=output,
+            error_message=error,
+            trace=trace,
+        )
+    )
+    try:
+        await db.commit()
+    except SQLAlchemyError:
+        await db.rollback()
+        return None
+    return exec_id
 
 
 async def _run_flow(

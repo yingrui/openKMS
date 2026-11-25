@@ -8,6 +8,7 @@ import {
   createOntologyFunction,
   deleteOntologyFunction,
   executeOntologyFunction,
+  fetchFunctionExecutions,
   fetchFunctionVersions,
   fetchOntologyFunction,
   publishOntologyFunction,
@@ -61,6 +62,17 @@ export function useFunctionEditorWorkspace() {
   const [trace, setTrace] = useState<Record<string, unknown> | null>(null);
   const [runValues, setRunValues] = useState<Record<string, string>>({});
   // Object inputs are filled by picking an instance, not by typing JSON.
+  const [recentRuns, setRecentRuns] = useState<
+    {
+      id: string;
+      created_at: string;
+      duration_ms: number | null;
+      status: string;
+      tokens: number | null;
+      /** A preview, not the function's production behaviour. */
+      draft: boolean;
+    }[]
+  >([]);
   const [pickedInstances, setPickedInstances] = useState<
     Record<string, { id: string; data: Record<string, unknown> } | null>
   >({});
@@ -86,6 +98,37 @@ export function useFunctionEditorWorkspace() {
   const insertSnippet = useCallback((snippet: string) => {
     setSourceCode((prev) => (prev.endsWith('\n') ? `${prev}${snippet}` : `${prev}\n${snippet}`));
   }, []);
+
+  /** The last few runs, so a refresh does not erase the only run you had. Loaded lazily in Logic mode. */
+  const loadRecentRuns = useCallback(async () => {
+    const id = resolvedId;
+    if (!id || authoring !== 'logic') return;
+    try {
+      const rows = await fetchFunctionExecutions(id, { limit: 5 });
+      setRecentRuns(
+        rows.map((row) => {
+          const nodes = Array.isArray((row.trace as { nodes?: unknown })?.nodes)
+            ? ((row.trace as { nodes: { usage?: { total_tokens?: number } }[] }).nodes ?? [])
+            : [];
+          const tokens = nodes.reduce((sum, node) => sum + (node.usage?.total_tokens ?? 0), 0);
+          return {
+            id: row.id,
+            created_at: row.created_at,
+            duration_ms: row.duration_ms ?? null,
+            status: row.status,
+            tokens: tokens || null,
+            draft: (row.trace as { draft?: boolean } | null)?.draft === true,
+          };
+        }),
+      );
+    } catch {
+      setRecentRuns([]);
+    }
+  }, [resolvedId, authoring]);
+
+  useEffect(() => {
+    void loadRecentRuns();
+  }, [loadRecentRuns]);
 
   // Only needed when the flow editor is on screen; a failed list leaves the "default model" option usable.
   useEffect(() => {
@@ -260,6 +303,7 @@ export function useFunctionEditorWorkspace() {
         });
         setPreviewOutput(JSON.stringify(res.output ?? res.error ?? res, null, 2));
         setTrace(res.trace ?? null);
+        void loadRecentRuns();
         if (res.status === 'ok') toast.success(t('editor.runOk'));
         else toast.error(res.error || t('functions.runFailed'));
       } catch (e: unknown) {
@@ -304,6 +348,26 @@ export function useFunctionEditorWorkspace() {
     } finally {
       setPublishing(false);
     }
+  };
+
+  /** Show a past run in the same panels: output, trace, and its inputs if they are simple values. */
+  const onSelectRun = (runId: string) => {
+    void (async () => {
+      try {
+        const rows = await fetchFunctionExecutions(resolvedId ?? '', { limit: 50 });
+        const row = rows.find((candidate) => candidate.id === runId);
+        if (!row) return;
+        setPreviewOutput(JSON.stringify(row.output_payload ?? row.error_message ?? {}, null, 2));
+        setTrace((row.trace as Record<string, unknown>) ?? null);
+        const values: Record<string, string> = {};
+        for (const [key, value] of Object.entries(row.input_payload ?? {})) {
+          values[key] = typeof value === 'string' ? value : JSON.stringify(value);
+        }
+        setRunValues(values);
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : t('functions.loadFailed'));
+      }
+    })();
   };
 
   const onDelete = async () => {
@@ -389,6 +453,8 @@ export function useFunctionEditorWorkspace() {
     setRunValues,
     pickedInstances,
     setPickedInstances,
+    recentRuns,
+    onSelectRun,
     canPublish: Boolean(resolvedId) && !publishing && hasUnpublishedDraft(latestVersion, publishedVersion),
     onRun,
     onDelete,

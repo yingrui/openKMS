@@ -17,9 +17,11 @@ export function LogicRunPanel({
   objectTypeIds,
   running,
   canRun,
+  recent,
   onChange,
   onPick,
   onRun,
+  onSelectRun,
 }: {
   fields: InputField[];
   values: Record<string, string>;
@@ -29,16 +31,26 @@ export function LogicRunPanel({
   objectTypeIds: Record<string, string>;
   running: boolean;
   canRun: boolean;
+  /** The last few runs, newest first: a refresh should not erase the only run you had. */
+  recent: {
+    id: string;
+    created_at: string;
+    duration_ms: number | null;
+    status: string;
+    tokens: number | null;
+    draft: boolean;
+  }[];
   onChange: (next: Record<string, string>) => void;
   onPick: (name: string, instance: PickedInstance | null) => void;
   onRun: () => void;
+  onSelectRun: (runId: string) => void;
 }) {
   const { t } = useTranslation('ontology');
 
   return (
-    <section className="logic-run" aria-label={t('editor.livePreview')}>
+    <section className="logic-run" aria-label={t('editor.logicRunTitle')}>
       <div className="logic-run__head">
-        <span className="logic-run__title">{t('editor.livePreview')}</span>
+        <span className="logic-run__title">{t('editor.logicRunTitle')}</span>
         <button
           type="button"
           className="btn btn-primary btn-sm"
@@ -95,6 +107,27 @@ export function LogicRunPanel({
           )}
         </div>
       )}
+
+      {recent.length ? (
+        <details className="logic-run__recent">
+          <summary>{t('editor.logicRecentRuns', { count: recent.length })}</summary>
+          <ul>
+            {recent.map((run) => (
+              <li key={run.id}>
+                <button type="button" className="logic-run__recent-row" onClick={() => onSelectRun(run.id)}>
+                  <span className={`logic-run__dot logic-run__dot--${run.status === 'ok' ? 'ok' : 'fail'}`} />
+                  <span>{new Date(run.created_at).toLocaleString()}</span>
+                  {run.draft ? <span className="logic-run__draft">{t('editor.logicRunDraftTag')}</span> : null}
+                  <span className="logic-run__recent-meta">
+                    {run.tokens ? t('editor.logicRunTokens', { tokens: run.tokens }) : ''}
+                    {run.duration_ms != null ? ` · ${run.duration_ms} ms` : ''}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
     </section>
   );
 }

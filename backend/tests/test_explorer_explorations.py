@@ -138,3 +138,12 @@ def test_the_results_table_columns_are_part_of_the_layout():
         normalize_layout({"columns": "region"})
     with pytest.raises(ExplorationError):
         normalize_layout({"columns": [""]})
+
+
+def test_a_histogram_chart_can_choose_its_interval_count():
+    layout = normalize_layout({"charts": [{"prop": "fill_rate", "buckets": 12}]})
+    assert layout["charts"] == [{"prop": "fill_rate", "buckets": 12}]
+    with pytest.raises(ExplorationError):
+        normalize_layout({"charts": [{"prop": "x", "buckets": 1}]})
+    with pytest.raises(ExplorationError):
+        normalize_layout({"charts": [{"prop": "x", "buckets": "many"}]})

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SlidersHorizontal } from 'lucide-react';
-import type { ChartSettings } from './objectSetChartsModel';
+import { DEFAULT_BUCKETS, type ChartSettings } from './objectSetChartsModel';
 
 /**
  * One chart's question: how many, or how much — and split by what.
@@ -12,10 +12,13 @@ import type { ChartSettings } from './objectSetChartsModel';
 export function ObjectSetChartSettings({
   settings,
   prop,
+  numeric,
   options,
   onChange,
 }: {
   settings: ChartSettings;
+  /** The property is numeric, so it is drawn as intervals and the interval count is a real choice. */
+  numeric?: boolean;
   /** The charted property: only a linked one can count the objects on the other side. */
   prop: string;
   options: { value: string; label: string }[];
@@ -94,6 +97,22 @@ export function ObjectSetChartSettings({
                 {options.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          {numeric ? (
+            <label>
+              <span>{t('objectSet.chartBuckets')}</span>
+              <select
+                className="ds-control ds-control--compact"
+                value={String(settings.buckets ?? DEFAULT_BUCKETS)}
+                onChange={(e) => onChange({ ...settings, buckets: Number(e.target.value) })}
+              >
+                {[5, 8, 12, 20].map((count) => (
+                  <option key={count} value={count}>
+                    {count}
                   </option>
                 ))}
               </select>

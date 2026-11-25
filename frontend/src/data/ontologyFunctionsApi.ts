@@ -72,6 +72,8 @@ export interface OntologyFunctionExecutionResponse {
   input_payload?: Record<string, unknown> | null;
   output_payload?: Record<string, unknown> | null;
   error_message?: string | null;
+  /** Logic functions: the per-node record of the run (prompt sent, tokens, tool calls). */
+  trace?: Record<string, unknown> | null;
   created_at: string;
 }
 
@@ -241,9 +243,13 @@ export async function executeOntologyFunctionByApiName(
   );
 }
 
-export async function fetchFunctionExecutions(functionId: string): Promise<OntologyFunctionExecutionResponse[]> {
+export async function fetchFunctionExecutions(
+  functionId: string,
+  params?: { limit?: number },
+): Promise<OntologyFunctionExecutionResponse[]> {
+  const qs = params?.limit ? `?limit=${params.limit}` : '';
   return ontologyFetch<OntologyFunctionExecutionResponse[]>(
-    `${base}/${functionId}/executions`,
+    `${base}/${functionId}/executions${qs}`,
     undefined,
     'Failed to fetch executions',
   );

@@ -447,7 +447,8 @@
     "actionRefRemove": "Remove {{name}}",
     "undo": "Undo",
     "redo": "Redo",
-    "actionOnSet": "{{name}} — run on all {{count}}"
+    "actionOnSet": "{{name}} — run on all {{count}}",
+    "chartBuckets": "Intervals"
   },
   "explorerSections": {
     "explorations": "Explorations",

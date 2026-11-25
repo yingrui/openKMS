@@ -447,7 +447,8 @@
     "actionRefRemove": "移除 {{name}}",
     "undo": "撤销",
     "redo": "重做",
-    "actionOnSet": "{{name}} — 对全部 {{count}} 个执行"
+    "actionOnSet": "{{name}} — 对全部 {{count}} 个执行",
+    "chartBuckets": "分箱数"
   },
   "explorerSections": {
     "explorations": "探索",
