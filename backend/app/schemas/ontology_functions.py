@@ -312,6 +312,8 @@ class OntologyActionBatchResponse(BaseModel):
     succeeded: int
     failed: int
     results: list[OntologyActionBatchItem] = Field(default_factory=list)
+    #: Whether the graph was re-read after the write, so the caller knows the next read shows it.
+    refreshed: bool = False
 
 
 class OntologyActionLogResponse(BaseModel):

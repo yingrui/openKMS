@@ -30,9 +30,13 @@ from app.services.ontology.constants import ACTION_TYPE_ID_PREFIX, ID_HEX_LENGTH
 from app.services.ontology.action_rule_types import is_builtin_object_rule, normalize_rule_type
 from app.services.ontology import action_webhook, execution_service
 from app.services.ontology.function_external_usage import function_external_services
-from app.services.ontology.builtin_action_service import input_schema_for_action
+from app.services.ontology.builtin_action_service import input_schema_for_action, object_param_map
 from app.services.ontology.input_schema import validate_input_against_schema
-from app.services.ontology.object_neo4j_store import resolve_object_props_for_action
+from app.services.ontology.neo4j_async import NEO4J_ERRORS
+from app.services.ontology.object_neo4j_store import (
+    refresh_object_type_from_source,
+    resolve_object_props_for_action,
+)
 from app.services.identity.permissions.permission_catalog import PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
 
 router = APIRouter(prefix="/ontology/action-types", tags=["ontology-action-types"], dependencies=[Depends(require_auth)])
@@ -318,6 +322,28 @@ async def delete_action_type(
     await db.commit()
 
 
+async def _refresh_after_action(
+    db: AsyncSession, at: OntologyActionType, result: OntologyActionExecuteResponse | None
+) -> bool:
+    """Make the write visible to the reader.
+
+    A Function-rule Action writes through a downstream service into the **source table**, while the object layer
+    reads the graph. Built-in edits merge the ids they touched; a Function's effects are opaque, so the type is
+    re-read — otherwise the exploration that just acted reports that nothing changed.
+    """
+    if result is not None and result.status != "ok":
+        return False
+    if is_builtin_object_rule(at.rule_type):
+        return False
+    obj_type = await db.get(ObjectType, at.object_type_id)
+    if obj_type is None:
+        return False
+    try:
+        return await refresh_object_type_from_source(db, obj_type)
+    except NEO4J_ERRORS:
+        return False
+
+
 async def _execute_one(
     db: AsyncSession,
     at: OntologyActionType,
@@ -338,6 +364,12 @@ async def _execute_one(
         canonical_id, props = resolved
         input_payload.setdefault("object_id", canonical_id)
         input_payload.setdefault("object", props)
+        # A parameter that names the object is filled from the object: the caller selected it, so asking for it again
+        # is asking the same question twice — and a batch cannot answer it once for many objects.
+        for param, prop_name in object_param_map(at.parameters).items():
+            if input_payload.get(param) in (None, "") and prop_name in props:
+                input_payload[param] = props[prop_name]
+            input_payload.setdefault(param, props.get(prop_name))
         object_id = canonical_id
 
     uid, _ = jwt_user_from_request(request)
@@ -397,9 +429,11 @@ async def execute_action_type(
     at = await _get_action_type(db, action_type_id)
     if at.status != "active":
         raise HTTPException(status_code=400, detail="Action type is not active")
-    return await _execute_one(
+    result = await _execute_one(
         db, at, request, object_id=body.object_id, input_payload=body.input
     )
+    await _refresh_after_action(db, at, result)
+    return result
 
 
 # Palantir's Explorer passes a selection of up to 1000 objects to an action form; ours stops well short of that
@@ -455,8 +489,11 @@ async def execute_action_type_batch(
                 OntologyActionBatchItem(object_id=object_id, status="error", error=str(exc.detail))
             )
     failed = sum(1 for item in results if item.status != "ok")
+    refreshed = False
+    if len(results) > failed:
+        refreshed = await _refresh_after_action(db, at, None)
     return OntologyActionBatchResponse(
-        succeeded=len(results) - failed, failed=failed, results=results
+        succeeded=len(results) - failed, failed=failed, results=results, refreshed=refreshed
     )
 
 

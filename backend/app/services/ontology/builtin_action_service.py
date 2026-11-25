@@ -25,6 +25,19 @@ def action_parameters_dict(parameters: object | None) -> dict[str, Any]:
     return {}
 
 
+def object_param_map(parameters: object | None) -> dict[str, str]:
+    """Action parameters whose value is a property of the object the action runs on.
+
+    `{"object_params": {"adjustment_id": "id"}}` says: this parameter *is* the object's identity, so a caller who
+    selected objects must not be asked for it. Without this mapping the batch path has no way to know that
+    `adjustment_id` means "this one", and every object in the selection fails the function's own validation.
+    """
+    raw = action_parameters_dict(parameters).get("object_params")
+    if not isinstance(raw, dict):
+        return {}
+    return {str(param): str(prop) for param, prop in raw.items() if str(param).strip()}
+
+
 def writable_field_names(ot: ObjectType, parameters: object | None) -> list[str]:
     params = action_parameters_dict(parameters)
     fields = params.get("fields")

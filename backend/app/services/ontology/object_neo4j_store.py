@@ -6,6 +6,7 @@ into Neo4j in the same request when a Neo4j data source exists.
 
 from __future__ import annotations
 
+import asyncio
 import re
 from typing import Any
 from urllib.parse import quote, unquote
@@ -223,6 +224,55 @@ def merge_object_row_to_neo4j(session, label: str, columns: list[str], row: dict
         **params,
     )
     return 1
+
+
+#: Above this many rows the graph is refreshed by the indexing path, not inside a request. A write through an Action
+#: returns to the reader immediately, so a stale graph would answer with the state before the write.
+ACTION_REFRESH_ROW_LIMIT = 20_000
+
+
+async def refresh_object_type_from_source(
+    db: AsyncSession, obj_type: ObjectType, *, limit: int = ACTION_REFRESH_ROW_LIMIT
+) -> bool:
+    """Re-read a dataset-backed type into the graph. Returns whether the graph was refreshed.
+
+    An Action that calls a downstream service writes to the **source table**, and the object layer reads the graph —
+    so without this the screens that just acted report "nothing changed". Built-in edits already merge the ids they
+    touched; a Function's effects are invisible to us, which is why the whole (small) type is re-read.
+    """
+    from app.services.ontology.dataset_tables import fetch_dataset_rows, get_dataset_row_count
+    from app.services.ontology.neo4j_async import open_neo4j_driver
+
+    if not obj_type.dataset_id:
+        return False
+    total = await get_dataset_row_count(db, obj_type.dataset_id)
+    if total > limit:
+        return False
+    neo4j_ds = await get_first_neo4j_datasource(db)
+    if not neo4j_ds:
+        return False
+    label = object_label(obj_type)
+
+    def _write(driver, rows: list[dict], columns: list[str]) -> None:
+        with driver.session() as session:
+            for row in rows:
+                merge_object_row_to_neo4j(session, label, columns, row)
+
+    driver = open_neo4j_driver(neo4j_ds)
+    try:
+        offset = 0
+        while True:
+            rows, count = await fetch_dataset_rows(db, obj_type.dataset_id, limit=1000, offset=offset)
+            if not rows:
+                break
+            columns = resolve_neo4j_id_columns_for_row(obj_type, rows[0])
+            await asyncio.to_thread(_write, driver, rows, columns)
+            offset += len(rows)
+            if offset >= count:
+                break
+    finally:
+        driver.close()
+    return True
 
 
 def graph_property_keys(driver, label: str) -> dict[str, str | None]:
