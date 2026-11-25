@@ -1401,7 +1401,17 @@
     "logicTypeText": "文本",
     "logicTypeFields": "{{count}} 个字段",
     "logicOutputLast": "最后一个节点（默认）",
-    "logicTraceError": "失败"
+    "logicTraceError": "失败",
+    "logicTools": "工具",
+    "logicToolsHint": "这个节点能读什么。只有勾选状态的属性会进入模型。",
+    "logicToolObjectType": "对象类型",
+    "logicToolPickType": "选一个对象类型",
+    "logicToolProperties": "属性（逗号分隔）",
+    "logicToolLimit": "条数上限",
+    "logicAddTool": "允许读一个类型",
+    "logicInputObjectHint": "object —— 运行时按 JSON 填",
+    "logicObjectInputJson": "{{name}} 必须是合法 JSON",
+    "logicToolCalls": "{{count}} 次工具调用"
   },
   "dataSources": {
     "title": "数据源",

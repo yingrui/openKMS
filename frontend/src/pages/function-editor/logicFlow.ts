@@ -14,11 +14,11 @@ export const FIELD_TYPES: FieldType[] = ['string', 'number', 'integer', 'boolean
 
 export type OutputMode = 'text' | 'fields';
 
-export type InputType = 'string' | 'number' | 'integer' | 'boolean';
+export type InputType = 'string' | 'number' | 'integer' | 'boolean' | 'object';
 
 export type InputField = { name: string; type: InputType; description: string };
 
-export const INPUT_TYPES: InputType[] = ['string', 'number', 'integer', 'boolean'];
+export const INPUT_TYPES: InputType[] = ['string', 'number', 'integer', 'boolean', 'object'];
 
 export type ModelNode = {
   id: string;
@@ -32,6 +32,17 @@ export type ModelNode = {
   /** Raw JSON, kept for the escape hatch and to round-trip a spec the UI cannot express as fields. */
   outputSchema: string;
   tokenLimit: string;
+  /** `query_objects` tools: what this node may read, and how much of it. */
+  tools: QueryTool[];
+};
+
+export type QueryTool = {
+  id: string;
+  kind: 'query_objects';
+  object_type: string;
+  /** Only these properties reach the model. Empty means "all of them", which is rarely what you want. */
+  properties: string[];
+  limit: number;
 };
 
 export type FlowDraft = {
@@ -57,6 +68,7 @@ export function newNode(index: number): ModelNode {
     fields: [],
     outputSchema: '',
     tokenLimit: '',
+    tools: [],
   };
 }
 
@@ -85,6 +97,7 @@ export function draftFromSpec(spec: unknown): FlowDraft {
         // Kept even when the fields table can express it, so opening and saving never narrows a hand-written schema.
         outputSchema: node.output_schema ? JSON.stringify(node.output_schema, null, 2) : '',
         tokenLimit: node.token_limit == null ? '' : String(node.token_limit),
+        tools: toolsFromSpec(node.tools),
       };
     });
   const draft: FlowDraft = {
@@ -165,6 +178,8 @@ export function specFromDraft(draft: FlowDraft): DraftResult {
 
     const schema = outputSchemaFor(node, where, errors);
     if (schema) spec.output_schema = schema;
+    const tools = toolsForSpec(node, where, errors);
+    if (tools.length) spec.tools = tools;
     nodes.push(spec);
   });
 
@@ -317,4 +332,42 @@ function jsonSchemaToType(schema: unknown): FieldType {
   if (raw.type === 'array') return 'string[]';
   const primitive = String(raw.type ?? 'string');
   return (FIELD_TYPES as string[]).includes(primitive) ? (primitive as FieldType) : 'string';
+}
+
+function toolsFromSpec(raw: unknown): QueryTool[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((tool): tool is Record<string, unknown> => Boolean(tool) && typeof tool === 'object')
+    .filter((tool) => tool.kind === 'query_objects')
+    .map((tool, index) => ({
+      id: `tool-${index}`,
+      kind: 'query_objects' as const,
+      object_type: String(tool.object_type ?? ''),
+      properties: Array.isArray(tool.properties) ? tool.properties.map((p) => String(p)) : [],
+      limit: typeof tool.limit === 'number' ? tool.limit : 5,
+    }));
+}
+
+function toolsForSpec(node: ModelNode, where: string, errors: string[]): Record<string, unknown>[] {
+  return node.tools.map((tool, index) => {
+    const objectType = tool.object_type.trim();
+    if (!objectType) errors.push(`${where}: tool ${index + 1} needs an object type`);
+    if (!tool.properties.some((prop) => prop.trim())) {
+      errors.push(`${where}: tool ${index + 1} grants no properties (it would return whole objects)`);
+    }
+    if (!Number.isInteger(tool.limit) || tool.limit < 1 || tool.limit > 25) {
+      errors.push(`${where}: tool ${index + 1} limit must be between 1 and 25`);
+    }
+    return {
+      kind: 'query_objects',
+      object_type: objectType,
+      properties: tool.properties.map((prop) => prop.trim()).filter(Boolean),
+      limit: tool.limit,
+    };
+  });
+}
+
+/** Input rows that the run panel cannot express as a single text field. */
+export function objectInputs(draft: FlowDraft): string[] {
+  return (draft.inputs ?? []).filter((field) => field.type === 'object').map((field) => field.name);
 }

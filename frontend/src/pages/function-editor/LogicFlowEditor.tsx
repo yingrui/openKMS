@@ -27,6 +27,7 @@ export function LogicFlowEditor({
   models,
   errors,
   runValues,
+  objectTypes,
   disabled,
   onChange,
 }: {
@@ -35,6 +36,8 @@ export function LogicFlowEditor({
   errors: string[];
   /** Last run, keyed by node id — the value each card produced. */
   runValues: Record<string, NodeRunValue>;
+  /** Object types a query tool may read (api names). */
+  objectTypes: string[];
   disabled: boolean;
   onChange: (next: FlowDraft) => void;
 }) {
@@ -76,6 +79,7 @@ export function LogicFlowEditor({
             index={index}
             nodes={draft.nodes}
             fields={node.fields}
+            objectTypes={objectTypes}
             runValue={runValues[node.id]}
             disabled={disabled}
             onChange={(changes) => patch(index, changes)}

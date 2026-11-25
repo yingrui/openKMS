@@ -215,6 +215,9 @@ export function FunctionEditorWorkspacePage() {
                   models={models}
                   errors={flowErrors}
                   runValues={runValuesByNode}
+                  objectTypes={objectTypes
+                    .map((ot) => ot.api_name)
+                    .filter((name): name is string => Boolean(name))}
                   disabled={saving}
                   onChange={setFlow}
                 />

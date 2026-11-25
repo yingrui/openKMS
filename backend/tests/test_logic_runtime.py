@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 
 import pytest
-from pydantic_ai.messages import ModelResponse, TextPart
+from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from app.services.ontology.logic_runtime import (
@@ -183,3 +183,158 @@ class TestDraftExecution:
         with pytest.raises(HTTPException) as exc:
             await dry_run_flow(None, fn, flow_spec=_spec(), input_payload={})
         assert exc.value.status_code == 400
+
+
+class TestTypedInputs:
+    """Declared inputs are a contract: AIP Logic's input board, minus the object/object-set types we do not have."""
+
+    @pytest.mark.asyncio
+    async def test_a_missing_input_names_itself(self):
+        spec = {"inputs": [{"name": "email", "type": "string"}], **_spec()}
+        outcome = await run_flow(spec, {}, model_factory=_factory)
+        assert outcome.status == "error"
+        assert outcome.error == "input 'email' is missing"
+
+    @pytest.mark.asyncio
+    async def test_a_mistyped_input_is_refused_before_the_model_is_called(self):
+        called = False
+
+        async def factory(_model_id: str | None):
+            nonlocal called
+            called = True
+            return FunctionModel(_handler("{}"))
+
+        spec = {"inputs": [{"name": "count", "type": "integer"}], **_spec()}
+        outcome = await run_flow(spec, {"count": "three"}, model_factory=factory)
+        assert outcome.status == "error"
+        assert "expected integer but got str" in (outcome.error or "")
+        assert called is False
+
+    @pytest.mark.asyncio
+    async def test_a_boolean_is_not_a_number(self):
+        spec = {"inputs": [{"name": "n", "type": "number"}], **_spec()}
+        outcome = await run_flow(spec, {"n": True}, model_factory=_factory)
+        assert outcome.status == "error"
+        assert "got boolean" in (outcome.error or "")
+
+    @pytest.mark.asyncio
+    async def test_an_object_input_is_accepted_and_readable_by_path(self):
+        spec = {
+            "inputs": [{"name": "customer", "type": "object"}],
+            "nodes": [
+                {"id": "n1", "kind": "model", "prompt": "Name: {{input.customer.name}}", "output_schema": SCHEMA}
+            ],
+        }
+        outcome = await run_flow(spec, {"customer": {"name": "Ada"}}, model_factory=_factory)
+        assert outcome.status == "ok"
+        assert outcome.trace["nodes"][0]["prompt_sent"] == "Name: Ada"
+
+
+class TestTools:
+    """One `query_objects` tool: the model asks, we call openKMS as the caller, only granted properties come back."""
+
+    def _spec_with_tool(self, **tool):
+        return {
+            "nodes": [
+                {
+                    "id": "n1",
+                    "kind": "model",
+                    "prompt": "Find similar complaints",
+                    "output_schema": SCHEMA,
+                    "tools": [
+                        {
+                            "kind": "query_objects",
+                            "object_type": "Complaint",
+                            "properties": ["title"],
+                            "limit": 3,
+                            **tool,
+                        }
+                    ],
+                }
+            ]
+        }
+
+    def test_tool_configuration_is_validated(self):
+        errors = validate_flow_spec(
+            {
+                "nodes": [
+                    {
+                        "id": "n1",
+                        "kind": "model",
+                        "prompt": "x",
+                        "tools": [{"kind": "query_objects", "object_type": "", "limit": 99}],
+                    }
+                ]
+            }
+        )
+        assert any("object_type is required" in e for e in errors)
+        assert any("between 1 and" in e for e in errors)
+
+    @pytest.mark.asyncio
+    async def test_the_model_asks_and_only_granted_properties_reach_it(self):
+        seen: list[dict] = []
+        turns = {"n": 0}
+        second_turn: list[str] = []
+
+        async def runner(tool: dict, arguments: dict) -> list[dict]:
+            seen.append({"tool": tool, "arguments": arguments})
+            # `body` was not granted: it must not appear in what the model receives.
+            return [{"title": "Charged twice", "body": "secret detail"}]
+
+        def handler(messages, _info: AgentInfo) -> ModelResponse:
+            turns["n"] += 1
+            if turns["n"] == 1:
+                return ModelResponse(
+                    parts=[ToolCallPart(tool_name="query_objects_Complaint", args={"search": "invoice"})]
+                )
+            second_turn.append(json.dumps(messages, default=str))
+            return ModelResponse(parts=[TextPart(json.dumps({"answer": "42"}))])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        outcome = await run_flow(
+            self._spec_with_tool(), {}, model_factory=factory, tool_runner=runner
+        )
+
+        assert outcome.status == "ok", outcome.error
+        assert outcome.output == {"answer": "42"}
+        # The flow's own configuration, not the model's arguments, decides what is read.
+        assert seen[0]["tool"]["object_type"] == "Complaint"
+        assert seen[0]["tool"]["limit"] == 3
+        assert "invoice" in json.dumps(seen[0]["arguments"])
+
+        node = outcome.trace["nodes"][0]
+        assert node["tool_calls"][0]["tool"] == "query_objects"
+        assert node["tool_calls"][0]["ok"] is True
+        assert node["tool_calls"][0]["rows"] == 1
+
+        fed_back = "".join(second_turn)
+        assert "Charged twice" in fed_back
+        assert "secret detail" not in fed_back, "an ungranted property must not reach the model"
+
+    @pytest.mark.asyncio
+    async def test_a_denied_read_fails_through_to_the_node(self):
+        async def runner(_tool: dict, _arguments: dict) -> list[dict]:
+            raise FlowError("not allowed to read 'Complaint'")
+
+        turns = {"n": 0}
+
+        def handler(_messages, _info: AgentInfo) -> ModelResponse:
+            turns["n"] += 1
+            if turns["n"] == 1:
+                return ModelResponse(
+                    parts=[ToolCallPart(tool_name="query_objects_Complaint", args={"search": "x"})]
+                )
+            return ModelResponse(parts=[TextPart(json.dumps({"answer": "42"}))])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        outcome = await run_flow(
+            self._spec_with_tool(), {}, model_factory=factory, tool_runner=runner
+        )
+
+        assert outcome.status == "error"
+        assert "not allowed to read" in (outcome.error or "")
+        assert outcome.trace["nodes"][0]["ok"] is False

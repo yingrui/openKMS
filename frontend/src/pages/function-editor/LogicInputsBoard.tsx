@@ -60,6 +60,9 @@ export function LogicInputsBoard({
                       onChange={(e) => patch(index, { name: e.target.value })}
                       disabled={disabled}
                     />
+                    {field.type === 'object' ? (
+                      <span className="logic-inputs__unused">{t('editor.logicInputObjectHint')}</span>
+                    ) : null}
                     {isUnused ? (
                       <span className="logic-inputs__unused">{t('editor.logicInputUnused')}</span>
                     ) : null}

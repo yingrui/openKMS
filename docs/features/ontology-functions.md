@@ -167,6 +167,19 @@ Trace | `ontology_function_executions.trace` — per node: prompt as sent, token
 Supported node kinds today: **`model` only**, in a linear chain. `function` / `action` / `transform` / `condition` /
 `loop` are rejected at save time with a message that says they are not implemented yet, rather than half-working.
 
+**Typed inputs.** `flow_spec.inputs` declares `{name, type}` with `string` / `number` / `integer` / `boolean` /
+`object`. Declared inputs are checked before the first model call: a missing or mistyped value fails with the input's
+name instead of rendering an empty prompt. The editor derives this list from `{{input.x}}` in the prompts, so the
+declaration and the text cannot disagree — but the declaration is what the executor enforces.
+
+**Tools (`query_objects`).** A node may carry up to four read tools:
+`{kind: "query_objects", object_type, properties, limit}`. The model never sees a table: it asks for a search, the
+backend calls `GET /api/object-types/{type}/objects` **with the caller's token** (so the object-type ACL and
+`ontology:read` apply to the person running it, not to the platform), and only the granted properties are returned —
+that is both the token budget and the data minimisation. `limit` is capped at 25; a node gets at most four model
+round trips and six tool calls. Every call lands in the trace with its arguments, row count, duration and error,
+including a failed one — a denied read is exactly what you need to see afterwards.
+
 Invariants:
 
 - The model never touches the ontology — it gets a prompt and returns data. Tools arrive with the tool nodes.

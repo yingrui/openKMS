@@ -235,9 +235,24 @@ export function useFunctionEditorWorkspace() {
       setRunning(true);
       setTrace(null);
       try {
+        const payload: Record<string, unknown> = {};
+        for (const field of flow.inputs) {
+          const raw = runValues[field.name] ?? '';
+          if (field.type === 'object') {
+            try {
+              payload[field.name] = raw.trim() ? JSON.parse(raw) : {};
+            } catch {
+              toast.error(t('editor.logicObjectInputJson', { name: field.name }));
+              setRunning(false);
+              return;
+            }
+          } else {
+            payload[field.name] = raw;
+          }
+        }
         const res = await dryRunLogicFlow(id, {
           flow_spec: draft.spec as Record<string, unknown>,
-          input: Object.fromEntries(inputNames(flow).map((name) => [name, runValues[name] ?? ''])),
+          input: payload,
         });
         setPreviewOutput(JSON.stringify(res.output ?? res.error ?? res, null, 2));
         setTrace(res.trace ?? null);

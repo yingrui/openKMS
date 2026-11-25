@@ -793,6 +793,44 @@
   border-style: dashed;
 }
 
+/* ---------- Logic function: a node's tools ---------- */
+
+.logic-node__tools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--color-border);
+}
+
+.logic-node__tools-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.logic-node__tool {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.logic-node__tool-type {
+  min-width: 12rem;
+  font-size: var(--text-sm);
+}
+
+.logic-node__tool-props {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.logic-node__tool-limit {
+  width: 5rem;
+  font-size: var(--text-sm);
+}
+
 /* ---------- Logic function: a node's own value ---------- */
 
 .logic-node__type {

@@ -1407,7 +1407,17 @@
     "logicTypeText": "Text",
     "logicTypeFields": "{{count}} fields",
     "logicOutputLast": "Last node (default)",
-    "logicTraceError": "Error"
+    "logicTraceError": "Error",
+    "logicTools": "Tools",
+    "logicToolsHint": "What this node may read. Only the granted properties reach the model.",
+    "logicToolObjectType": "Object type",
+    "logicToolPickType": "Pick an object type",
+    "logicToolProperties": "Properties (comma separated)",
+    "logicToolLimit": "Limit",
+    "logicAddTool": "Allow reading a type",
+    "logicInputObjectHint": "object — edit as JSON when running",
+    "logicObjectInputJson": "{{name}} must be valid JSON",
+    "logicToolCalls": "{{count}} tool call(s)"
   },
   "dataSources": {
     "title": "Data sources",

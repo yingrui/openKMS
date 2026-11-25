@@ -194,13 +194,19 @@ async def execute_function(
 async def dry_run_function(
     function_id: str,
     body: OntologyFunctionDryRunRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
 ):
     """Run the flow the editor is showing. Needs write permission: it is authoring, not calling."""
     fn = await function_service.get_function(db, function_id)
+    # Tools run as the caller, so a preview cannot read more than the author can.
     return await execution_service.dry_run_flow(
-        db, fn, flow_spec=body.flow_spec, input_payload=body.input
+        db,
+        fn,
+        flow_spec=body.flow_spec,
+        input_payload=body.input,
+        caller_token=require_caller_token(request),
     )
 
 

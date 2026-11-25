@@ -29,9 +29,19 @@ from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
 from pydantic_ai.usage import UsageLimitExceeded, UsageLimits
 
 SUPPORTED_NODE_KINDS = ("model",)
+SUPPORTED_TOOL_KINDS = ("query_objects",)
 PROMPT_REF = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\}\}")
 DEFAULT_NODE_TIMEOUT_S = 60.0
 DEFAULT_NODE_TOKEN_LIMIT = 8192
+DEFAULT_TOOL_LIMIT = 5
+MAX_TOOL_LIMIT = 25
+MAX_TOOLS_PER_NODE = 4
+#: A tool-using node may go round the model a few times; more than this is a design problem, not a budget.
+MAX_TOOL_STEPS = 4
+MAX_TOOL_CALLS = 6
+
+#: Input types a flow can declare. `object` is a JSON object the caller passes; the prompt reads its fields by path.
+INPUT_TYPES = ("string", "number", "integer", "boolean", "object")
 
 
 class FlowError(Exception):
@@ -76,10 +86,66 @@ def validate_flow_spec(spec: dict | None) -> list[str]:
             )
         if kind == "model" and not str(node.get("prompt") or "").strip():
             errors.append(f"{where}.prompt is required")
+        errors.extend(_validate_tools(node, where))
 
     output = spec.get("output")
     if output is not None and not isinstance(output, str):
         errors.append("flow_spec.output must be a reference string such as '{{n1}}'")
+
+    errors.extend(_validate_inputs(spec.get("inputs")))
+    return errors
+
+
+def _validate_inputs(inputs: object) -> list[str]:
+    if inputs is None:
+        return []
+    if not isinstance(inputs, list):
+        return ["flow_spec.inputs must be a list"]
+    errors: list[str] = []
+    seen: set[str] = set()
+    for index, item in enumerate(inputs):
+        where = f"inputs[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{where} must be an object")
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name:
+            errors.append(f"{where}.name is required")
+        elif name in seen:
+            errors.append(f"{where}.name '{name}' is duplicated")
+        else:
+            seen.add(name)
+        input_type = str(item.get("type") or "string")
+        if input_type not in INPUT_TYPES:
+            errors.append(f"{where}.type '{input_type}' is not one of {', '.join(INPUT_TYPES)}")
+    return errors
+
+
+def _validate_tools(node: dict, where: str) -> list[str]:
+    tools = node.get("tools")
+    if tools is None:
+        return []
+    if not isinstance(tools, list):
+        return [f"{where}.tools must be a list"]
+    if len(tools) > MAX_TOOLS_PER_NODE:
+        return [f"{where}.tools allows at most {MAX_TOOLS_PER_NODE} tools"]
+    errors: list[str] = []
+    for index, tool in enumerate(tools):
+        at = f"{where}.tools[{index}]"
+        if not isinstance(tool, dict):
+            errors.append(f"{at} must be an object")
+            continue
+        kind = str(tool.get("kind") or "")
+        if kind not in SUPPORTED_TOOL_KINDS:
+            errors.append(
+                f"{at}.kind '{kind}' is not supported yet (only {', '.join(SUPPORTED_TOOL_KINDS)})"
+            )
+            continue
+        if not str(tool.get("object_type") or "").strip():
+            errors.append(f"{at}.object_type is required")
+        limit = tool.get("limit")
+        if limit is not None and (not isinstance(limit, int) or not 1 <= limit <= MAX_TOOL_LIMIT):
+            errors.append(f"{at}.limit must be an integer between 1 and {MAX_TOOL_LIMIT}")
     return errors
 
 
@@ -127,6 +193,9 @@ def _resolve_output(spec: dict, variables: dict[str, Any], last_node_id: str) ->
 
 
 ModelFactory = Callable[[str | None], Awaitable[Any]]
+#: `(tool, arguments) -> rows`. Injected so tests (and the dry run) do not need a live API; the real one calls
+#: openKMS with the caller's token, which is what keeps permissions honest.
+ToolRunner = Callable[[dict, dict], Awaitable[list[dict]]]
 
 
 async def run_flow(
@@ -134,6 +203,7 @@ async def run_flow(
     input_payload: dict,
     *,
     model_factory: ModelFactory,
+    tool_runner: ToolRunner | None = None,
     node_timeout_s: float = DEFAULT_NODE_TIMEOUT_S,
     node_token_limit: int = DEFAULT_NODE_TOKEN_LIMIT,
 ) -> FlowOutcome:
@@ -143,6 +213,16 @@ async def run_flow(
         return FlowOutcome(status="error", output=None, error="; ".join(errors), duration_ms=None)
 
     assert spec is not None  # validate_flow_spec guarantees it
+    input_errors = _input_errors(spec.get("inputs"), input_payload)
+    if input_errors:
+        return FlowOutcome(
+            status="error",
+            output=None,
+            error="; ".join(input_errors),
+            duration_ms=None,
+            trace={"nodes": [], "inputs": input_payload},
+        )
+
     nodes = spec["nodes"]
     variables: dict[str, Any] = {"input": input_payload}
     trace: dict[str, Any] = {"nodes": []}
@@ -153,22 +233,27 @@ async def run_flow(
         node_id = str(node["id"])
         prompt = render_template(str(node["prompt"]), variables)
         node_started = time.perf_counter()
+        calls: list[dict[str, Any]] = []
         entry: dict[str, Any] = {
             "id": node_id,
             "kind": node.get("kind"),
             "model_id": node.get("model_id"),
             "prompt_sent": prompt,
             "missing_references": missing_references(str(node["prompt"]), variables),
+            "tool_calls": calls,
         }
         try:
             output, usage = await _run_model_node(
                 node,
                 prompt=prompt,
                 model_factory=model_factory,
+                tool_runner=tool_runner,
+                calls=calls,
                 timeout_s=node_timeout_s,
                 token_limit=node_token_limit,
             )
         except FlowError as e:
+            # The failed entry keeps its tool calls: a denied read is exactly what you need to see afterwards.
             entry.update({"ok": False, "error": str(e), "duration_ms": _ms(node_started)})
             trace["nodes"].append(entry)
             return FlowOutcome(
@@ -179,7 +264,9 @@ async def run_flow(
                 trace=trace,
             )
 
-        entry.update({"ok": True, "output": output, "usage": usage, "duration_ms": _ms(node_started)})
+        entry.update(
+            {"ok": True, "output": output, "usage": usage, "duration_ms": _ms(node_started)}
+        )
         trace["nodes"].append(entry)
         variables[node_id] = output
         last_node_id = node_id
@@ -191,11 +278,46 @@ async def run_flow(
     )
 
 
+_INPUT_CHECKS: dict[str, tuple[type, ...]] = {
+    "string": (str,),
+    "number": (int, float),
+    "integer": (int,),
+    "boolean": (bool,),
+    "object": (dict, list),
+}
+
+
+def _input_errors(inputs: object, payload: dict) -> list[str]:
+    """Declared inputs are a contract: missing or mistyped is an error named after the input, not an empty render."""
+    if not isinstance(inputs, list):
+        return []
+    errors: list[str] = []
+    for item in inputs:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name:
+            continue
+        if name not in payload:
+            errors.append(f"input '{name}' is missing")
+            continue
+        expected = _INPUT_CHECKS.get(str(item.get("type") or "string"), (str,))
+        value = payload[name]
+        # bool is an int subclass in Python; `true` is not a number for a caller's purposes.
+        if isinstance(value, bool) and expected is not _INPUT_CHECKS["boolean"]:
+            errors.append(f"input '{name}' expected {item.get('type')} but got boolean")
+        elif not isinstance(value, expected):
+            errors.append(f"input '{name}' expected {item.get('type')} but got {type(value).__name__}")
+    return errors
+
+
 async def _run_model_node(
     node: dict,
     *,
     prompt: str,
     model_factory: ModelFactory,
+    tool_runner: ToolRunner | None,
+    calls: list[dict[str, Any]],
     timeout_s: float,
     token_limit: int,
 ) -> tuple[Any, dict[str, Any]]:
@@ -204,15 +326,18 @@ async def _run_model_node(
     model = await model_factory(node.get("model_id"))
     output_type: Any = PromptedOutput(StructuredDict(schema)) if isinstance(schema, dict) else str
     system = str(node.get("system") or "").strip()
-    agent = (
-        Agent(model, output_type=output_type, system_prompt=system)
-        if system
-        else Agent(model, output_type=output_type)
-    )
-    # No pre-flight token counting: only some providers support it, and `request_limit=1` already bounds the call.
-    # A token overrun is caught after the response and reported as a node failure — never as a truncated answer.
+    tools = _build_tools(node, tool_runner, calls)
+    kwargs: dict[str, Any] = {"output_type": output_type}
+    if tools:
+        kwargs["tools"] = tools
+    if system:
+        kwargs["system_prompt"] = system
+    agent = Agent(model, **kwargs)
+    # A node with tools needs a few round trips; without tools one request is the whole budget. Either way a token
+    # overrun is caught after the response and reported as a node failure — never as a truncated answer.
     limits = UsageLimits(
-        request_limit=1,
+        request_limit=MAX_TOOL_STEPS if tools else 1,
+        tool_calls_limit=MAX_TOOL_CALLS if tools else None,
         total_tokens_limit=_token_limit(node, token_limit),
     )
     try:
@@ -233,6 +358,76 @@ async def _run_model_node(
         "output_tokens": usage.output_tokens,
         "total_tokens": usage.total_tokens,
     }
+
+
+def _build_tools(node: dict, tool_runner: ToolRunner | None, calls: list[dict[str, Any]]) -> list[Any]:
+    """One pydantic-ai tool per configured tool. Every call is recorded, including the rows it returned."""
+    from pydantic_ai.tools import Tool
+
+    configured = node.get("tools")
+    if not isinstance(configured, list) or not configured or tool_runner is None:
+        return []
+
+    tools: list[Any] = []
+    for tool in configured:
+        if not isinstance(tool, dict) or tool.get("kind") != "query_objects":
+            continue
+        object_type = str(tool.get("object_type") or "").strip()
+        properties = [str(p) for p in (tool.get("properties") or []) if str(p).strip()]
+        limit = int(tool.get("limit") or DEFAULT_TOOL_LIMIT)
+
+        async def run(
+            _object_type: str = object_type,
+            _properties: list[str] = properties,
+            _limit: int = limit,
+            **arguments: Any,
+        ) -> str:
+            started = time.perf_counter()
+            entry: dict[str, Any] = {
+                "tool": "query_objects",
+                "object_type": _object_type,
+                "arguments": arguments,
+            }
+            try:
+                rows = await tool_runner(
+                    {"kind": "query_objects", "object_type": _object_type,
+                     "properties": _properties, "limit": _limit},
+                    arguments,
+                )
+            except FlowError as e:
+                entry.update({"ok": False, "error": str(e), "duration_ms": _ms(started)})
+                calls.append(entry)
+                raise
+            # Only the granted properties reach the model: that is both the token budget and the data minimisation.
+            trimmed = [
+                {key: row[key] for key in _properties if key in row} if _properties else row
+                for row in rows
+            ]
+            entry.update({"ok": True, "rows": len(trimmed), "duration_ms": _ms(started)})
+            calls.append(entry)
+            return json.dumps(trimmed, ensure_ascii=False, default=str)
+
+        tools.append(
+            Tool.from_schema(
+                run,
+                name=f"query_objects_{object_type}"[:64],
+                description=(
+                    f"Search up to {limit} '{object_type}' objects. Pass 'search' for a text match, or "
+                    f"'filter' as an object of property equalities."
+                ),
+                json_schema={
+                    "type": "object",
+                    "properties": {
+                        "search": {"type": "string", "description": "Free-text search"},
+                        "filter": {
+                            "type": "object",
+                            "description": "Property equalities, e.g. {\"status\": \"open\"}",
+                        },
+                    },
+                },
+            )
+        )
+    return tools
 
 
 def _token_limit(node: dict, default: int) -> int:
