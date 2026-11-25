@@ -217,12 +217,14 @@ export interface EvaluationCompareResponse {
 
 export async function fetchEvaluations(params?: {
   knowledge_base_id?: string;
+  function_id?: string;
   limit?: number;
   offset?: number;
 }): Promise<EvaluationListResponse> {
   return request<EvaluationListResponse>('/api/evaluations', {
     query: {
       knowledge_base_id: params?.knowledge_base_id,
+      function_id: params?.function_id,
       limit: params?.limit,
       offset: params?.offset,
     },

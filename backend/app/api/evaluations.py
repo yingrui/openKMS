@@ -234,6 +234,7 @@ def _validate_item_for_kind(
 async def list_evaluations(
     request: Request,
     knowledge_base_id: str | None = Query(None),
+    function_id: str | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -244,6 +245,7 @@ async def list_evaluations(
         knowledge_base_id=knowledge_base_id,
         limit=limit,
         offset=offset,
+        function_id=function_id,
     )
 
 

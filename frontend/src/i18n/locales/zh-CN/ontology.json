@@ -1445,7 +1445,9 @@
     "logicNodeKindTransform": "整理数据",
     "logicTemplate": "字段",
     "logicTemplateHint": "确定性步骤：不调模型、不耗 token。整格只有一处引用时保留原类型。",
-    "logicTypeTransform": "数据"
+    "logicTypeTransform": "数据",
+    "evaluate": "评估",
+    "evaluateHint": "打开这个函数的评估，或新建一个"
   },
   "dataSources": {
     "title": "数据源",

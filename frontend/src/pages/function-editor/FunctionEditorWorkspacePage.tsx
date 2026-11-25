@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Loader2, Play, Plug, Rocket, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, FlaskConical, Loader2, Play, Plug, Rocket, Save, Trash2 } from 'lucide-react';
 import { AvailableQueriesPanel } from './AvailableQueriesPanel';
 import { FunctionCodeEditor } from './FunctionCodeEditor';
 import { FunctionPreviewPanel } from './FunctionPreviewPanel';
@@ -118,6 +118,17 @@ export function FunctionEditorWorkspacePage() {
             <Play size={16} aria-hidden />
             {t('shared.run')}
           </button>
+          {!isNew && resolvedId ? (
+            // One link into the evaluation: an existing one for this function, or a prefilled new one there.
+            <Link
+              to={`/evaluations?function=${resolvedId}`}
+              className="btn btn-secondary btn-sm"
+              title={t('editor.evaluateHint')}
+            >
+              <FlaskConical size={16} aria-hidden />
+              {t('editor.evaluate')}
+            </Link>
+          ) : null}
           <button
             type="button"
             className="btn btn-secondary btn-sm"

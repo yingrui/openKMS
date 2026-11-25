@@ -236,3 +236,65 @@ class TestTargetValidation:
                 db=SimpleNamespace(),
             )
         assert "kind must be 'function'" in str(exc.value.detail)
+
+
+class TestDeepLinkFilter:
+    """The editor's "Evaluate" button relies on `?function_id=` narrowing the list to one function's evaluations."""
+
+    @pytest.mark.asyncio
+    async def test_the_list_filter_is_applied_and_the_row_names_the_function(self, monkeypatch):
+        from app.services.workspace.evaluations import evaluation_read
+
+        captured: dict = {}
+
+        class FakeDb:
+            def __init__(self):
+                self.calls = 0
+
+            async def execute(self, stmt):
+                self.calls += 1
+                rendered = str(stmt)
+                if "count" in rendered.lower():
+                    return SimpleNamespace(scalar_one=lambda: 1)
+                if "FROM evaluations" in rendered:
+                    captured["where"] = rendered
+                    return SimpleNamespace(
+                        scalars=lambda: SimpleNamespace(
+                            all=lambda: [
+                                SimpleNamespace(
+                                    id="ev-1",
+                                    name="for fn",
+                                    kind="function",
+                                    knowledge_base_id=None,
+                                    function_id="fn-1",
+                                    wiki_space_id=None,
+                                    semantic_model_id=None,
+                                    data_resource_id=None,
+                                    description=None,
+                                    created_at="2026-11-24",
+                                    updated_at="2026-11-24",
+                                )
+                            ]
+                        )
+                    )
+                if "ontology_functions" in rendered:
+                    return SimpleNamespace(all=lambda: [("fn-1", "forecast", "Forecast")])
+                return SimpleNamespace(all=lambda: [])
+
+        async def readable(*_args, **_kwargs):
+            return [], False
+
+        async def counts(*_args, **_kwargs):
+            return {"ev-1": 2}
+
+        monkeypatch.setattr(evaluation_read, "readable_id_filter", readable)
+        monkeypatch.setattr(evaluation_read, "item_counts_batch", counts)
+
+        request = SimpleNamespace(state=SimpleNamespace(openkms_jwt_payload={"sub": "u1"}))
+        page = await evaluation_read.list_evaluations_page(
+            FakeDb(), request, knowledge_base_id=None, limit=10, offset=0, function_id="fn-1"
+        )
+
+        assert "function_id" in captured["where"]
+        assert page.items[0].function_api_name == "forecast"
+        assert page.items[0].function_display_name == "Forecast"

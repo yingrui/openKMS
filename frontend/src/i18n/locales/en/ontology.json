@@ -1451,7 +1451,9 @@
     "logicNodeKindTransform": "Shape data",
     "logicTemplate": "Fields",
     "logicTemplateHint": "Deterministic: no model call, no tokens. A value that is exactly one reference keeps its type.",
-    "logicTypeTransform": "Data"
+    "logicTypeTransform": "Data",
+    "evaluate": "Evaluate",
+    "evaluateHint": "Open an evaluation for this function, or create one"
   },
   "dataSources": {
     "title": "Data sources",

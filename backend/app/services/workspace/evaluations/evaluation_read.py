@@ -64,6 +64,7 @@ async def list_evaluations_page(
     knowledge_base_id: str | None,
     limit: int,
     offset: int,
+    function_id: str | None = None,
 ) -> EvaluationListResponse:
     payload = request.state.openkms_jwt_payload
     sub = payload.get("sub")
@@ -76,6 +77,8 @@ async def list_evaluations_page(
     filters = list(acl_filters)
     if knowledge_base_id:
         filters.append(Evaluation.knowledge_base_id == knowledge_base_id)
+    if function_id:
+        filters.append(Evaluation.function_id == function_id)
 
     count_q = select(func.count()).select_from(Evaluation)
     if filters:
@@ -88,7 +91,7 @@ async def list_evaluations_page(
     q = q.offset(offset).limit(limit)
     rows = list((await db.execute(q)).scalars().all())
 
-    kb_ids = {ev.knowledge_base_id for ev in rows}
+    kb_ids = {ev.knowledge_base_id for ev in rows if ev.knowledge_base_id}
     wiki_ids = {ev.wiki_space_id for ev in rows if ev.wiki_space_id}
     kb_names: dict[str, str] = {}
     if kb_ids:
@@ -100,12 +103,26 @@ async def list_evaluations_page(
         wiki_names = {str(wid): name for wid, name in wiki_rows.all()}
     item_counts = await item_counts_batch(db, [ev.id for ev in rows])
 
+    # A function evaluation's list row says which function it measures, so the page can name it.
+    fn_ids = {ev.function_id for ev in rows if ev.function_id}
+    fn_names: dict[str, tuple[str, str]] = {}
+    if fn_ids:
+        from app.models.ontology_function import OntologyFunction
+
+        fn_rows = await db.execute(
+            select(OntologyFunction.id, OntologyFunction.api_name, OntologyFunction.display_name).where(
+                OntologyFunction.id.in_(fn_ids)
+            )
+        )
+        fn_names = {str(fid): (api_name, display_name) for fid, api_name, display_name in fn_rows.all()}
+
     items = [
         evaluation_to_response(
             ev,
             kb_names.get(ev.knowledge_base_id),
             wiki_names.get(ev.wiki_space_id) if ev.wiki_space_id else None,
             item_counts.get(ev.id, 0),
+            fn_names.get(ev.function_id, (None, None)) if ev.function_id else (None, None),
         )
         for ev in rows
     ]

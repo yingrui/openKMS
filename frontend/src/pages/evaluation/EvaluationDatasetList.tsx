@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ClipboardList, Plus, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -28,6 +28,10 @@ import './EvaluationDatasetList.scss';
 const VIEW_STORAGE_KEY = 'evaluations-list-view';
 
 export function EvaluationDatasetList() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  /** Arriving from a function: open its evaluation, or offer to create one for it. */
+  const requestedFunctionId = searchParams.get('function') ?? '';
   const { t } = useTranslation('workspace');
   const { t: tc } = useTranslation('common');
   const [viewMode, setViewMode] = useStoredViewMode<CardListViewMode>(VIEW_STORAGE_KEY, 'card');
@@ -71,6 +75,34 @@ export function EvaluationDatasetList() {
       setLoading(false);
     }
   }, [fetchLimit, fetchOffset, t]);
+
+  // Arriving with ?function=<id> from the editor: go to the evaluation that already measures it, or offer to
+  // create one with the target prefilled. Then drop the parameter, so a refresh does not reopen the dialog.
+  useEffect(() => {
+    if (!requestedFunctionId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetchEvaluations({ function_id: requestedFunctionId, limit: 1, offset: 0 });
+        if (cancelled) return;
+        const existing = res.items[0];
+        if (existing) {
+          navigate(`/evaluations/${existing.id}`, { replace: true });
+          return;
+        }
+      } catch {
+        /* fall through to the create dialog */
+      }
+      if (cancelled) return;
+      setFormTarget('function');
+      setFormFunctionId(requestedFunctionId);
+      setShowCreate(true);
+      setSearchParams({}, { replace: true });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [requestedFunctionId, navigate, setSearchParams]);
 
   const loadDropdowns = useCallback(async () => {
     try {
