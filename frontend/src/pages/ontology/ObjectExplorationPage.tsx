@@ -32,6 +32,7 @@ import { fetchOntologyActionTypes, type OntologyActionTypeResponse } from '../..
 import { ObjectSetActionDialog } from './ObjectSetActionDialog';
 import { ObjectSetChartBoard } from './ObjectSetChartBoard';
 import { ObjectSetResults } from './ObjectSetResults';
+import { ObjectSetViewSwitch } from './ObjectSetViewSwitch';
 import { useObjectSetCompare } from './useObjectSetCompare';
 import { ObjectSetActionMenu } from './ObjectSetActionMenu';
 
@@ -544,6 +545,11 @@ export function ObjectExplorationPage() {
       }
     >
       <div className="object-set-toolbar">
+        <ObjectSetViewSwitch
+          perspective={perspective}
+          total={total}
+          onChange={setPerspective}
+        />
         <input
           className="ds-control object-set-toolbar__search"
           value={search}
@@ -582,17 +588,6 @@ export function ObjectExplorationPage() {
             ) : null}
           </div>
         ) : null}
-        {(['explore', 'results'] as const).map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            className="btn btn-secondary btn-sm object-set-viewbar__button"
-            aria-pressed={perspective === mode}
-            onClick={() => setPerspective(mode)}
-          >
-            {mode === 'explore' ? t('objectSet.viewExplore') : t('objectSet.viewResults')}
-          </button>
-        ))}
       </div>
 
       <ObjectSetFilters filters={filters} properties={properties} onChange={setFilters} />

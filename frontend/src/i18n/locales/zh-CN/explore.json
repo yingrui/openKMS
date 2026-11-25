@@ -332,8 +332,8 @@
     "chartTruncated": "共 {{count}} 个取值",
     "chartNoValues": "该属性没有取值",
     "chartCount": "对象数",
-    "viewExplore": "开始探索",
-    "viewResults": "结果列表",
+    "viewExplore": "图表",
+    "viewResults": "表格",
     "noFilters": "点击图表中的取值即可筛选",
     "clearFilters": "清除条件",
     "removeFilter": "移除条件 {{name}}",
@@ -437,7 +437,8 @@
     "columnsAll": "显示全部属性",
     "sortRank": "第 {{rank}} 排序",
     "actionFixedParams": "部分参数由动作固定，提交时自动带上。",
-    "actionJsonValue": "JSON，例如 {\"uplift\": 0.05}"
+    "actionJsonValue": "JSON，例如 {\"uplift\": 0.05}",
+    "viewResultsCount": "表格（{{count}}）"
   },
   "explorerSections": {
     "explorations": "探索",

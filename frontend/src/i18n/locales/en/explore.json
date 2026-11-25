@@ -332,8 +332,8 @@
     "chartTruncated": "{{count}} distinct values",
     "chartNoValues": "No values for this property",
     "chartCount": "Objects",
-    "viewExplore": "Start exploration",
-    "viewResults": "Results",
+    "viewExplore": "Charts",
+    "viewResults": "Table",
     "noFilters": "Click a value in a chart to filter",
     "clearFilters": "Clear conditions",
     "removeFilter": "Remove condition {{name}}",
@@ -437,7 +437,8 @@
     "columnsAll": "Show every property",
     "sortRank": "sort {{rank}}",
     "actionFixedParams": "Some parameters are fixed by the action and sent as they are.",
-    "actionJsonValue": "JSON, e.g. {\"uplift\": 0.05}"
+    "actionJsonValue": "JSON, e.g. {\"uplift\": 0.05}",
+    "viewResultsCount": "Table ({{count}})"
   },
   "explorerSections": {
     "explorations": "Explorations",
