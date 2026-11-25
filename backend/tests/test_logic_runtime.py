@@ -506,3 +506,155 @@ class TestActionNode:
         assert outcome.status == "error"
         assert outcome.error is not None and outcome.error.startswith("n2:")
         assert outcome.trace["nodes"][1]["ok"] is False
+
+
+class TestConditionNode:
+    """Branches: the first `when` that holds wins, an empty `when` is the fallback, and the branch's last node answers."""
+
+    def _spec(self, branches, *, when_output="ok"):
+        return {
+            "nodes": [
+                {"id": "n1", "kind": "model", "prompt": "pre", "output_schema": SCHEMA},
+                {"id": "c1", "kind": "condition", "branches": branches},
+            ]
+        }
+
+    def _branch(self, when, text):
+        return {
+            "when": when,
+            "nodes": [{"id": f"b-{text}", "kind": "model", "prompt": text, "output_schema": SCHEMA}],
+        }
+
+    def test_only_one_branch_may_be_the_fallback(self):
+        errors = validate_flow_spec(
+            {
+                "nodes": [
+                    {
+                        "id": "c1",
+                        "kind": "condition",
+                        "branches": [
+                            {"when": "", "nodes": [{"id": "a", "kind": "model", "prompt": "x"}]},
+                            {"when": "", "nodes": [{"id": "b", "kind": "model", "prompt": "y"}]},
+                        ],
+                    }
+                ]
+            }
+        )
+        assert any("only one branch may omit" in e for e in errors)
+
+    def test_the_fallback_must_be_last(self):
+        # First matching branch wins, so a fallback in the middle would swallow the branches after it.
+        errors = validate_flow_spec(
+            {
+                "nodes": [
+                    {
+                        "id": "c1",
+                        "kind": "condition",
+                        "branches": [
+                            {"when": "", "nodes": [{"id": "a", "kind": "model", "prompt": "x"}]},
+                            {"when": "{{n1.x}}", "nodes": [{"id": "b", "kind": "model", "prompt": "y"}]},
+                        ],
+                    }
+                ]
+            }
+        )
+        assert any("fallback branch must be last" in e for e in errors)
+
+    def test_a_nested_condition_is_refused(self):
+        errors = validate_flow_spec(
+            {
+                "nodes": [
+                    {
+                        "id": "c1",
+                        "kind": "condition",
+                        "branches": [
+                            {"when": "x", "nodes": [{"id": "c2", "kind": "condition", "branches": []}]}
+                        ],
+                    }
+                ]
+            }
+        )
+        assert any("no nested conditions" in e for e in errors)
+
+    @pytest.mark.asyncio
+    async def test_the_matching_branch_runs_and_answers(self):
+        prompts: list[str] = []
+
+        def handler(messages, _info: AgentInfo) -> ModelResponse:
+            prompts.append(str(messages[-1]))
+            return ModelResponse(parts=[TextPart(json.dumps({"answer": "42"}))])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        spec = self._spec(
+            [
+                self._branch("{{input.urgent}}", "urgent path"),
+                self._branch("", "normal path"),
+            ]
+        )
+        outcome = await run_flow(spec, {"urgent": "true"}, model_factory=factory)
+
+        assert outcome.status == "ok", outcome.error
+        assert any("urgent path" in prompt for prompt in prompts)
+        assert not any("normal path" in prompt for prompt in prompts)
+        node = outcome.trace["nodes"][1]
+        assert node["kind"] == "condition"
+        assert node["branch"] == "{{input.urgent}}"
+        assert node["output"] == {"answer": "42"}
+        assert node["nodes"][0]["id"] == "b-urgent path"
+
+    @pytest.mark.asyncio
+    async def test_the_fallback_runs_when_nothing_matches(self):
+        prompts: list[str] = []
+
+        def handler(messages, _info: AgentInfo) -> ModelResponse:
+            prompts.append(str(messages[-1]))
+            return ModelResponse(parts=[TextPart(json.dumps({"answer": "42"}))])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        spec = self._spec([self._branch("{{input.urgent}}", "urgent path"), self._branch("", "normal path")])
+        outcome = await run_flow(spec, {"urgent": "false"}, model_factory=factory)
+
+        assert outcome.status == "ok"
+        assert any("normal path" in prompt for prompt in prompts)
+        assert outcome.trace["nodes"][1]["branch"] == "(fallback)"
+
+    @pytest.mark.asyncio
+    async def test_no_match_and_no_fallback_is_an_error_naming_the_node(self):
+        spec = self._spec([self._branch("{{input.urgent}}", "urgent path")])
+        outcome = await run_flow(spec, {"urgent": ""}, model_factory=_factory)
+
+        assert outcome.status == "error"
+        assert outcome.error is not None and outcome.error.startswith("c1:")
+        assert "no branch matched" in outcome.error
+
+    @pytest.mark.asyncio
+    async def test_a_branch_can_edit_the_ontology(self):
+        async def planner(api_name: str, params: dict) -> list[dict]:
+            return [{"op": "create", "object_type": "Holding", "properties": params}]
+
+        spec = {
+            "nodes": [
+                {"id": "n1", "kind": "model", "prompt": "pre", "output_schema": SCHEMA},
+                {
+                    "id": "c1",
+                    "kind": "condition",
+                    "branches": [
+                        {
+                            "when": "{{n1.answer}}",
+                            "nodes": [
+                                {"id": "a1", "kind": "action", "action_type": "addHolding",
+                                 "params": {"ts_code": "{{n1.answer}}"}}
+                            ],
+                        }
+                    ],
+                },
+            ]
+        }
+        outcome = await run_flow(spec, {}, model_factory=_factory, action_planner=planner)
+
+        assert outcome.status == "ok", outcome.error
+        assert outcome.output == {"edits": [{"op": "create", "object_type": "Holding", "properties": {"ts_code": "42"}}]}

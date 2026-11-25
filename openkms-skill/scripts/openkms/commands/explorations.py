@@ -16,7 +16,6 @@ from .._confirm import add_write_flags, confirm_or_abort
 from ..client import client
 from .._io import print_json
 
-PERSPECTIVES = ("explore", "results")
 VISIBILITIES = ("private", "shared")
 
 
@@ -49,8 +48,6 @@ def _layout_body(ns: argparse.Namespace) -> dict[str, Any]:
         layout["sorts"] = [
             {"prop": entry.lstrip("-"), "desc": entry.startswith("-")} for entry in ns.sort
         ]
-    if getattr(ns, "perspective", None):
-        layout["perspective"] = ns.perspective
     return layout
 
 
@@ -90,7 +87,7 @@ def cmd_add(ns: argparse.Namespace) -> None:
 def merge_layout(current: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
     """The API replaces `layout` wholesale; a patch only names the lists it changes.
 
-    `--chart` alone must not drop the stored sort and perspective — those were a decision too.
+    `--chart` alone must not drop the stored sort or column list — those were decisions too.
     """
     merged = dict(current or {})
     merged.update(patch)
@@ -191,7 +188,6 @@ def add_subparser(sub) -> None:
         default=[],
         help="repeatable: a property the results table shows, in order (its whole column set when given)",
     )
-    a.add_argument("--perspective", default=None, choices=PERSPECTIVES)
     a.add_argument("--visibility", default="private", choices=VISIBILITIES)
     add_write_flags(a)
     a.set_defaults(fn=cmd_add)
@@ -203,7 +199,6 @@ def add_subparser(sub) -> None:
     u.add_argument("--filter", action="append", default=None, help="replaces the whole condition list")
     u.add_argument("--chart", action="append", default=[], help="replaces the chart list")
     u.add_argument("--sort", action="append", default=[], help="replaces the sort list")
-    u.add_argument("--perspective", default=None, choices=PERSPECTIVES)
     add_write_flags(u)
     u.set_defaults(fn=cmd_update)
 
@@ -235,6 +230,5 @@ def add_layout_subparser(sub) -> None:
     )
     s_.add_argument("--sort", action="append", default=[], help="repeatable: `prop` or `-prop`")
     s_.add_argument("--column", action="append", default=[], help="repeatable: results-table column, in order")
-    s_.add_argument("--perspective", default=None, choices=PERSPECTIVES)
     add_write_flags(s_)
     s_.set_defaults(fn=cmd_layout_set)

@@ -32,7 +32,6 @@ import { fetchOntologyActionTypes, type OntologyActionTypeResponse } from '../..
 import { ObjectSetActionDialog } from './ObjectSetActionDialog';
 import { ObjectSetChartBoard } from './ObjectSetChartBoard';
 import { ObjectSetResults } from './ObjectSetResults';
-import { ObjectSetViewSwitch } from './ObjectSetViewSwitch';
 import { useObjectSetCompare } from './useObjectSetCompare';
 import { ObjectSetActionMenu } from './ObjectSetActionMenu';
 
@@ -62,9 +61,6 @@ export function ObjectExplorationPage() {
 
   const filters = useMemo(() => searchParams.getAll('f'), [searchParams]);
   const sort = searchParams.get('sort') ?? '';
-  /* An exploration opens on the charts: that is what entering one means. The list is a perspective of the same
-     set, not the landing state. */
-  const perspective = searchParams.get('view') === 'results' ? 'results' : 'explore';
 
   const [objectType, setObjectType] = useState<ObjectTypeResponse | null>(null);
   const [instances, setInstances] = useState<ObjectInstanceResponse[]>([]);
@@ -123,12 +119,6 @@ export function ObjectExplorationPage() {
     updateParams((params) => {
       params.delete('f');
       for (const filter of next) params.append('f', filter);
-    });
-
-  const setPerspective = (next: 'explore' | 'results') =>
-    updateParams((params) => {
-      if (next === 'results') params.set('view', 'results');
-      else params.delete('view');
     });
 
   const toggleRow = (id: string) =>
@@ -317,8 +307,6 @@ export function ObjectExplorationPage() {
               | { prop: string; desc?: boolean }[]
               | undefined)?.[0];
             if (layoutSort) params.set('sort', `${layoutSort.desc ? '-' : ''}${layoutSort.prop}`);
-            if (row.layout?.perspective === 'results') params.set('view', 'results');
-            else params.delete('view');
             return params;
           },
           { replace: true }
@@ -394,7 +382,6 @@ export function ObjectExplorationPage() {
       const [prop, op, ...rest] = filter.split(':');
       params.append('f', `@${linkName}/${prop}:${op}:${rest.join(':')}`);
     }
-    if (perspective === 'results') params.set('view', 'results');
     // The word the caller typed stays their question across the hop; only the subject changes.
     if (search.trim()) params.set('q', search.trim());
     const query = params.toString();
@@ -406,7 +393,6 @@ export function ObjectExplorationPage() {
     charts: specs,
     columns: visibleColumns,
     sorts: parseSortList(sort).map((term) => ({ prop: term.prop, desc: term.desc })),
-    perspective,
   });
 
   const saveAsMyLayout = async (scope: 'personal' | 'global' = 'personal') => {
@@ -545,11 +531,6 @@ export function ObjectExplorationPage() {
       }
     >
       <div className="object-set-toolbar">
-        <ObjectSetViewSwitch
-          perspective={perspective}
-          total={total}
-          onChange={setPerspective}
-        />
         <input
           className="ds-control object-set-toolbar__search"
           value={search}
@@ -594,8 +575,7 @@ export function ObjectExplorationPage() {
 
       {rowsError ? <p className="object-set-refusal">{rowsError}</p> : null}
 
-      {perspective === 'explore' ? (
-        <ObjectSetChartBoard
+      <ObjectSetChartBoard
           total={total}
           compareLabel={compareSet?.label ?? null}
           explorations={allSaved.filter(
@@ -652,7 +632,10 @@ export function ObjectExplorationPage() {
           onMove={moveChart}
           onAdd={(prop) => setChartSpecs(addSpec(specs, { prop }))}
         />
-      ) : rowsLoading ? (
+
+      {/* The objects the charts describe, on the same screen: a chart tells you where they are, the table tells you
+          which ones — and a mode you have to switch into is a table half the readers never find. */}
+      {rowsLoading ? (
         <Loading label={t('objectSet.rowsLoading')} />
       ) : instances.length === 0 ? (
         <EmptyState title={t('objectSet.rowsEmpty')} />

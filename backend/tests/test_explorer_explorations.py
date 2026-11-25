@@ -33,12 +33,13 @@ def test_a_condition_the_reader_could_not_run_is_refused_here():
         validate_filters([{"op": "eq", "value": "x"}])
 
 
-def test_layout_carries_exactly_four_things():
+def test_layout_carries_charts_columns_and_sorts():
     layout = normalize_layout(
         {
             "charts": [{"prop": "region"}, "rating"],
             "columns": ["distributor_id"],
             "sorts": [{"prop": "exposure", "desc": True}],
+            # Charts and the table are on screen together, so a "which one first" setting would do nothing.
             "perspective": "results",
         }
     )
@@ -46,7 +47,6 @@ def test_layout_carries_exactly_four_things():
         "charts": [{"prop": "region"}, {"prop": "rating"}],
         "columns": ["distributor_id"],
         "sorts": [{"prop": "exposure", "desc": True}],
-        "perspective": "results",
     }
 
 

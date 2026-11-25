@@ -22,9 +22,17 @@ export const INPUT_TYPES: InputType[] = ['string', 'number', 'integer', 'boolean
 
 export type NodeParam = { key: string; value: string };
 
+export type BranchDraft = {
+  /** Template that decides the branch; empty means the fallback (must be last). */
+  when: string;
+  nodes: ModelNode[];
+};
+
 export type ModelNode = {
   id: string;
-  kind: 'model' | 'action';
+  kind: 'model' | 'action' | 'condition';
+  /** `condition` only: ordered branches, the fallback last. */
+  branches: BranchDraft[];
   /** `action` only: the action type's api_name; its edits are composed, never applied here. */
   actionType: string;
   /** `action` only: parameters, each a template like `{{n1.summary}}`. */
@@ -77,6 +85,7 @@ export function newNode(index: number): ModelNode {
   return {
     id: `n${index + 1}`,
     kind: 'model',
+    branches: [],
     actionType: '',
     params: [],
     model_id: '',
@@ -101,13 +110,14 @@ export function draftFromSpec(spec: unknown): FlowDraft {
   if (!Array.isArray(raw)) return emptyDraft();
   const nodes = raw
     .filter((node): node is Record<string, unknown> => Boolean(node) && typeof node === 'object')
-    .filter((node) => node.kind === 'model' || node.kind === 'action')
+    .filter((node) => node.kind === 'model' || node.kind === 'action' || node.kind === 'condition')
     .map((node, index) => {
       const fields = fieldsFromSchema(node.output_schema);
-      const isAction = node.kind === 'action';
+      const kind = (node.kind ?? 'model') as 'model' | 'action' | 'condition';
       return {
         id: String(node.id ?? `n${index + 1}`),
-        kind: (isAction ? 'action' : 'model') as 'model' | 'action',
+        kind,
+        branches: kind === 'condition' ? branchesFromSpec(node.branches) : [],
         actionType: String(node.action_type ?? ''),
         params: Object.entries((node.params as Record<string, unknown>) ?? {}).map(([key, value]) => ({
           key,
@@ -187,6 +197,28 @@ export function specFromDraft(draft: FlowDraft): DraftResult {
     if (!id) errors.push(`${where}: an id is required`);
     else if (seen.has(id)) errors.push(`${where}: id "${id}" is used twice`);
     else seen.add(id);
+
+    if (node.kind === 'condition') {
+      if (!node.branches.length) {
+        errors.push(`${where}: a condition needs at least one branch`);
+      }
+      const seenFallback = node.branches.findIndex((branch) => !branch.when.trim());
+      if (seenFallback >= 0 && seenFallback !== node.branches.length - 1) {
+        errors.push(`${where}: the fallback branch must be last`);
+      }
+      const branches = node.branches.map((branch, branchIndex) => {
+        const nested = specFromDraft({ nodes: branch.nodes, inputs: [], output: '' });
+        for (const error of nested.errors) {
+          errors.push(`${where}.branch ${branchIndex + 1}${error.slice(error.indexOf(':'))}`);
+        }
+        return {
+          ...(branch.when.trim() ? { when: branch.when } : {}),
+          nodes: nested.spec?.nodes ?? [],
+        };
+      });
+      nodes.push({ id, kind: 'condition', branches });
+      return;
+    }
 
     if (node.kind === 'action') {
       const actionType = node.actionType.trim();
@@ -416,4 +448,18 @@ function toolsForSpec(node: ModelNode, where: string, errors: string[]): Record<
 /** Input rows that the run panel cannot express as a single text field. */
 export function objectInputs(draft: FlowDraft): string[] {
   return (draft.inputs ?? []).filter((field) => field.type === 'object').map((field) => field.name);
+}
+
+function branchesFromSpec(raw: unknown): BranchDraft[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((branch): branch is Record<string, unknown> => Boolean(branch) && typeof branch === 'object')
+    .map((branch) => {
+      const nested = draftFromSpec({ nodes: branch.nodes });
+      return {
+        when: typeof branch.when === 'string' ? branch.when : '',
+        // A branch body cannot itself be a condition; drop anything deeper.
+        nodes: nested.nodes.filter((node) => node.kind !== 'condition'),
+      };
+    });
 }

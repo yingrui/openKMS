@@ -28,7 +28,7 @@ from pydantic_ai import Agent, PromptedOutput, StructuredDict
 from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
 from pydantic_ai.usage import UsageLimitExceeded, UsageLimits
 
-SUPPORTED_NODE_KINDS = ("model", "action")
+SUPPORTED_NODE_KINDS = ("model", "action", "condition")
 SUPPORTED_TOOL_KINDS = ("query_objects", "call_function")
 PROMPT_REF = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\}\}")
 DEFAULT_NODE_TIMEOUT_S = 60.0
@@ -92,7 +92,10 @@ def validate_flow_spec(spec: dict | None) -> list[str]:
             params = node.get("params")
             if params is not None and not isinstance(params, dict):
                 errors.append(f"{where}.params must be an object")
-        errors.extend(_validate_tools(node, where))
+        if kind == "condition":
+            errors.extend(_validate_branches(node, where, seen))
+        if kind != "condition":
+            errors.extend(_validate_tools(node, where))
 
     output = spec.get("output")
     if output is not None and not isinstance(output, str):
@@ -124,6 +127,57 @@ def _validate_inputs(inputs: object) -> list[str]:
         input_type = str(item.get("type") or "string")
         if input_type not in INPUT_TYPES:
             errors.append(f"{where}.type '{input_type}' is not one of {', '.join(INPUT_TYPES)}")
+    return errors
+
+
+def _validate_branches(node: dict, where: str, ids: set[str]) -> list[str]:
+    """Branches are ordered: the first `when` that holds wins, and an empty `when` is the else branch.
+
+    Same rule as AIP Logic in shape — every branch must actually do something, and only one branch can be the
+    fallback. Nested nodes may be model or action, not another condition (one level, deliberately).
+    """
+    branches = node.get("branches")
+    if not isinstance(branches, list) or not branches:
+        return [f"{where}.branches must be a non-empty list"]
+    errors: list[str] = []
+    else_at: int | None = None
+    for index, branch in enumerate(branches):
+        at = f"{where}.branches[{index}]"
+        if not isinstance(branch, dict):
+            errors.append(f"{at} must be an object")
+            continue
+        when = str(branch.get("when") or "").strip()
+        if not when:
+            if else_at is not None:
+                errors.append(f"{at}: only one branch may omit `when` (the fallback)")
+            else_at = index
+        nested = branch.get("nodes")
+        if not isinstance(nested, list) or not nested:
+            errors.append(f"{at}.nodes must be a non-empty list")
+            continue
+        for node_index, child in enumerate(nested):
+            child_at = f"{at}.nodes[{node_index}]"
+            if not isinstance(child, dict):
+                errors.append(f"{child_at} must be an object")
+                continue
+            child_id = str(child.get("id") or "").strip()
+            if not child_id:
+                errors.append(f"{child_at}.id is required")
+            elif child_id in ids:
+                errors.append(f"{child_at}.id '{child_id}' is duplicated")
+            else:
+                ids.add(child_id)
+            child_kind = str(child.get("kind") or "")
+            if child_kind not in ("model", "action"):
+                errors.append(f"{child_at}.kind must be 'model' or 'action' (no nested conditions)")
+            if child_kind == "model" and not str(child.get("prompt") or "").strip():
+                errors.append(f"{child_at}.prompt is required")
+            if child_kind == "action" and not str(child.get("action_type") or "").strip():
+                errors.append(f"{child_at}.action_type is required")
+            if child_kind != "condition":
+                errors.extend(_validate_tools(child, child_at))
+    if else_at is not None and else_at != len(branches) - 1:
+        errors.append(f"{where}.branches: the fallback branch must be last")
     return errors
 
 
@@ -190,6 +244,141 @@ def _lookup(variables: dict[str, Any], path: str) -> Any:
     return current
 
 
+def _truthy(rendered: str) -> bool:
+    """A branch condition is truthy unless it renders to empty or an obvious no."""
+    value = rendered.strip().lower()
+    return value not in ("", "false", "0", "no", "null", "none")
+
+
+def _pick_branch(node: dict, variables: dict[str, Any]) -> dict:
+    for branch in node.get("branches") or []:
+        if not isinstance(branch, dict):
+            continue
+        when = str(branch.get("when") or "").strip()
+        if not when:
+            return branch
+        if _truthy(render_template(when, variables)):
+            return branch
+    raise FlowError("no branch matched and there is no fallback")
+
+
+async def _run_nodes(
+    nodes: list,
+    *,
+    variables: dict[str, Any],
+    model_factory: ModelFactory,
+    tool_runner: ToolRunner | None,
+    schema_resolver: SchemaResolver | None,
+    action_planner: ActionPlanner | None,
+    node_timeout_s: float,
+    node_token_limit: int,
+    trace: dict[str, Any],
+) -> tuple[Any, str]:
+    """Run a list of nodes in order; returns the last output and its id. Used for the flow and for branch bodies.
+
+    A failing node appends its own entry (with whatever tool calls it made) and raises a `FlowError` naming it, so the
+    caller only has to decide what to do with the flow — not how to describe the failure again.
+    """
+    last_output: Any = None
+    last_id = ""
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        node_id = str(node.get("id") or "")
+        started = time.perf_counter()
+        calls: list[dict[str, Any]] = []
+        entry: dict[str, Any] = {"id": node_id, "kind": node.get("kind"), "tool_calls": calls}
+        try:
+            if node.get("kind") == "action":
+                rendered_params = {
+                    str(key): _render_value(value, variables)
+                    for key, value in (node.get("params") or {}).items()
+                }
+                entry["params"] = rendered_params
+                if action_planner is None:
+                    raise FlowError("this flow has an action node but nothing can compose edits")
+                edits = await action_planner(str(node.get("action_type") or ""), rendered_params)
+                output = {"edits": edits}
+            elif node.get("kind") == "condition":
+                branch = _pick_branch(node, variables)
+                entry["branch"] = branch.get("when") or "(fallback)"
+                nested: dict[str, Any] = {"nodes": []}
+                output, _nested_id = await _run_nodes(
+                    branch.get("nodes") or [],
+                    variables=variables,
+                    model_factory=model_factory,
+                    tool_runner=tool_runner,
+                    schema_resolver=schema_resolver,
+                    action_planner=action_planner,
+                    node_timeout_s=node_timeout_s,
+                    node_token_limit=node_token_limit,
+                    trace=nested,
+                )
+                entry["nodes"] = nested["nodes"]
+            else:
+                prompt = render_template(str(node.get("prompt") or ""), variables)
+                entry["prompt_sent"] = prompt
+                entry["missing_references"] = missing_references(
+                    str(node.get("prompt") or ""), variables
+                )
+                output, usage = await _run_model_node(
+                    node,
+                    prompt=prompt,
+                    model_factory=model_factory,
+                    tool_runner=tool_runner,
+                    schema_resolver=schema_resolver,
+                    calls=calls,
+                    timeout_s=node_timeout_s,
+                    token_limit=node_token_limit,
+                )
+                entry["usage"] = usage
+        except FlowError as e:
+            entry.update({"ok": False, "error": str(e), "duration_ms": _ms(started)})
+            trace["nodes"].append(entry)
+            raise FlowError(f"{node_id}: {e}") from e
+
+        entry.update({"ok": True, "output": output, "duration_ms": _ms(started)})
+        trace["nodes"].append(entry)
+        variables[node_id] = output
+        last_output = output
+        last_id = node_id
+    return last_output, last_id
+
+
+
+_INPUT_CHECKS: dict[str, tuple[type, ...]] = {
+    "string": (str,),
+    "number": (int, float),
+    "integer": (int,),
+    "boolean": (bool,),
+    "object": (dict, list),
+}
+
+
+def _input_errors(inputs: object, payload: dict) -> list[str]:
+    """Declared inputs are a contract: missing or mistyped is an error named after the input, not an empty render."""
+    if not isinstance(inputs, list):
+        return []
+    errors: list[str] = []
+    for item in inputs:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name:
+            continue
+        if name not in payload:
+            errors.append(f"input '{name}' is missing")
+            continue
+        expected = _INPUT_CHECKS.get(str(item.get("type") or "string"), (str,))
+        value = payload[name]
+        # bool is an int subclass in Python; `true` is not a number for a caller's purposes.
+        if isinstance(value, bool) and expected is not _INPUT_CHECKS["boolean"]:
+            errors.append(f"input '{name}' expected {item.get('type')} but got boolean")
+        elif not isinstance(value, expected):
+            errors.append(f"input '{name}' expected {item.get('type')} but got {type(value).__name__}")
+    return errors
+
+
 def _render_value(value: Any, variables: dict[str, Any]) -> Any:
     """Params are strings with references, or literals of any JSON type."""
     if isinstance(value, str):
@@ -249,134 +438,32 @@ async def run_flow(
             trace={"nodes": [], "inputs": input_payload},
         )
 
-    nodes = spec["nodes"]
-    variables: dict[str, Any] = {"input": input_payload}
     trace: dict[str, Any] = {"nodes": []}
+    variables: dict[str, Any] = {"input": input_payload}
     started = time.perf_counter()
-    last_node_id = ""
-
-    for node in nodes:
-        node_id = str(node["id"])
-        if node.get("kind") == "action":
-            entry_started = time.perf_counter()
-            action_entry: dict[str, Any] = {
-                "id": node_id,
-                "kind": "action",
-                "action_type": node.get("action_type"),
-                "tool_calls": [],
-            }
-            try:
-                rendered_params = {
-                    str(key): _render_value(value, variables)
-                    for key, value in (node.get("params") or {}).items()
-                }
-                action_entry["params"] = rendered_params
-                if action_planner is None:
-                    raise FlowError("this flow has an action node but nothing can compose edits")
-                edits = await action_planner(
-                    str(node.get("action_type") or ""), rendered_params
-                )
-            except FlowError as e:
-                action_entry.update(
-                    {"ok": False, "error": str(e), "duration_ms": _ms(entry_started)}
-                )
-                trace["nodes"].append(action_entry)
-                return FlowOutcome(
-                    status="error",
-                    output=None,
-                    error=f"{node_id}: {e}",
-                    duration_ms=_ms(started),
-                    trace=trace,
-                )
-            # Edits are composed, never applied: the write happens when an Action calls this function.
-            output = {"edits": edits}
-            action_entry.update(
-                {"ok": True, "output": output, "duration_ms": _ms(entry_started)}
-            )
-            trace["nodes"].append(action_entry)
-            variables[node_id] = output
-            last_node_id = node_id
-            continue
-
-        prompt = render_template(str(node["prompt"]), variables)
-        node_started = time.perf_counter()
-        calls: list[dict[str, Any]] = []
-        entry: dict[str, Any] = {
-            "id": node_id,
-            "kind": node.get("kind"),
-            "model_id": node.get("model_id"),
-            "prompt_sent": prompt,
-            "missing_references": missing_references(str(node["prompt"]), variables),
-            "tool_calls": calls,
-        }
-        try:
-            output, usage = await _run_model_node(
-                node,
-                prompt=prompt,
-                model_factory=model_factory,
-                tool_runner=tool_runner,
-                schema_resolver=schema_resolver,
-                calls=calls,
-                timeout_s=node_timeout_s,
-                token_limit=node_token_limit,
-            )
-        except FlowError as e:
-            # The failed entry keeps its tool calls: a denied read is exactly what you need to see afterwards.
-            entry.update({"ok": False, "error": str(e), "duration_ms": _ms(node_started)})
-            trace["nodes"].append(entry)
-            return FlowOutcome(
-                status="error",
-                output=None,
-                error=f"{node_id}: {e}",
-                duration_ms=_ms(started),
-                trace=trace,
-            )
-
-        entry.update(
-            {"ok": True, "output": output, "usage": usage, "duration_ms": _ms(node_started)}
+    try:
+        _, last_id = await _run_nodes(
+            spec["nodes"],
+            variables=variables,
+            model_factory=model_factory,
+            tool_runner=tool_runner,
+            schema_resolver=schema_resolver,
+            action_planner=action_planner,
+            node_timeout_s=node_timeout_s,
+            node_token_limit=node_token_limit,
+            trace=trace,
         )
-        trace["nodes"].append(entry)
-        variables[node_id] = output
-        last_node_id = node_id
+    except FlowError as e:
+        return FlowOutcome(
+            status="error", output=None, error=str(e), duration_ms=_ms(started), trace=trace
+        )
 
-    output = _resolve_output(spec, variables, last_node_id)
+    output = _resolve_output(spec, variables, last_id)
     trace["output"] = output
     return FlowOutcome(
         status="ok", output=output, error=None, duration_ms=_ms(started), trace=trace
     )
 
-
-_INPUT_CHECKS: dict[str, tuple[type, ...]] = {
-    "string": (str,),
-    "number": (int, float),
-    "integer": (int,),
-    "boolean": (bool,),
-    "object": (dict, list),
-}
-
-
-def _input_errors(inputs: object, payload: dict) -> list[str]:
-    """Declared inputs are a contract: missing or mistyped is an error named after the input, not an empty render."""
-    if not isinstance(inputs, list):
-        return []
-    errors: list[str] = []
-    for item in inputs:
-        if not isinstance(item, dict):
-            continue
-        name = str(item.get("name") or "").strip()
-        if not name:
-            continue
-        if name not in payload:
-            errors.append(f"input '{name}' is missing")
-            continue
-        expected = _INPUT_CHECKS.get(str(item.get("type") or "string"), (str,))
-        value = payload[name]
-        # bool is an int subclass in Python; `true` is not a number for a caller's purposes.
-        if isinstance(value, bool) and expected is not _INPUT_CHECKS["boolean"]:
-            errors.append(f"input '{name}' expected {item.get('type')} but got boolean")
-        elif not isinstance(value, expected):
-            errors.append(f"input '{name}' expected {item.get('type')} but got {type(value).__name__}")
-    return errors
 
 
 async def _run_model_node(

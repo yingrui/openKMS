@@ -119,11 +119,12 @@ def normalize_layout(raw: dict | None) -> dict:
         if not isinstance(sorts, list):
             raise ExplorationError("layout.sorts must be a list")
         out["sorts"] = sorts
+    # `perspective` used to decide whether an exploration opened on charts or on the table. Both are on screen now,
+    # so the field is accepted and dropped rather than stored and ignored — a saved setting that does nothing is
+    # worse than none. Old rows keep theirs; nothing reads it.
     perspective = raw.get("perspective")
-    if perspective is not None:
-        if perspective not in PERSPECTIVES:
-            raise ExplorationError(f"layout.perspective must be one of: {', '.join(PERSPECTIVES)}")
-        out["perspective"] = perspective
+    if perspective is not None and perspective not in PERSPECTIVES:
+        raise ExplorationError(f"layout.perspective must be one of: {', '.join(PERSPECTIVES)}")
     return out
 
 
