@@ -16,7 +16,13 @@ export type OutputMode = 'text' | 'fields';
 
 export type InputType = 'string' | 'number' | 'integer' | 'boolean' | 'object';
 
-export type InputField = { name: string; type: InputType; description: string };
+export type InputField = {
+  name: string;
+  type: InputType;
+  description: string;
+  /** `object` only: the object type's api_name, so the run panel can offer instances and their properties. */
+  objectType: string;
+};
 
 export const INPUT_TYPES: InputType[] = ['string', 'number', 'integer', 'boolean', 'object'];
 
@@ -85,7 +91,12 @@ export type FlowDraft = {
   output: string;
 };
 
-export type FlowSpec = { nodes: Record<string, unknown>[]; output?: string };
+export type FlowSpec = {
+  nodes: Record<string, unknown>[];
+  /** Declared inputs: the executor validates against these. */
+  inputs?: Record<string, unknown>[];
+  output?: string;
+};
 
 const REFERENCE = /\{\{\s*([A-Za-z0-9_.]+)\s*\}\}/g;
 
@@ -155,10 +166,31 @@ export function draftFromSpec(spec: unknown): FlowDraft {
     });
   const draft: FlowDraft = {
     nodes: nodes.length ? nodes : [newNode(0)],
-    inputs: inputsFromSchema((spec as { input_schema?: unknown }).input_schema),
+    inputs: inputsFromSpec(spec),
     output: typeof (spec as FlowSpec).output === 'string' ? String((spec as FlowSpec).output).replace(/[{}]/g, '').trim() : '',
   };
   return syncInputs(draft);
+}
+
+/** Prefer the flow's own inputs; older flows only declared them on the function schema. */
+function inputsFromSpec(spec: unknown): InputField[] {
+  const declared = (spec as { inputs?: unknown }).inputs;
+  if (Array.isArray(declared)) {
+    const rows = declared
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+      .map((item) => {
+        const type = String(item.type ?? 'string');
+        return {
+          name: String(item.name ?? ''),
+          type: (INPUT_TYPES as string[]).includes(type) ? (type as InputType) : 'string',
+          description: String(item.description ?? ''),
+          objectType: String(item.object_type ?? ''),
+        };
+      })
+      .filter((row) => row.name);
+    if (rows.length) return rows;
+  }
+  return inputsFromSchema((spec as { input_schema?: unknown }).input_schema);
 }
 
 function inputsFromSchema(schema: unknown): InputField[] {
@@ -172,6 +204,7 @@ function inputsFromSchema(schema: unknown): InputField[] {
       name,
       type: (INPUT_TYPES as string[]).includes(type) ? (type as InputType) : 'string',
       description: String(raw.description ?? ''),
+      objectType: String((raw as { 'x-object-type'?: unknown })['x-object-type'] ?? ''),
     };
   });
 }
@@ -185,7 +218,7 @@ export function syncInputs(draft: FlowDraft): FlowDraft {
   const next = (draft.inputs ?? []).map((field) => ({ ...field }));
   for (const name of used) {
     if (!next.some((field) => field.name.trim() === name)) {
-      next.push({ name, type: 'string', description: '' });
+      next.push({ name, type: 'string', description: '', objectType: '' });
     }
   }
   return { ...draft, inputs: next };
@@ -311,7 +344,19 @@ export function specFromDraft(draft: FlowDraft): DraftResult {
 
   if (errors.length) return { spec: null, errors };
   const output = (draft.output ?? '').trim();
-  return { spec: output ? { nodes, output: `{{${output}}}` } : { nodes }, errors: [] };
+  // The executor validates declared inputs, so the flow carries them too — not only the function-level schema.
+  const inputs = (draft.inputs ?? [])
+    .map((field) => ({ ...field, name: field.name.trim() }))
+    .filter((field) => field.name)
+    .map((field) => ({
+      name: field.name,
+      type: field.type,
+      ...(field.type === 'object' && field.objectType.trim() ? { object_type: field.objectType.trim() } : {}),
+    }));
+  const spec: FlowSpec = { nodes };
+  if (inputs.length) spec.inputs = inputs;
+  if (output) spec.output = `{{${output}}}`;
+  return { spec, errors: [] };
 }
 
 /** Raw JSON wins over the field table: it is the escape hatch, and it round-trips whatever was stored. */
@@ -415,6 +460,10 @@ export function inputSchemaFromDraft(draft: FlowDraft): Record<string, unknown> 
     properties[field.name] = {
       type: field.type,
       ...(field.description.trim() ? { description: field.description.trim() } : {}),
+      // Non-standard key, same convention as the rest of the ontology schemas: it tells the run panel what to offer.
+      ...(field.type === 'object' && field.objectType.trim()
+        ? { 'x-object-type': field.objectType.trim() }
+        : {}),
     };
   }
   return { type: 'object', properties, required: rows.map((field) => field.name) };

@@ -202,6 +202,12 @@ because an action's function receives typed input, not strings.
 name instead of rendering an empty prompt. The editor derives this list from `{{input.x}}` in the prompts, so the
 declaration and the text cannot disagree — but the declaration is what the executor enforces.
 
+**An `object` input names an object type** (`{"name": "customer", "type": "object", "object_type": "Customer"}`, and
+`x-object-type` in the function-level schema). That is what lets the editor offer `{{input.customer.plan}}` as a
+checkbox-free chip and lets the run panel **search that type and pass one instance's properties** instead of asking a
+person to type the JSON they would otherwise have to know by heart. The executor reads the chosen instance's fields by
+path, so a prompt can use ontology data without a tool call.
+
 **Tools (`query_objects`).** A node may carry up to four read tools:
 `{kind: "query_objects", object_type, properties, limit}`. The model never sees a table: it asks for a search, the
 backend calls `GET /api/object-types/{type}/objects` **with the caller's token** (so the object-type ACL and

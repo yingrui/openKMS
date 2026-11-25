@@ -1447,7 +1447,17 @@
     "logicTemplateHint": "确定性步骤：不调模型、不耗 token。整格只有一处引用时保留原类型。",
     "logicTypeTransform": "数据",
     "evaluate": "评估",
-    "evaluateHint": "打开这个函数的评估，或新建一个"
+    "evaluateHint": "打开这个函数的评估，或新建一个",
+    "logicInputObjectType": "对象类型",
+    "logicInputObjectNeedsType": "选一个对象类型",
+    "logicRunObjectHint": "选一个实例：提示词按属性名读它。",
+    "logicRunUnknownType": "你看不到对象类型 {{type}}。",
+    "logicObjectInputPick": "请为 {{name}} 选一个实例",
+    "logicPickSearch": "按名称搜索…",
+    "logicPickFind": "查找",
+    "logicPickSelected": "已选",
+    "logicPickClear": "清除",
+    "logicPickEmpty": "没有匹配的实例。"
   },
   "dataSources": {
     "title": "数据源",

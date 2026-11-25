@@ -28,6 +28,7 @@ export function LogicFlowEditor({
   errors,
   runValues,
   objectTypes,
+  objectProperties,
   disabled,
   onChange,
 }: {
@@ -38,6 +39,8 @@ export function LogicFlowEditor({
   runValues: Record<string, NodeRunValue>;
   /** Object types a query tool may read (api names). */
   objectTypes: string[];
+  /** api_name → property names, so a prompt can insert a real field of an object input. */
+  objectProperties: Record<string, string[]>;
   disabled: boolean;
   onChange: (next: FlowDraft) => void;
 }) {
@@ -68,7 +71,13 @@ export function LogicFlowEditor({
 
   return (
     <div className="logic-flow">
-      <LogicInputsBoard draft={draft} unused={unusedInputs(draft)} disabled={disabled} onChange={update} />
+      <LogicInputsBoard
+        draft={draft}
+        unused={unusedInputs(draft)}
+        objectTypes={objectTypes}
+        disabled={disabled}
+        onChange={update}
+      />
 
       <ol className="logic-flow__nodes">
         {draft.nodes.map((node, index) => (
@@ -80,6 +89,8 @@ export function LogicFlowEditor({
             nodes={draft.nodes}
             fields={node.fields}
             objectTypes={objectTypes}
+            objectProperties={objectProperties}
+            objectInputs={draft.inputs.filter((field) => field.type === 'object')}
             runValue={runValues[node.id]}
             disabled={disabled}
             onChange={(changes) => patch(index, changes)}

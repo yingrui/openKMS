@@ -1453,7 +1453,17 @@
     "logicTemplateHint": "Deterministic: no model call, no tokens. A value that is exactly one reference keeps its type.",
     "logicTypeTransform": "Data",
     "evaluate": "Evaluate",
-    "evaluateHint": "Open an evaluation for this function, or create one"
+    "evaluateHint": "Open an evaluation for this function, or create one",
+    "logicInputObjectType": "Object type",
+    "logicInputObjectNeedsType": "pick an object type",
+    "logicRunObjectHint": "Pick an instance: the prompt reads its properties by name.",
+    "logicRunUnknownType": "Object type {{type}} is not available to you.",
+    "logicObjectInputPick": "Pick an instance for {{name}}",
+    "logicPickSearch": "Search by name…",
+    "logicPickFind": "Find",
+    "logicPickSelected": "Selected",
+    "logicPickClear": "Clear",
+    "logicPickEmpty": "No matching instances."
   },
   "dataSources": {
     "title": "Data sources",

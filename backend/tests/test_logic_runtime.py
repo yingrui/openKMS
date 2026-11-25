@@ -220,7 +220,7 @@ class TestTypedInputs:
     @pytest.mark.asyncio
     async def test_an_object_input_is_accepted_and_readable_by_path(self):
         spec = {
-            "inputs": [{"name": "customer", "type": "object"}],
+            "inputs": [{"name": "customer", "type": "object", "object_type": "Customer"}],
             "nodes": [
                 {"id": "n1", "kind": "model", "prompt": "Name: {{input.customer.name}}", "output_schema": SCHEMA}
             ],
@@ -1079,3 +1079,42 @@ class TestTransformNode:
 
         assert outcome.status == "ok", outcome.error
         assert seen[0] == {"ts_code": "TSM", "note": "[auto] guidance cut"}
+
+
+class TestObjectInputs:
+    """An object input names an object type, so the run panel can offer real instances instead of a blank JSON box."""
+
+    def test_an_object_input_must_name_its_type(self):
+        errors = validate_flow_spec(
+            {"nodes": [{"id": "n1", "kind": "model", "prompt": "x"}], "inputs": [{"name": "c", "type": "object"}]}
+        )
+        assert errors == ["inputs[0].object_type is required for an 'object' input"]
+
+    def test_the_type_is_not_allowed_on_a_primitive_input(self):
+        errors = validate_flow_spec(
+            {
+                "nodes": [{"id": "n1", "kind": "model", "prompt": "x"}],
+                "inputs": [{"name": "c", "type": "string", "object_type": "Customer"}],
+            }
+        )
+        assert errors == ["inputs[0].object_type only applies to an 'object' input"]
+
+    @pytest.mark.asyncio
+    async def test_the_prompt_reads_the_instance_by_path(self):
+        spec = {
+            "inputs": [{"name": "customer", "type": "object", "object_type": "Customer"}],
+            "nodes": [
+                {
+                    "id": "n1",
+                    "kind": "model",
+                    "prompt": "Customer {{input.customer.name}} is on plan {{input.customer.plan}}",
+                    "output_schema": SCHEMA,
+                }
+            ],
+        }
+        outcome = await run_flow(
+            spec, {"customer": {"name": "Ada", "plan": "pro"}}, model_factory=_factory
+        )
+
+        assert outcome.status == "ok", outcome.error
+        assert outcome.trace["nodes"][0]["prompt_sent"] == "Customer Ada is on plan pro"

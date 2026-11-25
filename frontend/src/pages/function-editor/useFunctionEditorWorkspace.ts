@@ -60,6 +60,10 @@ export function useFunctionEditorWorkspace() {
   const [models, setModels] = useState<{ id: string; label: string; isDefault: boolean }[]>([]);
   const [trace, setTrace] = useState<Record<string, unknown> | null>(null);
   const [runValues, setRunValues] = useState<Record<string, string>>({});
+  // Object inputs are filled by picking an instance, not by typing JSON.
+  const [pickedInstances, setPickedInstances] = useState<
+    Record<string, { id: string; data: Record<string, unknown> } | null>
+  >({});
   const [latestVersion, setLatestVersion] = useState<number | null>(null);
   const [publishedVersion, setPublishedVersion] = useState<number | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -239,13 +243,13 @@ export function useFunctionEditorWorkspace() {
         for (const field of flow.inputs) {
           const raw = runValues[field.name] ?? '';
           if (field.type === 'object') {
-            try {
-              payload[field.name] = raw.trim() ? JSON.parse(raw) : {};
-            } catch {
-              toast.error(t('editor.logicObjectInputJson', { name: field.name }));
+            const picked = pickedInstances[field.name];
+            if (!picked) {
+              toast.error(t('editor.logicObjectInputPick', { name: field.name }));
               setRunning(false);
               return;
             }
+            payload[field.name] = picked.data;
           } else {
             payload[field.name] = raw;
           }
@@ -383,6 +387,8 @@ export function useFunctionEditorWorkspace() {
     runInputs: inputNames(flow),
     runValues,
     setRunValues,
+    pickedInstances,
+    setPickedInstances,
     canPublish: Boolean(resolvedId) && !publishing && hasUnpublishedDraft(latestVersion, publishedVersion),
     onRun,
     onDelete,

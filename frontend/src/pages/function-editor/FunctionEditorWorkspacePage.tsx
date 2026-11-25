@@ -41,9 +41,10 @@ export function FunctionEditorWorkspacePage() {
     flowErrors,
     models,
     trace,
-    runInputs,
     runValues,
     setRunValues,
+    pickedInstances,
+    setPickedInstances,
     canPublish,
     publishing,
     onPublish,
@@ -75,6 +76,13 @@ export function FunctionEditorWorkspacePage() {
   } = useFunctionEditorWorkspace();
 
   const runValuesByNode = traceValuesByNode(trace);
+  const objectTypeIdsByName: Record<string, string> = {};
+  const objectPropertiesByName: Record<string, string[]> = {};
+  for (const type of objectTypes) {
+    if (!type.api_name) continue;
+    objectTypeIdsByName[type.api_name] = type.id;
+    objectPropertiesByName[type.api_name] = (type.properties ?? []).map((prop) => prop.name);
+  }
 
   if (loading) {
     return (
@@ -229,6 +237,7 @@ export function FunctionEditorWorkspacePage() {
                   objectTypes={objectTypes
                     .map((ot) => ot.api_name)
                     .filter((name): name is string => Boolean(name))}
+                  objectProperties={objectPropertiesByName}
                   disabled={saving}
                   onChange={setFlow}
                 />
@@ -245,11 +254,16 @@ export function FunctionEditorWorkspacePage() {
           {isLogic ? (
             <>
               <LogicRunPanel
-                inputs={runInputs}
+                fields={flow.inputs}
                 values={runValues}
+                picked={pickedInstances}
+                objectTypeIds={objectTypeIdsByName}
                 running={running}
                 canRun={Boolean(resolvedId)}
                 onChange={setRunValues}
+                onPick={(name, instance) =>
+                  setPickedInstances((prev) => ({ ...prev, [name]: instance }))
+                }
                 onRun={() => void onRun()}
               />
               <LogicTracePanel trace={trace} />

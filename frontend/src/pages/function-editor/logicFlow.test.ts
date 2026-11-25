@@ -16,7 +16,7 @@ import {
 
 const draft = (over: Partial<FlowDraft> = {}): FlowDraft => ({
   nodes: [{ ...newNode(0), prompt: 'Summarise {{input.email}}' }],
-  inputs: [{ name: 'email', type: 'string', description: '' }],
+  inputs: [{ name: 'email', type: 'string', description: '', objectType: '' }],
   output: '',
   ...over,
 });
@@ -374,5 +374,31 @@ describe('transform nodes', () => {
     });
     expect(result.spec).toBeNull();
     expect(result.errors).toEqual(['#1: a transform needs at least one field']);
+  });
+});
+
+describe('object inputs', () => {
+  it('carries the object type into the input schema, so the run panel knows what to offer', () => {
+    const draft: FlowDraft = {
+      nodes: [{ ...newNode(0), prompt: 'Say hi to {{input.customer.name}}' }],
+      inputs: [{ name: 'customer', type: 'object', description: '', objectType: 'Customer' }],
+      output: '',
+    };
+    expect(inputSchemaFromDraft(draft)).toEqual({
+      type: 'object',
+      properties: {
+        customer: { type: 'object', 'x-object-type': 'Customer' },
+      },
+      required: ['customer'],
+    });
+  });
+
+  it('reads the object type back, so opening a saved flow keeps the binding', () => {
+    const opened = draftFromSpec({
+      nodes: [{ id: 'n1', kind: 'model', prompt: 'x' }],
+      // The flow's own inputs use `object_type`; `x-object-type` is the function-level schema's convention.
+      inputs: [{ name: 'customer', type: 'object', object_type: 'Customer' }],
+    });
+    expect(opened.inputs[0]).toMatchObject({ name: 'customer', type: 'object', objectType: 'Customer' });
   });
 });

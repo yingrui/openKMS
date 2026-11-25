@@ -1115,3 +1115,86 @@
   max-height: 12rem;
   overflow-y: auto;
 }
+
+/* ---------- Logic function: picking an object instance for an input ---------- */
+
+.logic-pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+.logic-pick__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.logic-pick__type {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.logic-pick__search {
+  flex: 1;
+  font-size: var(--text-sm);
+}
+
+.logic-pick__error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--text-xs);
+}
+
+.logic-pick__empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.logic-pick__picked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.logic-pick__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.logic-pick__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--color-primary);
+  }
+
+  code {
+    margin-inline-start: auto;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+}

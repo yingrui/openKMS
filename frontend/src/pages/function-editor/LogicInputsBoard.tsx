@@ -11,11 +11,14 @@ import { INPUT_TYPES, type FlowDraft, type InputField, type InputType } from './
 export function LogicInputsBoard({
   draft,
   unused,
+  objectTypes,
   disabled,
   onChange,
 }: {
   draft: FlowDraft;
   unused: string[];
+  /** Object types an `object` input may point at (api names). */
+  objectTypes: string[];
   disabled: boolean;
   onChange: (next: FlowDraft) => void;
 }) {
@@ -60,8 +63,8 @@ export function LogicInputsBoard({
                       onChange={(e) => patch(index, { name: e.target.value })}
                       disabled={disabled}
                     />
-                    {field.type === 'object' ? (
-                      <span className="logic-inputs__unused">{t('editor.logicInputObjectHint')}</span>
+                    {field.type === 'object' && !field.objectType ? (
+                      <span className="logic-inputs__unused">{t('editor.logicInputObjectNeedsType')}</span>
                     ) : null}
                     {isUnused ? (
                       <span className="logic-inputs__unused">{t('editor.logicInputUnused')}</span>
@@ -83,6 +86,25 @@ export function LogicInputsBoard({
                     </select>
                   </td>
                   <td>
+                    {field.type === 'object' ? (
+                      <select
+                        className="ds-control"
+                        value={field.objectType}
+                        aria-label={t('editor.logicInputObjectType')}
+                        onChange={(e) => patch(index, { objectType: e.target.value })}
+                        disabled={disabled}
+                      >
+                        <option value="">{t('editor.logicToolPickType')}</option>
+                        {objectTypes.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                        {field.objectType && !objectTypes.includes(field.objectType) ? (
+                          <option value={field.objectType}>{field.objectType}</option>
+                        ) : null}
+                      </select>
+                    ) : (
                     <input
                       className="ds-control"
                       value={field.description}
@@ -90,6 +112,7 @@ export function LogicInputsBoard({
                       onChange={(e) => patch(index, { description: e.target.value })}
                       disabled={disabled}
                     />
+                    )}
                   </td>
                   <td>
                     <button

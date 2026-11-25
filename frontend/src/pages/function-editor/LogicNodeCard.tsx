@@ -31,6 +31,8 @@ export function LogicNodeCard({
   nodes,
   fields,
   objectTypes,
+  objectProperties,
+  objectInputs,
   runValue,
   disabled,
   onChange,
@@ -45,6 +47,10 @@ export function LogicNodeCard({
   fields: OutputField[];
   /** Object type api names the tool may read — the flow's tool configuration chooses from these. */
   objectTypes: string[];
+  /** api_name → property names, so `{{input.customer.name}}` can be inserted instead of remembered. */
+  objectProperties: Record<string, string[]>;
+  /** The flow's object inputs: each contributes the object itself and its properties as insertable chips. */
+  objectInputs: { name: string; objectType: string }[];
   /** What this node returned in the last run — shown here, so the flow reads as data moving through it. */
   runValue?: { output?: unknown; error?: string; tokens?: number; ms?: number } | null;
   disabled: boolean;
@@ -198,16 +204,29 @@ export function LogicNodeCard({
 
       <div className="logic-node__refs">
         <span className="logic-node__refs-label">{t('editor.logicInsert')}</span>
-        {references.map((reference) => (
+        {objectInputs.flatMap((field) => [
+          `input.${field.name}`,
+          ...(objectProperties[field.objectType] ?? []).map((prop) => `input.${field.name}.${prop}`),
+        ]).map((reference) => (
           <button
             key={reference}
             type="button"
             className="logic-node__chip"
-            onClick={() => insert(reference === 'input' ? 'input.email' : `${reference}`)}
+            onClick={() => insert(reference)}
             disabled={disabled}
-            title={reference === 'input' ? t('editor.logicChipInputHint') : undefined}
           >
-            {reference === 'input' ? t('editor.logicChipInput') : `{{${reference}}}`}
+            {`{{${reference}}}`}
+          </button>
+        ))}
+        {references.filter((reference) => reference !== 'input').map((reference) => (
+          <button
+            key={reference}
+            type="button"
+            className="logic-node__chip"
+            onClick={() => insert(`${reference}`)}
+            disabled={disabled}
+          >
+            {`{{${reference}}}`}
           </button>
         ))}
         {unknown.length ? (

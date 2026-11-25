@@ -137,6 +137,12 @@ def _validate_inputs(inputs: object) -> list[str]:
         input_type = str(item.get("type") or "string")
         if input_type not in INPUT_TYPES:
             errors.append(f"{where}.type '{input_type}' is not one of {', '.join(INPUT_TYPES)}")
+        object_type = str(item.get("object_type") or "").strip()
+        if object_type and input_type != "object":
+            errors.append(f"{where}.object_type only applies to an 'object' input")
+        if input_type == "object" and not object_type:
+            # The run panel needs to know what to offer; a bare JSON blob asks the author to invent a shape.
+            errors.append(f"{where}.object_type is required for an 'object' input")
     return errors
 
 
