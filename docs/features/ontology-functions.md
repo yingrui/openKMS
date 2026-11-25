@@ -164,8 +164,14 @@ Executor | `app/services/ontology/logic_runtime.py` — **the backend orchestrat
 Model | a node's `model_id` resolves through the platform registry (`api_models` / `api_providers`); omitted → the default `chat-completions` model |
 Trace | `ontology_function_executions.trace` — per node: prompt as sent, tokens, duration, error; read via `GET …/{id}/executions` |
 
-Supported node kinds today: **`model`** and **`action`**, in a linear chain. `function` / `transform` / `condition` /
-`loop` are rejected at save time with a message that says they are not implemented yet, rather than half-working.
+Supported node kinds today: **`model`**, **`action`**, and **`condition`**. `function` / `transform` / `loop` are
+rejected at save time with a message that says they are not implemented yet, rather than half-working.
+
+**`condition` branches, with AIP Logic's rules.** `{kind: "condition", branches: [{when, nodes}, …]}` runs the first
+branch whose `when` holds; an empty `when` is the fallback and **must be last** (a fallback in the middle would swallow
+everything after it). The branch's last node is the condition's output, so a branch can answer with a value or propose
+an edit. Nesting is one level: a branch body holds `model` and `action` nodes, not another condition. A `when` is
+truthy unless it renders to empty, `false`, `0`, `no`, `null` or `none`.
 
 **`action` nodes compose edits; they never apply them.** `{id, kind: "action", action_type, params}` renders its
 parameters from earlier node outputs (`{"ts_code": "{{n1.ticker}}"}`), resolves the action type, and produces an edit

@@ -1426,7 +1426,15 @@
     "logicParamValue": "值或 {{引用}}",
     "logicAddParam": "加一个参数",
     "logicParamsHint": "这里只组合编辑；只有从 Action 调用这个函数时才会真正写入。",
-    "logicTypeEdits": "编辑"
+    "logicTypeEdits": "编辑",
+    "logicNodeKindCondition": "分支",
+    "logicBranches": "分支",
+    "logicBranch": "分支 {{index}}",
+    "logicBranchWhen": "条件… 如 {{refs}}",
+    "logicBranchAddNode": "加一个节点",
+    "logicAddBranch": "加一个分支",
+    "logicBranchesHint": "第一个条件成立的分支执行；`when` 留空即兜底分支（必须放最后）。",
+    "logicTypeBranch": "分支"
   },
   "dataSources": {
     "title": "数据源",

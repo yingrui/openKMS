@@ -215,3 +215,73 @@ describe('action nodes', () => {
     expect(fine.errors).toEqual([]);
   });
 });
+
+describe('condition nodes', () => {
+  it('round-trips branches, including the fallback', () => {
+    const opened = draftFromSpec({
+      nodes: [
+        { id: 'n1', kind: 'model', prompt: 'pre' },
+        {
+          id: 'c1',
+          kind: 'condition',
+          branches: [
+            { when: '{{n1.urgent}}', nodes: [{ id: 'a', kind: 'model', prompt: 'fast path' }] },
+            { nodes: [{ id: 'b', kind: 'action', action_type: 'addHolding' }] },
+          ],
+        },
+      ],
+    });
+
+    expect(opened.nodes[1].kind).toBe('condition');
+    expect(opened.nodes[1].branches[0].when).toBe('{{n1.urgent}}');
+    expect(opened.nodes[1].branches[1].when).toBe('');
+    expect(opened.nodes[1].branches[1].nodes[0].actionType).toBe('addHolding');
+
+    const rebuilt = specFromDraft(opened).spec;
+    expect(rebuilt?.nodes[1]).toEqual({
+      id: 'c1',
+      kind: 'condition',
+      branches: [
+        { when: '{{n1.urgent}}', nodes: [{ id: 'a', kind: 'model', prompt: 'fast path' }] },
+        { nodes: [{ id: 'b', kind: 'action', action_type: 'addHolding', params: {} }] },
+      ],
+    });
+  });
+
+  it('refuses a fallback that is not last', () => {
+    const result = specFromDraft({
+      nodes: [
+        {
+          ...newNode(0),
+          kind: 'condition',
+          branches: [
+            { when: '', nodes: [newNode(0)] },
+            { when: '{{input.x}}', nodes: [newNode(1)] },
+          ],
+        },
+      ],
+      inputs: [],
+      output: '',
+    });
+    expect(result.spec).toBeNull();
+    expect(result.errors).toContain('#1: the fallback branch must be last');
+  });
+
+  it('drops a nested condition, which the backend would refuse', () => {
+    const opened = draftFromSpec({
+      nodes: [
+        {
+          id: 'c1',
+          kind: 'condition',
+          branches: [
+            {
+              when: 'x',
+              nodes: [{ id: 'c2', kind: 'condition', branches: [{ nodes: [{ id: 'd', kind: 'model', prompt: 'y' }] }] }],
+            },
+          ],
+        },
+      ],
+    });
+    expect(opened.nodes[0].branches[0].nodes).toEqual([]);
+  });
+});

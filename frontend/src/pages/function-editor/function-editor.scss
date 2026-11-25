@@ -825,6 +825,47 @@
   font-size: var(--text-sm);
 }
 
+/* ---------- Logic function: condition branches ---------- */
+
+.logic-branch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+.logic-branch__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.logic-branch__label {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.logic-branch__when {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.logic-branch__node {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding-left: var(--space-3);
+}
+
+.logic-branch__prompt {
+  flex: 1;
+}
+
 /* ---------- Logic function: a node's tools ---------- */
 
 .logic-node__tools {

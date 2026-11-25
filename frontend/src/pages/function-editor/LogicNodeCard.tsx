@@ -3,15 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import {
   FIELD_TYPES,
-  newNode,
   availableReferences,
   unknownReferences,
   type FieldType,
   type ModelNode,
-  type BranchDraft,
   type NodeTool,
   type OutputField,
 } from './logicFlow';
+import { ActionParams } from './LogicNodeActionParams';
+import { ConditionBranches } from './LogicNodeConditionBranches';
+import { NodeRunValue } from './LogicNodeResult';
 
 /**
  * One node, shaped like the thing people are actually writing: a prompt.
@@ -82,7 +83,9 @@ export function LogicNodeCard({
         <span className="logic-node__type">
           {node.kind === 'action'
             ? t('editor.logicTypeEdits')
-            : structured
+            : node.kind === 'condition'
+              ? t('editor.logicTypeBranch')
+              : structured
               ? t('editor.logicTypeFields', { count: fields.length })
               : t('editor.logicTypeText')}
         </span>
@@ -499,231 +502,8 @@ export function LogicNodeCard({
 }
 
 /** A node's answer, rendered as fields rather than a JSON blob — the point of a structured output. */
-function NodeRunValue({
-  value,
-}: {
-  value: { output?: unknown; error?: string; tokens?: number; ms?: number };
-}) {
-  const { t } = useTranslation('ontology');
-  if (value.error) {
-    return (
-      <div className="logic-node__result logic-node__result--failed">
-        <span className="logic-node__result-label">{t('editor.logicTraceError')}</span>
-        <span>{value.error}</span>
-      </div>
-    );
-  }
-  const output = value.output;
-  const rows =
-    output && typeof output === 'object' && !Array.isArray(output)
-      ? Object.entries(output as Record<string, unknown>)
-      : null;
-  return (
-    <div className="logic-node__result">
-      <div className="logic-node__result-head">
-        <span className="logic-node__result-label">{t('editor.logicTraceOutput')}</span>
-        <span className="logic-node__result-meta">
-          {t('editor.logicTraceMeta', { tokens: value.tokens ?? 0, ms: value.ms ?? 0 })}
-        </span>
-      </div>
-      {rows ? (
-        <dl className="logic-node__result-fields">
-          {rows.map(([key, field]) => (
-            <div key={key} className="logic-node__result-field">
-              <dt>{key}</dt>
-              <dd>{typeof field === 'string' ? field : JSON.stringify(field)}</dd>
-            </div>
-          ))}
-        </dl>
-      ) : (
-        <p className="logic-node__result-text">{typeof output === 'string' ? output : JSON.stringify(output)}</p>
-      )}
-    </div>
-  );
-}
-
 /** Ordered branches: a `when` template and a body of nested nodes; the empty `when` is the fallback. */
-function ConditionBranches({
-  node,
-  references,
-  disabled,
-  onChange,
-}: {
-  node: ModelNode;
-  references: string[];
-  disabled: boolean;
-  onChange: (changes: Partial<ModelNode>) => void;
-}) {
-  const { t } = useTranslation('ontology');
-  const patch = (index: number, changes: Partial<BranchDraft>) => {
-    onChange({ branches: replaceAt(node.branches, index, changes) });
-  };
-  return (
-    <div className="logic-node__params">
-      <span className="logic-node__label">{t('editor.logicBranches')}</span>
-      {node.branches.map((branch, index) => (
-        <div key={index} className="logic-branch">
-          <div className="logic-branch__head">
-            <span className="logic-branch__label">{t('editor.logicBranch', { index: index + 1 })}</span>
-            <input
-              className="ds-control logic-branch__when"
-              value={branch.when}
-              placeholder={t('editor.logicBranchWhen', { refs: references.join(', ') })}
-              aria-label={t('editor.logicBranchWhen', { refs: references.join(', ') })}
-              onChange={(e) => patch(index, { when: e.target.value })}
-              disabled={disabled}
-            />
-            <button
-              type="button"
-              className="ds-table-icon-link"
-              aria-label={t('shared.delete')}
-              onClick={() => onChange({ branches: node.branches.filter((_, i) => i !== index) })}
-              disabled={disabled || node.branches.length <= 1}
-            >
-              <Trash2 size={14} aria-hidden />
-            </button>
-          </div>
-          {branch.nodes.map((child, childIndex) => (
-            <div key={childIndex} className="logic-branch__node">
-              <select
-                className="ds-control logic-node__tool-kind"
-                value={child.kind}
-                aria-label={t('editor.logicNodeKind')}
-                onChange={(e) =>
-                  patch(index, {
-                    nodes: replaceAt(branch.nodes, childIndex, {
-                      kind: e.target.value as 'model' | 'action',
-                    }),
-                  })
-                }
-                disabled={disabled}
-              >
-                <option value="model">{t('editor.logicNodeKindModel')}</option>
-                <option value="action">{t('editor.logicNodeKindAction')}</option>
-              </select>
-              {child.kind === 'action' ? (
-                <input
-                  className="ds-control logic-node__action-type"
-                  value={child.actionType}
-                  placeholder={t('editor.logicActionType')}
-                  aria-label={t('editor.logicActionType')}
-                  onChange={(e) =>
-                    patch(index, { nodes: replaceAt(branch.nodes, childIndex, { actionType: e.target.value }) })
-                  }
-                  disabled={disabled}
-                />
-              ) : (
-                <textarea
-                  className="ds-control logic-node__prompt logic-branch__prompt"
-                  rows={2}
-                  value={child.prompt}
-                  placeholder={t('editor.logicPromptPlaceholder')}
-                  aria-label={t('editor.logicPrompt')}
-                  onChange={(e) =>
-                    patch(index, { nodes: replaceAt(branch.nodes, childIndex, { prompt: e.target.value }) })
-                  }
-                  disabled={disabled}
-                />
-              )}
-              <button
-                type="button"
-                className="ds-table-icon-link"
-                aria-label={t('shared.delete')}
-                onClick={() => patch(index, { nodes: branch.nodes.filter((_, i) => i !== childIndex) })}
-                disabled={disabled || branch.nodes.length <= 1}
-              >
-                <Trash2 size={14} aria-hidden />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => patch(index, { nodes: [...branch.nodes, newNode(branch.nodes.length)] })}
-            disabled={disabled}
-          >
-            <Plus size={14} aria-hidden />
-            {t('editor.logicBranchAddNode')}
-          </button>
-        </div>
-      ))}
-      <button
-        type="button"
-        className="btn btn-secondary btn-sm"
-        onClick={() =>
-          onChange({
-            branches: [...node.branches, { when: '', nodes: [newNode(0)] }],
-          })
-        }
-        disabled={disabled}
-      >
-        <Plus size={14} aria-hidden />
-        {t('editor.logicAddBranch')}
-      </button>
-      <p className="logic-node__hint">{t('editor.logicBranchesHint')}</p>
-    </div>
-  );
-}
-
 /** Action parameters: key + template. Editing vs the spec is one row each, in order. */
-function ActionParams({
-  node,
-  references,
-  disabled,
-  onChange,
-}: {
-  node: ModelNode;
-  references: string[];
-  disabled: boolean;
-  onChange: (changes: Partial<ModelNode>) => void;
-}) {
-  const { t } = useTranslation('ontology');
-  return (
-    <div className="logic-node__params">
-      <span className="logic-node__label">{t('editor.logicParams')}</span>
-      {node.params.map((param, index) => (
-        <div key={index} className="logic-node__param">
-          <input
-            className="ds-control logic-node__param-key"
-            value={param.key}
-            placeholder={t('editor.logicParamKey')}
-            aria-label={t('editor.logicParamKey')}
-            onChange={(e) => onChange({ params: replaceAt(node.params, index, { key: e.target.value }) })}
-            disabled={disabled}
-          />
-          <input
-            className="ds-control logic-node__param-value"
-            value={param.value}
-            placeholder={`{{${references[references.length - 1] ?? 'input'}.field}}`}
-            aria-label={t('editor.logicParamValue')}
-            onChange={(e) => onChange({ params: replaceAt(node.params, index, { value: e.target.value }) })}
-            disabled={disabled}
-          />
-          <button
-            type="button"
-            className="ds-table-icon-link"
-            aria-label={t('shared.delete')}
-            onClick={() => onChange({ params: node.params.filter((_, i) => i !== index) })}
-            disabled={disabled}
-          >
-            <Trash2 size={14} aria-hidden />
-          </button>
-        </div>
-      ))}
-      <button
-        type="button"
-        className="btn btn-secondary btn-sm"
-        onClick={() => onChange({ params: [...node.params, { key: '', value: '' }] })}
-        disabled={disabled}
-      >
-        <Plus size={14} aria-hidden />
-        {t('editor.logicAddParam')}
-      </button>
-      <p className="logic-node__hint">{t('editor.logicParamsHint')}</p>
-    </div>
-  );
-}
-
 function newTool(kind: 'query_objects' | 'call_function'): NodeTool {
   return kind === 'call_function'
     ? { id: `tool-${Date.now()}`, kind, function: '', description: '' }

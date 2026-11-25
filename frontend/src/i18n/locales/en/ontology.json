@@ -1432,7 +1432,15 @@
     "logicParamValue": "value or {{reference}}",
     "logicAddParam": "Add a parameter",
     "logicParamsHint": "Edits are composed here; nothing is written until an Action calls this function.",
-    "logicTypeEdits": "Edits"
+    "logicTypeEdits": "Edits",
+    "logicNodeKindCondition": "Branch",
+    "logicBranches": "Branches",
+    "logicBranch": "Branch {{index}}",
+    "logicBranchWhen": "when… e.g. {{refs}}",
+    "logicBranchAddNode": "Add a node",
+    "logicAddBranch": "Add a branch",
+    "logicBranchesHint": "The first branch whose `when` holds runs; leave `when` empty for the fallback (last).",
+    "logicTypeBranch": "Branch"
   },
   "dataSources": {
     "title": "Data sources",
