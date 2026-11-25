@@ -24,3 +24,17 @@ def test_submission_criteria_are_conditions_in_the_filter_grammar():
     assert submission_criteria({"submission_criteria": "status:eq:proposed"}) == []
     assert submission_criteria({"submission_criteria": [" ", ""]}) == []
     assert submission_criteria(None) == []
+
+
+def test_an_object_reference_names_a_type_and_how_it_is_identified():
+    from app.services.ontology.builtin_action_service import object_ref_params
+
+    assert object_ref_params(
+        {"object_refs": {"product_code": {"type": "Product", "property": "code"}}}
+    ) == {"product_code": {"type": "Product", "property": "code"}}
+    # A bare type name is the common case: the reference is the object's key.
+    assert object_ref_params({"object_refs": {"scenario": "AllocationScenario"}}) == {
+        "scenario": {"type": "AllocationScenario", "property": None}
+    }
+    assert object_ref_params({"object_refs": {"x": {"property": "code"}}}) == {}
+    assert object_ref_params({"fields": ["x"]}) == {}

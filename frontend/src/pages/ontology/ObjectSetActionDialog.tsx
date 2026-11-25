@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ActionApplicability } from '../../data/ontologyActionsApi';
 import { Dialog, FormField } from '../../styles/design-system';
+import { ObjectRefPicker, type ObjectRefSpec } from './ObjectRefPicker';
 
 /** The parameters an action wants from the caller — the object identity is already decided by the selection. */
 interface Field {
@@ -12,6 +13,8 @@ interface Field {
   fixed?: unknown;
   /** The only values the action accepts — a free-text box here would invite a refusal. */
   choices?: string[];
+  /** A parameter that is another object: picked, not typed. */
+  objectRef?: ObjectRefSpec;
 }
 
 /** Keys the executor fills itself from the selected object; asking for them would be asking twice. */
@@ -36,6 +39,7 @@ function fieldsOf(action: ActionApplicability): Field[] {
         description?: string;
         const?: unknown;
         enum?: string[];
+        object_ref?: ObjectRefSpec;
       };
       return {
         name,
@@ -43,6 +47,7 @@ function fieldsOf(action: ActionApplicability): Field[] {
         description: spec.description,
         fixed: spec.const,
         choices: spec.enum,
+        objectRef: spec.object_ref,
       };
     });
 }
@@ -132,7 +137,19 @@ export function ObjectSetActionDialog({
       ) : (
         fields.map((field) => (
           <FormField key={field.name} label={field.name} hint={field.description}>
-            {field.choices && field.choices.length > 0 ? (
+            {field.objectRef ? (
+              <ObjectRefPicker
+                spec={field.objectRef}
+                value={values[field.name] ?? ''}
+                label={field.name}
+                onChange={(picked) =>
+                  setValues((current) => ({
+                    ...current,
+                    [field.name]: picked?.value ?? '',
+                  }))
+                }
+              />
+            ) : field.choices && field.choices.length > 0 ? (
               <select
                 className="ds-control"
                 value={values[field.name] ?? ''}

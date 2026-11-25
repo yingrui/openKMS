@@ -1054,3 +1054,50 @@
   color: var(--color-text-muted);
   vertical-align: super;
 }
+
+/* An object-reference parameter: a picker, because a code is a memory test. */
+.object-set-ref {
+  position: relative;
+}
+
+.object-set-ref__panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  right: 0;
+  max-height: 14rem;
+  overflow-y: auto;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-lg);
+
+  button {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-1) var(--space-2);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--color-text);
+    font: inherit;
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-bg-muted);
+    }
+  }
+}
+
+.object-set-ref__meta,
+.object-set-ref__empty {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}

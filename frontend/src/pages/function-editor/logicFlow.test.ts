@@ -344,3 +344,35 @@ describe('loop nodes', () => {
     expect(opened.nodes[0].loopNodes).toEqual([]);
   });
 });
+
+describe('transform nodes', () => {
+  it('round-trips a template through the field rows', () => {
+    const opened = draftFromSpec({
+      nodes: [
+        { id: 'n1', kind: 'model', prompt: 'x' },
+        { id: 't1', kind: 'transform', template: { ts_code: '{{n1.ticker}}', note: '[auto]' } },
+      ],
+    });
+
+    expect(opened.nodes[1].kind).toBe('transform');
+    expect(opened.nodes[1].params).toEqual([
+      { key: 'ts_code', value: '{{n1.ticker}}' },
+      { key: 'note', value: '[auto]' },
+    ]);
+    expect(specFromDraft(opened).spec?.nodes[1]).toEqual({
+      id: 't1',
+      kind: 'transform',
+      template: { ts_code: '{{n1.ticker}}', note: '[auto]' },
+    });
+  });
+
+  it('refuses a transform with no fields', () => {
+    const result = specFromDraft({
+      nodes: [{ ...newNode(0), kind: 'transform', params: [] }],
+      inputs: [],
+      output: '',
+    });
+    expect(result.spec).toBeNull();
+    expect(result.errors).toEqual(['#1: a transform needs at least one field']);
+  });
+});

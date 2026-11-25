@@ -89,6 +89,8 @@ export function LogicNodeCard({
               ? t('editor.logicTypeBranch')
               : node.kind === 'loop'
                 ? t('editor.logicTypeLoop')
+                : node.kind === 'transform'
+                  ? t('editor.logicTypeTransform')
               : structured
               ? t('editor.logicTypeFields', { count: fields.length })
               : t('editor.logicTypeText')}
@@ -146,6 +148,7 @@ export function LogicNodeCard({
         >
           <option value="model">{t('editor.logicNodeKindModel')}</option>
           <option value="action">{t('editor.logicNodeKindAction')}</option>
+          <option value="transform">{t('editor.logicNodeKindTransform')}</option>
           <option value="condition">{t('editor.logicNodeKindCondition')}</option>
           <option value="loop">{t('editor.logicNodeKindLoop')}</option>
         </select>
@@ -162,6 +165,10 @@ export function LogicNodeCard({
       </div>
 
       {node.kind === 'action' ? (
+        <ActionParams node={node} references={references} disabled={disabled} onChange={onChange} />
+      ) : null}
+
+      {node.kind === 'transform' ? (
         <ActionParams node={node} references={references} disabled={disabled} onChange={onChange} />
       ) : null}
 

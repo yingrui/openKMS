@@ -1441,7 +1441,11 @@
     "logicLoopConcurrency": "并发数",
     "logicLoopBody": "每个元素执行",
     "logicLoopHint": "在循环体里用 {{element}} 引用当前元素。含写操作的循环按顺序逐条执行，所以编辑顺序稳定。",
-    "logicTypeLoop": "循环"
+    "logicTypeLoop": "循环",
+    "logicNodeKindTransform": "整理数据",
+    "logicTemplate": "字段",
+    "logicTemplateHint": "确定性步骤：不调模型、不耗 token。整格只有一处引用时保留原类型。",
+    "logicTypeTransform": "数据"
   },
   "dataSources": {
     "title": "数据源",

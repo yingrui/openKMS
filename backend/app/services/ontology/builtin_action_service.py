@@ -37,6 +37,32 @@ def submission_criteria(parameters: object | None) -> list[str]:
     return [str(entry).strip() for entry in raw if str(entry).strip()]
 
 
+def object_ref_params(parameters: object | None) -> dict[str, dict[str, str | None]]:
+    """Parameters whose value is a property of **another object** — an object reference.
+
+    `{"object_refs": {"product_code": {"type": "Product", "property": "code"}}}` says: this parameter is a Product,
+    identified by its `code`. The `type` alone is enough (the property defaults to the referenced type's key). A
+    string form (`{"product_code": "Product"}`) is accepted too, because most references are to the key.
+    """
+    raw = action_parameters_dict(parameters).get("object_refs")
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, dict[str, str | None]] = {}
+    for param, spec in raw.items():
+        name = str(param).strip()
+        if not name:
+            continue
+        if isinstance(spec, str) and spec.strip():
+            out[name] = {"type": spec.strip(), "property": None}
+        elif isinstance(spec, dict) and str(spec.get("type") or "").strip():
+            prop = spec.get("property")
+            out[name] = {
+                "type": str(spec["type"]).strip(),
+                "property": str(prop).strip() if prop else None,
+            }
+    return out
+
+
 def object_param_map(parameters: object | None) -> dict[str, str]:
     """Action parameters whose value is a property of the object the action runs on.
 

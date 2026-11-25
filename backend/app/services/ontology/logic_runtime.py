@@ -29,7 +29,7 @@ from pydantic_ai import Agent, PromptedOutput, StructuredDict
 from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
 from pydantic_ai.usage import UsageLimitExceeded, UsageLimits
 
-SUPPORTED_NODE_KINDS = ("model", "action", "condition", "loop")
+SUPPORTED_NODE_KINDS = ("model", "action", "transform", "condition", "loop")
 SUPPORTED_TOOL_KINDS = ("query_objects", "call_function")
 PROMPT_REF = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\}\}")
 DEFAULT_NODE_TIMEOUT_S = 60.0
@@ -96,6 +96,10 @@ def validate_flow_spec(spec: dict | None) -> list[str]:
             params = node.get("params")
             if params is not None and not isinstance(params, dict):
                 errors.append(f"{where}.params must be an object")
+        if kind == "transform":
+            template = node.get("template")
+            if not isinstance(template, dict) or not template:
+                errors.append(f"{where}.template must be a non-empty object")
         if kind == "condition":
             errors.extend(_validate_branches(node, where, seen))
         if kind == "loop":
@@ -363,6 +367,9 @@ async def _run_nodes(
                     raise FlowError("this flow has an action node but nothing can compose edits")
                 edits = await action_planner(str(node.get("action_type") or ""), rendered_params)
                 output = {"edits": edits}
+            elif node.get("kind") == "transform":
+                # Deterministic on purpose: no model call, no tokens, no variance.
+                output = _render_value(node.get("template") or {}, variables)
             elif node.get("kind") == "loop":
                 element_name = str(node.get("as") or "item")
                 items = _loop_items(node, variables)

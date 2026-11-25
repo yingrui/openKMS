@@ -1447,7 +1447,11 @@
     "logicLoopConcurrency": "at a time",
     "logicLoopBody": "Per element",
     "logicLoopHint": "Inside the body, the element is {{element}}. A body that writes runs one item at a time, so edits keep their order.",
-    "logicTypeLoop": "Loop"
+    "logicTypeLoop": "Loop",
+    "logicNodeKindTransform": "Shape data",
+    "logicTemplate": "Fields",
+    "logicTemplateHint": "Deterministic: no model call, no tokens. A value that is exactly one reference keeps its type.",
+    "logicTypeTransform": "Data"
   },
   "dataSources": {
     "title": "Data sources",

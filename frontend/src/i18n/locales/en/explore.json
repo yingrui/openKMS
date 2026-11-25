@@ -439,7 +439,9 @@
     "metricLinked": "Linked objects",
     "actionNoEligible": "No object in this set satisfies the action's conditions",
     "actionSelectionIneligible": "The ticked objects do not satisfy this action's conditions",
-    "actionCriteria": "Applies to: {{criteria}}"
+    "actionCriteria": "Applies to: {{criteria}}",
+    "actionRefPick": "Pick a {{type}}",
+    "actionRefEmpty": "Nothing matches"
   },
   "explorerSections": {
     "explorations": "Explorations",

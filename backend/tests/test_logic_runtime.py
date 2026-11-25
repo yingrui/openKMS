@@ -46,8 +46,8 @@ class TestValidation:
         assert validate_flow_spec({}) == ["flow_spec.nodes must be a non-empty list"]
 
     def test_rejects_node_kinds_that_are_not_implemented_yet(self):
-        errors = validate_flow_spec({"nodes": [{"id": "n1", "kind": "transform"}]})
-        assert any("'transform' is not supported yet" in e for e in errors)
+        errors = validate_flow_spec({"nodes": [{"id": "n1", "kind": "map"}]})
+        assert any("'map' is not supported yet" in e for e in errors)
 
     def test_rejects_duplicate_ids_and_missing_prompts(self):
         errors = validate_flow_spec(
@@ -145,7 +145,7 @@ class TestRun:
         async def factory(_model_id: str | None):
             nonlocal called
             called = True
-            return FunctionModel(_handler("{}"))
+            return FunctionModel(_handler(json.dumps({"answer": "42"})))
 
         outcome = await run_flow({"nodes": [{"id": "n1", "kind": "loop"}]}, {}, model_factory=factory)
 
@@ -202,7 +202,7 @@ class TestTypedInputs:
         async def factory(_model_id: str | None):
             nonlocal called
             called = True
-            return FunctionModel(_handler("{}"))
+            return FunctionModel(_handler(json.dumps({"answer": "42"})))
 
         spec = {"inputs": [{"name": "count", "type": "integer"}], **_spec()}
         outcome = await run_flow(spec, {"count": "three"}, model_factory=factory)
@@ -993,3 +993,90 @@ class TestReferenceTypes:
         assert seen[0]["confirm"] is True, "a whole reference must keep its type"
         assert seen[0]["note"] == "why: yes"
         assert seen[0]["label"] == "yes"
+
+
+class TestTransformNode:
+    """A transform shapes data deterministically — the block that keeps flows from asking the model everything."""
+
+    def test_a_transform_needs_a_template(self):
+        errors = validate_flow_spec({"nodes": [{"id": "t1", "kind": "transform"}]})
+        assert any("template must be a non-empty object" in e for e in errors)
+
+    @pytest.mark.asyncio
+    async def test_it_renders_the_template_without_calling_a_model(self):
+        called = False
+
+        async def factory(_model_id: str | None):
+            nonlocal called
+            called = True
+            return FunctionModel(_handler(json.dumps({"answer": "42"})))
+
+        spec = {
+            "nodes": [
+                {"id": "n1", "kind": "model", "prompt": "x", "output_schema": SCHEMA},
+                {
+                    "id": "t1",
+                    "kind": "transform",
+                    "template": {
+                        "title": "Why: {{n1.answer}}",
+                        "answer": "{{n1.answer}}",
+                        "count": 3,
+                        "nested": {"list": ["{{input.q}}", "fixed"]},
+                    },
+                },
+            ]
+        }
+        outcome = await run_flow(spec, {"q": "life"}, model_factory=factory)
+
+        assert outcome.status == "ok", outcome.error
+        assert outcome.output == {
+            "title": "Why: 42",
+            "answer": "42",
+            "count": 3,
+            "nested": {"list": ["life", "fixed"]},
+        }
+        entry = outcome.trace["nodes"][1]
+        assert entry["kind"] == "transform"
+        assert "usage" not in entry, "a transform spends no tokens"
+        # The model ran once, for the first node only.
+        assert called is True
+
+    @pytest.mark.asyncio
+    async def test_a_transform_can_shape_an_action_parameter_object(self):
+        seen: list[dict] = []
+
+        async def planner(_api_name: str, params: dict) -> list[dict]:
+            seen.append(params)
+            return []
+
+        spec = {
+            "nodes": [
+                {
+                    "id": "n1",
+                    "kind": "model",
+                    "prompt": "x",
+                    "output_schema": {
+                        "type": "object",
+                        "properties": {"ticker": {"type": "string"}, "why": {"type": "string"}},
+                        "required": ["ticker", "why"],
+                    },
+                },
+                {
+                    "id": "t1",
+                    "kind": "transform",
+                    "template": {"ts_code": "{{n1.ticker}}", "note": "[auto] {{n1.why}}"},
+                },
+                {"id": "a1", "kind": "action", "action_type": "addHolding", "params": {"ts_code": "{{t1.ts_code}}", "note": "{{t1.note}}"}},
+            ]
+        }
+
+        def handler(_messages, _info: AgentInfo) -> ModelResponse:
+            return ModelResponse(parts=[TextPart(json.dumps({"ticker": "TSM", "why": "guidance cut"}))])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        outcome = await run_flow(spec, {}, model_factory=factory, action_planner=planner)
+
+        assert outcome.status == "ok", outcome.error
+        assert seen[0] == {"ts_code": "TSM", "note": "[auto] guidance cut"}

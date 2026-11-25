@@ -16,7 +16,9 @@ export function ActionParams({
   const { t } = useTranslation('ontology');
   return (
     <div className="logic-node__params">
-      <span className="logic-node__label">{t('editor.logicParams')}</span>
+      <span className="logic-node__label">
+        {t(node.kind === 'transform' ? 'editor.logicTemplate' : 'editor.logicParams')}
+      </span>
       {node.params.map((param, index) => (
         <div key={index} className="logic-node__param">
           <input
@@ -55,7 +57,9 @@ export function ActionParams({
         <Plus size={14} aria-hidden />
         {t('editor.logicAddParam')}
       </button>
-      <p className="logic-node__hint">{t('editor.logicParamsHint')}</p>
+      <p className="logic-node__hint">
+        {t(node.kind === 'transform' ? 'editor.logicTemplateHint' : 'editor.logicParamsHint')}
+      </p>
     </div>
   );
 }

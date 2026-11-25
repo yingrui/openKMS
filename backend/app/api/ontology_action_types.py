@@ -36,6 +36,7 @@ from app.services.ontology.function_external_usage import function_external_serv
 from app.services.ontology.builtin_action_service import (
     input_schema_for_action,
     object_param_map,
+    object_ref_params,
     submission_criteria,
 )
 from app.services.ontology.input_schema import validate_input_against_schema
@@ -382,6 +383,77 @@ async def _link_info(db: AsyncSession, obj_type: ObjectType) -> dict[str, tuple[
     return info
 
 
+async def _annotate_object_refs(
+    db: AsyncSession, schema: dict | None, at: OntologyActionType
+) -> dict | None:
+    """Mark reference parameters in the schema so the form can offer a picker instead of a text box.
+
+    The form has no way to know that `product_code` is a Product; the action says so, and this puts the type, its id
+    and the property that carries the value into the schema the client already receives.
+    """
+    refs = object_ref_params(at.parameters)
+    if not schema or not refs:
+        return schema
+    properties = schema.get("properties")
+    if not isinstance(properties, dict):
+        return schema
+    for param, spec in refs.items():
+        entry = properties.get(param)
+        if not isinstance(entry, dict):
+            continue
+        target = (
+            await db.execute(select(ObjectType).where(ObjectType.name == spec["type"]))
+        ).scalars().first()
+        if target is None:
+            continue
+        entry["object_ref"] = {
+            "type_id": target.id,
+            "type_name": target.name,
+            "property": spec["property"] or (target.key_properties or ["id"])[0],
+            "label_property": target.display_property or (target.key_properties or ["id"])[0],
+        }
+    return schema
+
+
+async def _validate_object_refs(
+    db: AsyncSession, at: OntologyActionType, payload: dict
+) -> str | None:
+    """Why a referenced value is not an object of the declared type, or None when every one is.
+
+    A reference that cannot be resolved is a typing mistake, and the function would only discover it after its own
+    work started — so it is answered here, naming the parameter and the value.
+    """
+    refs = object_ref_params(at.parameters)
+    if not refs:
+        return None
+    neo4j_ds = await get_first_neo4j_datasource(db)
+    for param, spec in refs.items():
+        value = payload.get(param)
+        if value in (None, ""):
+            continue
+        target = (
+            await db.execute(select(ObjectType).where(ObjectType.name == spec["type"]))
+        ).scalars().first()
+        if target is None:
+            return f"`{param}` refers to an unknown object type `{spec['type']}`"
+        property_name = spec["property"] or (target.key_properties or ["id"])[0]
+        if not neo4j_ds:
+            continue
+        label = object_label(target)
+        found = await run_with_neo4j_driver(
+            neo4j_ds,
+            lambda driver, label=label, prop=property_name, val=value: driver.session().run(
+                f"MATCH (n:{label}) WHERE toString(n.`{prop}`) = $v RETURN count(n) AS c",
+                v=str(val),
+            ).single()["c"],
+        )
+        if not found:
+            return (
+                f"`{param}`: no {target.name} has {property_name} = {value!r}"
+            )
+    return None
+
+
 async def _refresh_after_action(
     db: AsyncSession, at: OntologyActionType, result: OntologyActionExecuteResponse | None
 ) -> bool:
@@ -440,6 +512,10 @@ async def _execute_one(
                 input_payload[param] = props[prop_name]
             input_payload.setdefault(param, props.get(prop_name))
         object_id = canonical_id
+
+    ref_error = await _validate_object_refs(db, at, input_payload)
+    if ref_error:
+        return OntologyActionExecuteResponse(status="error", error=ref_error)
 
     uid, _ = jwt_user_from_request(request)
 
@@ -637,6 +713,7 @@ async def applicable_actions(
                     ),
                 )
                 selected_eligible = sum(1 for oid in body.object_ids if oid in satisfying)
+        schema = await _annotate_object_refs(db, input_schema_for_action(action, obj_type), action)
         out.append(
             ActionApplicability(
                 id=action.id,
@@ -644,7 +721,7 @@ async def applicable_actions(
                 display_name=action.display_name,
                 description=action.description,
                 submission_criteria=criteria,
-                input_schema=input_schema_for_action(action, obj_type),
+                input_schema=schema,
                 parameters=action.parameters,
                 eligible=eligible,
                 selected_eligible=selected_eligible,

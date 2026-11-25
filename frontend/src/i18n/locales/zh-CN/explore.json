@@ -439,7 +439,9 @@
     "metricLinked": "关联对象数",
     "actionNoEligible": "当前集合里没有对象满足动作的提交条件",
     "actionSelectionIneligible": "勾选的对象不满足这个动作的提交条件",
-    "actionCriteria": "适用条件：{{criteria}}"
+    "actionCriteria": "适用条件：{{criteria}}",
+    "actionRefPick": "选择一个{{type}}",
+    "actionRefEmpty": "没有匹配的对象"
   },
   "explorerSections": {
     "explorations": "探索",

@@ -22,8 +22,8 @@ export const INPUT_TYPES: InputType[] = ['string', 'number', 'integer', 'boolean
 
 export type NodeParam = { key: string; value: string };
 
-export type NodeKind = 'model' | 'action' | 'condition' | 'loop';
-export const NODE_KINDS: NodeKind[] = ['model', 'action', 'condition', 'loop'];
+export type NodeKind = 'model' | 'action' | 'transform' | 'condition' | 'loop';
+export const NODE_KINDS: NodeKind[] = ['model', 'action', 'transform', 'condition', 'loop'];
 
 export type BranchDraft = {
   /** Template that decides the branch; empty means the fallback (must be last). */
@@ -33,7 +33,7 @@ export type BranchDraft = {
 
 export type ModelNode = {
   id: string;
-  kind: 'model' | 'action' | 'condition' | 'loop';
+  kind: NodeKind;
   /** `condition` only: ordered branches, the fallback last. */
   branches: BranchDraft[];
   /** `loop` only: what to iterate, the element's name, the body, and how many at a time. */
@@ -136,7 +136,9 @@ export function draftFromSpec(spec: unknown): FlowDraft {
         concurrency: kind === 'loop' && node.concurrency ? String(node.concurrency) : '',
         loopNodes: loopNodes.filter((child) => child.kind !== 'condition' && child.kind !== 'loop'),
         actionType: String(node.action_type ?? ''),
-        params: Object.entries((node.params as Record<string, unknown>) ?? {}).map(([key, value]) => ({
+        params: Object.entries(
+          (node.kind === 'transform' ? (node.template as Record<string, unknown>) : (node.params as Record<string, unknown>)) ?? {},
+        ).map(([key, value]) => ({
           key,
           value: typeof value === 'string' ? value : JSON.stringify(value),
         })),
@@ -214,6 +216,20 @@ export function specFromDraft(draft: FlowDraft): DraftResult {
     if (!id) errors.push(`${where}: an id is required`);
     else if (seen.has(id)) errors.push(`${where}: id "${id}" is used twice`);
     else seen.add(id);
+
+    if (node.kind === 'transform') {
+      const template: Record<string, string> = {};
+      for (const entry of node.params) {
+        const key = entry.key.trim();
+        if (!key) continue;
+        template[key] = entry.value;
+      }
+      if (!Object.keys(template).length) {
+        errors.push(`${where}: a transform needs at least one field`);
+      }
+      nodes.push({ id, kind: 'transform', template });
+      return;
+    }
 
     if (node.kind === 'loop') {
       if (!node.over.trim()) errors.push(`${where}: a loop needs a list to iterate`);
