@@ -5,16 +5,19 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth
 from app.api.ontology.deps import jwt_user_from_request, require_caller_token, validate_api_name
 from app.database import get_db
 from app.models.external_service import ExternalService
+from app.models.link_type import LinkType
 from app.models.object_type import ObjectType
 from app.models.ontology_function import OntologyActionLog, OntologyActionType
 from app.schemas.ontology_functions import (
+    ActionApplicability,
+    ActionApplicabilityRequest,
     OntologyActionWebhookState,
     OntologyActionBatchItem,
     OntologyActionBatchRequest,
@@ -30,12 +33,23 @@ from app.services.ontology.constants import ACTION_TYPE_ID_PREFIX, ID_HEX_LENGTH
 from app.services.ontology.action_rule_types import is_builtin_object_rule, normalize_rule_type
 from app.services.ontology import action_webhook, execution_service
 from app.services.ontology.function_external_usage import function_external_services
-from app.services.ontology.builtin_action_service import input_schema_for_action, object_param_map
+from app.services.ontology.builtin_action_service import (
+    input_schema_for_action,
+    object_param_map,
+    submission_criteria,
+)
 from app.services.ontology.input_schema import validate_input_against_schema
+from app.services.ontology.object_query import QueryError, parse_filter
 from app.services.ontology.neo4j_async import NEO4J_ERRORS
 from app.services.ontology.object_neo4j_store import (
+    get_first_neo4j_datasource,
+    ids_satisfying,
+    link_rel_type,
+    object_label,
     refresh_object_type_from_source,
+    resolve_id_properties,
     resolve_object_props_for_action,
+    run_with_neo4j_driver,
 )
 from app.services.identity.permissions.permission_catalog import PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
 
@@ -322,6 +336,52 @@ async def delete_action_type(
     await db.commit()
 
 
+async def _satisfies_criteria(
+    db: AsyncSession, at: OntologyActionType, object_id: str, criteria: list[str]
+) -> bool:
+    """Whether one object may take this action, asked of the graph in one query."""
+    obj_type = await db.get(ObjectType, at.object_type_id)
+    if obj_type is None:
+        return False
+    neo4j_ds = await get_first_neo4j_datasource(db)
+    if not neo4j_ds:
+        return True
+    try:
+        filters = [parse_filter(text) for text in criteria]
+    except QueryError:
+        return False
+    link_info = await _link_info(db, obj_type)
+    label = object_label(obj_type)
+    columns = resolve_id_properties(obj_type)
+    satisfying = await run_with_neo4j_driver(
+        neo4j_ds,
+        lambda driver: ids_satisfying(driver, label, columns, [object_id], filters, link_info),
+    )
+    return object_id in satisfying
+
+
+async def _link_info(db: AsyncSession, obj_type: ObjectType) -> dict[str, tuple[str, str]]:
+    """`link api_name → (rel type, direction)` — the shape every object query here expects."""
+    links = (
+        await db.execute(
+            select(LinkType).where(
+                or_(
+                    LinkType.source_object_type_id == obj_type.id,
+                    LinkType.target_object_type_id == obj_type.id,
+                )
+            )
+        )
+    ).scalars().all()
+    info: dict[str, tuple[str, str]] = {}
+    for link in links:
+        direction = "out" if link.source_object_type_id == obj_type.id else "in"
+        rel = link_rel_type(link)
+        for key in (link.api_name, link.id):
+            if key:
+                info[key] = (rel, direction)
+    return info
+
+
 async def _refresh_after_action(
     db: AsyncSession, at: OntologyActionType, result: OntologyActionExecuteResponse | None
 ) -> bool:
@@ -354,6 +414,7 @@ async def _execute_one(
 ) -> OntologyActionExecuteResponse:
     """One action, one object — the body both the single and the batch entry point share."""
     input_payload = dict(input_payload or {})
+    criteria = submission_criteria(at.parameters)
     if object_id:
         ot = await db.get(ObjectType, at.object_type_id)
         if not ot:
@@ -362,6 +423,14 @@ async def _execute_one(
         if not resolved:
             raise HTTPException(status_code=404, detail="Object instance not found")
         canonical_id, props = resolved
+        if criteria and not await _satisfies_criteria(db, at, canonical_id, criteria):
+            return OntologyActionExecuteResponse(
+                status="error",
+                error=(
+                    "this object does not satisfy the action's submission criteria: "
+                    + ", ".join(criteria)
+                ),
+            )
         input_payload.setdefault("object_id", canonical_id)
         input_payload.setdefault("object", props)
         # A parameter that names the object is filled from the object: the caller selected it, so asking for it again
@@ -495,6 +564,93 @@ async def execute_action_type_batch(
     return OntologyActionBatchResponse(
         succeeded=len(results) - failed, failed=failed, results=results, refreshed=refreshed
     )
+
+
+@router.post("/applicable", response_model=list[ActionApplicability])
+async def applicable_actions(
+    body: ActionApplicabilityRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(require_any_permission(PERM_ONTOLOGY_READ)),
+):
+    """Which actions this set / selection may take, with the count that decides it.
+
+    A menu that lists an action the caller cannot use is a promise the executor breaks. The submission criteria are
+    asked here — against the same set the exploration is showing — so the menu can leave the action out instead.
+    """
+    obj_type = await db.get(ObjectType, body.object_type_id)
+    if obj_type is None:
+        raise HTTPException(status_code=404, detail="Object type not found")
+    actions = (
+        await db.execute(
+            select(OntologyActionType).where(
+                OntologyActionType.object_type_id == obj_type.id,
+                OntologyActionType.status == "active",
+            )
+        )
+    ).scalars().all()
+    if not actions:
+        return []
+    neo4j_ds = await get_first_neo4j_datasource(db)
+    link_info = await _link_info(db, obj_type)
+    label = object_label(obj_type)
+    columns = resolve_id_properties(obj_type)
+    try:
+        set_filters = [parse_filter(text) for text in body.conditions]
+    except QueryError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    async def count_set(filters) -> int:
+        if not neo4j_ds:
+            return 0
+
+        def run(driver):
+            from app.services.ontology.object_query import count_query, where_clause
+
+            where, params = where_clause(filters, link_info=link_info)
+            with driver.session() as session:
+                return session.run(count_query(label, where), **params).single()["c"] or 0
+
+        return await run_with_neo4j_driver(neo4j_ds, run)
+
+    out: list[ActionApplicability] = []
+    for action in actions:
+        criteria = submission_criteria(action.parameters)
+        if not criteria:
+            eligible = await count_set(set_filters)
+            selected_eligible = len(body.object_ids)
+        else:
+            try:
+                criteria_filters = [parse_filter(text) for text in criteria]
+            except QueryError as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"action {action.api_name}: {exc}",
+                ) from exc
+            eligible = await count_set([*set_filters, *criteria_filters])
+            selected_eligible = 0
+            if body.object_ids and neo4j_ds:
+                satisfying = await run_with_neo4j_driver(
+                    neo4j_ds,
+                    lambda driver, f=criteria_filters: ids_satisfying(
+                        driver, label, columns, body.object_ids, f, link_info
+                    ),
+                )
+                selected_eligible = sum(1 for oid in body.object_ids if oid in satisfying)
+        out.append(
+            ActionApplicability(
+                id=action.id,
+                api_name=action.api_name,
+                display_name=action.display_name,
+                description=action.description,
+                submission_criteria=criteria,
+                input_schema=input_schema_for_action(action, obj_type),
+                parameters=action.parameters,
+                eligible=eligible,
+                selected_eligible=selected_eligible,
+            )
+        )
+    return out
 
 
 @router.get("/{action_type_id}/logs", response_model=list[OntologyActionLogResponse])

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Zap } from 'lucide-react';
-import type { OntologyActionTypeResponse } from '../../data/ontologyActionsApi';
+import type { ActionApplicability } from '../../data/ontologyActionsApi';
 
 /**
  * Actions, on the objects this exploration selected.
@@ -15,9 +15,9 @@ export function ObjectSetActionMenu({
   count,
   onPick,
 }: {
-  actions: OntologyActionTypeResponse[];
+  actions: ActionApplicability[];
   count: number;
-  onPick: (action: OntologyActionTypeResponse) => void;
+  onPick: (action: ActionApplicability) => void;
 }) {
   const { t } = useTranslation('explore');
   const [open, setOpen] = useState(false);
@@ -39,7 +39,10 @@ export function ObjectSetActionMenu({
     };
   }, [open]);
 
-  if (actions.length === 0) return null;
+  /* An action whose submission criteria exclude this set cannot be offered: the menu is the promise, the executor
+     keeps it. */
+  const offered = actions.filter((action) => action.eligible > 0);
+  if (offered.length === 0 && actions.length === 0) return null;
 
   return (
     <div className="object-set-action-menu" ref={rootRef}>
@@ -62,23 +65,37 @@ export function ObjectSetActionMenu({
           {count > 0 ? (
             <p className="object-set-action-menu__label">{t('objectSet.actionCategory')}</p>
           ) : null}
+          {offered.length === 0 ? (
+            <p className="object-set-action-menu__label">{t('objectSet.actionNoEligible')}</p>
+          ) : null}
           {count > 0
-            ? actions.map((action) => (
+            ? offered.map((action) => {
+                const blocked = action.selected_eligible === 0;
+                return (
             <button
               key={action.id}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                onPick(action);
-              }}
-            >
-              <span className="object-set-action-menu__name">{action.display_name}</span>
-              {action.description ? (
-                <span className="object-set-action-menu__desc">{action.description}</span>
-              ) : null}
-            </button>
-              ))
+                  type="button"
+                  role="menuitem"
+                  disabled={blocked}
+                  title={blocked ? t('objectSet.actionSelectionIneligible') : undefined}
+                  onClick={() => {
+                    setOpen(false);
+                    onPick(action);
+                  }}
+                >
+                  <span className="object-set-action-menu__name">{action.display_name}</span>
+                  <span className="object-set-action-menu__desc">
+                    {blocked
+                      ? t('objectSet.actionSelectionIneligible')
+                      : action.submission_criteria.length > 0
+                        ? t('objectSet.actionCriteria', {
+                            criteria: action.submission_criteria.join(', '),
+                          })
+                        : action.description ?? ''}
+                  </span>
+                </button>
+                );
+              })
             : null}
         </div>
       ) : null}

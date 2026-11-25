@@ -291,6 +291,31 @@ class OntologyActionExecuteResponse(BaseModel):
     webhook: dict | None = None
 
 
+class ActionApplicabilityRequest(BaseModel):
+    """Which actions apply to this set — asked before the menu is drawn, not after a failure."""
+
+    object_type_id: str
+    #: The current object set, in the filter grammar the exploration already uses.
+    conditions: list[str] = Field(default_factory=list)
+    #: The ticked objects, when the caller has a selection.
+    object_ids: list[str] = Field(default_factory=list)
+
+
+class ActionApplicability(BaseModel):
+    id: str
+    api_name: str
+    display_name: str
+    description: str | None = None
+    submission_criteria: list[str] = Field(default_factory=list)
+    #: The form the menu will open: without these the dialog would draw no fields.
+    input_schema: dict | None = None
+    parameters: dict | list | None = None
+    #: Objects in the current set this action applies to; 0 means it cannot be offered here.
+    eligible: int = 0
+    #: Of the given object_ids, how many satisfy the criteria.
+    selected_eligible: int = 0
+
+
 class OntologyActionBatchRequest(BaseModel):
     """The same action over a set the exploration selected.
 

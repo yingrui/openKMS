@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { OntologyActionTypeResponse } from '../../data/ontologyActionsApi';
+import type { ActionApplicability } from '../../data/ontologyActionsApi';
 import { Dialog, FormField } from '../../styles/design-system';
 
 /** The parameters an action wants from the caller — the object identity is already decided by the selection. */
@@ -18,12 +18,12 @@ interface Field {
 const INJECTED = new Set(['id', 'object', 'object_id']);
 
 /** Parameters an action declares as "a property of the object": the selection answers them. */
-function objectParamsOf(action: OntologyActionTypeResponse): Set<string> {
+function objectParamsOf(action: ActionApplicability): Set<string> {
   const raw = (action.parameters as { object_params?: Record<string, string> } | null)?.object_params;
   return new Set(Object.keys(raw ?? {}));
 }
 
-function fieldsOf(action: OntologyActionTypeResponse): Field[] {
+function fieldsOf(action: ActionApplicability): Field[] {
   const properties = (action.input_schema as { properties?: Record<string, unknown> } | null)
     ?.properties;
   if (!properties) return [];
@@ -61,7 +61,7 @@ export function ObjectSetActionDialog({
   onClose,
   onSubmit,
 }: {
-  action: OntologyActionTypeResponse | null;
+  action: ActionApplicability | null;
   count: number;
   busy: boolean;
   onClose: () => void;

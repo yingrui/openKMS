@@ -436,7 +436,10 @@
     "sortRank": "第 {{rank}} 排序",
     "actionFixedParams": "部分参数由动作固定，提交时自动带上。",
     "actionJsonValue": "JSON，例如 {\"uplift\": 0.05}",
-    "metricLinked": "关联对象数"
+    "metricLinked": "关联对象数",
+    "actionNoEligible": "当前集合里没有对象满足动作的提交条件",
+    "actionSelectionIneligible": "勾选的对象不满足这个动作的提交条件",
+    "actionCriteria": "适用条件：{{criteria}}"
   },
   "explorerSections": {
     "explorations": "探索",

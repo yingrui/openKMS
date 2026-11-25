@@ -28,7 +28,10 @@ import {
 
 import { useAuth } from '../../contexts/AuthContext';
 import { ExplorerMenu } from '../../components/ontology/ExplorerMenu';
-import { fetchOntologyActionTypes, type OntologyActionTypeResponse } from '../../data/ontologyActionsApi';
+import {
+  fetchApplicableActions,
+  type ActionApplicability,
+} from '../../data/ontologyActionsApi';
 import { ObjectSetActionDialog } from './ObjectSetActionDialog';
 import { ObjectSetChartBoard } from './ObjectSetChartBoard';
 import { ObjectSetResults } from './ObjectSetResults';
@@ -95,7 +98,9 @@ export function ObjectExplorationPage() {
   const [layoutColumns, setLayoutColumns] = useState<string[]>([]);
   const [links, setLinks] = useState<LinkTypeResponse[]>([]);
   /* Actions are the one write an exploration offers: they run on the rows the caller ticked, never on the whole set. */
-  const [actions, setActions] = useState<OntologyActionTypeResponse[]>([]);
+  /* What the menu may offer: asked of the backend, because only it can evaluate an action's submission criteria
+     against this set. */
+  const [actions, setActions] = useState<ActionApplicability[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const outcome = useObjectSetOutcome();
   /* The types on the other side of those links: a chart may read a neighbour's property, and the option list has to
@@ -188,13 +193,6 @@ export function ObjectExplorationPage() {
       .catch(() => {
         if (!cancelled) setAllSaved([]);
       });
-    void fetchOntologyActionTypes({ object_type_id: typeId })
-      .then((rows) => {
-        if (!cancelled) setActions(rows.filter((row) => row.status === 'active'));
-      })
-      .catch(() => {
-        if (!cancelled) setActions([]);
-      });
     void fetchLinkTypes()
       .then((res) => {
         if (!cancelled) setLinks(res.items);
@@ -206,6 +204,25 @@ export function ObjectExplorationPage() {
       cancelled = true;
     };
   }, [typeId]);
+
+  useEffect(() => {
+    if (!typeId) return;
+    let cancelled = false;
+    void fetchApplicableActions({
+      object_type_id: typeId,
+      conditions: filters,
+      object_ids: [...selected],
+    })
+      .then((rows) => {
+        if (!cancelled) setActions(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setActions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [typeId, filters, selected]);
 
   /* A selection is a claim about specific objects: when the set changes it no longer means anything. */
   useEffect(() => {

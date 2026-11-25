@@ -101,6 +101,35 @@ export async function executeOntologyAction(
   );
 }
 
+export interface ActionApplicability {
+  id: string;
+  api_name: string;
+  display_name: string;
+  description?: string | null;
+  /** Conditions an object must satisfy before this action applies to it. */
+  submission_criteria: string[];
+  /** The form the menu opens — the dialog builds its fields from this. */
+  input_schema?: Record<string, unknown> | null;
+  parameters?: Record<string, unknown> | unknown[] | null;
+  /** Objects in the current set this action applies to. */
+  eligible: number;
+  /** Of the ticked objects, how many satisfy the criteria. */
+  selected_eligible: number;
+}
+
+/** Ask which actions this set — and this selection — may take, before drawing the menu. */
+export async function fetchApplicableActions(body: {
+  object_type_id: string;
+  conditions: string[];
+  object_ids: string[];
+}): Promise<ActionApplicability[]> {
+  return ontologyFetch<ActionApplicability[]>(
+    `${base}/applicable`,
+    { method: 'POST', body: JSON.stringify(body) },
+    'Failed to check which actions apply',
+  );
+}
+
 export interface OntologyActionBatchResult {
   succeeded: number;
   failed: number;
