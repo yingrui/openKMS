@@ -72,7 +72,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: var(--space-4);
-  align-items: start;
+  align-items: stretch;
 }
 
 /* A chart is a card: one surface, one padding, one radius, and a title that separates itself from the plot rather
@@ -81,7 +81,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  min-height: 180px;
+  min-height: 240px;
   margin: 0;
   padding: var(--space-3) var(--space-4) var(--space-4);
   background: var(--color-bg-elevated);
@@ -159,9 +159,10 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: flex-start;
+  justify-content: center;
   gap: var(--space-2);
   border-style: dashed;
+  background: none;
 }
 
 .object-set-chart__add-select {
@@ -175,7 +176,12 @@
 }
 
 .object-set-chart__empty {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
   margin: 0;
+  min-height: 180px;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
 }

@@ -312,7 +312,7 @@ export function ObjectSetCharts({
             ) : isTimeline(chart) ? (
               /* Periods have an order of their own: a trend line says "getting better or worse", which bars ranked
                  by size cannot say at all. */
-              <ResponsiveContainer width="100%" height={168}>
+              <ResponsiveContainer width="100%" height={PLOT_HEIGHT}>
                 <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 8 }}>
                   <XAxis
                     dataKey="label"
@@ -345,7 +345,7 @@ export function ObjectSetCharts({
             ) : isHistogram(chart) ? (
               /* An interval distribution is read across a number line, so it is drawn on one: bars side by side on a
                  category axis of intervals would look exactly like a value distribution. */
-              <ResponsiveContainer width="100%" height={168}>
+              <ResponsiveContainer width="100%" height={PLOT_HEIGHT}>
                 <BarChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 8 }}>
                   <XAxis
                     dataKey="label"
@@ -370,7 +370,7 @@ export function ObjectSetCharts({
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <ResponsiveContainer width="100%" height={Math.max(96, data.length * 26)}>
+              <ResponsiveContainer width="100%" height={PLOT_HEIGHT}>
                 <BarChart data={data} layout="vertical" margin={{ top: 4, right: 12, bottom: 4, left: 4 }}>
                   <XAxis type="number" hide />
                   <YAxis
@@ -444,6 +444,9 @@ export function ObjectSetCharts({
   );
 }
 
+/** One height for every plot: a row of charts is read as a row, so it is drawn as one. */
+const PLOT_HEIGHT = 180;
+
 function fillFor(selected: boolean) {
   return selected ? 'var(--color-accent)' : 'var(--color-accent-subtle)';
 }
@@ -477,7 +480,7 @@ function CrossTab({
     (chart.cells ?? []).find((cell) => cell.value === row && cell.split === column);
   const max = Math.max(1, ...(chart.cells ?? []).map((cell) => cell.count));
   return (
-    <div className="object-set-crosstab-wrap">
+    <div className="object-set-crosstab-wrap" style={{ maxHeight: PLOT_HEIGHT, overflow: 'auto' }}>
       <table className="object-set-crosstab">
         <thead>
           <tr>
