@@ -22,6 +22,9 @@ export const INPUT_TYPES: InputType[] = ['string', 'number', 'integer', 'boolean
 
 export type NodeParam = { key: string; value: string };
 
+export type NodeKind = 'model' | 'action' | 'condition' | 'loop';
+export const NODE_KINDS: NodeKind[] = ['model', 'action', 'condition', 'loop'];
+
 export type BranchDraft = {
   /** Template that decides the branch; empty means the fallback (must be last). */
   when: string;
@@ -30,9 +33,14 @@ export type BranchDraft = {
 
 export type ModelNode = {
   id: string;
-  kind: 'model' | 'action' | 'condition';
+  kind: 'model' | 'action' | 'condition' | 'loop';
   /** `condition` only: ordered branches, the fallback last. */
   branches: BranchDraft[];
+  /** `loop` only: what to iterate, the element's name, the body, and how many at a time. */
+  over: string;
+  elementName: string;
+  concurrency: string;
+  loopNodes: ModelNode[];
   /** `action` only: the action type's api_name; its edits are composed, never applied here. */
   actionType: string;
   /** `action` only: parameters, each a template like `{{n1.summary}}`. */
@@ -86,6 +94,10 @@ export function newNode(index: number): ModelNode {
     id: `n${index + 1}`,
     kind: 'model',
     branches: [],
+    over: '',
+    elementName: 'item',
+    concurrency: '',
+    loopNodes: [],
     actionType: '',
     params: [],
     model_id: '',
@@ -110,14 +122,19 @@ export function draftFromSpec(spec: unknown): FlowDraft {
   if (!Array.isArray(raw)) return emptyDraft();
   const nodes = raw
     .filter((node): node is Record<string, unknown> => Boolean(node) && typeof node === 'object')
-    .filter((node) => node.kind === 'model' || node.kind === 'action' || node.kind === 'condition')
+    .filter((node) => NODE_KINDS.includes(String(node.kind ?? 'model') as NodeKind))
     .map((node, index) => {
       const fields = fieldsFromSchema(node.output_schema);
-      const kind = (node.kind ?? 'model') as 'model' | 'action' | 'condition';
+      const kind = (node.kind ?? 'model') as NodeKind;
+      const loopNodes = kind === 'loop' ? draftFromSpec({ nodes: node.nodes }).nodes : [];
       return {
         id: String(node.id ?? `n${index + 1}`),
         kind,
         branches: kind === 'condition' ? branchesFromSpec(node.branches) : [],
+        over: kind === 'loop' ? String(node.over ?? '') : '',
+        elementName: kind === 'loop' ? String(node.as ?? 'item') : 'item',
+        concurrency: kind === 'loop' && node.concurrency ? String(node.concurrency) : '',
+        loopNodes: loopNodes.filter((child) => child.kind !== 'condition' && child.kind !== 'loop'),
         actionType: String(node.action_type ?? ''),
         params: Object.entries((node.params as Record<string, unknown>) ?? {}).map(([key, value]) => ({
           key,
@@ -197,6 +214,30 @@ export function specFromDraft(draft: FlowDraft): DraftResult {
     if (!id) errors.push(`${where}: an id is required`);
     else if (seen.has(id)) errors.push(`${where}: id "${id}" is used twice`);
     else seen.add(id);
+
+    if (node.kind === 'loop') {
+      if (!node.over.trim()) errors.push(`${where}: a loop needs a list to iterate`);
+      if (!node.loopNodes.length) errors.push(`${where}: a loop needs a body`);
+      const body = specFromDraft({ nodes: node.loopNodes, inputs: [], output: '' });
+      for (const error of body.errors) {
+        errors.push(`${where}.body${error.slice(error.indexOf(':'))}`);
+      }
+      const spec: Record<string, unknown> = {
+        id,
+        kind: 'loop',
+        over: node.over.trim(),
+        as: node.elementName.trim() || 'item',
+        nodes: body.spec?.nodes ?? [],
+      };
+      if (node.concurrency.trim()) {
+        const concurrency = Number(node.concurrency);
+        if (!Number.isInteger(concurrency) || concurrency < 1) {
+          errors.push(`${where}: concurrency must be a positive integer`);
+        } else spec.concurrency = concurrency;
+      }
+      nodes.push(spec);
+      return;
+    }
 
     if (node.kind === 'condition') {
       if (!node.branches.length) {

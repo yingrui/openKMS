@@ -46,8 +46,8 @@ class TestValidation:
         assert validate_flow_spec({}) == ["flow_spec.nodes must be a non-empty list"]
 
     def test_rejects_node_kinds_that_are_not_implemented_yet(self):
-        errors = validate_flow_spec({"nodes": [{"id": "n1", "kind": "loop"}]})
-        assert any("'loop' is not supported yet" in e for e in errors)
+        errors = validate_flow_spec({"nodes": [{"id": "n1", "kind": "transform"}]})
+        assert any("'transform' is not supported yet" in e for e in errors)
 
     def test_rejects_duplicate_ids_and_missing_prompts(self):
         errors = validate_flow_spec(
@@ -658,3 +658,159 @@ class TestConditionNode:
 
         assert outcome.status == "ok", outcome.error
         assert outcome.output == {"edits": [{"op": "create", "object_type": "Holding", "properties": {"ts_code": "42"}}]}
+
+
+class TestLoopNode:
+    """A loop maps a list through a body; edits keep their order, values may run concurrently."""
+
+    def _spec(self, **node):
+        return {
+            "nodes": [
+                {
+                    "id": "n1",
+                    "kind": "model",
+                    "prompt": "list them",
+                    "output_schema": {
+                        "type": "object",
+                        "properties": {"items": {"type": "array", "items": {"type": "string"}}},
+                        "required": ["items"],
+                    },
+                },
+                {
+                    "id": "l1",
+                    "kind": "loop",
+                    "over": "{{n1.items}}",
+                    "as": "item",
+                    "nodes": [
+                        {"id": "x1", "kind": "model", "prompt": "summarise {{item}}", "output_schema": SCHEMA}
+                    ],
+                    **node,
+                },
+            ]
+        }
+
+    def test_a_loop_needs_a_list_and_a_body(self):
+        errors = validate_flow_spec({"nodes": [{"id": "l1", "kind": "loop"}]})
+        assert any("over is required" in e for e in errors)
+        assert any("nodes must be a non-empty list" in e for e in errors)
+
+    def test_a_nested_loop_is_refused(self):
+        errors = validate_flow_spec(
+            {
+                "nodes": [
+                    {
+                        "id": "l1",
+                        "kind": "loop",
+                        "over": "{{n1.items}}",
+                        "nodes": [{"id": "l2", "kind": "loop", "over": "{{x}}", "nodes": []}],
+                    }
+                ]
+            }
+        )
+        assert any("no nested loops or conditions" in e for e in errors)
+
+    @pytest.mark.asyncio
+    async def test_each_item_reaches_the_body_as_the_element_variable(self):
+        prompts: list[str] = []
+        turns = {"n": 0}
+
+        def handler(messages, _info: AgentInfo) -> ModelResponse:
+            text = str(messages[-1])
+            prompts.append(text)
+            if "list them" in text:
+                return ModelResponse(parts=[TextPart(json.dumps({"items": ["alpha", "beta"]}))])
+            return ModelResponse(parts=[TextPart(json.dumps({"answer": "42"}))])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        outcome = await run_flow(self._spec(), {}, model_factory=factory)
+
+        assert outcome.status == "ok", outcome.error
+        body_prompts = [prompt for prompt in prompts if "summarise" in prompt]
+        assert any("alpha" in prompt for prompt in body_prompts)
+        assert any("beta" in prompt for prompt in body_prompts)
+        assert outcome.output == {"items": [{"answer": "42"}, {"answer": "42"}]}
+        loop_entry = outcome.trace["nodes"][1]
+        assert [row["index"] for row in loop_entry["iterations"]] == [0, 1]
+
+    @pytest.mark.asyncio
+    async def test_an_empty_list_produces_no_iterations(self):
+        def handler(messages, _info: AgentInfo) -> ModelResponse:
+            if "list them" in str(messages[-1]):
+                return ModelResponse(parts=[TextPart(json.dumps({"items": []}))])
+            return ModelResponse(parts=[TextPart(json.dumps({"answer": "42"}))])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        outcome = await run_flow(self._spec(), {}, model_factory=factory)
+
+        assert outcome.status == "ok"
+        assert outcome.output == {"items": []}
+        assert outcome.trace["nodes"][1]["iterations"] == []
+
+    @pytest.mark.asyncio
+    async def test_a_non_list_is_refused_before_any_iteration(self):
+        def handler(_messages, _info: AgentInfo) -> ModelResponse:
+            return ModelResponse(parts=[TextPart(json.dumps({"items": "not a list"}))])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        outcome = await run_flow(self._spec(), {}, model_factory=factory)
+
+        assert outcome.status == "error"
+        assert "not a list" in (outcome.error or "")
+
+    @pytest.mark.asyncio
+    async def test_edits_from_every_iteration_are_collected_in_order(self):
+        seen: list[dict] = []
+
+        async def planner(_api_name: str, params: dict) -> list[dict]:
+            seen.append(params)
+            return [{"op": "create", "object_type": "Holding", "properties": params}]
+
+        spec = {
+            "nodes": [
+                {
+                    "id": "n1",
+                    "kind": "model",
+                    "prompt": "list them",
+                    "output_schema": {
+                        "type": "object",
+                        "properties": {"items": {"type": "array", "items": {"type": "string"}}},
+                        "required": ["items"],
+                    },
+                },
+                {
+                    "id": "l1",
+                    "kind": "loop",
+                    "over": "{{n1.items}}",
+                    "as": "code",
+                    "nodes": [
+                        {"id": "a1", "kind": "action", "action_type": "addHolding", "params": {"ts_code": "{{code}}"}}
+                    ],
+                },
+            ]
+        }
+
+        def handler(messages, _info: AgentInfo) -> ModelResponse:
+            if "list them" in str(messages[-1]):
+                return ModelResponse(parts=[TextPart(json.dumps({"items": ["AAA", "BBB", "CCC"]}))])
+            return ModelResponse(parts=[TextPart(json.dumps({"answer": "42"}))])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        outcome = await run_flow(spec, {}, model_factory=factory, action_planner=planner)
+
+        assert outcome.status == "ok", outcome.error
+        assert [params["ts_code"] for params in seen] == ["AAA", "BBB", "CCC"]
+        assert outcome.output == {
+            "edits": [
+                {"op": "create", "object_type": "Holding", "properties": {"ts_code": "AAA"}},
+                {"op": "create", "object_type": "Holding", "properties": {"ts_code": "BBB"}},
+                {"op": "create", "object_type": "Holding", "properties": {"ts_code": "CCC"}},
+            ]
+        }

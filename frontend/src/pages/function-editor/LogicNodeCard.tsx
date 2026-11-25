@@ -7,11 +7,13 @@ import {
   unknownReferences,
   type FieldType,
   type ModelNode,
+  type NodeKind,
   type NodeTool,
   type OutputField,
 } from './logicFlow';
 import { ActionParams } from './LogicNodeActionParams';
 import { ConditionBranches } from './LogicNodeConditionBranches';
+import { LoopBody } from './LogicNodeLoopBody';
 import { NodeRunValue } from './LogicNodeResult';
 
 /**
@@ -85,6 +87,8 @@ export function LogicNodeCard({
             ? t('editor.logicTypeEdits')
             : node.kind === 'condition'
               ? t('editor.logicTypeBranch')
+              : node.kind === 'loop'
+                ? t('editor.logicTypeLoop')
               : structured
               ? t('editor.logicTypeFields', { count: fields.length })
               : t('editor.logicTypeText')}
@@ -137,12 +141,13 @@ export function LogicNodeCard({
           id={`logic-kind-${index}`}
           className="ds-control logic-node__mode"
           value={node.kind}
-          onChange={(e) => onChange({ kind: e.target.value as 'model' | 'action' | 'condition' })}
+          onChange={(e) => onChange({ kind: e.target.value as NodeKind })}
           disabled={disabled}
         >
           <option value="model">{t('editor.logicNodeKindModel')}</option>
           <option value="action">{t('editor.logicNodeKindAction')}</option>
           <option value="condition">{t('editor.logicNodeKindCondition')}</option>
+          <option value="loop">{t('editor.logicNodeKindLoop')}</option>
         </select>
         {node.kind === 'action' ? (
           <input
@@ -162,6 +167,10 @@ export function LogicNodeCard({
 
       {node.kind === 'condition' ? (
         <ConditionBranches node={node} references={references} disabled={disabled} onChange={onChange} />
+      ) : null}
+
+      {node.kind === 'loop' ? (
+        <LoopBody node={node} references={references} disabled={disabled} onChange={onChange} />
       ) : null}
 
       {node.kind === 'model' ? (

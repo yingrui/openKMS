@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Plus, Trash2 } from 'lucide-react';
 import { newNode, type BranchDraft, type ModelNode } from './logicFlow';
+import { NestedNodeList } from './LogicNodeNestedList';
 
 export function ConditionBranches({
   node,
@@ -42,68 +43,11 @@ export function ConditionBranches({
               <Trash2 size={14} aria-hidden />
             </button>
           </div>
-          {branch.nodes.map((child, childIndex) => (
-            <div key={childIndex} className="logic-branch__node">
-              <select
-                className="ds-control logic-node__tool-kind"
-                value={child.kind}
-                aria-label={t('editor.logicNodeKind')}
-                onChange={(e) =>
-                  patch(index, {
-                    nodes: replaceAt(branch.nodes, childIndex, {
-                      kind: e.target.value as 'model' | 'action',
-                    }),
-                  })
-                }
-                disabled={disabled}
-              >
-                <option value="model">{t('editor.logicNodeKindModel')}</option>
-                <option value="action">{t('editor.logicNodeKindAction')}</option>
-              </select>
-              {child.kind === 'action' ? (
-                <input
-                  className="ds-control logic-node__action-type"
-                  value={child.actionType}
-                  placeholder={t('editor.logicActionType')}
-                  aria-label={t('editor.logicActionType')}
-                  onChange={(e) =>
-                    patch(index, { nodes: replaceAt(branch.nodes, childIndex, { actionType: e.target.value }) })
-                  }
-                  disabled={disabled}
-                />
-              ) : (
-                <textarea
-                  className="ds-control logic-node__prompt logic-branch__prompt"
-                  rows={2}
-                  value={child.prompt}
-                  placeholder={t('editor.logicPromptPlaceholder')}
-                  aria-label={t('editor.logicPrompt')}
-                  onChange={(e) =>
-                    patch(index, { nodes: replaceAt(branch.nodes, childIndex, { prompt: e.target.value }) })
-                  }
-                  disabled={disabled}
-                />
-              )}
-              <button
-                type="button"
-                className="ds-table-icon-link"
-                aria-label={t('shared.delete')}
-                onClick={() => patch(index, { nodes: branch.nodes.filter((_, i) => i !== childIndex) })}
-                disabled={disabled || branch.nodes.length <= 1}
-              >
-                <Trash2 size={14} aria-hidden />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => patch(index, { nodes: [...branch.nodes, newNode(branch.nodes.length)] })}
+          <NestedNodeList
+            nodes={branch.nodes}
             disabled={disabled}
-          >
-            <Plus size={14} aria-hidden />
-            {t('editor.logicBranchAddNode')}
-          </button>
+            onChange={(nodes) => patch(index, { nodes })}
+          />
         </div>
       ))}
       <button

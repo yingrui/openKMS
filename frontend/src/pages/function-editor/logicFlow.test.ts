@@ -285,3 +285,62 @@ describe('condition nodes', () => {
     expect(opened.nodes[0].branches[0].nodes).toEqual([]);
   });
 });
+
+describe('loop nodes', () => {
+  it('round-trips a loop with its element name and concurrency', () => {
+    const opened = draftFromSpec({
+      nodes: [
+        {
+          id: 'l1',
+          kind: 'loop',
+          over: '{{n1.tickers}}',
+          as: 'ticker',
+          concurrency: 2,
+          nodes: [{ id: 'x1', kind: 'model', prompt: 'why {{ticker}}' }],
+        },
+      ],
+    });
+
+    expect(opened.nodes[0].kind).toBe('loop');
+    expect(opened.nodes[0].over).toBe('{{n1.tickers}}');
+    expect(opened.nodes[0].elementName).toBe('ticker');
+    expect(opened.nodes[0].concurrency).toBe('2');
+    expect(opened.nodes[0].loopNodes[0].prompt).toBe('why {{ticker}}');
+
+    expect(specFromDraft(opened).spec?.nodes[0]).toEqual({
+      id: 'l1',
+      kind: 'loop',
+      over: '{{n1.tickers}}',
+      as: 'ticker',
+      concurrency: 2,
+      nodes: [{ id: 'x1', kind: 'model', prompt: 'why {{ticker}}' }],
+    });
+  });
+
+  it('refuses a loop with nothing to iterate or an empty body', () => {
+    const result = specFromDraft({
+      nodes: [{ ...newNode(0), kind: 'loop', over: '', loopNodes: [] }],
+      inputs: [],
+      output: '',
+    });
+    expect(result.spec).toBeNull();
+    expect(result.errors).toEqual([
+      '#1: a loop needs a list to iterate',
+      '#1: a loop needs a body',
+    ]);
+  });
+
+  it('drops a nested loop, which the backend would refuse', () => {
+    const opened = draftFromSpec({
+      nodes: [
+        {
+          id: 'l1',
+          kind: 'loop',
+          over: '{{n1.items}}',
+          nodes: [{ id: 'l2', kind: 'loop', over: '{{x}}', nodes: [] }],
+        },
+      ],
+    });
+    expect(opened.nodes[0].loopNodes).toEqual([]);
+  });
+});

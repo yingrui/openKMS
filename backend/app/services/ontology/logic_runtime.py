@@ -17,6 +17,7 @@ Three invariants this module is responsible for:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import time
@@ -28,7 +29,7 @@ from pydantic_ai import Agent, PromptedOutput, StructuredDict
 from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
 from pydantic_ai.usage import UsageLimitExceeded, UsageLimits
 
-SUPPORTED_NODE_KINDS = ("model", "action", "condition")
+SUPPORTED_NODE_KINDS = ("model", "action", "condition", "loop")
 SUPPORTED_TOOL_KINDS = ("query_objects", "call_function")
 PROMPT_REF = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\}\}")
 DEFAULT_NODE_TIMEOUT_S = 60.0
@@ -36,6 +37,9 @@ DEFAULT_NODE_TOKEN_LIMIT = 8192
 DEFAULT_TOOL_LIMIT = 5
 MAX_TOOL_LIMIT = 25
 MAX_TOOLS_PER_NODE = 4
+#: A loop is a cost multiplier; this bounds it before anyone discovers the bill.
+MAX_LOOP_ITERATIONS = 50
+DEFAULT_LOOP_CONCURRENCY = 4
 #: A tool-using node may go round the model a few times; more than this is a design problem, not a budget.
 MAX_TOOL_STEPS = 4
 MAX_TOOL_CALLS = 6
@@ -94,6 +98,8 @@ def validate_flow_spec(spec: dict | None) -> list[str]:
                 errors.append(f"{where}.params must be an object")
         if kind == "condition":
             errors.extend(_validate_branches(node, where, seen))
+        if kind == "loop":
+            errors.extend(_validate_loop(node, where, seen))
         if kind != "condition":
             errors.extend(_validate_tools(node, where))
 
@@ -181,6 +187,48 @@ def _validate_branches(node: dict, where: str, ids: set[str]) -> list[str]:
     return errors
 
 
+def _validate_loop(node: dict, where: str, ids: set[str]) -> list[str]:
+    """A loop needs a list, an element name, and a body of model/action nodes (no nested loops or conditions)."""
+    errors: list[str] = []
+    if not str(node.get("over") or "").strip():
+        errors.append(f"{where}.over is required (a list, e.g. '{{{{n1.items}}}}')")
+    element = str(node.get("as") or "").strip()
+    if element and not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", element):
+        errors.append(f"{where}.as must be an identifier")
+    concurrency = node.get("concurrency")
+    if concurrency is not None and (
+        not isinstance(concurrency, int) or not 1 <= concurrency <= MAX_LOOP_ITERATIONS
+    ):
+        errors.append(f"{where}.concurrency must be an integer between 1 and {MAX_LOOP_ITERATIONS}")
+
+    body = node.get("nodes")
+    if not isinstance(body, list) or not body:
+        errors.append(f"{where}.nodes must be a non-empty list")
+        return errors
+    for index, child in enumerate(body):
+        at = f"{where}.nodes[{index}]"
+        if not isinstance(child, dict):
+            errors.append(f"{at} must be an object")
+            continue
+        child_id = str(child.get("id") or "").strip()
+        if not child_id:
+            errors.append(f"{at}.id is required")
+        elif child_id in ids:
+            errors.append(f"{at}.id '{child_id}' is duplicated")
+        else:
+            ids.add(child_id)
+        child_kind = str(child.get("kind") or "")
+        if child_kind not in ("model", "action"):
+            errors.append(f"{at}.kind must be 'model' or 'action' (no nested loops or conditions)")
+        if child_kind == "model" and not str(child.get("prompt") or "").strip():
+            errors.append(f"{at}.prompt is required")
+        if child_kind == "action" and not str(child.get("action_type") or "").strip():
+            errors.append(f"{at}.action_type is required")
+        if child_kind in ("model", "action"):
+            errors.extend(_validate_tools(child, at))
+    return errors
+
+
 def _validate_tools(node: dict, where: str) -> list[str]:
     tools = node.get("tools")
     if tools is None:
@@ -244,6 +292,22 @@ def _lookup(variables: dict[str, Any], path: str) -> Any:
     return current
 
 
+def _loop_items(node: dict, variables: dict[str, Any]) -> list:
+    """`over` may point at a list or render to one; either way it must be a list and it must be bounded."""
+    rendered = render_template(str(node.get("over") or ""), variables)
+    try:
+        value = json.loads(rendered) if rendered.strip() else []
+    except json.JSONDecodeError:
+        raise FlowError(f"loop input is not a list: {rendered[:120]}") from None
+    if not isinstance(value, list):
+        raise FlowError(f"loop input is not a list: {rendered[:120]}")
+    if len(value) > MAX_LOOP_ITERATIONS:
+        raise FlowError(
+            f"loop input has {len(value)} items; at most {MAX_LOOP_ITERATIONS} are allowed"
+        )
+    return value
+
+
 def _truthy(rendered: str) -> bool:
     """A branch condition is truthy unless it renders to empty or an obvious no."""
     value = rendered.strip().lower()
@@ -299,6 +363,56 @@ async def _run_nodes(
                     raise FlowError("this flow has an action node but nothing can compose edits")
                 edits = await action_planner(str(node.get("action_type") or ""), rendered_params)
                 output = {"edits": edits}
+            elif node.get("kind") == "loop":
+                element_name = str(node.get("as") or "item")
+                items = _loop_items(node, variables)
+                body = list(node.get("nodes") or [])
+                has_action = any(
+                    isinstance(child, dict) and child.get("kind") == "action" for child in body
+                )
+                iterations: list[dict[str, Any]] = []
+                results: list[Any] = []
+
+                async def one(index: int, element: Any) -> Any:
+                    scoped = {**variables, element_name: element, "index": index}
+                    nested_trace: dict[str, Any] = {"nodes": []}
+                    result, _ = await _run_nodes(
+                        body,
+                        variables=scoped,
+                        model_factory=model_factory,
+                        tool_runner=tool_runner,
+                        schema_resolver=schema_resolver,
+                        action_planner=action_planner,
+                        node_timeout_s=node_timeout_s,
+                        node_token_limit=node_token_limit,
+                        trace=nested_trace,
+                    )
+                    iterations.append(
+                        {"index": index, "ok": True, "output": result, "nodes": nested_trace["nodes"]}
+                    )
+                    return result
+
+                # Edits must keep the caller's order, so a loop that writes runs one iteration at a time.
+                if has_action:
+                    results = [await one(index, element) for index, element in enumerate(items)]
+                else:
+                    limit = int(node.get("concurrency") or DEFAULT_LOOP_CONCURRENCY)
+                    semaphore = asyncio.Semaphore(limit)
+
+                    async def guarded(index: int, element: Any) -> Any:
+                        async with semaphore:
+                            return await one(index, element)
+
+                    results = await asyncio.gather(
+                        *(guarded(index, element) for index, element in enumerate(items))
+                    )
+                    results = list(results)
+                    iterations.sort(key=lambda row: row["index"])
+
+                edits = [edit for result in results if isinstance(result, dict) for edit in (result.get("edits") or [])]
+                item_outputs = [result for result in results if not (isinstance(result, dict) and "edits" in result)]
+                output = {"edits": edits} if edits else {"items": item_outputs}
+                entry["iterations"] = iterations
             elif node.get("kind") == "condition":
                 branch = _pick_branch(node, variables)
                 entry["branch"] = branch.get("when") or "(fallback)"

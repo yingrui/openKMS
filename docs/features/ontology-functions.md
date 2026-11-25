@@ -164,8 +164,15 @@ Executor | `app/services/ontology/logic_runtime.py` — **the backend orchestrat
 Model | a node's `model_id` resolves through the platform registry (`api_models` / `api_providers`); omitted → the default `chat-completions` model |
 Trace | `ontology_function_executions.trace` — per node: prompt as sent, tokens, duration, error; read via `GET …/{id}/executions` |
 
-Supported node kinds today: **`model`**, **`action`**, and **`condition`**. `function` / `transform` / `loop` are
+Supported node kinds today: **`model`**, **`action`**, **`condition`** and **`loop`**. `function` / `transform` are
 rejected at save time with a message that says they are not implemented yet, rather than half-working.
+
+**`loop` maps a list through a body.** `{kind: "loop", over: "{{n1.items}}", as: "item", nodes: […], concurrency}`
+runs the body once per element with `{{item}}` bound (plus `{{index}}`), and the body may be `model` or `action` nodes —
+no nested loops or conditions, same one-level rule as branches. A loop that writes (`action` in the body) runs **one
+iteration at a time**, so the collected edit batch keeps the caller's order; a loop that only computes runs up to
+`concurrency` (default 4) at once. Output is `{"edits": […]}` when the body edits, otherwise `{"items": […]}`, and the
+iteration count is capped at 50 — a loop is a cost multiplier, so the ceiling is not optional.
 
 **`condition` branches, with AIP Logic's rules.** `{kind: "condition", branches: [{when, nodes}, …]}` runs the first
 branch whose `when` holds; an empty `when` is the fallback and **must be last** (a fallback in the middle would swallow
