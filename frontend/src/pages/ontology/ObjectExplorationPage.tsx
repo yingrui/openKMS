@@ -35,10 +35,12 @@ import {
 import { ObjectSetActionDialog } from './ObjectSetActionDialog';
 import { ObjectSetChartBoard } from './ObjectSetChartBoard';
 import { ObjectSetResults } from './ObjectSetResults';
+import { ObjectSetToolbar } from './ObjectSetToolbar';
 import { useObjectSetCompare } from './useObjectSetCompare';
 import { ObjectSetActionMenu } from './ObjectSetActionMenu';
 
 import { useObjectSetAction } from './useObjectSetAction';
+import { useExplorationHistory } from './useExplorationHistory';
 import { useObjectSetOutcome } from './useObjectSetOutcome';
 import { ExplorationLayoutMenu } from './ExplorationLayoutMenu';
 import { ObjectExplorationSaveDialog } from './ObjectExplorationSaveDialog';
@@ -106,7 +108,6 @@ export function ObjectExplorationPage() {
   /* The types on the other side of those links: a chart may read a neighbour's property, and the option list has to
      know what that neighbour declares. */
   const [typeById, setTypeById] = useState<Record<string, ObjectTypeResponse>>({});
-  const [pivotOpen, setPivotOpen] = useState(false);
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
   const [layoutChoices, setLayoutChoices] = useState<ExplorationLayoutChoice[]>([]);
@@ -125,6 +126,20 @@ export function ObjectExplorationPage() {
       params.delete('f');
       for (const filter of next) params.append('f', filter);
     });
+
+  /* What the exploration is, for undo: the URL plus the two pieces of state it does not carry. */
+  const history = useExplorationHistory({
+    snapshot: {
+      query: searchParams.toString(),
+      charts: chartSpecs,
+      columns: layoutColumns,
+    },
+    apply: (next) => {
+      setChartSpecs(next.charts);
+      setLayoutColumns(next.columns);
+      setSearchParams(new URLSearchParams(next.query), { replace: true });
+    },
+  });
 
   const toggleRow = (id: string) =>
     setSelected((current) => {
@@ -393,7 +408,6 @@ export function ObjectExplorationPage() {
      expressed on the other side without a second hop, so it is refused rather than widened. */
   const canPivot = filters.every((filter) => !filter.startsWith('@'));
   const pivotTo = (targetTypeId: string, linkName: string) => {
-    setPivotOpen(false);
     const params = new URLSearchParams();
     for (const filter of filters) {
       const [prop, op, ...rest] = filter.split(':');
@@ -547,46 +561,18 @@ export function ObjectExplorationPage() {
         </>
       }
     >
-      <div className="object-set-toolbar">
-        <input
-          className="ds-control object-set-toolbar__search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t('objectSet.searchPlaceholder')}
-          aria-label={t('objectSet.searchPlaceholder')}
-        />
-        {pivots.length > 0 ? (
-          <div className="object-set-pivot">
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              aria-expanded={pivotOpen}
-              disabled={!canPivot}
-              title={canPivot ? undefined : t('objectSet.pivotNeedsPlainSet')}
-              onClick={() => setPivotOpen((value) => !value)}
-            >
-              {t('objectSet.pivot')}
-            </button>
-            {pivotOpen && canPivot ? (
-              <div className="object-set-pivot__panel" role="menu">
-                {pivots.map((pivot) => (
-                  <button
-                    key={pivot.key}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => pivotTo(pivot.targetTypeId, pivot.link)}
-                  >
-                    <span>{pivot.label}</span>
-                    <span className="object-set-pivot__via">
-                      {t('objectSet.pivotVia', { name: pivot.viaName })}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+      <ObjectSetToolbar
+        search={search}
+        onSearch={setSearch}
+        pivots={pivots}
+        canPivot={canPivot}
+        pivotBlockedReason={t('objectSet.pivotNeedsPlainSet')}
+        onPivot={pivotTo}
+        canUndo={history.canUndo}
+        canRedo={history.canRedo}
+        onUndo={history.undo}
+        onRedo={history.redo}
+      />
 
       <ObjectSetFilters filters={filters} properties={properties} onChange={setFilters} />
 

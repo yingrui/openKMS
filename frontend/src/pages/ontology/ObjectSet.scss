@@ -212,6 +212,11 @@
   margin-bottom: var(--space-3);
 }
 
+.object-set-undo {
+  display: inline-flex;
+  gap: 2px;
+}
+
 .object-set-toolbar__total {
   margin-right: auto;
   font-size: var(--text-sm);

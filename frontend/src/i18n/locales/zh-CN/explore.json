@@ -444,7 +444,9 @@
     "actionRefEmpty": "没有匹配的对象",
     "actionRefSelected": "当前选中（{{count}}）",
     "actionRefChosen": "已选 {{count}} 个{{type}}",
-    "actionRefRemove": "移除 {{name}}"
+    "actionRefRemove": "移除 {{name}}",
+    "undo": "撤销",
+    "redo": "重做"
   },
   "explorerSections": {
     "explorations": "探索",

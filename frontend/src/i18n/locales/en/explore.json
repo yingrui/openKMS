@@ -444,7 +444,9 @@
     "actionRefEmpty": "Nothing matches",
     "actionRefSelected": "Ticked objects ({{count}})",
     "actionRefChosen": "{{count}} {{type}} chosen",
-    "actionRefRemove": "Remove {{name}}"
+    "actionRefRemove": "Remove {{name}}",
+    "undo": "Undo",
+    "redo": "Redo"
   },
   "explorerSections": {
     "explorations": "Explorations",
