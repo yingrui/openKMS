@@ -155,68 +155,68 @@
 }
 
 /* The "add chart" card that ends the chart grid. */
-/* The add tile: a dashed target the size of a card, not an empty card holding a form control.
- *
- * The `<select>` fills the tile invisibly, so the whole surface is the control (a 32px dropdown in a 240px card was
- * the thing that looked wrong) and the browser's own picker does the listing. */
+/* A section of the exploration: a title, the thing that acts on the whole section, and its content. */
+.object-set-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.object-set-section__title {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* Adding a chart is a button beside the section title, with the property list behind it. */
 .object-set-chart-add {
   position: relative;
+}
+
+.object-set-chart-add__panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + var(--space-1));
+  right: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  min-height: 240px;
-  padding: var(--space-4);
-  border: 1px dashed var(--color-border-strong);
-  border-radius: var(--radius-lg);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition:
-    border-color var(--duration-fast) var(--ease-standard),
-    background var(--duration-fast) var(--ease-standard),
-    color var(--duration-fast) var(--ease-standard);
+  gap: 2px;
+  width: 16rem;
+  max-height: 18rem;
+  overflow-y: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-lg);
 
-  &:hover,
-  &:focus-within {
-    border-color: var(--color-accent);
-    background: var(--color-bg-muted);
+  button {
+    padding: var(--space-1) var(--space-2);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
     color: var(--color-text);
+    font: inherit;
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-bg-muted);
+    }
   }
-
-  &:focus-within {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
-  }
 }
 
-.object-set-chart-add__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid currentcolor;
-  border-radius: 999px;
-}
-
-.object-set-chart-add__label {
-  font-size: var(--text-sm);
-  font-weight: var(--font-weight-medium);
-}
-
-.object-set-chart-add__hint {
+.object-set-chart-add__empty {
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
   font-size: var(--text-xs);
-}
-
-/* Covers the tile: the visible surface is the label, the real control is this. */
-.object-set-chart-add__select {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
+  color: var(--color-text-muted);
 }
 
 .object-set-chart__more {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Redo2, Undo2 } from 'lucide-react';
+import { ObjectSetChartAdd } from './ObjectSetChartAdd';
 
 export interface PivotOption {
   key: string;
@@ -27,6 +28,8 @@ export function ObjectSetToolbar({
   canRedo,
   onUndo,
   onRedo,
+  addable,
+  onAddChart,
 }: {
   search: string;
   onSearch: (next: string) => void;
@@ -38,6 +41,9 @@ export function ObjectSetToolbar({
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  /** Properties a chart can be added for, and the handler. The action lives here, not inside the chart grid. */
+  addable: { value: string; label: string }[];
+  onAddChart: (prop: string) => void;
 }) {
   const { t } = useTranslation('explore');
   const [open, setOpen] = useState(false);
@@ -124,6 +130,7 @@ export function ObjectSetToolbar({
           ) : null}
         </div>
       ) : null}
+      <ObjectSetChartAdd options={addable} onAdd={onAddChart} />
     </div>
   );
 }

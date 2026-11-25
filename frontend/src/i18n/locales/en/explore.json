@@ -448,7 +448,8 @@
     "undo": "Undo",
     "redo": "Redo",
     "actionOnSet": "{{name}} — run on all {{count}}",
-    "chartBuckets": "Intervals"
+    "chartBuckets": "Intervals",
+    "chartsTitle": "Charts"
   },
   "explorerSections": {
     "explorations": "Explorations",

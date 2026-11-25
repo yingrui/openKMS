@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next';
 import type { ObjectAggregateChart } from '../../data/ontologyApi';
 import type { ExplorationResponse } from '../../data/explorationsApi';
 import { ObjectSetActionOutcome } from './ObjectSetActionOutcome';
-import { ObjectSetChartAdd } from './ObjectSetChartAdd';
 import { ObjectSetCharts } from './ObjectSetCharts';
 import { ObjectSetComparePicker } from './ObjectSetComparePicker';
 import type { ChartSettings, ChartSpec } from './objectSetChartsModel';
@@ -27,7 +26,6 @@ export function ObjectSetChartBoard({
   filters,
   chartSpecs,
   chartOptions,
-  addable,
   compare,
   refreshKey,
   onLoaded,
@@ -37,7 +35,6 @@ export function ObjectSetChartBoard({
   onPickRange,
   onRemove,
   onMove,
-  onAdd,
 }: {
   total: number | null;
   compareLabel: string | null;
@@ -50,7 +47,6 @@ export function ObjectSetChartBoard({
   filters: string[];
   chartSpecs: ChartSpec[];
   chartOptions: { value: string; label: string }[];
-  addable: { value: string; label: string }[];
   compare?: { filters: string[]; label: string };
   refreshKey: number;
   onLoaded: (charts: ObjectAggregateChart[]) => void;
@@ -60,7 +56,6 @@ export function ObjectSetChartBoard({
   onPickRange: (prop: string, from: number, to: number) => void;
   onRemove: (prop: string) => void;
   onMove: (prop: string, direction: -1 | 1) => void;
-  onAdd: (prop: string) => void;
 }) {
   const { t } = useTranslation('explore');
   return (
@@ -83,6 +78,9 @@ export function ObjectSetChartBoard({
           onDismiss={onDismissOutcome}
         />
       ) : null}
+      <div className="object-set-section">
+        <h2 className="object-set-section__title">{t('objectSet.chartsTitle')}</h2>
+      </div>
       <ObjectSetCharts
         typeId={typeId}
         search={search}
@@ -99,7 +97,6 @@ export function ObjectSetChartBoard({
         onRemove={onRemove}
         onMove={onMove}
         canMove={chartSpecs.length > 1}
-        footer={<ObjectSetChartAdd options={addable} onAdd={onAdd} />}
       />
     </>
   );

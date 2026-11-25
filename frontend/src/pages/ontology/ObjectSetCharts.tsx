@@ -1,4 +1,3 @@
-import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -54,7 +53,6 @@ export function ObjectSetCharts({
   onRemove,
   onMove,
   canMove,
-  footer,
   onLoaded,
   refreshKey,
 }: {
@@ -77,8 +75,6 @@ export function ObjectSetCharts({
   onRemove?: (key: string) => void;
   onMove?: (key: string, direction: -1 | 1) => void;
   canMove?: boolean;
-  /** Rendered as the last cell of the grid — the "add chart" card. */
-  footer?: React.ReactNode;
   /** The numbers on screen, so the caller can compare them with the numbers after an action. */
   onLoaded?: (charts: ObjectAggregateChart[]) => void;
   /** Bump to re-read: an action has changed the objects this set contains. */
@@ -441,7 +437,6 @@ export function ObjectSetCharts({
           </figure>
         );
       })}
-      {footer}
     </div>
   );
 }

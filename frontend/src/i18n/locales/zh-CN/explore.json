@@ -448,7 +448,8 @@
     "undo": "撤销",
     "redo": "重做",
     "actionOnSet": "{{name}} — 对全部 {{count}} 个执行",
-    "chartBuckets": "分箱数"
+    "chartBuckets": "分箱数",
+    "chartsTitle": "图表"
   },
   "explorerSections": {
     "explorations": "探索",

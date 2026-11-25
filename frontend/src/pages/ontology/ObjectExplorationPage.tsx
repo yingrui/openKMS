@@ -573,6 +573,8 @@ export function ObjectExplorationPage() {
         canRedo={history.canRedo}
         onUndo={history.undo}
         onRedo={history.redo}
+        addable={addable}
+        onAddChart={(prop) => setChartSpecs(addSpec(specs, { prop }))}
       />
 
       <ObjectSetFilters filters={filters} properties={properties} onChange={setFilters} />
@@ -600,7 +602,6 @@ export function ObjectExplorationPage() {
           filters={filters}
           chartSpecs={specs}
           chartOptions={chartOptions}
-          addable={addable}
           compare={compareSet ?? undefined}
           refreshKey={outcome.refreshKey}
           onLoaded={outcome.onLoaded}
@@ -634,7 +635,6 @@ export function ObjectExplorationPage() {
           }
           onRemove={removeChart}
           onMove={moveChart}
-          onAdd={(prop) => setChartSpecs(addSpec(specs, { prop }))}
         />
 
       {/* The objects the charts describe, on the same screen: a chart tells you where they are, the table tells you
