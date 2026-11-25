@@ -1,6 +1,12 @@
+import { Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-/** The dashed card that adds a chart: a property of this type, or one of a neighbour's through a link. */
+/**
+ * The tile that adds a chart.
+ *
+ * It is a label over a native select: the tile is what a reader sees, and the native picker is what they get
+ * — no hand-rolled dropdown, and the whole tile is the hit area instead of a control sitting inside a card.
+ */
 export function ObjectSetChartAdd({
   options,
   onAdd,
@@ -11,16 +17,19 @@ export function ObjectSetChartAdd({
   const { t } = useTranslation('explore');
   if (options.length === 0) return null;
   return (
-    <div className="object-set-chart object-set-chart--add">
-      <label className="object-set-chart__title" htmlFor="object-set-add-chart">
-        {t('objectSet.chartAdd')}
-      </label>
+    <label className="object-set-chart-add" htmlFor="object-set-add-chart">
+      <span className="object-set-chart-add__icon" aria-hidden>
+        <Plus size={18} />
+      </span>
+      <span className="object-set-chart-add__label">{t('objectSet.chartAdd')}</span>
+      <span className="object-set-chart-add__hint">{t('objectSet.chartAddPick')}</span>
+      {/* ds-control-exempt: the tile is the control, this select is the invisible overlay that opens the picker */}
       <select
         id="object-set-add-chart"
-        className="ds-control ds-control--compact object-set-chart__add-select"
+        className="object-set-chart-add__select"
         value=""
-        onChange={(e) => {
-          if (e.target.value) onAdd(e.target.value);
+        onChange={(event) => {
+          if (event.target.value) onAdd(event.target.value);
         }}
       >
         <option value="">{t('objectSet.chartAddPick')}</option>
@@ -30,6 +39,6 @@ export function ObjectSetChartAdd({
           </option>
         ))}
       </select>
-    </div>
+    </label>
   );
 }
