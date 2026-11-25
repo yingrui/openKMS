@@ -214,6 +214,13 @@ backend calls `GET /api/object-types/{type}/objects` **with the caller's token**
 `ontology:read` apply to the person running it, not to the platform), and only the granted properties are returned —
 that is both the token budget and the data minimisation. `limit` is capped at 25.
 
+**`calculator`.** `{kind: "calculator"}` takes no configuration: the model may call it with an arithmetic expression
+and gets an exact result, instead of computing in its head. Nothing from the model's text is ever evaluated — the
+expression is parsed into an AST and walked, and only numbers, `+ - * / // % **`, parentheses and
+`abs/round/min/max/sqrt/floor/ceil` are allowed; results are capped (`1e15`, exponent `100`). A bad expression comes
+back as the tool's answer so the model can fix it, and the call is traced with its result. It runs in-process, so a flow
+needs no runner for it.
+
 **`apply_action`.** A node may let the model *propose* an ontology edit:
 `{kind: "apply_action", action_type, description}`. The action's declared parameters become the tool's arguments, so the
 model fills `ts_code` because it was told to; the backend composes the edit batch with the same builder the Action path
