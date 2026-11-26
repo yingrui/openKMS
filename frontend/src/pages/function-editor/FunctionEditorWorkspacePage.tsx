@@ -4,7 +4,7 @@ import { AvailableQueriesPanel } from './AvailableQueriesPanel';
 import { FunctionCodeEditor } from './FunctionCodeEditor';
 import { FunctionPreviewPanel } from './FunctionPreviewPanel';
 import { LogicFlowEditor } from './LogicFlowEditor';
-import { LogicOutputCard } from './LogicOutputCard';
+import { LogicAnswer } from './LogicAnswer';
 import { LogicRunPanel } from './LogicRunPanel';
 import { LogicTracePanel } from './LogicTracePanel';
 import { useFunctionEditorWorkspace } from './useFunctionEditorWorkspace';
@@ -265,6 +265,7 @@ export function FunctionEditorWorkspacePage() {
               <span className="function-editor-workspace__lang-badge">
                 {isLogic ? t('editor.logicBadge') : 'Python'}
               </span>
+
             </div>
             <div className="function-editor-workspace__editor-body">
               {isLogic ? (
@@ -289,15 +290,6 @@ export function FunctionEditorWorkspacePage() {
               )}
             </div>
           </section>
-
-          {isLogic ? (
-            <LogicOutputCard
-              draft={flow}
-              output={(trace?.output as unknown) ?? undefined}
-              disabled={saving}
-              onChange={(outputRef) => setFlow({ ...flow, output: outputRef })}
-            />
-          ) : null}
 
           {isLogic ? null : (
             <FunctionPreviewPanel
@@ -328,13 +320,8 @@ export function FunctionEditorWorkspacePage() {
                 onRun={() => void onRun()}
                 onSelectRun={onSelectRun}
               />
+              <LogicAnswer output={(trace?.output as unknown) ?? undefined} />
               <LogicTracePanel trace={trace} />
-              {previewOutput ? (
-                <section className="logic-run">
-                  <span className="logic-run__title">{t('editor.previewOutput')}</span>
-                  <pre className="logic-trace__pre">{previewOutput}</pre>
-                </section>
-              ) : null}
           </aside>
         ) : null}
         {isLogic ? null : (

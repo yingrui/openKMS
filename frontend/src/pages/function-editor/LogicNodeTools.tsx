@@ -33,7 +33,10 @@ export function LogicNodeTools({
           <div className="logic-node__tools">
             <div className="logic-node__tools-head">
               <span className="logic-node__label">{t('editor.logicTools')}</span>
-              <span className="logic-node__hint">{t('editor.logicToolsHint')}</span>
+              {/* The sentence explains the property whitelist; with no tools there is nothing to explain. */}
+              {node.tools.length ? (
+                <span className="logic-node__hint">{t('editor.logicToolsHint')}</span>
+              ) : null}
             </div>
             {node.tools.map((tool, toolIndex) => (
               <div key={tool.id} className="logic-node__tool">

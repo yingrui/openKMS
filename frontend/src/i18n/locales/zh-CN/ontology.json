@@ -1502,7 +1502,11 @@
     "logicFieldsHide": "收起字段",
     "logicOutputSource": "答案来自",
     "logicOutputEmpty": "还没有：运行一次之后，答案会显示在这里。",
-    "logicFieldsShowAll": "全部字段"
+    "logicFieldsShowAll": "全部字段",
+    "logicAnswer": "上次的答案",
+    "logicAnswerNode": "答案来自",
+    "logicIsAnswer": "这个节点的输出就是流程的答案",
+    "logicIsAnswerHint": "都不勾选时，用最后一个节点的输出。"
   },
   "dataSources": {
     "title": "数据源",

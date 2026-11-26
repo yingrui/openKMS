@@ -19,7 +19,9 @@
 .function-editor-workspace {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* The negative margins pull this out of `.app-content`'s padding, so the height has to grow by the same amount —
+     otherwise the page keeps 2×padding of empty space at the bottom (measured: 48px). */
+  height: calc(100% + 2 * var(--app-page-padding-y, 24px));
   min-height: 0;
   min-width: 0;
   margin: calc(-1 * var(--app-page-padding-y, 24px)) calc(-1 * var(--app-page-padding-x, 24px));
@@ -644,6 +646,15 @@
   color: var(--color-text-secondary);
 }
 
+.logic-node__check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
 .logic-node__prompt {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
@@ -831,56 +842,30 @@
   }
 }
 
-/* ---------- Logic function: the output card (the flow's end, visible) ---------- */
+/* ---------- Logic function: the last answer, in the run panel ---------- */
 
-.logic-output {
+.logic-answer {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
   padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  /* A strip under the editor, not an overlay on it: always visible, never covering the prompt. */
-  flex-shrink: 0;
-  max-height: 40%;
-  overflow-y: auto;
-  border-radius: 0;
-  border-inline: none;
-  border-bottom: none;
+  border-top: 1px solid var(--color-border);
 }
 
-.logic-output__head {
+.logic-answer__head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--space-2);
 }
 
-.logic-output__title {
-  flex-shrink: 0;
-  white-space: nowrap;
+.logic-answer__title {
   font-size: var(--text-sm);
   font-weight: 600;
-}
-
-.logic-output__select {
-  flex: 0 1 14rem;
-  margin-inline-start: auto;
-  min-width: 8rem;
-  font-size: var(--text-sm);
-}
-
-.logic-output__summary {
-  margin: 0;
-  overflow: hidden;
   color: var(--color-text-secondary);
-  font-size: var(--text-sm);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.logic-output__toggle {
-  flex-shrink: 0;
+.logic-answer__toggle {
+  margin-inline-start: auto;
   border: none;
   background: transparent;
   color: var(--color-text-secondary);
@@ -890,15 +875,22 @@
   white-space: nowrap;
 }
 
-.logic-output__hint,
-.logic-output__text {
+.logic-answer__summary {
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logic-answer__hint {
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--text-xs);
-  white-space: pre-wrap;
 }
 
-.logic-output__fields {
+.logic-answer__fields {
   display: grid;
   grid-template-columns: minmax(6rem, max-content) 1fr;
   gap: var(--space-1) var(--space-3);
@@ -906,7 +898,7 @@
   font-size: var(--text-sm);
 }
 
-.logic-output__field {
+.logic-answer__field {
   display: contents;
 
   dt {

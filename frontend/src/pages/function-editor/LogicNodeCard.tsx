@@ -31,6 +31,8 @@ export function LogicNodeCard({
   objectTypes,
   objectProperties,
   objectInputs,
+  isAnswer,
+  onToggleAnswer,
   runValue,
   disabled,
   onChange,
@@ -49,6 +51,9 @@ export function LogicNodeCard({
   objectProperties: Record<string, string[]>;
   /** The flow's object inputs: each contributes the object itself and its properties as insertable chips. */
   objectInputs: { name: string; objectType: string }[];
+  /** Whether this node's output is the flow's answer (the last node when none is marked). */
+  isAnswer: boolean;
+  onToggleAnswer: () => void;
   /** What this node returned in the last run — shown here, so the flow reads as data moving through it. */
   runValue?: { output?: unknown; error?: string; tokens?: number; ms?: number } | null;
   disabled: boolean;
@@ -392,7 +397,7 @@ export function LogicNodeCard({
       </>
       ) : null}
 
-      {runValue ? <NodeRunValue value={runValue} /> : null}
+      {runValue && !isAnswer ? <NodeRunValue value={runValue} /> : null}
 
       <details className="logic-node__advanced">
         <summary>
@@ -435,6 +440,16 @@ export function LogicNodeCard({
               disabled={disabled}
             />
           </div>
+          <label className="logic-node__check">
+            <input
+              type="checkbox"
+              checked={isAnswer}
+              onChange={() => onToggleAnswer()}
+              disabled={disabled}
+            />
+            <span>{t('editor.logicIsAnswer')}</span>
+          </label>
+          <p className="logic-node__hint">{t('editor.logicIsAnswerHint')}</p>
           <label className="logic-node__label" htmlFor={`logic-schema-${index}`}>
             {t('editor.logicOutputSchemaRaw')}
           </label>

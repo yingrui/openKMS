@@ -1508,7 +1508,11 @@
     "logicFieldsHide": "Hide fields",
     "logicOutputSource": "Answer from",
     "logicOutputEmpty": "Nothing yet: run the flow and the answer appears here.",
-    "logicFieldsShowAll": "All fields"
+    "logicFieldsShowAll": "All fields",
+    "logicAnswer": "Last answer",
+    "logicAnswerNode": "Answers from",
+    "logicIsAnswer": "This node's output is the flow's answer",
+    "logicIsAnswerHint": "Left unmarked, the last node answers."
   },
   "dataSources": {
     "title": "Data sources",

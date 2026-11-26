@@ -90,6 +90,21 @@ export function LogicFlowEditor({
             fields={node.fields}
             objectTypes={objectTypes}
             objectProperties={objectProperties}
+            isAnswer={
+              draft.output
+                ? node.id.trim() === draft.output
+                : index === draft.nodes.length - 1
+            }
+            onToggleAnswer={() =>
+              update({
+                ...draft,
+                // Marking the node that is already the default keeps the spec free of a redundant reference.
+                output:
+                  node.id.trim() === draft.output || index === draft.nodes.length - 1
+                    ? ''
+                    : node.id.trim(),
+              })
+            }
             objectInputs={draft.inputs.filter(
               (field) => field.type === 'object' || field.type === 'object_set',
             )}
