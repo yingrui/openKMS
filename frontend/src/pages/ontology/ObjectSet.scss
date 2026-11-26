@@ -1315,11 +1315,6 @@
   color: var(--color-text-muted);
 }
 
-/* A toolbar with a single control sits at the far end, above the thing it affects. */
-.object-set-toolbar--end {
-  justify-content: flex-end;
-}
-
 /* "Show more" is a control, not a caption — it uses `.btn-link`. */
 .object-set-chart__toggle {
   font-size: var(--text-xs);
@@ -1332,4 +1327,24 @@
   gap: var(--space-1);
   font-size: var(--text-xs);
   color: var(--color-text);
+}
+
+/* A single number for the whole set: the largest thing on the card, because it is the answer. */
+.object-set-chart__stat {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.object-set-chart__stat-more {
+  margin: 0;
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }

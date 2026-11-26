@@ -1,4 +1,6 @@
 .ds-view-toggle {
+  /* Sits in a page header next to `btn` (41px tall); at its natural 31px it read as a second toolbar. */
+  min-height: 41px;
   display: flex;
   align-items: center;
   gap: var(--gap-compact);
@@ -8,6 +10,7 @@
 .ds-view-toggle__btn {
   display: flex;
   align-items: center;
+  align-self: stretch;
   gap: calc(var(--space-1) + var(--space-1) / 4);
   padding: 6px 12px;
   font-size: var(--text-sm);

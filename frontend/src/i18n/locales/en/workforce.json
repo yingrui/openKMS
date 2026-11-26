@@ -526,5 +526,10 @@
   "assembledPromptShow": "View prompt",
   "assembledPromptBack": "Back to editing",
   "promptSection_bound_data": "Bound data",
-  "promptSource_bound_data": "The semantic models and ontology groups this agent is bound to, from the Knowledge tab"
+  "promptSource_bound_data": "The semantic models and ontology groups this agent is bound to, from the Knowledge tab",
+  "metaKbs_one": "{{count}} knowledge source",
+  "metaKbs_other": "{{count}} knowledge sources",
+  "metaSkills_one": "{{count}} capability",
+  "metaCredentials_one": "{{count}} credential",
+  "metaCredentials_other": "{{count}} credentials"
 }

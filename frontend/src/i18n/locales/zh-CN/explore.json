@@ -471,7 +471,11 @@
     "compareBaseline": "{{name}} · {{count}}",
     "chartSortByValue": "按取值排序",
     "chartShowMore": "显示更多（{{count}} 个）",
-    "chartShowLess": "收起"
+    "chartShowLess": "收起",
+    "chartKind": "图形",
+    "kindBars": "柱状",
+    "kindPie": "饼图",
+    "kindStat": "单值"
   },
   "explorerSections": {
     "explorations": "探索",

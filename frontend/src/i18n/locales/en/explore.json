@@ -471,7 +471,11 @@
     "compareBaseline": "{{name}} · {{count}}",
     "chartSortByValue": "Sort by value",
     "chartShowMore": "Show more ({{count}})",
-    "chartShowLess": "Show less"
+    "chartShowLess": "Show less",
+    "chartKind": "Chart",
+    "kindBars": "Bars",
+    "kindPie": "Pie",
+    "kindStat": "One number"
   },
   "explorerSections": {
     "explorations": "Explorations",

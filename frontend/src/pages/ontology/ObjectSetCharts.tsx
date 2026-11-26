@@ -7,6 +7,8 @@ import {
   LabelList,
   Line,
   LineChart,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -23,6 +25,7 @@ import {
   DEFAULT_BUCKETS,
   groupBySettings,
   intervalLabel,
+  setTotal,
   isHistogram,
   isIdentifierChart,
   isTimeline,
@@ -326,7 +329,38 @@ export function ObjectSetCharts({
                 </span>
               ) : null}
             </figcaption>
-            {isIdentifierChart(chart) ? (
+            {chartSettings.kind === 'stat' ? (
+              <>
+                <p className="object-set-chart__stat">
+                  {formatMeasure(setTotal(chart, chartSettings.metric))}
+                </p>
+                {compare && chart.values?.some((value) => value.baseline !== undefined) ? (
+                  <p className="object-set-chart__stat-more">
+                    {t('objectSet.chartComparedWith', { name: compare.label })}
+                  </p>
+                ) : null}
+              </>
+            ) : chartSettings.kind === 'pie' ? (
+              <ResponsiveContainer width="100%" height={PLOT_HEIGHT}>
+                <PieChart>
+                  <Tooltip
+                    formatter={(value, name) => [formatMeasure(Number(value)), String(name)]}
+                  />
+                  <Pie
+                    data={data.slice(0, 8)}
+                    dataKey="count"
+                    nameKey="label"
+                    innerRadius={36}
+                    outerRadius={72}
+                    onClick={pickFromDatum}
+                  >
+                    {data.slice(0, 8).map((entry) => (
+                      <Cell key={entry.key} cursor="pointer" fill={fillFor(entry.selected)} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            ) : isIdentifierChart(chart) ? (
               <p className="object-set-chart__empty">{t('objectSet.chartEveryObjectDiffers')}</p>
             ) : chart.cells ? (
               <CrossTab

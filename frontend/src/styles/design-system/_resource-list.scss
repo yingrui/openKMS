@@ -110,9 +110,16 @@
 .ds-resource-list-meta {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
   font-size: var(--text-sm);
   color: var(--color-text-muted);
+
+  /* "1 knowledge sources" wrapped into "1 knowledge / sources" because each item was a wrapping span. An item is a
+     unit: it moves to the next line whole. */
+  > span {
+    white-space: nowrap;
+  }
 }
 
 /* Dialog – matches documents-upload-modal */

@@ -60,7 +60,8 @@ export function ObjectSetChartBoard({
   const { t } = useTranslation('explore');
   return (
     <>
-      <div className="object-set-toolbar object-set-toolbar--end">
+      <div className="object-set-section">
+        <h2 className="object-set-section__title">{t('objectSet.chartsTitle')}</h2>
         <ObjectSetComparePicker
           label={compareLabel}
           explorations={explorations}
@@ -75,9 +76,6 @@ export function ObjectSetChartBoard({
           onDismiss={onDismissOutcome}
         />
       ) : null}
-      <div className="object-set-section">
-        <h2 className="object-set-section__title">{t('objectSet.chartsTitle')}</h2>
-      </div>
       <ObjectSetCharts
         typeId={typeId}
         search={search}

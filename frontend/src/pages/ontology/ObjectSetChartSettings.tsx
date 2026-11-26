@@ -60,6 +60,20 @@ export function ObjectSetChartSettings({
       {open ? (
         <div className="object-set-chart-settings__panel" role="group">
           <label>
+            <span>{t('objectSet.chartKind')}</span>
+            <select
+              className="ds-control ds-control--compact"
+              value={settings.kind ?? 'bars'}
+              onChange={(event) =>
+                onChange({ ...settings, kind: event.target.value as ChartSettings['kind'] })
+              }
+            >
+              <option value="bars">{t('objectSet.kindBars')}</option>
+              <option value="pie">{t('objectSet.kindPie')}</option>
+              <option value="stat">{t('objectSet.kindStat')}</option>
+            </select>
+          </label>
+          <label>
             <span>{t('objectSet.chartMetric')}</span>
             <select
               className="ds-control ds-control--compact"

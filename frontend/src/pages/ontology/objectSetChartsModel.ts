@@ -43,6 +43,8 @@ export interface ChartSettings {
   buckets?: number;
   /** A listogram's own sort: by how many objects hold a value, or by the value itself. */
   valueOrder?: boolean;
+  /** How the numbers are drawn. `stat` is one number for the whole set, not a distribution. */
+  kind?: 'bars' | 'pie' | 'stat';
 }
 
 export interface ChartSpec extends ChartSettings {
@@ -61,7 +63,15 @@ export function chartKey(spec: ChartSpec): string {
   /* The default interval count is "not stated": `buckets: 8` and no buckets are the same chart, and the request
      grouping relies on that — a key that disagrees with the group's settings drops the chart from the grid. */
   const buckets = spec.buckets && spec.buckets !== DEFAULT_BUCKETS ? String(spec.buckets) : '';
-  return [spec.prop, metric, spec.measure ?? '', spec.split ?? '', buckets, spec.valueOrder ? 'v' : ''].join('\u0000');
+  return [
+    spec.prop,
+    metric,
+    spec.measure ?? '',
+    spec.split ?? '',
+    buckets,
+    spec.valueOrder ? 'v' : '',
+    spec.kind ?? '',
+  ].join('\u0000');
 }
 
 export function addSpec(specs: ChartSpec[], spec: ChartSpec): ChartSpec[] {
@@ -84,6 +94,7 @@ export function groupBySettings(specs: ChartSpec[]): { settings: ChartSettings; 
     /* The interval count is part of the request, so two charts that disagree about it are two calls. */
     if (spec.buckets && spec.buckets !== DEFAULT_BUCKETS) settings.buckets = spec.buckets;
     if (spec.valueOrder) settings.valueOrder = true;
+    if (spec.kind && spec.kind !== 'bars') settings.kind = spec.kind;
     const key = JSON.stringify(settings);
     const group = groups.get(key) ?? { settings, props: [] };
     group.props.push(spec.prop);
@@ -167,4 +178,24 @@ export function diffCharts(
     }
   }
   return changes;
+}
+
+/**
+ * One number for the whole set, from the distribution that is already loaded.
+ *
+ * Every object sits in exactly one bar of a one-dimensional chart, so the total of a count chart is the size of the
+ * set and the total of a measure chart is the sum of that measure — no second query, and no chance of the number
+ * disagreeing with the bars beside it.
+ */
+export function setTotal(chart: ObjectAggregateChart, metric: ChartSettings['metric']): number {
+  const values = chart.values ?? [];
+  if (!values.length) return 0;
+  if (metric === 'avg') {
+    const measured = values.filter((value) => value.measure !== undefined);
+    if (measured.length === 0) return 0;
+    return measured.reduce((sum, value) => sum + (value.measure ?? 0), 0) / measured.length;
+  }
+  if (metric === 'min') return Math.min(...values.map((value) => value.measure ?? value.count));
+  if (metric === 'max') return Math.max(...values.map((value) => value.measure ?? value.count));
+  return values.reduce((sum, value) => sum + (value.measure ?? value.count), 0);
 }
