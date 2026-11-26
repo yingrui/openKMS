@@ -243,6 +243,28 @@ export async function executeOntologyFunctionByApiName(
   );
 }
 
+export interface BulkModelResult {
+  function_id: string;
+  api_name?: string | null;
+  status: 'updated' | 'unchanged' | 'not_logic' | 'missing' | 'failed';
+  changed: number;
+  version?: number | null;
+  detail?: string | null;
+}
+
+/** Repoint many Logic functions at one model: one new draft version each, nothing published. */
+export async function bulkReplaceFunctionModel(body: {
+  function_ids: string[];
+  from_model_id?: string | null;
+  to_model_id?: string | null;
+}): Promise<BulkModelResult[]> {
+  return ontologyFetch<BulkModelResult[]>(
+    `${base}/bulk-model`,
+    { method: 'POST', body: JSON.stringify(body) },
+    'Failed to change the model',
+  );
+}
+
 export async function fetchFunctionExecutions(
   functionId: string,
   params?: { limit?: number },

@@ -1466,7 +1466,27 @@
     "logicRecentRuns": "最近运行（{{count}}）",
     "logicRunTokens": "{{tokens}} token",
     "logicRunDraftTag": "草稿",
-    "logicToolDuplicate": "有两个工具指向同一目标 —— 换一个类型或函数"
+    "logicToolDuplicate": "有两个工具指向同一目标 —— 换一个类型或函数",
+    "bulkSelected": "已选 {{count}} 个",
+    "bulkModelAction": "更改模型",
+    "bulkSelect": "选择",
+    "bulkSelectRow": "选择 {{name}}",
+    "bulkModelTitle": "更改 {{count}} 个函数的模型",
+    "bulkModelHint": "每个函数会生成一个新草稿版本，其中的模型节点指向新模型。不会发布，所以固定在某版本上的 Action 不受影响。",
+    "bulkModelTo": "模型",
+    "bulkModelToHint": "节点没有指定模型时使用默认模型。",
+    "bulkModelFrom": "只改这些模型的节点",
+    "bulkModelFromHint": "留空表示改所有模型节点。",
+    "bulkModelFromAll": "任意模型",
+    "bulkModelSubmit": "更改并保存草稿",
+    "bulkModelSaving": "正在保存草稿…",
+    "bulkModelStatus": {
+      "updated": "{{count}} 个已更新（新草稿）",
+      "unchanged": "{{count}} 个未变（没有匹配的节点）",
+      "not_logic": "{{count}} 个跳过（代码函数）",
+      "missing": "{{count}} 个找不到",
+      "failed": "{{count}} 个失败"
+    }
   },
   "dataSources": {
     "title": "数据源",

@@ -1472,7 +1472,27 @@
     "logicRecentRuns": "Recent runs ({{count}})",
     "logicRunTokens": "{{tokens}} tokens",
     "logicRunDraftTag": "draft",
-    "logicToolDuplicate": "two tools have the same target — pick a different type or function"
+    "logicToolDuplicate": "two tools have the same target — pick a different type or function",
+    "bulkSelected": "{{count}} selected",
+    "bulkModelAction": "Change model",
+    "bulkSelect": "Select",
+    "bulkSelectRow": "Select {{name}}",
+    "bulkModelTitle": "Change the model of {{count}} function(s)",
+    "bulkModelHint": "Each function gets a new draft version with its model nodes repointed. Nothing is published, so actions pinned to a version keep working.",
+    "bulkModelTo": "Model",
+    "bulkModelToHint": "The default model is used when a node names none.",
+    "bulkModelFrom": "Only nodes using",
+    "bulkModelFromHint": "Leave empty to repoint every model node.",
+    "bulkModelFromAll": "Any model",
+    "bulkModelSubmit": "Change and save drafts",
+    "bulkModelSaving": "Saving drafts…",
+    "bulkModelStatus": {
+      "updated": "{{count}} updated (new draft)",
+      "unchanged": "{{count}} unchanged (no matching node)",
+      "not_logic": "{{count}} skipped (code function)",
+      "missing": "{{count}} not found",
+      "failed": "{{count}} failed"
+    }
   },
   "dataSources": {
     "title": "Data sources",

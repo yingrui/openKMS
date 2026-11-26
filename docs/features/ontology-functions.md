@@ -244,6 +244,14 @@ Invariants:
 - A node over its token or time budget **fails**; it is never truncated (a truncated answer looks like a real one).
 - Every node leaves a trace entry, including failed ones — the prompt on a failure is the thing you need most.
 
+### Changing the model of many functions
+
+`POST /api/ontology/functions/bulk-model` takes up to 100 function ids, an optional `from_model_id` (null = every model
+node) and a `to_model_id` (null = the default model), and saves a **new draft version** for each Logic function with its
+model nodes repointed — including nodes inside branches and loops. Nothing is published: what a published version ran
+with stays answerable, and an Action pinned to a version keeps working. The editor's Logic list exposes this as a
+selection plus **Change model**.
+
 ## Runtime
 
 1. Editor or Manager calls backend `execute`.

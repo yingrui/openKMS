@@ -1,6 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useState } from "react";
 import { ListPage } from "../../styles/design-system";
+import { BulkModelDialog } from "./BulkModelDialog";
 import { Loader2, Pencil } from "lucide-react";
 import { useOntologyFunctionsList } from "./useOntologyFunctionsList";
 import "../ontology/ontology-admin.scss";
@@ -18,8 +20,13 @@ export function FunctionEditorListPage() {
   const { t } = useTranslation("ontology");
   const location = useLocation();
   const source: Authoring = location.pathname.endsWith("/logic") ? "logic" : "code";
-  const { items, loading } = useOntologyFunctionsList(source);
+  const { items, loading, reload } = useOntologyFunctionsList(source);
   const isLogic = source === "logic";
+  // Changing the model is a Logic-only batch action: a code function has no model nodes.
+  const [selected, setSelected] = useState<string[]>([]);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const toggle = (id: string) =>
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   return (
     <ListPage
@@ -36,6 +43,22 @@ export function FunctionEditorListPage() {
         </Link>
       }
     >
+      {isLogic && items.length > 0 ? (
+        <div className="function-editor-list__bulkbar">
+          <span className="function-editor-list__bulkcount">
+            {t("editor.bulkSelected", { count: selected.length })}
+          </span>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => setBulkOpen(true)}
+            disabled={selected.length === 0}
+          >
+            {t("editor.bulkModelAction")}
+          </button>
+        </div>
+      ) : null}
+
       <div className="ds-table-wrap">
         {loading ? (
           <div className="ds-loading">
@@ -46,6 +69,7 @@ export function FunctionEditorListPage() {
           <table className="ds-table">
             <thead>
               <tr>
+                {isLogic ? <th aria-label={t("editor.bulkSelect")} /> : null}
                 <th>{t("functions.apiName")}</th>
                 <th>{t("functions.displayName")}</th>
                 <th>{t("functions.latestVersion")}</th>
@@ -56,7 +80,7 @@ export function FunctionEditorListPage() {
             <tbody>
               {items.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="ds-table-empty">
+                  <td colSpan={isLogic ? 6 : 5} className="ds-table-empty">
                     {isLogic ? (
                       <>
                         {t("editor.logicEmpty")}{" "}
@@ -73,6 +97,16 @@ export function FunctionEditorListPage() {
               ) : (
                 items.map((fn) => (
                   <tr key={fn.id}>
+                    {isLogic ? (
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selected.includes(fn.id)}
+                          onChange={() => toggle(fn.id)}
+                          aria-label={t("editor.bulkSelectRow", { name: fn.display_name || fn.api_name })}
+                        />
+                      </td>
+                    ) : null}
                     <td>
                       <Link
                         to={`/function-editor/${fn.id}`}
@@ -108,6 +142,19 @@ export function FunctionEditorListPage() {
           </table>
         )}
       </div>
+
+      {isLogic ? (
+        <BulkModelDialog
+          open={bulkOpen}
+          functionIds={selected}
+          onClose={() => setBulkOpen(false)}
+          onDone={() => {
+            setSelected([]);
+            // The rows now have a new draft version; re-read rather than keep yesterday's numbers.
+            reload();
+          }}
+        />
+      ) : null}
     </ListPage>
   );
 }

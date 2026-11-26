@@ -1295,3 +1295,33 @@
   background: var(--color-surface-alt);
   font-size: var(--text-xs);
 }
+
+/* Batch action bar on the Logic list: the only row-level operation that is not per-function. */
+.function-editor-list__bulkbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.function-editor-list__bulkcount {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.bulk-model-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.bulk-model-result__row {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+
+  &--failed {
+    color: var(--color-danger);
+  }
+}
