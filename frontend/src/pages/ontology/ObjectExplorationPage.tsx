@@ -45,7 +45,8 @@ import { useLayoutSaving } from './useLayoutSaving';
 import { useTableActions } from './useTableActions';
 import { useRowSelection } from './useRowSelection';
 import { actionCount, useObjectSetAction } from './useObjectSetAction';
-import { useExplorationHistory } from './useExplorationHistory';
+import { formatCharts, formatColumns, parseCharts, parseColumns } from './objectSetUrl';
+import { useBrowserHistory } from './useBrowserHistory';
 import { useObjectSetOutcome } from './useObjectSetOutcome';
 import { ExplorationLayoutMenu } from './ExplorationLayoutMenu';
 import { ObjectExplorationSaveDialog } from './ObjectExplorationSaveDialog';
@@ -102,11 +103,10 @@ export function ObjectExplorationPage() {
   const [saveShared, setSaveShared] = useState(false);
   const [saving, setSaving] = useState(false);
   /* The layout this type opens with: personal, then global, then the built-in one (prominent props). */
-  /* The charts on screen, in order. A chart is its property plus what it measures and splits by — two charts may
-     read one property with different measures. */
-  const [chartSpecs, setChartSpecs] = useState<ChartSpec[] | null>(null);
-  /* Which properties the results table shows, in order — part of the layout, so it is saved with the exploration. */
-  const [layoutColumns, setLayoutColumns] = useState<string[]>([]);
+  /* Charts and columns are in the URL, like conditions and sort: an exploration is an addressable state, and a
+     second copy in component state is a second history that the back button cannot see. */
+  const chartSpecs = useMemo(() => parseCharts(searchParams.get('c')), [searchParams]);
+  const layoutColumns = useMemo(() => parseColumns(searchParams.get('cols')), [searchParams]);
   const [links, setLinks] = useState<LinkTypeResponse[]>([]);
   /* Actions are the one write an exploration offers: they run on the rows the caller ticked, never on the whole set. */
   /* What the menu may offer: asked of the backend, because only it can evaluate an action's submission criteria
@@ -123,11 +123,35 @@ export function ObjectExplorationPage() {
   const { set: compareSet } = useObjectSetCompare();
   const { isAdmin } = useAuth();
 
-  const updateParams = (mutate: (params: URLSearchParams) => void) => {
+  /**
+   * Every change the reader makes is a new history entry, so the browser's Back button undoes it. Derived writes (the
+   * charts a saved exploration carries, the initial seed) replace instead: they are part of arriving at the page, not
+   * a step the reader took.
+   */
+  const updateParams = (
+    mutate: (params: URLSearchParams) => void,
+    options: { replace?: boolean } = {}
+  ) => {
     const params = new URLSearchParams(searchParams);
     mutate(params);
-    setSearchParams(params, { replace: true });
+    setSearchParams(params, { replace: options.replace ?? false });
   };
+
+  const writeCharts = (next: ChartSpec[] | null, replace: boolean) =>
+    updateParams((params) => {
+      if (next && next.length > 0) params.set('c', formatCharts(next));
+      else params.delete('c');
+    }, { replace });
+
+  const writeColumns = (next: string[], replace: boolean) =>
+    updateParams((params) => {
+      if (next.length > 0) params.set('cols', formatColumns(next));
+      else params.delete('cols');
+    }, { replace });
+
+  /* A reader's edit is a history entry; a seed that comes with the page is not. */
+  const setChartSpecs = (next: ChartSpec[] | null) => writeCharts(next, false);
+  const setLayoutColumns = (next: string[]) => writeColumns(next, false);
 
   const setFilters = (next: string[]) =>
     updateParams((params) => {
@@ -135,19 +159,7 @@ export function ObjectExplorationPage() {
       for (const filter of next) params.append('f', filter);
     });
 
-  /* What the exploration is, for undo: the URL plus the two pieces of state it does not carry. */
-  const history = useExplorationHistory({
-    snapshot: {
-      query: searchParams.toString(),
-      charts: chartSpecs,
-      columns: layoutColumns,
-    },
-    apply: (next) => {
-      setChartSpecs(next.charts);
-      setLayoutColumns(next.columns);
-      setSearchParams(new URLSearchParams(next.query), { replace: true });
-    },
-  });
+  const history = useBrowserHistory();
 
   const { toggleRow, toggleAllRows } = useRowSelection(instances, setSelected);
 
@@ -246,8 +258,8 @@ export function ObjectExplorationPage() {
   useEffect(() => {
     if (loadedType.current === typeId) return;
     loadedType.current = typeId;
-    setChartSpecs(null);
-    setLayoutColumns([]);
+    writeCharts(null, true);
+    writeColumns([], true);
     setSelected(new Set());
     dismissOutcome.current();
   }, [typeId]);
@@ -260,20 +272,20 @@ export function ObjectExplorationPage() {
     //
     // A saved exploration already names its charts, and the two requests race — so this one yields when the URL
     // carries `?saved=`.
-    if (!savedId) setChartSpecs(null);
+    if (!savedId) writeCharts(null, true);
     void fetchExplorationLayout(typeId)
       .then((res) => {
         if (cancelled) return;
         const charts = (res.layout?.charts as ChartSpec[] | undefined) ?? [];
         const props = charts.map((chart) => chart.prop).filter(Boolean);
         if (!savedId) {
-          setChartSpecs(props.length > 0 ? charts : null);
-          setLayoutColumns((res.layout?.columns as string[] | undefined) ?? []);
+          writeCharts(props.length > 0 ? charts : null, true);
+          writeColumns((res.layout?.columns as string[] | undefined) ?? [], true);
         }
         setLayoutChoices(res.available ?? []);
       })
       .catch(() => {
-        if (!cancelled && !savedId) setChartSpecs(null);
+        if (!cancelled && !savedId) writeCharts(null, true);
       });
     return () => {
       cancelled = true;
@@ -322,8 +334,8 @@ export function ObjectExplorationPage() {
         // A saved exploration is a **view**, not just a filter: its charts, their order and the first perspective it
         // opened with are part of what was saved. Conditions alone reopened as whatever the type defaults to.
         const charts = (row.layout?.charts as ChartSpec[] | undefined) ?? [];
-        if (charts.length > 0) setChartSpecs(charts);
-        setLayoutColumns((row.layout?.columns as string[] | undefined) ?? []);
+        if (charts.length > 0) writeCharts(charts, true);
+        writeColumns((row.layout?.columns as string[] | undefined) ?? [], true);
         // The updater form keeps the current params without making this effect depend on them.
         setSearchParams(
           (previous) => {
@@ -451,7 +463,7 @@ export function ObjectExplorationPage() {
           visibility: saveShared ? 'shared' : 'private',
         });
         setSaved(row);
-        updateParams((params) => params.set('saved', row.id));
+        updateParams((params) => params.set('saved', row.id), { replace: true });
         toast.success(t('objectSet.savedCreated'));
       }
       setSaveOpen(false);
@@ -505,8 +517,8 @@ export function ObjectExplorationPage() {
             onUse={(choice) => {
               setLayoutOpen(false);
               const charts = (choice.layout?.charts as ChartSpec[] | undefined) ?? [];
-              setChartSpecs(charts.length > 0 ? charts : null);
-              setLayoutColumns((choice.layout?.columns as string[] | undefined) ?? []);
+              writeCharts(charts.length > 0 ? charts : null, true);
+              writeColumns((choice.layout?.columns as string[] | undefined) ?? [], true);
             }}
             onSave={(scope) => {
               setLayoutOpen(false);
