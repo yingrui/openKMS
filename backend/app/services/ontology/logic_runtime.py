@@ -26,7 +26,7 @@ from typing import Any, Awaitable, Callable
 
 import httpx
 from pydantic_ai import Agent, PromptedOutput, StructuredDict
-from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
+from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior, UserError
 from pydantic_ai.usage import UsageLimitExceeded, UsageLimits
 
 from app.services.ontology.logic_validate import MAX_LOOP_ITERATIONS, validate_flow_spec
@@ -465,7 +465,12 @@ async def _run_model_node(
         kwargs["tools"] = tools
     if system:
         kwargs["system_prompt"] = system
-    agent = Agent(model, **kwargs)
+    try:
+        agent = Agent(model, **kwargs)
+    except UserError as e:
+        # Tool names collide (two long api names truncating to the same 64 characters, say). Validation catches the
+        # ordinary case; this keeps the uncommon one a failing node instead of an unhandled error.
+        raise FlowError(f"this node's tools cannot be configured: {e}") from e
     # A node with tools needs a few round trips; without tools one request is the whole budget. Either way a token
     # overrun is caught after the response and reported as a node failure — never as a truncated answer.
     limits = UsageLimits(

@@ -1471,7 +1471,8 @@
     "logicRunTitle": "Run",
     "logicRecentRuns": "Recent runs ({{count}})",
     "logicRunTokens": "{{tokens}} tokens",
-    "logicRunDraftTag": "draft"
+    "logicRunDraftTag": "draft",
+    "logicToolDuplicate": "two tools have the same target — pick a different type or function"
   },
   "dataSources": {
     "title": "Data sources",

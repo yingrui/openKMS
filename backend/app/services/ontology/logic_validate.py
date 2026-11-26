@@ -208,6 +208,9 @@ def _validate_tools(node: dict, where: str) -> list[str]:
     if len(tools) > MAX_TOOLS_PER_NODE:
         return [f"{where}.tools allows at most {MAX_TOOLS_PER_NODE} tools"]
     errors: list[str] = []
+    # Two tools with the same name cannot both be offered — pydantic-ai refuses at Agent construction, which would
+    # surface as an unhandled error instead of a failing node. Catch it where the tools are declared.
+    names: dict[str, int] = {}
     for index, tool in enumerate(tools):
         at = f"{where}.tools[{index}]"
         if not isinstance(tool, dict):
@@ -219,6 +222,12 @@ def _validate_tools(node: dict, where: str) -> list[str]:
                 f"{at}.kind '{kind}' is not supported yet (only {', '.join(SUPPORTED_TOOL_KINDS)})"
             )
             continue
+        target = str(tool.get("object_type") or tool.get("function") or tool.get("action_type") or "")
+        tool_name = "calculator" if kind == "calculator" else f"{kind}_{target}"[:64]
+        if tool_name in names:
+            errors.append(f"{at}: duplicate tool '{tool_name}' (tools {names[tool_name] + 1} and {index + 1})")
+        else:
+            names[tool_name] = index
         if kind == "query_objects":
             if not str(tool.get("object_type") or "").strip():
                 errors.append(f"{at}.object_type is required")

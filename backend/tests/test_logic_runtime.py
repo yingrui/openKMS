@@ -1366,3 +1366,42 @@ class TestOutputReference:
 
     def test_a_valid_output_reference_passes(self):
         assert validate_flow_spec({"nodes": [{"id": "n1", "kind": "model", "prompt": "x"}], "output": "{{n1}}"}) == []
+
+
+class TestDuplicateTools:
+    """Two tools with the same name cannot both be offered; caught where they are declared, not at Agent construction."""
+
+    def test_the_same_tool_twice_is_refused(self):
+        errors = validate_flow_spec(
+            {
+                "nodes": [
+                    {
+                        "id": "n1",
+                        "kind": "model",
+                        "prompt": "x",
+                        "tools": [{"kind": "calculator"}, {"kind": "calculator"}],
+                    }
+                ]
+            }
+        )
+        assert errors == ["nodes[0].tools[1]: duplicate tool 'calculator' (tools 1 and 2)"]
+
+    def test_two_targets_of_the_same_kind_are_fine(self):
+        assert (
+            validate_flow_spec(
+                {
+                    "nodes": [
+                        {
+                            "id": "n1",
+                            "kind": "model",
+                            "prompt": "x",
+                            "tools": [
+                                {"kind": "query_objects", "object_type": "Holding"},
+                                {"kind": "query_objects", "object_type": "Portfolio"},
+                            ],
+                        }
+                    ]
+                }
+            )
+            == []
+        )

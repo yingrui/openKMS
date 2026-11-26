@@ -208,7 +208,9 @@ checkbox-free chip and lets the run panel **search that type and pass one instan
 person to type the JSON they would otherwise have to know by heart. The executor reads the chosen instance's fields by
 path, so a prompt can use ontology data without a tool call.
 
-**Tools (`query_objects`).** A node may carry up to four read tools:
+**Tools (`query_objects`).** Two tools that resolve to the same name cannot be offered at once (a second `calculator`, or two tools for the same
+object type / function / Action); validation refuses them where they are declared, and the editor says so inline. A node
+may carry up to four read tools:
 `{kind: "query_objects", object_type, properties, limit}`. The model never sees a table: it asks for a search, the
 backend calls `GET /api/object-types/{type}/objects` **with the caller's token** (so the object-type ACL and
 `ontology:read` apply to the person running it, not to the platform), and only the granted properties are returned —

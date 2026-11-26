@@ -10,6 +10,13 @@ function replaceAt<T>(rows: T[], index: number, patch: Partial<T>): T[] {
  * The tools a node may use. One row per tool, and the row's shape follows the kind: a tool with nothing to configure
  * says so rather than showing empty inputs.
  */
+/** The name a tool is registered under, mirroring what the backend derives — duplicates cannot coexist. */
+function toolName(tool: { kind: string; object_type?: string; function?: string; actionType?: string }): string {
+  if (tool.kind === 'calculator') return 'calculator';
+  const target = tool.object_type ?? tool.function ?? tool.actionType ?? '';
+  return `${tool.kind}_${target}`;
+}
+
 export function LogicNodeTools({
   node,
   objectTypes,
@@ -174,6 +181,9 @@ export function LogicNodeTools({
               <Plus size={14} aria-hidden />
               {t('editor.logicAddTool')}
             </button>
-          </div>
+            {new Set(node.tools.map(toolName)).size !== node.tools.length ? (
+        <p className="logic-node__refs-warn">{t('editor.logicToolDuplicate')}</p>
+      ) : null}
+    </div>
   );
 }
