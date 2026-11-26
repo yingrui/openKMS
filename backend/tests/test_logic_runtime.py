@@ -1405,3 +1405,59 @@ class TestDuplicateTools:
             )
             == []
         )
+
+
+class TestUnexpectedFailures:
+    """An exception nobody predicted fails the node and keeps the trace — it does not escape the run."""
+
+    @pytest.mark.asyncio
+    async def test_a_resolver_bug_is_a_node_failure_not_an_unhandled_error(self):
+        async def exploding_factory(_model_id: str | None):
+            raise RuntimeError("provider registry is down")
+
+        outcome = await run_flow(_spec(), {"q": "x"}, model_factory=exploding_factory)
+
+        assert outcome.status == "error"
+        assert outcome.error is not None and outcome.error.startswith("n1:")
+        assert "RuntimeError" in outcome.error
+        assert outcome.trace["nodes"][0]["ok"] is False
+        assert "provider registry is down" in outcome.trace["nodes"][0]["error"]
+
+    @pytest.mark.asyncio
+    async def test_a_tool_runner_bug_does_not_escape_either(self):
+        async def runner(_tool: dict, _arguments: dict):
+            raise KeyError("rows")
+
+        turns = {"n": 0}
+
+        def handler(_messages, _info: AgentInfo) -> ModelResponse:
+            turns["n"] += 1
+            if turns["n"] == 1:
+                return ModelResponse(
+                    parts=[ToolCallPart(tool_name="query_objects_Thing", args={"search": ""})]
+                )
+            return ModelResponse(parts=[TextPart(json.dumps({"answer": "42"}))])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        spec = {
+            "nodes": [
+                {
+                    "id": "n1",
+                    "kind": "model",
+                    "prompt": "x",
+                    "output_schema": SCHEMA,
+                    "tools": [{"kind": "query_objects", "object_type": "Thing"}],
+                }
+            ]
+        }
+        outcome = await run_flow(spec, {}, model_factory=factory, tool_runner=runner)
+
+        assert outcome.status == "error"
+        node = outcome.trace["nodes"][0]
+        assert node["ok"] is False
+        # The trace says which tool was asked, even though the failure was a bug rather than a refusal.
+        call = next(call for call in node["tool_calls"] if call["tool"] == "query_objects")
+        assert call["ok"] is False
+        assert "unexpected KeyError" in call["error"]

@@ -23,10 +23,10 @@ Usage — report or ignore, explicitly::
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager, contextmanager
 
-__all__ = ["boundary"]
+__all__ = ["aboundary", "boundary"]
 
 
 @contextmanager
@@ -45,6 +45,30 @@ def boundary(
 
     ``reraise`` names control-flow exceptions that must keep travelling (``HTTPException`` in an
     endpoint that still wants a 4xx to reach the client).
+    """
+    failed: list[BaseException] = []
+    try:
+        yield failed
+    except reraise:
+        raise
+    except Exception as exc:  # noqa: BLE001 -- see the module docstring; the allowlisted boundary
+        failed.append(exc)
+        if logger is not None:
+            logger.log(level, "boundary '%s' failed: %s", what, exc, exc_info=True)
+
+
+@asynccontextmanager
+async def aboundary(
+    what: str,
+    *,
+    logger: logging.Logger | None = None,
+    level: int = logging.WARNING,
+    reraise: tuple[type[BaseException], ...] = (),
+) -> AsyncIterator[list[BaseException]]:
+    """`boundary` for code that awaits — same contract, same reason for existing.
+
+    A flow node runs third-party model clients and resolvers, so the exceptions it can raise are not a fixed tuple.
+    Without this, one unexpected failure escapes the node and the run's trace with it.
     """
     failed: list[BaseException] = []
     try:

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
 import time
 from dataclasses import dataclass, field
@@ -30,6 +31,7 @@ from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior, UserE
 from pydantic_ai.usage import UsageLimitExceeded, UsageLimits
 
 from app.services.ontology.logic_validate import MAX_LOOP_ITERATIONS, validate_flow_spec
+from app.services.platform.boundaries import aboundary
 
 PROMPT_REF = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\}\}")
 DEFAULT_NODE_TIMEOUT_S = 60.0
@@ -42,6 +44,9 @@ MAX_TOOL_STEPS = 4
 MAX_TOOL_CALLS = 6
 
 
+
+
+logger = logging.getLogger(__name__)
 
 
 class FlowError(Exception):
@@ -215,6 +220,10 @@ async def _run_nodes(
 
     A failing node appends its own entry (with whatever tool calls it made) and raises a `FlowError` naming it, so the
     caller only has to decide what to do with the flow — not how to describe the failure again.
+
+    Each node runs inside `aboundary`, so an exception nobody predicted becomes *this node's* failure rather than an
+    unhandled error that takes the run's trace with it. That is a deliberate trade: a bug in a node loses that node's
+    answer, not the whole record of what happened.
     """
     last_output: Any = None
     last_id = ""
@@ -226,70 +235,25 @@ async def _run_nodes(
         calls: list[dict[str, Any]] = []
         entry: dict[str, Any] = {"id": node_id, "kind": node.get("kind"), "tool_calls": calls}
         try:
-            if node.get("kind") == "action":
-                rendered_params = {
-                    str(key): _render_value(value, variables)
-                    for key, value in (node.get("params") or {}).items()
-                }
-                entry["params"] = rendered_params
-                if action_planner is None:
-                    raise FlowError("this flow has an action node but nothing can compose edits")
-                edits = await action_planner(str(node.get("action_type") or ""), rendered_params)
-                output = {"edits": edits}
-            elif node.get("kind") == "transform":
-                # Deterministic on purpose: no model call, no tokens, no variance.
-                output = _render_value(node.get("template") or {}, variables)
-            elif node.get("kind") == "loop":
-                output, iterations, loop_error = await _run_loop(
+            async with aboundary(
+                f"flow node '{node_id}'", logger=logger, reraise=(FlowError,)
+            ) as failed:
+                output = await _run_one_node(
                     node,
                     variables=variables,
-                    model_factory=model_factory,
-                    tool_runner=tool_runner,
-                    schema_resolver=schema_resolver,
-                    action_schema_resolver=action_schema_resolver,
-                    action_planner=action_planner,
-                    node_timeout_s=node_timeout_s,
-                    node_token_limit=node_token_limit,
-                )
-                # Recorded before the raise, so a failed loop still shows what the other iterations did.
-                entry["iterations"] = iterations
-                if loop_error:
-                    raise FlowError(loop_error)
-            elif node.get("kind") == "condition":
-                branch = _pick_branch(node, variables)
-                entry["branch"] = branch.get("when") or "(fallback)"
-                nested: dict[str, Any] = {"nodes": []}
-                output, _nested_id = await _run_nodes(
-                    branch.get("nodes") or [],
-                    variables=variables,
-                    model_factory=model_factory,
-                    tool_runner=tool_runner,
-                    schema_resolver=schema_resolver,
-                    action_schema_resolver=action_schema_resolver,
-                    action_planner=action_planner,
-                    node_timeout_s=node_timeout_s,
-                    node_token_limit=node_token_limit,
-                    trace=nested,
-                )
-                entry["nodes"] = nested["nodes"]
-            else:
-                prompt = render_template(str(node.get("prompt") or ""), variables)
-                entry["prompt_sent"] = prompt
-                entry["missing_references"] = missing_references(
-                    str(node.get("prompt") or ""), variables
-                )
-                output, usage = await _run_model_node(
-                    node,
-                    prompt=prompt,
-                    model_factory=model_factory,
-                    tool_runner=tool_runner,
-                    schema_resolver=schema_resolver,
-                    action_schema_resolver=action_schema_resolver,
                     calls=calls,
-                    timeout_s=node_timeout_s,
-                    token_limit=node_token_limit,
+                    entry=entry,
+                    model_factory=model_factory,
+                    tool_runner=tool_runner,
+                    schema_resolver=schema_resolver,
+                    action_schema_resolver=action_schema_resolver,
+                    action_planner=action_planner,
+                    node_timeout_s=node_timeout_s,
+                    node_token_limit=node_token_limit,
                 )
-                entry["usage"] = usage
+            if failed:
+                exc = failed[0]
+                raise FlowError(f"unexpected {type(exc).__name__}: {exc}") from exc
         except FlowError as e:
             entry.update({"ok": False, "error": str(e), "duration_ms": _ms(started)})
             trace["nodes"].append(entry)
@@ -301,6 +265,91 @@ async def _run_nodes(
         last_output = output
         last_id = node_id
     return last_output, last_id
+
+
+async def _run_one_node(
+    node: dict,
+    *,
+    variables: dict[str, Any],
+    calls: list[dict[str, Any]],
+    entry: dict[str, Any],
+    model_factory: ModelFactory,
+    tool_runner: ToolRunner | None,
+    schema_resolver: SchemaResolver | None,
+    action_schema_resolver: ActionSchemaResolver | None,
+    action_planner: ActionPlanner | None,
+    node_timeout_s: float,
+    node_token_limit: int,
+) -> Any:
+    """One node's work, by kind. `entry` is filled in as it goes, so a failure still says what the node was doing."""
+    if node.get("kind") == "action":
+        rendered_params = {
+            str(key): _render_value(value, variables)
+            for key, value in (node.get("params") or {}).items()
+        }
+        entry["params"] = rendered_params
+        if action_planner is None:
+            raise FlowError("this flow has an action node but nothing can compose edits")
+        edits = await action_planner(str(node.get("action_type") or ""), rendered_params)
+        return {"edits": edits}
+
+    if node.get("kind") == "transform":
+        # Deterministic on purpose: no model call, no tokens, no variance.
+        return _render_value(node.get("template") or {}, variables)
+
+    if node.get("kind") == "loop":
+        output, iterations, loop_error = await _run_loop(
+            node,
+            variables=variables,
+            model_factory=model_factory,
+            tool_runner=tool_runner,
+            schema_resolver=schema_resolver,
+            action_schema_resolver=action_schema_resolver,
+            action_planner=action_planner,
+            node_timeout_s=node_timeout_s,
+            node_token_limit=node_token_limit,
+        )
+        # Recorded before the raise, so a failed loop still shows what the other iterations did.
+        entry["iterations"] = iterations
+        if loop_error:
+            raise FlowError(loop_error)
+        return output
+
+    if node.get("kind") == "condition":
+        branch = _pick_branch(node, variables)
+        entry["branch"] = branch.get("when") or "(fallback)"
+        nested: dict[str, Any] = {"nodes": []}
+        output, _nested_id = await _run_nodes(
+            branch.get("nodes") or [],
+            variables=variables,
+            model_factory=model_factory,
+            tool_runner=tool_runner,
+            schema_resolver=schema_resolver,
+            action_schema_resolver=action_schema_resolver,
+            action_planner=action_planner,
+            node_timeout_s=node_timeout_s,
+            node_token_limit=node_token_limit,
+            trace=nested,
+        )
+        entry["nodes"] = nested["nodes"]
+        return output
+
+    prompt = render_template(str(node.get("prompt") or ""), variables)
+    entry["prompt_sent"] = prompt
+    entry["missing_references"] = missing_references(str(node.get("prompt") or ""), variables)
+    output, usage = await _run_model_node(
+        node,
+        prompt=prompt,
+        model_factory=model_factory,
+        tool_runner=tool_runner,
+        schema_resolver=schema_resolver,
+        action_schema_resolver=action_schema_resolver,
+        calls=calls,
+        timeout_s=node_timeout_s,
+        token_limit=node_token_limit,
+    )
+    entry["usage"] = usage
+    return output
 
 
 
@@ -517,7 +566,21 @@ def _traced_tool(
         started = time.perf_counter()
         entry: dict[str, Any] = {"tool": name, "arguments": arguments, **(extra or {})}
         try:
-            result = await body(arguments)
+            async with aboundary(f"tool '{name}'", logger=logger, reraise=(FlowError,)) as failed:
+                result = await body(arguments)
+            if failed:
+                # A bug in a tool (not a flow decision): record which call it was, then let the node's boundary
+                # turn it into the node's failure.
+                exc = failed[0]
+                entry.update(
+                    {
+                        "ok": False,
+                        "error": f"unexpected {type(exc).__name__}: {exc}",
+                        "duration_ms": _ms(started),
+                    }
+                )
+                calls.append(entry)
+                raise exc
         except FlowError as e:
             entry.update({"ok": False, "error": str(e), "duration_ms": _ms(started)})
             calls.append(entry)
