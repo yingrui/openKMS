@@ -226,15 +226,73 @@ async def plan_action_edits(
     return edits
 
 
+#: Ontology property types as the JSON schema types a model understands. Anything unlisted is text: a model writing a
+#: string where a number belongs is recoverable by the Action; the reverse silently writes the wrong type.
+_PROPERTY_JSON_TYPES: dict[str, str] = {
+    "boolean": "boolean",
+    "bool": "boolean",
+    "integer": "integer",
+    "int": "integer",
+    "long": "integer",
+    "number": "number",
+    "double": "number",
+    "float": "number",
+    "array": "array",
+    "object": "object",
+}
+
+
 async def action_parameter_schema(db: AsyncSession, api_name: str) -> dict | None:
-    """An Action's declared parameters as a JSON schema, so the model fills real names instead of guessing."""
+    """An Action's parameters as a JSON schema, with their *types* — not every field is text.
+
+    The values become edit properties (built-in rules) or a function's arguments (function rules) without coercion, so
+    a schema that says "string" for everything teaches the model to write `"true"` where a boolean belongs.
+    """
     from app.models.ontology_function import OntologyActionType
+    from app.services.ontology.action_rule_types import BUILTIN_OBJECT_RULE_TYPES
 
     at = (
         await db.execute(select(OntologyActionType).where(OntologyActionType.api_name == api_name))
     ).scalar_one_or_none()
     if not at:
         return None
+
+    if at.rule_type in BUILTIN_OBJECT_RULE_TYPES and at.object_type_id:
+        ot = await db.get(ObjectType, at.object_type_id)
+        if ot:
+            raw = at.parameters or {}
+            declared = raw.get("fields") if isinstance(raw, dict) else None
+            rows = [
+                prop
+                for prop in (ot.properties or [])
+                if not isinstance(declared, list) or prop.get("name") in declared
+            ]
+            if rows:
+                properties: dict[str, dict[str, str]] = {}
+                required: list[str] = []
+                for prop in rows:
+                    name = str(prop.get("name") or "")
+                    if not name:
+                        continue
+                    properties[name] = {
+                        "type": _PROPERTY_JSON_TYPES.get(str(prop.get("type")), "string")
+                    }
+                    if prop.get("required"):
+                        required.append(name)
+                return {"type": "object", "properties": properties, "required": required}
+
+    if at.rule_type == "function" and at.function_id:
+        # A function-backed Action's contract *is* the function's input schema.
+        try:
+            fn, ver = await resolve_published_version_for_function(
+                db, at.function_id, pinned_version=at.function_version
+            )
+        except ValueError:
+            return None
+        schema = ver.input_schema if isinstance(ver.input_schema, dict) else None
+        if schema:
+            return schema
+
     raw = at.parameters or {}
     fields = raw.get("fields") if isinstance(raw, dict) else None
     if not isinstance(fields, list) or not fields:

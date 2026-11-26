@@ -298,3 +298,79 @@ class TestDeepLinkFilter:
         assert "function_id" in captured["where"]
         assert page.items[0].function_api_name == "forecast"
         assert page.items[0].function_display_name == "Forecast"
+
+
+class TestActionParameterSchema:
+    """The tool tells the model a field's *type*, because the value becomes a property without coercion."""
+
+    @pytest.mark.asyncio
+    async def test_a_builtin_action_reports_object_property_types(self):
+        from app.services.ontology import execution_service as svc
+
+        action_type = SimpleNamespace(
+            api_name="addHolding",
+            rule_type="object_create",
+            object_type_id="ot-1",
+            parameters={"fields": ["ts_code", "target_weight", "confirm"]},
+        )
+        ot = SimpleNamespace(
+            properties=[
+                {"name": "ts_code", "type": "string", "required": True},
+                {"name": "target_weight", "type": "double", "required": False},
+                {"name": "confirm", "type": "boolean", "required": False},
+                {"name": "note", "type": "string", "required": False},
+            ]
+        )
+
+        class FakeDb:
+            async def execute(self, _stmt):
+                return SimpleNamespace(scalar_one_or_none=lambda: action_type)
+
+            async def get(self, _model, _pk):
+                return ot
+
+        schema = await svc.action_parameter_schema(FakeDb(), "addHolding")
+
+        assert schema["properties"] == {
+            "ts_code": {"type": "string"},
+            "target_weight": {"type": "number"},
+            "confirm": {"type": "boolean"},
+        }
+        assert schema["required"] == ["ts_code"]
+
+    @pytest.mark.asyncio
+    async def test_a_function_backed_action_reports_the_functions_input_schema(self, monkeypatch):
+        from app.services.ontology import execution_service as svc
+
+        action_type = SimpleNamespace(
+            api_name="createForecastAdjustment",
+            rule_type="function",
+            object_type_id="ot-1",
+            function_id="fn-1",
+            function_version=None,
+            parameters=None,
+        )
+        fn = SimpleNamespace(api_name="capacityCreateAdjustment", source="code")
+        ver = SimpleNamespace(
+            input_schema={
+                "type": "object",
+                "properties": {"effect": {"type": "object"}, "confirm": {"type": "boolean"}},
+                "required": ["confirm"],
+            }
+        )
+
+        class FakeDb:
+            async def execute(self, _stmt):
+                return SimpleNamespace(scalar_one_or_none=lambda: action_type)
+
+            async def get(self, _model, _pk):
+                return None
+
+        async def resolve(_db, _function_id, *, pinned_version=None):
+            return fn, ver
+
+        monkeypatch.setattr(svc, "resolve_published_version_for_function", resolve)
+        schema = await svc.action_parameter_schema(FakeDb(), "createForecastAdjustment")
+
+        assert schema["properties"]["confirm"] == {"type": "boolean"}
+        assert schema["required"] == ["confirm"]
