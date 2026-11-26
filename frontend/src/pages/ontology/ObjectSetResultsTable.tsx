@@ -38,6 +38,7 @@ export function ObjectSetResultsTable({
   onToggleAll,
   inlineActions,
   onInlineSubmit,
+  labels,
 }: {
   instances: ObjectInstanceResponse[];
   /** The properties to show, in the order chosen — part of the layout, not of the table. */
@@ -50,6 +51,8 @@ export function ObjectSetResultsTable({
   /** Actions that edit one property in place, keyed by that property. */
   inlineActions?: Record<string, ActionApplicability>;
   onInlineSubmit?: (action: ActionApplicability, row: ObjectInstanceResponse, value: unknown) => void;
+  /** `column → id → name`, so an id column reads as the object it points at. */
+  labels?: Record<string, Record<string, string>>;
 }) {
   const { t } = useTranslation('explore');
   const sortState = (name: string): 'ascending' | 'descending' | 'none' => {
@@ -135,10 +138,13 @@ export function ObjectSetResultsTable({
                     </td>
                   );
                 }
+                const raw = row.data?.[p.name];
+                const name = labels?.[p.name]?.[String(raw ?? '')];
                 return (
                   <td
                     key={p.name}
                     className={action ? 'object-set-inline' : undefined}
+                    title={name ? `${name} (${String(raw)})` : undefined}
                     onDoubleClick={
                       editable
                         ? () => {
@@ -148,7 +154,7 @@ export function ObjectSetResultsTable({
                         : undefined
                     }
                   >
-                    <span>{cellText(row.data?.[p.name])}</span>
+                    <span>{name ?? cellText(raw)}</span>
                     {editable ? (
                       <button
                         type="button"

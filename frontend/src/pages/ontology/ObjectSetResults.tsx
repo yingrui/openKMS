@@ -23,6 +23,7 @@ export function ObjectSetResults({
   onToggleAll,
   inlineActions,
   onInlineSubmit,
+  labels,
   shown,
   onLoadMore,
 }: {
@@ -39,6 +40,7 @@ export function ObjectSetResults({
   onToggleAll: () => void;
   inlineActions?: Record<string, ActionApplicability>;
   onInlineSubmit?: (action: ActionApplicability, row: ObjectInstanceResponse, value: unknown) => void;
+  labels?: Record<string, Record<string, string>>;
   /** How many rows are on screen, and the way to get the next page of the same set. */
   shown: number;
   onLoadMore: () => void;
@@ -46,23 +48,18 @@ export function ObjectSetResults({
   const { t } = useTranslation('explore');
   return (
     <>
-      <div className="object-set-toolbar">
-        <span className="object-set-toolbar__total">
-          {total === null ? null : t('objectSet.objectCount', { count: total })}
-        </span>
+      {/* The table's own header: what it is, and the one control that configures it. */}
+      <div className="object-set-section">
+        <h2 className="object-set-section__title">
+          {t('objectSet.objectsTitle')}
+          {total === null ? null : ` · ${total}`}
+        </h2>
         <ObjectSetColumnPicker
           columns={visible}
           properties={properties.map((property) => property.name)}
           onChange={onColumns}
         />
       </div>
-      {total !== null && total > shown ? (
-        <div className="object-set-more">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onLoadMore}>
-            {t('objectSet.loadMore', { shown, total })}
-          </button>
-        </div>
-      ) : null}
       <ObjectSetResultsTable
         instances={instances}
         columns={
@@ -78,7 +75,16 @@ export function ObjectSetResults({
         onToggleAll={onToggleAll}
         inlineActions={inlineActions}
         onInlineSubmit={onInlineSubmit}
+        labels={labels}
       />
+      {/* Paging belongs after the rows it pages through. */}
+      {total !== null && total > shown ? (
+        <div className="object-set-more">
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onLoadMore}>
+            {t('objectSet.loadMore', { shown, total })}
+          </button>
+        </div>
+      ) : null}
     </>
   );
 }

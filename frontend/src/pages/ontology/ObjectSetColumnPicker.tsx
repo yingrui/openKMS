@@ -61,7 +61,7 @@ export function ObjectSetColumnPicker({
         onClick={() => setOpen((value) => !value)}
       >
         <Columns3 size={14} aria-hidden />
-        {t('objectSet.columnsCount', { count: columns.length })}
+        {t('objectSet.columnsButton', { count: columns.length })}
       </button>
       {open ? (
         <div className="object-set-columns__panel">

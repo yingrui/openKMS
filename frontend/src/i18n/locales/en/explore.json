@@ -461,7 +461,9 @@
     "metric_min": "min",
     "metric_max": "max",
     "metric_p50": "median",
-    "metric_p90": "p90"
+    "metric_p90": "p90",
+    "objectsTitle": "Objects",
+    "columnsButton": "Columns ({{count}})"
   },
   "explorerSections": {
     "explorations": "Explorations",

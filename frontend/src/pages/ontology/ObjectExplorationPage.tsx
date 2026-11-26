@@ -39,7 +39,9 @@ import { ObjectSetToolbar } from './ObjectSetToolbar';
 import { useObjectSetCompare } from './useObjectSetCompare';
 import { ObjectSetActionMenu } from './ObjectSetActionMenu';
 
-import { inlineInput, useInlineActions } from './useInlineActions';
+import { explorationSubtitle } from './explorationSubtitle';
+import { inlineInput } from './useInlineActions';
+import { useTableActions } from './useTableActions';
 import { useRowSelection } from './useRowSelection';
 import { actionCount, useObjectSetAction } from './useObjectSetAction';
 import { useExplorationHistory } from './useExplorationHistory';
@@ -148,7 +150,6 @@ export function ObjectExplorationPage() {
     },
   });
 
-  const inlineActions = useInlineActions(actions);
   const { toggleRow, toggleAllRows } = useRowSelection(instances, setSelected);
 
   const toggleSort = (prop: string) => {
@@ -492,6 +493,16 @@ export function ObjectExplorationPage() {
     void loadRows();
   });
 
+  /* What the table needs beyond rows: which cells an action edits, and what an id column points at. */
+  const { inlineActions, columnLabels } = useTableActions({
+    actions,
+    typeId,
+    links,
+    typeById,
+    columns: visibleColumns,
+    rows: instances,
+  });
+
   /* An inline edit is one object and one value: no dialog, no selection. */
   const submitInline = (picked: ActionApplicability, row: { id: string }, value: unknown) =>
     void action.runInline(picked, row.id, inlineInput(picked, value));
@@ -503,21 +514,7 @@ export function ObjectExplorationPage() {
     <ListPage
       className="object-exploration"
       title={saved ? saved.name : objectType.name}
-      subtitle={
-        total === null
-          ? objectType.description ?? undefined
-          : [
-              objectType.description,
-              t('objectSet.objectCount', { count: total }),
-              objectType.last_indexed_at
-                ? t('objectSet.dataAsOf', {
-                    time: new Date(objectType.last_indexed_at).toLocaleString(),
-                  })
-                : t('objectSet.neverIndexed'),
-            ]
-              .filter(Boolean)
-              .join(' · ')
-      }
+      subtitle={explorationSubtitle(objectType, total, t)}
       actions={
         <>
           <ExplorerMenu />
@@ -659,6 +656,7 @@ export function ObjectExplorationPage() {
           onToggleAll={toggleAllRows}
           inlineActions={inlineActions}
           onInlineSubmit={submitInline}
+          labels={columnLabels}
           shown={instances.length}
           onLoadMore={() => setRowLimit((limit) => limit + ROW_PAGE)}
         />

@@ -461,7 +461,9 @@
     "metric_min": "最小",
     "metric_max": "最大",
     "metric_p50": "中位",
-    "metric_p90": "P90"
+    "metric_p90": "P90",
+    "objectsTitle": "对象",
+    "columnsButton": "列（{{count}}）"
   },
   "explorerSections": {
     "explorations": "探索",
