@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Loader2, Play } from 'lucide-react';
+import { Info, Loader2, Play } from 'lucide-react';
 import { FormField } from '../../styles/design-system';
 import { ObjectInstancePicker, type PickedInstance } from './ObjectInstancePicker';
 import type { InputField } from './logicFlow';
@@ -60,7 +60,20 @@ export function LogicRunPanel({
   return (
     <section className="logic-run" aria-label={t('editor.logicRunTitle')}>
       <div className="logic-run__head">
-        <span className="logic-run__title">{t('editor.logicRunTitle')}</span>
+        <span className="logic-run__title">
+          {t('editor.logicRunTitle')}
+          {/* Two sentences that explain the panel's contract, not its state. State stays visible; the contract
+              waits behind the icon. */}
+          <span
+            className="logic-run__info"
+            title={`${t('editor.logicRunScope')} ${t('editor.logicRunFieldsHint')}`}
+            aria-label={t('editor.logicRunScope')}
+            tabIndex={0}
+            role="img"
+          >
+            <Info size={14} aria-hidden />
+          </span>
+        </span>
         <button
           type="button"
           className="btn btn-primary btn-sm"
@@ -72,9 +85,6 @@ export function LogicRunPanel({
           {running ? t('editor.running') : t('editor.logicRunDraft')}
         </button>
       </div>
-
-      <p className="logic-run__hint">{t('editor.logicRunScope')}</p>
-      {fields.length > 0 ? <p className="logic-run__hint">{t('editor.logicRunFieldsHint')}</p> : null}
 
       {missing.length ? (
         <p className="logic-run__missing" role="status">

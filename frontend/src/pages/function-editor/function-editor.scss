@@ -811,9 +811,23 @@
 }
 
 .logic-run__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-secondary);
+}
+
+.logic-run__info {
+  display: inline-flex;
+  color: var(--color-text-muted);
+  cursor: help;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-text-secondary);
+  }
 }
 
 .logic-run__missing {
