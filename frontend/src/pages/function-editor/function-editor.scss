@@ -831,6 +831,67 @@
   }
 }
 
+/* ---------- Logic function: the output card (the flow's end, visible) ---------- */
+
+.logic-output {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.logic-output__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.logic-output__title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.logic-output__select {
+  margin-inline-start: auto;
+  min-width: 12rem;
+  font-size: var(--text-sm);
+}
+
+.logic-output__hint,
+.logic-output__text {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+}
+
+.logic-output__fields {
+  display: grid;
+  grid-template-columns: minmax(6rem, max-content) 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.logic-output__field {
+  display: contents;
+
+  dt {
+    align-self: center;
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  dd {
+    margin: 0;
+    word-break: break-word;
+  }
+}
+
 /* ---------- Logic function: the inputs board ---------- */
 
 .logic-inputs {

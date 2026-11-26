@@ -22,6 +22,26 @@ export type NodeRunValue = { output?: unknown; error?: string; tokens?: number; 
  * part is visible as itself: inputs are typed rows, a block shows the shape and the value it produced, and the output
  * is picked from what exists instead of typed as a reference.
  */
+/** What the flow answered last time, as fields rather than a JSON blob. */
+function OutputValue({ value }: { value: unknown }) {
+  const rows =
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.entries(value as Record<string, unknown>)
+      : null;
+  return rows ? (
+    <dl className="logic-output__fields">
+      {rows.map(([key, field]) => (
+        <div key={key} className="logic-output__field">
+          <dt>{key}</dt>
+          <dd>{typeof field === 'string' ? field : JSON.stringify(field)}</dd>
+        </div>
+      ))}
+    </dl>
+  ) : (
+    <p className="logic-output__text">{typeof value === 'string' ? value : JSON.stringify(value)}</p>
+  );
+}
+
 export function LogicFlowEditor({
   draft,
   models,
@@ -29,6 +49,7 @@ export function LogicFlowEditor({
   runValues,
   objectTypes,
   objectProperties,
+  runOutput,
   disabled,
   onChange,
 }: {
@@ -41,6 +62,8 @@ export function LogicFlowEditor({
   objectTypes: string[];
   /** api_name → property names, so a prompt can insert a real field of an object input. */
   objectProperties: Record<string, string[]>;
+  /** The last run's answer, so the flow ends in something visible rather than a dropdown. */
+  runOutput?: unknown;
   disabled: boolean;
   onChange: (next: FlowDraft) => void;
 }) {
@@ -103,22 +126,23 @@ export function LogicFlowEditor({
         ))}
       </ol>
 
-      <div className="logic-flow__footer">
-        <button
-          type="button"
-          className="logic-flow__add"
-          onClick={() => update({ ...draft, nodes: [...draft.nodes, newNode(draft.nodes.length)] })}
-          disabled={disabled}
-        >
-          <Plus size={15} aria-hidden />
-          {t('editor.logicAddNode')}
-        </button>
+      <button
+        type="button"
+        className="logic-flow__add"
+        onClick={() => update({ ...draft, nodes: [...draft.nodes, newNode(draft.nodes.length)] })}
+        disabled={disabled}
+      >
+        <Plus size={15} aria-hidden />
+        {t('editor.logicAddNode')}
+      </button>
 
-        <label className="logic-flow__output" htmlFor="logic-output-node">
-          {t('editor.logicOutputSource')}
+      {/* The end of the flow, as a thing you can see: which node answers, and what it answered last time. */}
+      <section className="logic-output" aria-label={t('editor.logicOutputSource')}>
+        <div className="logic-output__head">
+          <span className="logic-output__title">{t('editor.logicOutputSource')}</span>
           <select
-            id="logic-output-node"
-            className="ds-control"
+            className="ds-control logic-output__select"
+            aria-label={t('editor.logicOutputSource')}
             value={draft.output}
             onChange={(e) => update({ ...draft, output: e.target.value })}
             disabled={disabled}
@@ -130,8 +154,13 @@ export function LogicFlowEditor({
               </option>
             ))}
           </select>
-        </label>
-      </div>
+        </div>
+        {runOutput === undefined || runOutput === null ? (
+          <p className="logic-output__hint">{t('editor.logicOutputEmpty')}</p>
+        ) : (
+          <OutputValue value={runOutput} />
+        )}
+      </section>
 
       {errors.length ? (
         <ul className="logic-flow__errors" role="alert">

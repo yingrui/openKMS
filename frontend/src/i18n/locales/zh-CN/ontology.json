@@ -1500,7 +1500,8 @@
     "logicFieldsSummary": "{{count}} 个字段：{{names}}",
     "logicFieldsEdit": "编辑字段",
     "logicFieldsHide": "收起字段",
-    "logicOutputSource": "答案来自"
+    "logicOutputSource": "答案来自",
+    "logicOutputEmpty": "还没有：运行一次之后，答案会显示在这里。"
   },
   "dataSources": {
     "title": "数据源",

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -10,6 +10,7 @@ import {
   executeOntologyFunction,
   fetchFunctionExecutions,
   fetchFunctionVersions,
+  type OntologyFunctionExecutionResponse,
   fetchOntologyFunction,
   publishOntologyFunction,
   dryRunLogicFlow,
@@ -100,6 +101,34 @@ export function useFunctionEditorWorkspace() {
   }, []);
 
   /** The last few runs, so a refresh does not erase the only run you had. Loaded lazily in Logic mode. */
+  /** Show a run in the panel: its output, trace, and the inputs it was made with. */
+  const applyRun = useCallback(
+    (row: OntologyFunctionExecutionResponse | undefined) => {
+      if (!row) return;
+      setPreviewOutput(JSON.stringify(row.output_payload ?? row.error_message ?? {}, null, 2));
+      setTrace((row.trace as Record<string, unknown>) ?? null);
+      const values: Record<string, string> = {};
+      const picked: Record<string, { id: string; data: Record<string, unknown> }[]> = {};
+      for (const [key, value] of Object.entries(row.input_payload ?? {})) {
+        if (Array.isArray(value)) {
+          // A set input: the records the run was made with.
+          picked[key] = value.map((item) => ({ id: '', data: (item ?? {}) as Record<string, unknown> }));
+          values[key] = JSON.stringify(value);
+        } else if (value && typeof value === 'object') {
+          // An object input was filled by picking an instance; without restoring it, pressing Run again would
+          // answer "pick an instance" and the replay would look broken.
+          picked[key] = [{ id: '', data: value as Record<string, unknown> }];
+          values[key] = JSON.stringify(value);
+        } else {
+          values[key] = typeof value === 'string' ? value : JSON.stringify(value);
+        }
+      }
+      setRunValues(values);
+      setPickedInstances(picked);
+    },
+    [],
+  );
+
   const loadRecentRuns = useCallback(async () => {
     const id = resolvedId;
     if (!id || authoring !== 'logic') return;
@@ -129,6 +158,21 @@ export function useFunctionEditorWorkspace() {
   useEffect(() => {
     void loadRecentRuns();
   }, [loadRecentRuns]);
+
+  // Opening a function should show what it last answered: an empty panel reads as "never run", which is often wrong.
+  const shownInitialRun = useRef<string | null>(null);
+  useEffect(() => {
+    const id = resolvedId;
+    if (!id || authoring !== 'logic' || trace !== null || shownInitialRun.current === id) return;
+    const latest = recentRuns[0];
+    if (!latest) return;
+    shownInitialRun.current = id;
+    void fetchFunctionExecutions(id, { limit: 1 })
+      .then((rows) => applyRun(rows[0]))
+      .catch(() => {
+        /* the panel stays empty; nothing was lost */
+      });
+  }, [resolvedId, authoring, trace, recentRuns, applyRun]);
 
   // Only needed when the flow editor is on screen; a failed list leaves the "default model" option usable.
   useEffect(() => {
@@ -356,28 +400,7 @@ export function useFunctionEditorWorkspace() {
     void (async () => {
       try {
         const rows = await fetchFunctionExecutions(resolvedId ?? '', { limit: 50 });
-        const row = rows.find((candidate) => candidate.id === runId);
-        if (!row) return;
-        setPreviewOutput(JSON.stringify(row.output_payload ?? row.error_message ?? {}, null, 2));
-        setTrace((row.trace as Record<string, unknown>) ?? null);
-        const values: Record<string, string> = {};
-        const picked: Record<string, { id: string; data: Record<string, unknown> }[]> = {};
-        for (const [key, value] of Object.entries(row.input_payload ?? {})) {
-          if (Array.isArray(value)) {
-            // A set input: the records the run was made with.
-            picked[key] = value.map((row) => ({ id: '', data: (row ?? {}) as Record<string, unknown> }));
-            values[key] = JSON.stringify(value);
-          } else if (value && typeof value === 'object') {
-            // An object input was filled by picking an instance; without restoring it, pressing Run again would
-            // answer "pick an instance" and the replay would look broken.
-            picked[key] = [{ id: '', data: value as Record<string, unknown> }];
-            values[key] = JSON.stringify(value);
-          } else {
-            values[key] = typeof value === 'string' ? value : JSON.stringify(value);
-          }
-        }
-        setRunValues(values);
-        setPickedInstances(picked);
+        applyRun(rows.find((candidate) => candidate.id === runId));
       } catch (e: unknown) {
         toast.error(e instanceof Error ? e.message : t('functions.loadFailed'));
       }

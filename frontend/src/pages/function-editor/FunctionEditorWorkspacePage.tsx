@@ -272,6 +272,7 @@ export function FunctionEditorWorkspacePage() {
                   models={models}
                   errors={flowErrors}
                   runValues={runValuesByNode}
+                  runOutput={(trace?.output as unknown) ?? undefined}
                   objectTypes={objectTypes
                     .map((ot) => ot.api_name)
                     .filter((name): name is string => Boolean(name))}

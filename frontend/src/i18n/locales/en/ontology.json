@@ -1506,7 +1506,8 @@
     "logicFieldsSummary": "{{count}} fields: {{names}}",
     "logicFieldsEdit": "Edit fields",
     "logicFieldsHide": "Hide fields",
-    "logicOutputSource": "Answer from"
+    "logicOutputSource": "Answer from",
+    "logicOutputEmpty": "Nothing yet: run the flow and the answer appears here."
   },
   "dataSources": {
     "title": "Data sources",
