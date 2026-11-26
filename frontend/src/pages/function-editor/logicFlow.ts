@@ -511,6 +511,15 @@ function toolsFromSpec(raw: unknown): NodeTool[] {
     .filter((tool): tool is NodeTool => tool !== null);
 }
 
+/** A fresh tool of a kind: the row's shape follows the kind, so a tool with nothing to configure has no fields. */
+export function newTool(kind: NodeTool['kind']): NodeTool {
+  const id = `tool-${Date.now()}`;
+  if (kind === 'calculator') return { id, kind };
+  if (kind === 'call_function') return { id, kind, function: '', description: '' };
+  if (kind === 'apply_action') return { id, kind, actionType: '', description: '' };
+  return { id, kind, object_type: '', properties: [], limit: 5 };
+}
+
 function toolsForSpec(node: ModelNode, where: string, errors: string[]): Record<string, unknown>[] {
   return node.tools.map((tool, index) => {
     if (tool.kind === 'calculator') return { kind: 'calculator' };

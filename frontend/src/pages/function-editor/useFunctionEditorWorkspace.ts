@@ -22,7 +22,6 @@ import { AUTHORING_OF_SOURCE, backToListPath, hasUnpublishedDraft, type Authorin
 import {
   draftFromSpec,
   emptyDraft,
-  inputNames,
   inputSchemaFromDraft,
   specFromDraft,
   type FlowDraft,
