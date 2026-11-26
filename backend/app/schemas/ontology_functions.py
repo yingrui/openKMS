@@ -335,6 +335,8 @@ class ActionApplicability(BaseModel):
     selected_eligible: int = 0
     #: Runs **per selected object** (modify/delete, or a function that names the object) rather than once.
     per_object: bool = True
+    #: Picks one member of a set (adopt a plan, choose a default). Never a batch, whatever is selected.
+    exclusive: bool = False
     #: The property this action edits in place, when it declares one.
     inline_edit: dict | None = None
 

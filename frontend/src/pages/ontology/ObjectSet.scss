@@ -1261,3 +1261,10 @@
     opacity: 1;
   }
 }
+
+/* The table shows a page of the set, and says so: a table that stops at 200 without a word is a table that lies. */
+.object-set-more {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-2) 0;
+}

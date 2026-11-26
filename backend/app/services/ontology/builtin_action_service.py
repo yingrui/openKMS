@@ -67,6 +67,16 @@ def inline_edit_spec(parameters: object | None) -> dict[str, str] | None:
     return {"prop": prop, "param": param}
 
 
+def selects_one_of_a_set(parameters: object | None) -> bool:
+    """The action picks one member of a set (adopting a plan, choosing a default), so it cannot run over many.
+
+    "Mark every plan as adopted" is not a bulk version of "adopt one plan" — it is a contradiction. An action that
+    sets a flag of this kind declares it, and the API refuses to spread it over a set instead of trusting the caller
+    to notice.
+    """
+    return bool(action_parameters_dict(parameters).get("exclusive"))
+
+
 def submission_permissions(parameters: object | None) -> list[str]:
     """Permissions the caller must hold for this action to be offered at all.
 

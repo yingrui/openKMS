@@ -23,6 +23,8 @@ export function ObjectSetResults({
   onToggleAll,
   inlineActions,
   onInlineSubmit,
+  shown,
+  onLoadMore,
 }: {
   total: number | null;
   instances: ObjectInstanceResponse[];
@@ -37,6 +39,9 @@ export function ObjectSetResults({
   onToggleAll: () => void;
   inlineActions?: Record<string, ActionApplicability>;
   onInlineSubmit?: (action: ActionApplicability, row: ObjectInstanceResponse, value: unknown) => void;
+  /** How many rows are on screen, and the way to get the next page of the same set. */
+  shown: number;
+  onLoadMore: () => void;
 }) {
   const { t } = useTranslation('explore');
   return (
@@ -51,6 +56,13 @@ export function ObjectSetResults({
           onChange={onColumns}
         />
       </div>
+      {total !== null && total > shown ? (
+        <div className="object-set-more">
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onLoadMore}>
+            {t('objectSet.loadMore', { shown, total })}
+          </button>
+        </div>
+      ) : null}
       <ObjectSetResultsTable
         instances={instances}
         columns={properties.filter((property) => visible.includes(property.name))}

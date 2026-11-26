@@ -119,6 +119,8 @@ export interface ActionApplicability {
   per_object: boolean;
   /** The property this action edits in place, when it declares one — that cell gets a pen. */
   inline_edit?: { prop: string; param: string } | null;
+  /** Picks one member of a set; never a batch, whatever is selected. */
+  exclusive?: boolean;
 }
 
 /** Ask which actions this set — and this selection — may take, before drawing the menu. */

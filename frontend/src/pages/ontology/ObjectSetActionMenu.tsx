@@ -43,8 +43,13 @@ export function ObjectSetActionMenu({
   }, [open]);
 
   /* An action whose submission criteria exclude this set cannot be offered: the menu is the promise, the executor
-     keeps it. */
-  const offered = actions.filter((action) => action.eligible > 0);
+     keeps it. An exclusive action is offered only for exactly one object — "adopt every plan" is a contradiction,
+     not a bulk action. */
+  const offered = actions.filter((action) => {
+    if (action.eligible <= 0) return false;
+    if (action.exclusive && count !== 1) return false;
+    return true;
+  });
   if (offered.length === 0 && actions.length === 0) return null;
 
   return (

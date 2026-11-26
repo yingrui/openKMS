@@ -453,7 +453,8 @@
     "actionSingleDone": "已执行",
     "actionRunOnce": "执行",
     "actionNoParametersOnce": "这个动作没有参数，执行一次即可。",
-    "inlineEdit": "修改 {{name}}"
+    "inlineEdit": "修改 {{name}}",
+    "loadMore": "加载更多（{{shown}} / {{total}}）"
   },
   "explorerSections": {
     "explorations": "探索",

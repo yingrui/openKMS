@@ -81,3 +81,11 @@ def test_an_inline_edit_names_the_property_and_its_parameter():
     }
     assert inline_edit_spec({"inline_edit": {}}) is None
     assert inline_edit_spec(None) is None
+
+
+def test_picking_one_of_a_set_is_declared_not_guessed():
+    from app.services.ontology.builtin_action_service import selects_one_of_a_set
+
+    assert selects_one_of_a_set({"exclusive": True}) is True
+    assert selects_one_of_a_set({"fields": ["is_selected"]}) is False
+    assert selects_one_of_a_set(None) is False

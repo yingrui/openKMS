@@ -453,7 +453,8 @@
     "actionSingleDone": "Done",
     "actionRunOnce": "Run",
     "actionNoParametersOnce": "This action takes no parameters; it runs once.",
-    "inlineEdit": "Edit {{name}}"
+    "inlineEdit": "Edit {{name}}",
+    "loadMore": "Load more ({{shown}} of {{total}})"
   },
   "explorerSections": {
     "explorations": "Explorations",

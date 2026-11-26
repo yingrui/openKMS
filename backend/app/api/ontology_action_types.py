@@ -39,6 +39,7 @@ from app.services.ontology.builtin_action_service import (
     object_ref_params,
     inline_edit_spec,
     runs_per_object,
+    selects_one_of_a_set,
     submission_criteria,
     submission_permissions,
 )
@@ -654,6 +655,16 @@ async def execute_action_type_batch(
     at = await _get_action_type(db, action_type_id)
     if at.status != "active":
         raise HTTPException(status_code=400, detail="Action type is not active")
+    if selects_one_of_a_set(at.parameters) and (
+        body.apply_to_set or len(set(body.object_ids)) > 1
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"`{at.display_name}` picks one object of a set; it cannot run over several. "
+                "Select exactly one."
+            ),
+        )
     if not runs_per_object(at.rule_type, at.parameters) and (body.object_ids or body.apply_to_set):
         raise HTTPException(
             status_code=400,
@@ -806,6 +817,7 @@ async def applicable_actions(
                 eligible=eligible,
                 selected_eligible=selected_eligible,
                 per_object=runs_per_object(action.rule_type, action.parameters),
+                exclusive=selects_one_of_a_set(action.parameters),
                 inline_edit=inline_edit_spec(action.parameters),
             )
         )
