@@ -22,7 +22,6 @@ import {
   filterTexts,
   type ExplorationLayoutChoice,
   patchExploration,
-  saveExplorationLayout,
   type ExplorationResponse,
 } from '../../data/explorationsApi';
 
@@ -41,6 +40,8 @@ import { ObjectSetActionMenu } from './ObjectSetActionMenu';
 
 import { explorationSubtitle } from './explorationSubtitle';
 import { inlineInput } from './useInlineActions';
+import { useCompareRows } from './useCompareRows';
+import { useLayoutSaving } from './useLayoutSaving';
 import { useTableActions } from './useTableActions';
 import { useRowSelection } from './useRowSelection';
 import { actionCount, useObjectSetAction } from './useObjectSetAction';
@@ -116,7 +117,6 @@ export function ObjectExplorationPage() {
   /* The types on the other side of those links: a chart may read a neighbour's property, and the option list has to
      know what that neighbour declares. */
   const [typeById, setTypeById] = useState<Record<string, ObjectTypeResponse>>({});
-  const [layoutSaving, setLayoutSaving] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
   const [layoutChoices, setLayoutChoices] = useState<ExplorationLayoutChoice[]>([]);
   const [allSaved, setAllSaved] = useState<ExplorationResponse[]>([]);
@@ -234,12 +234,12 @@ export function ObjectExplorationPage() {
     setSelected(new Set());
   }, [filters, search]);
 
-  /* A different set — or a different page size — is a different first page. */
+  /* A different set, or a different page size, is a different first page. */
   useEffect(() => {
     setExtraPages(0);
   }, [typeId, filters, search, sort, pageSize]);
 
-  /* A chart list belongs to one type: clear it on a type change, before either layout request answers. */
+  /* A chart list belongs to one type: clear it when the type changes. */
   const loadedType = useRef<string | null>(null);
   const dismissOutcome = useRef(outcome.dismiss);
   dismissOutcome.current = outcome.dismiss;
@@ -415,42 +415,18 @@ export function ObjectExplorationPage() {
   };
 
   /** The layout currently on screen — what "save as my default" stores. */
-  const currentLayout = () => ({
+  const currentLayout = useCallback(() => ({
     charts: specs,
     columns: visibleColumns,
     sorts: parseSortList(sort).map((term) => ({ prop: term.prop, desc: term.desc })),
+  }), [specs, sort, visibleColumns]);
+
+  const layoutSaver = useLayoutSaving({
+    typeId,
+    buildLayout: currentLayout,
+    onChoices: setLayoutChoices,
+    onReset: () => setChartSpecs(null),
   });
-
-  const saveAsMyLayout = async (scope: 'personal' | 'global' = 'personal') => {
-    if (!typeId) return;
-    setLayoutSaving(true);
-    try {
-      await saveExplorationLayout(typeId, currentLayout(), scope);
-      const refreshed = await fetchExplorationLayout(typeId);
-      setLayoutChoices(refreshed.available ?? []);
-      toast.success(
-        scope === 'global' ? t('objectSet.layoutSavedGlobal') : t('objectSet.layoutSaved')
-      );
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('objectSet.layoutFailed'));
-    } finally {
-      setLayoutSaving(false);
-    }
-  };
-
-  const resetLayout = async () => {
-    if (!typeId) return;
-    setLayoutSaving(true);
-    try {
-      await saveExplorationLayout(typeId, {}, 'personal');
-      setChartSpecs(null);
-      toast.success(t('objectSet.layoutReset'));
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('objectSet.layoutFailed'));
-    } finally {
-      setLayoutSaving(false);
-    }
-  };
 
   const save = async () => {
     if (!typeId || !saveName.trim()) return;
@@ -493,6 +469,8 @@ export function ObjectExplorationPage() {
   });
 
   /* What the table needs beyond rows: which cells an action edits, and what an id column points at. */
+  const baseline = useCompareRows({ typeId, compareSet, search, limit: rowLimit });
+
   const { inlineActions, columnLabels } = useTableActions({
     actions,
     typeId,
@@ -505,6 +483,7 @@ export function ObjectExplorationPage() {
   /* An inline edit is one object and one value: no dialog, no selection. */
   const submitInline = (picked: ActionApplicability, row: { id: string }, value: unknown) =>
     void action.runInline(picked, row.id, inlineInput(picked, value));
+
 
   if (loading) return <Loading label={t('objectSet.typeLoading')} />;
   if (!objectType) return <EmptyState title={t('objectSet.typeMissing')} />;
@@ -520,7 +499,7 @@ export function ObjectExplorationPage() {
           <ExplorationLayoutMenu
             open={layoutOpen}
             choices={layoutChoices}
-            saving={layoutSaving}
+            saving={layoutSaver.saving}
             isAdmin={isAdmin}
             onToggle={() => setLayoutOpen((value) => !value)}
             onUse={(choice) => {
@@ -531,11 +510,11 @@ export function ObjectExplorationPage() {
             }}
             onSave={(scope) => {
               setLayoutOpen(false);
-              void saveAsMyLayout(scope);
+              void layoutSaver.saveAsMine(scope);
             }}
             onReset={() => {
               setLayoutOpen(false);
-              void resetLayout();
+              void layoutSaver.reset();
             }}
           />
           <ObjectSetActionMenu
@@ -579,11 +558,9 @@ export function ObjectExplorationPage() {
       {rowsError ? <p className="object-set-refusal">{rowsError}</p> : null}
 
       <ObjectSetChartBoard
-          total={total}
           compareLabel={compareSet?.label ?? null}
           explorations={allSaved.filter(
-            /* A baseline is the same set of things measured differently: another type's conditions cannot apply to
-               this one, and offering them produced a refused request instead of a comparison. */
+            /* A baseline is the same set of things measured differently: another type's conditions cannot apply. */
             (row) => row.object_type_id === typeId && row.id !== saved?.id
           )}
           onCompare={(next) =>
@@ -656,6 +633,7 @@ export function ObjectExplorationPage() {
           inlineActions={inlineActions}
           onInlineSubmit={submitInline}
           labels={columnLabels}
+          baseline={baseline}
           shown={instances.length}
           pageSize={pageSize}
           onPageSize={setPageSize}

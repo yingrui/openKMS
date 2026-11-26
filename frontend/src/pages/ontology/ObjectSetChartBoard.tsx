@@ -15,7 +15,6 @@ import type { ActionOutcome } from './useObjectSetOutcome';
  * describe a chart board.
  */
 export function ObjectSetChartBoard({
-  total,
   compareLabel,
   explorations,
   onCompare,
@@ -37,7 +36,6 @@ export function ObjectSetChartBoard({
   onRemove,
   onMove,
 }: {
-  total: number | null;
   compareLabel: string | null;
   explorations: ExplorationResponse[];
   onCompare: (target: string) => void;
@@ -62,10 +60,7 @@ export function ObjectSetChartBoard({
   const { t } = useTranslation('explore');
   return (
     <>
-      <div className="object-set-toolbar">
-        <span className="object-set-toolbar__total">
-          {total === null ? null : t('objectSet.objectCount', { count: total })}
-        </span>
+      <div className="object-set-toolbar object-set-toolbar--end">
         <ObjectSetComparePicker
           label={compareLabel}
           explorations={explorations}

@@ -466,7 +466,9 @@
     "columnsButton": "Columns ({{count}})",
     "pageSize": "Rows",
     "actionNeedsOne": "Select exactly one object",
-    "chartEveryObjectDiffers": "Every object has its own value here — an identifier, not a dimension"
+    "chartEveryObjectDiffers": "Every object has its own value here — an identifier, not a dimension",
+    "compareCurrent": "This set · {{count}}",
+    "compareBaseline": "{{name}} · {{count}}"
   },
   "explorerSections": {
     "explorations": "Explorations",

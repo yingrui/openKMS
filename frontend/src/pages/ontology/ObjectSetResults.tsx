@@ -24,6 +24,7 @@ export function ObjectSetResults({
   inlineActions,
   onInlineSubmit,
   labels,
+  baseline,
   shown,
   pageSize,
   onPageSize,
@@ -44,6 +45,8 @@ export function ObjectSetResults({
   onInlineSubmit?: (action: ActionApplicability, row: ObjectInstanceResponse, value: unknown) => void;
   labels?: Record<string, Record<string, string>>;
   /** How many rows are on screen, and the way to get the next page of the same set. */
+  /** The comparison set's rows: the same columns, read-only, beside the current set. */
+  baseline?: { label: string; rows: ObjectInstanceResponse[]; total: number } | null;
   shown: number;
   /** How many rows one page asks for; "load more" adds another page. */
   pageSize: number;
@@ -51,6 +54,10 @@ export function ObjectSetResults({
   onLoadMore: () => void;
 }) {
   const { t } = useTranslation('explore');
+  /* The chosen order is the order: filtering properties by membership quietly re-sorted them by declaration. */
+  const columns = visible
+    .map((name) => properties.find((property) => property.name === name))
+    .filter((property): property is PropertyDef => property !== undefined);
   return (
     <>
       {/* The table's own header: what it is, and the one control that configures it. */}
@@ -78,14 +85,16 @@ export function ObjectSetResults({
           />
         </div>
       </div>
-      <ObjectSetResultsTable
-        instances={instances}
-        columns={
-          /* The chosen order is the order: filtering properties by membership quietly re-sorted them by declaration. */
-          visible
-            .map((name) => properties.find((property) => property.name === name))
-            .filter((property): property is PropertyDef => property !== undefined)
-        }
+      <div className={baseline ? 'object-set-compare' : undefined}>
+        <div>
+          {baseline ? (
+            <p className="object-set-compare__label">
+              {t('objectSet.compareCurrent', { count: total ?? instances.length })}
+            </p>
+          ) : null}
+          <ObjectSetResultsTable
+            instances={instances}
+        columns={columns}
         sort={sort}
         onSort={onSort}
         selected={selected}
@@ -94,7 +103,26 @@ export function ObjectSetResults({
         inlineActions={inlineActions}
         onInlineSubmit={onInlineSubmit}
         labels={labels}
-      />
+          />
+        </div>
+        {baseline ? (
+          <div>
+            <p className="object-set-compare__label">
+              {t('objectSet.compareBaseline', { name: baseline.label, count: baseline.total })}
+            </p>
+            <ObjectSetResultsTable
+              instances={baseline.rows}
+              columns={columns}
+              sort=""
+              onSort={() => undefined}
+              selected={new Set()}
+              onToggle={() => undefined}
+              onToggleAll={() => undefined}
+              labels={labels}
+            />
+          </div>
+        ) : null}
+      </div>
       {/* Paging belongs after the rows it pages through. */}
       {total !== null && total > shown ? (
         <div className="object-set-more">

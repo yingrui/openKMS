@@ -466,7 +466,9 @@
     "columnsButton": "列（{{count}}）",
     "pageSize": "行数",
     "actionNeedsOne": "只能选择一个对象",
-    "chartEveryObjectDiffers": "该属性每个对象的取值都不同——这是标识符，不是可分的维度"
+    "chartEveryObjectDiffers": "该属性每个对象的取值都不同——这是标识符，不是可分的维度",
+    "compareCurrent": "当前集合 · {{count}}",
+    "compareBaseline": "{{name}} · {{count}}"
   },
   "explorerSections": {
     "explorations": "探索",

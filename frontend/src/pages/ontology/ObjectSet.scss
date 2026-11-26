@@ -271,12 +271,6 @@
   }
 }
 
-.object-set-toolbar__total {
-  margin-right: auto;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
 .object-set-toolbar__search {
   flex: 1 1 auto;
   width: auto;
@@ -1305,4 +1299,23 @@
   select {
     width: auto;
   }
+}
+
+/* Comparing reaches the table: the same columns for both sets, side by side. */
+.object-set-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: var(--space-4);
+}
+
+.object-set-compare__label {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+/* A toolbar with a single control sits at the far end, above the thing it affects. */
+.object-set-toolbar--end {
+  justify-content: flex-end;
 }
