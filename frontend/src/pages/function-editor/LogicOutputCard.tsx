@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { outputLabel, type FlowDraft } from './logicFlow';
 
@@ -40,6 +41,19 @@ export function LogicOutputCard({
   onChange: (outputRef: string) => void;
 }) {
   const { t } = useTranslation('ontology');
+  // Collapsed to one line by default: the answer is usually checked, not read field by field, and every pixel here is
+  // taken from the flow above it.
+  const [open, setOpen] = useState(false);
+  const summary = (() => {
+    if (!output || typeof output !== 'object' || Array.isArray(output)) {
+      return typeof output === 'string' ? output : '';
+    }
+    return Object.entries(output as Record<string, unknown>)
+      .filter(([, value]) => value !== null && typeof value !== 'object')
+      .slice(0, 3)
+      .map(([key, value]) => `${key}: ${String(value)}`)
+      .join(' · ');
+  })();
   return (
     <section className="logic-output" aria-label={t('editor.logicOutputSource')}>
       <div className="logic-output__head">
@@ -58,11 +72,20 @@ export function LogicOutputCard({
             </option>
           ))}
         </select>
+        {summary ? (
+          <button type="button" className="logic-output__toggle" onClick={() => setOpen((value) => !value)}>
+            {open ? t('editor.logicFieldsHide') : t('editor.logicFieldsShowAll')}
+          </button>
+        ) : null}
       </div>
       {output === undefined || output === null ? (
         <p className="logic-output__hint">{t('editor.logicOutputEmpty')}</p>
-      ) : (
+      ) : open ? (
         <OutputValue value={output} />
+      ) : (
+        <p className="logic-output__summary" title={summary}>
+          {summary || JSON.stringify(output)}
+        </p>
       )}
     </section>
   );

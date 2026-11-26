@@ -1507,7 +1507,8 @@
     "logicFieldsEdit": "Edit fields",
     "logicFieldsHide": "Hide fields",
     "logicOutputSource": "Answer from",
-    "logicOutputEmpty": "Nothing yet: run the flow and the answer appears here."
+    "logicOutputEmpty": "Nothing yet: run the flow and the answer appears here.",
+    "logicFieldsShowAll": "All fields"
   },
   "dataSources": {
     "title": "Data sources",

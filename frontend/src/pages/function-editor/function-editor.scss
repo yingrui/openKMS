@@ -870,6 +870,26 @@
   font-size: var(--text-sm);
 }
 
+.logic-output__summary {
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logic-output__toggle {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  text-decoration: underline;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .logic-output__hint,
 .logic-output__text {
   margin: 0;

@@ -4,7 +4,6 @@ import { LogicInputsBoard } from './LogicInputsBoard';
 import { LogicNodeCard } from './LogicNodeCard';
 import {
   newNode,
-  outputLabel,
   syncInputs,
   unusedInputs,
   type FlowDraft,
