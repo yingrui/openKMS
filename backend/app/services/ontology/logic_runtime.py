@@ -110,6 +110,11 @@ def validate_flow_spec(spec: dict | None) -> list[str]:
     output = spec.get("output")
     if output is not None and not isinstance(output, str):
         errors.append("flow_spec.output must be a reference string such as '{{n1}}'")
+    elif isinstance(output, str) and output.strip():
+        # A typo here used to fall back to the last node silently: the answer changed source and nothing said so.
+        root = output.strip().strip("{} ").split(".")[0]
+        if root not in seen:
+            errors.append(f"flow_spec.output references '{root}', which is not a node id")
 
     errors.extend(_validate_inputs(spec.get("inputs")))
     return errors

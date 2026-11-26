@@ -1354,3 +1354,15 @@ class TestLoopFailures:
         assert [row["index"] for row in loop_entry["iterations"]] == [0, 1, 2]
         assert [row["ok"] for row in loop_entry["iterations"]] == [True, False, True]
         assert loop_entry["iterations"][0]["output"] == {"answer": "42"}
+
+
+class TestOutputReference:
+    def test_an_output_that_names_no_node_is_refused(self):
+        # Before this, a typo fell back to the last node: the answer changed source and nothing said so.
+        errors = validate_flow_spec(
+            {"nodes": [{"id": "n1", "kind": "model", "prompt": "x"}], "output": "{{n9}}"}
+        )
+        assert errors == ["flow_spec.output references 'n9', which is not a node id"]
+
+    def test_a_valid_output_reference_passes(self):
+        assert validate_flow_spec({"nodes": [{"id": "n1", "kind": "model", "prompt": "x"}], "output": "{{n1}}"}) == []

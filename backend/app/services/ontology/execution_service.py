@@ -311,6 +311,7 @@ async def dry_run_flow(
     flow_spec: dict,
     input_payload: dict,
     caller_token: str = "",
+    caller_user_id: str | None = None,
     model_factory: logic_runtime.ModelFactory | None = None,
     tool_runner: logic_runtime.ToolRunner | None = None,
 ) -> OntologyFunctionExecuteResponse:
@@ -362,6 +363,7 @@ async def dry_run_flow(
         error=flow.error,
         duration_ms=flow.duration_ms,
         trace=trace,
+        caller_user_id=caller_user_id,
     )
     return OntologyFunctionExecuteResponse(
         status=flow.status,
@@ -383,6 +385,7 @@ async def _record_draft_run(
     error: str | None,
     duration_ms: int | None,
     trace: dict,
+    caller_user_id: str | None = None,
 ) -> str | None:
     """One row per preview, flagged in the trace as a draft. Best effort: a failed insert must not lose the answer."""
     from app.services.ontology.function_service import latest_version
@@ -396,7 +399,7 @@ async def _record_draft_run(
             id=exec_id,
             function_id=fn.id,
             version_id=version.id,
-            caller_user_id=None,
+            caller_user_id=caller_user_id,
             duration_ms=duration_ms,
             status=status,
             input_payload=input_payload,

@@ -200,6 +200,7 @@ async def dry_run_function(
 ):
     """Run the flow the editor is showing. Needs write permission: it is authoring, not calling."""
     fn = await function_service.get_function(db, function_id)
+    uid, _ = jwt_user_from_request(request)
     # Tools run as the caller, so a preview cannot read more than the author can.
     return await execution_service.dry_run_flow(
         db,
@@ -207,6 +208,7 @@ async def dry_run_function(
         flow_spec=body.flow_spec,
         input_payload=body.input,
         caller_token=require_caller_token(request),
+        caller_user_id=uid,
     )
 
 

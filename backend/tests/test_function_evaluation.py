@@ -374,3 +374,51 @@ class TestActionParameterSchema:
 
         assert schema["properties"]["confirm"] == {"type": "boolean"}
         assert schema["required"] == ["confirm"]
+
+
+class TestDraftRunRecord:
+    """A preview is recorded — with who ran it — and flagged as a draft in its trace."""
+
+    @pytest.mark.asyncio
+    async def test_the_caller_is_on_the_record(self, monkeypatch):
+        from app.services.ontology import execution_service as svc
+        from app.services.ontology import function_service
+
+        async def fake_latest(_db, _function_id):
+            return SimpleNamespace(id="v-1")
+
+        class FakeDb:
+            def __init__(self):
+                self.added: list = []
+
+            async def commit(self):
+                return None
+
+            async def rollback(self):
+                return None
+
+            def add(self, row):
+                self.added.append(row)
+
+        async def factory(_model_id):
+            raise AssertionError("not reached: the flow is stubbed")
+
+        async def fake_run_flow(*_args, **_kwargs):
+            return SimpleNamespace(
+                status="ok", output={"answer": "42"}, error=None, duration_ms=3, trace={"nodes": []}
+            )
+
+        monkeypatch.setattr(function_service, "latest_version", fake_latest)
+        monkeypatch.setattr(svc.logic_runtime, "run_flow", fake_run_flow)
+
+        db = FakeDb()
+        result = await svc.dry_run_flow(
+            db,
+            SimpleNamespace(id="fn-1", api_name="fn", source="logic"),
+            flow_spec={"nodes": [{"id": "n1", "kind": "model", "prompt": "x"}]},
+            input_payload={},
+            caller_user_id="u-1",
+        )
+
+        assert result.trace is not None and result.trace["draft"] is True
+        assert db.added[0].caller_user_id == "u-1"

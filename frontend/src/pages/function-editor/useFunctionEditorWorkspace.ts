@@ -360,10 +360,19 @@ export function useFunctionEditorWorkspace() {
         setPreviewOutput(JSON.stringify(row.output_payload ?? row.error_message ?? {}, null, 2));
         setTrace((row.trace as Record<string, unknown>) ?? null);
         const values: Record<string, string> = {};
+        const picked: Record<string, { id: string; data: Record<string, unknown> } | null> = {};
         for (const [key, value] of Object.entries(row.input_payload ?? {})) {
-          values[key] = typeof value === 'string' ? value : JSON.stringify(value);
+          if (value && typeof value === 'object' && !Array.isArray(value)) {
+            // An object input was filled by picking an instance; without restoring it, pressing Run again would
+            // answer "pick an instance" and the replay would look broken.
+            picked[key] = { id: '', data: value as Record<string, unknown> };
+            values[key] = JSON.stringify(value);
+          } else {
+            values[key] = typeof value === 'string' ? value : JSON.stringify(value);
+          }
         }
         setRunValues(values);
+        setPickedInstances(picked);
       } catch (e: unknown) {
         toast.error(e instanceof Error ? e.message : t('functions.loadFailed'));
       }
