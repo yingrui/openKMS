@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { ObjectInstanceResponse, PropertyDef } from '../../data/ontologyApi';
+import type { ActionApplicability } from '../../data/ontologyActionsApi';
 import { ObjectSetColumnPicker } from './ObjectSetColumnPicker';
 import { ObjectSetResultsTable } from './ObjectSetResultsTable';
 
@@ -20,6 +21,8 @@ export function ObjectSetResults({
   onColumns,
   onToggle,
   onToggleAll,
+  inlineActions,
+  onInlineSubmit,
 }: {
   total: number | null;
   instances: ObjectInstanceResponse[];
@@ -32,6 +35,8 @@ export function ObjectSetResults({
   onColumns: (next: string[]) => void;
   onToggle: (id: string) => void;
   onToggleAll: () => void;
+  inlineActions?: Record<string, ActionApplicability>;
+  onInlineSubmit?: (action: ActionApplicability, row: ObjectInstanceResponse, value: unknown) => void;
 }) {
   const { t } = useTranslation('explore');
   return (
@@ -54,6 +59,8 @@ export function ObjectSetResults({
         selected={selected}
         onToggle={onToggle}
         onToggleAll={onToggleAll}
+        inlineActions={inlineActions}
+        onInlineSubmit={onInlineSubmit}
       />
     </>
   );

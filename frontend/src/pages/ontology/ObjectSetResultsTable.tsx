@@ -1,6 +1,20 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Pencil } from 'lucide-react';
 import type { ObjectInstanceResponse, PropertyDef } from '../../data/ontologyApi';
+import type { ActionApplicability } from '../../data/ontologyActionsApi';
+import { rowSatisfies } from './inlineEditCriteria';
 import { parseSortList, sortRank } from './objectSetSort';
+
+/** Keep the row's own type: typing `1` into a boolean column would otherwise store the string "true". */
+const coerce = (draft: string, previous: unknown): unknown => {
+  if (typeof previous === 'boolean') return draft.trim().toLowerCase() === 'true' || draft.trim() === '1';
+  if (typeof previous === 'number') {
+    const number = Number(draft);
+    return Number.isFinite(number) ? number : previous;
+  }
+  return draft;
+};
 
 const cellText = (value: unknown): string => {
   if (value === null || value === undefined || value === '') return '—';
@@ -22,6 +36,8 @@ export function ObjectSetResultsTable({
   selected,
   onToggle,
   onToggleAll,
+  inlineActions,
+  onInlineSubmit,
 }: {
   instances: ObjectInstanceResponse[];
   /** The properties to show, in the order chosen — part of the layout, not of the table. */
@@ -31,6 +47,9 @@ export function ObjectSetResultsTable({
   selected: Set<string>;
   onToggle: (id: string) => void;
   onToggleAll: () => void;
+  /** Actions that edit one property in place, keyed by that property. */
+  inlineActions?: Record<string, ActionApplicability>;
+  onInlineSubmit?: (action: ActionApplicability, row: ObjectInstanceResponse, value: unknown) => void;
 }) {
   const { t } = useTranslation('explore');
   const sortState = (name: string): 'ascending' | 'descending' | 'none' => {
@@ -39,6 +58,9 @@ export function ObjectSetResultsTable({
     return term.desc ? 'descending' : 'ascending';
   };
   const allSelected = instances.length > 0 && instances.every((row) => selected.has(row.id));
+  /* Which cell is being edited, and its draft value: one at a time, because the table is a reading surface. */
+  const [editing, setEditing] = useState<{ rowId: string; prop: string } | null>(null);
+  const [draft, setDraft] = useState('');
   return (
     <div className="ds-table-wrap">
       <table className="ds-table">
@@ -87,9 +109,62 @@ export function ObjectSetResultsTable({
                   })}
                 />
               </td>
-              {columns.map((p) => (
-                <td key={p.name}>{cellText(row.data?.[p.name])}</td>
-              ))}
+              {columns.map((p) => {
+                const action = inlineActions?.[p.name];
+                const editable =
+                  action !== undefined && rowSatisfies(row.data ?? {}, action.submission_criteria);
+                const isEditing = editing?.rowId === row.id && editing.prop === p.name;
+                if (editable && isEditing) {
+                  return (
+                    <td key={p.name} className="object-set-inline">
+                      <input
+                        className="ds-control ds-control--compact"
+                        autoFocus
+                        value={draft}
+                        aria-label={t('objectSet.inlineEdit', { name: p.name })}
+                        onChange={(event) => setDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Escape') setEditing(null);
+                          if (event.key === 'Enter') {
+                            onInlineSubmit?.(action, row, coerce(draft, row.data?.[p.name]));
+                            setEditing(null);
+                          }
+                        }}
+                        onBlur={() => setEditing(null)}
+                      />
+                    </td>
+                  );
+                }
+                return (
+                  <td
+                    key={p.name}
+                    className={action ? 'object-set-inline' : undefined}
+                    onDoubleClick={
+                      editable
+                        ? () => {
+                            setEditing({ rowId: row.id, prop: p.name });
+                            setDraft(String(row.data?.[p.name] ?? ''));
+                          }
+                        : undefined
+                    }
+                  >
+                    <span>{cellText(row.data?.[p.name])}</span>
+                    {editable ? (
+                      <button
+                        type="button"
+                        className="object-set-inline__edit"
+                        aria-label={t('objectSet.inlineEdit', { name: p.name })}
+                        onClick={() => {
+                          setEditing({ rowId: row.id, prop: p.name });
+                          setDraft(String(row.data?.[p.name] ?? ''));
+                        }}
+                      >
+                        <Pencil size={12} aria-hidden />
+                      </button>
+                    ) : null}
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>

@@ -120,6 +120,25 @@ class OntologyFunctionExecuteRequest(BaseModel):
     use_published: bool = False
 
 
+class OntologyBulkModelRequest(BaseModel):
+    """Repoint many Logic functions at one model. `from_model_id=None` matches every model node; `to_model_id=None`
+    means the default model."""
+
+    function_ids: list[str] = Field(min_length=1, max_length=100)
+    from_model_id: str | None = None
+    to_model_id: str | None = None
+
+
+class OntologyBulkModelResult(BaseModel):
+    function_id: str
+    api_name: str | None = None
+    #: `updated` (new draft saved) · `unchanged` (no node matched) · `not_logic` · `missing` · `failed`
+    status: Literal["updated", "unchanged", "not_logic", "missing", "failed"]
+    changed: int = 0
+    version: int | None = None
+    detail: str | None = None
+
+
 class OntologyFunctionDryRunRequest(BaseModel):
     """Run an unsaved flow: what the editor has on screen, not what was last saved."""
 
@@ -316,6 +335,8 @@ class ActionApplicability(BaseModel):
     selected_eligible: int = 0
     #: Runs **per selected object** (modify/delete, or a function that names the object) rather than once.
     per_object: bool = True
+    #: The property this action edits in place, when it declares one.
+    inline_edit: dict | None = None
 
 
 class OntologyActionBatchRequest(BaseModel):

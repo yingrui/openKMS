@@ -66,3 +66,18 @@ def test_creating_an_object_is_not_a_per_object_action():
     # A function says so itself, by naming the object among its parameters.
     assert runs_per_object("function", {"object_params": {"adjustment_id": "id"}}) is True
     assert runs_per_object("function", {"fields": ["cycle"]}) is False
+
+
+def test_an_inline_edit_names_the_property_and_its_parameter():
+    from app.services.ontology.builtin_action_service import inline_edit_spec
+
+    assert inline_edit_spec({"inline_edit": {"prop": "is_selected"}}) == {
+        "prop": "is_selected",
+        "param": "is_selected",
+    }
+    assert inline_edit_spec({"inline_edit": {"prop": "status", "param": "new_status"}}) == {
+        "prop": "status",
+        "param": "new_status",
+    }
+    assert inline_edit_spec({"inline_edit": {}}) is None
+    assert inline_edit_spec(None) is None

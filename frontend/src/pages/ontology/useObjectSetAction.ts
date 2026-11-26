@@ -73,12 +73,35 @@ export function useObjectSetAction(
     }
   };
 
+  /** One object, one value: the inline-edit path, which never opens the dialog. */
+  const runInline = async (
+    action: ActionApplicability,
+    objectId: string,
+    input: Record<string, unknown>
+  ) => {
+    setBusy(true);
+    try {
+      const result = await executeOntologyAction(action.id, {
+        object_id: objectId,
+        input,
+      });
+      const ok = result.status === 'ok';
+      if (ok) toast.success(t('objectSet.actionSingleDone'));
+      else toast.error(result.error || t('objectSet.actionFailed'));
+      onFinished({ name: action.display_name, succeeded: ok ? 1 : 0 });
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('objectSet.actionFailed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const openFor = (action: ActionApplicability, next: 'selection' | 'set' | 'single') => {
     setScope(next);
     setOpenAction(action);
   };
 
-  return { openAction, openFor, scope, setOpenAction, busy, run };
+  return { openAction, openFor, scope, setOpenAction, busy, run, runInline };
 }
 
 /** How many objects the dialog will act on — one for an action that runs once, the set for "run on all". */

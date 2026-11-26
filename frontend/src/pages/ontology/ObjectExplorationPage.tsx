@@ -39,6 +39,8 @@ import { ObjectSetToolbar } from './ObjectSetToolbar';
 import { useObjectSetCompare } from './useObjectSetCompare';
 import { ObjectSetActionMenu } from './ObjectSetActionMenu';
 
+import { inlineInput, useInlineActions } from './useInlineActions';
+import { useRowSelection } from './useRowSelection';
 import { actionCount, useObjectSetAction } from './useObjectSetAction';
 import { useExplorationHistory } from './useExplorationHistory';
 import { useObjectSetOutcome } from './useObjectSetOutcome';
@@ -141,25 +143,8 @@ export function ObjectExplorationPage() {
     },
   });
 
-  const toggleRow = (id: string) =>
-    setSelected((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-
-  const toggleAllRows = () =>
-    setSelected((current) => {
-      /* "Select all" means this page: the table shows one page, and ticking it twice clears it. */
-      const all = instances.every((row) => current.has(row.id));
-      const next = new Set(current);
-      for (const row of instances) {
-        if (all) next.delete(row.id);
-        else next.add(row.id);
-      }
-      return next;
-    });
+  const inlineActions = useInlineActions(actions);
+  const { toggleRow, toggleAllRows } = useRowSelection(instances, setSelected);
 
   const toggleSort = (prop: string) => {
     const next = toggleSortTerm(sort, prop);
@@ -497,6 +482,10 @@ export function ObjectExplorationPage() {
     void loadRows();
   });
 
+  /* An inline edit is one object and one value: no dialog, no selection. */
+  const submitInline = (picked: ActionApplicability, row: { id: string }, value: unknown) =>
+    void action.runInline(picked, row.id, inlineInput(picked, value));
+
   if (loading) return <Loading label={t('objectSet.typeLoading')} />;
   if (!objectType) return <EmptyState title={t('objectSet.typeMissing')} />;
 
@@ -657,6 +646,8 @@ export function ObjectExplorationPage() {
           onColumns={setLayoutColumns}
           onToggle={toggleRow}
           onToggleAll={toggleAllRows}
+          inlineActions={inlineActions}
+          onInlineSubmit={submitInline}
         />
       )}
 

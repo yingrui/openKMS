@@ -117,6 +117,8 @@ export interface ActionApplicability {
   selected_eligible: number;
   /** Applies to each selected object (modify/delete, or a function that names it) rather than running once. */
   per_object: boolean;
+  /** The property this action edits in place, when it declares one — that cell gets a pen. */
+  inline_edit?: { prop: string; param: string } | null;
 }
 
 /** Ask which actions this set — and this selection — may take, before drawing the menu. */

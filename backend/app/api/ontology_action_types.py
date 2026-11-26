@@ -37,6 +37,7 @@ from app.services.ontology.builtin_action_service import (
     input_schema_for_action,
     object_param_map,
     object_ref_params,
+    inline_edit_spec,
     runs_per_object,
     submission_criteria,
     submission_permissions,
@@ -805,6 +806,7 @@ async def applicable_actions(
                 eligible=eligible,
                 selected_eligible=selected_eligible,
                 per_object=runs_per_object(action.rule_type, action.parameters),
+                inline_edit=inline_edit_spec(action.parameters),
             )
         )
     return out

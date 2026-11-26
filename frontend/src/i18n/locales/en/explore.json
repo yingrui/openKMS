@@ -452,7 +452,8 @@
     "chartsTitle": "Charts",
     "actionSingleDone": "Done",
     "actionRunOnce": "Run",
-    "actionNoParametersOnce": "This action takes no parameters; it runs once."
+    "actionNoParametersOnce": "This action takes no parameters; it runs once.",
+    "inlineEdit": "Edit {{name}}"
   },
   "explorerSections": {
     "explorations": "Explorations",

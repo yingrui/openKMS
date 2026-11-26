@@ -13,6 +13,8 @@ from app.api.ontology.deps import jwt_user_from_request, require_caller_token, v
 from app.database import get_db
 from app.models.ontology_function import OntologyFunctionExecution
 from app.schemas.ontology_functions import (
+    OntologyBulkModelRequest,
+    OntologyBulkModelResult,
     OntologyFunctionCreate,
     OntologyFunctionExecuteRequest,
     OntologyFunctionDryRunRequest,
@@ -76,6 +78,29 @@ async def create_function(
     uid, uname = jwt_user_from_request(request)
     fn = await function_service.create_function(db, body, created_by=uid, created_by_name=uname)
     return await function_service.function_to_response_for_one(db, fn)
+
+
+@router.post("/bulk-model", response_model=list[OntologyBulkModelResult])
+async def bulk_replace_model(
+    body: OntologyBulkModelRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
+):
+    """Repoint the model nodes of many Logic functions, one new draft version each.
+
+    A new version per function rather than an edit of the published one: what a published version ran with stays
+    answerable, and a pinned Action keeps working.
+    """
+    uid, uname = jwt_user_from_request(request)
+    return await function_service.bulk_replace_model(
+        db,
+        body.function_ids,
+        from_model_id=body.from_model_id,
+        to_model_id=body.to_model_id,
+        created_by=uid,
+        created_by_name=uname,
+    )
 
 
 @router.get("/{function_id}", response_model=OntologyFunctionResponse)

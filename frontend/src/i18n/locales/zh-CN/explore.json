@@ -452,7 +452,8 @@
     "chartsTitle": "图表",
     "actionSingleDone": "已执行",
     "actionRunOnce": "执行",
-    "actionNoParametersOnce": "这个动作没有参数，执行一次即可。"
+    "actionNoParametersOnce": "这个动作没有参数，执行一次即可。",
+    "inlineEdit": "修改 {{name}}"
   },
   "explorerSections": {
     "explorations": "探索",

@@ -1227,3 +1227,37 @@
     }
   }
 }
+
+/* Inline edit: the pen appears on the cell that an action can change, and only there. */
+.object-set-inline {
+  position: relative;
+
+  .object-set-inline__edit {
+    position: absolute;
+    top: 50%;
+    right: var(--space-1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    transform: translateY(-50%);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-elevated);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--duration-fast) var(--ease-standard);
+
+    &:hover {
+      color: var(--color-accent);
+    }
+  }
+
+  &:hover .object-set-inline__edit,
+  &:focus-within .object-set-inline__edit {
+    opacity: 1;
+  }
+}

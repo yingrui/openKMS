@@ -51,6 +51,22 @@ def runs_per_object(at_rule_type: str, parameters: object | None) -> bool:
     return bool(object_param_map(parameters))
 
 
+def inline_edit_spec(parameters: object | None) -> dict[str, str] | None:
+    """The property this action edits in place, and the parameter that carries the new value.
+
+    `{"inline_edit": {"prop": "is_selected"}}` says: this action is the way that cell changes, so the results table
+    can offer the edit where the value is, instead of making the reader select the row, open a menu and fill a form.
+    """
+    raw = action_parameters_dict(parameters).get("inline_edit")
+    if not isinstance(raw, dict):
+        return None
+    prop = str(raw.get("prop") or "").strip()
+    if not prop:
+        return None
+    param = str(raw.get("param") or prop).strip()
+    return {"prop": prop, "param": param}
+
+
 def submission_permissions(parameters: object | None) -> list[str]:
     """Permissions the caller must hold for this action to be offered at all.
 

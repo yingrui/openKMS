@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import uuid
 
 from fastapi import HTTPException
@@ -546,3 +547,121 @@ async def resolve_version_for_execute(
     if not ver:
         raise HTTPException(status_code=404, detail="Version not found")
     return ver
+
+def replace_model_in_flow(
+    flow_spec: dict | None, *, from_model_id: str | None, to_model_id: str | None
+) -> tuple[dict | None, int]:
+    """Point a flow's model nodes at another model. Returns (new spec, how many nodes changed).
+
+    `from_model_id=None` means "every model node", `to_model_id=None` means "the default model". Nested bodies (a
+    branch, a loop) are walked too — a model buried in a branch is exactly the one people forget to change.
+    """
+    if not isinstance(flow_spec, dict):
+        return flow_spec, 0
+    changed = 0
+
+    def patch(node: dict) -> None:
+        nonlocal changed
+        if node.get("kind") == "model":
+            current = node.get("model_id")
+            if from_model_id is None or current == from_model_id:
+                if to_model_id:
+                    node["model_id"] = to_model_id
+                else:
+                    node.pop("model_id", None)
+                changed += 1
+        for nested_key in ("nodes",):
+            for child in node.get(nested_key) or []:
+                if isinstance(child, dict):
+                    patch(child)
+        for branch in node.get("branches") or []:
+            if isinstance(branch, dict):
+                for child in branch.get("nodes") or []:
+                    if isinstance(child, dict):
+                        patch(child)
+
+    spec = copy.deepcopy(flow_spec)
+    for node in spec.get("nodes") or []:
+        if isinstance(node, dict):
+            patch(node)
+    return spec, changed
+
+
+async def bulk_replace_model(
+    db: AsyncSession,
+    function_ids: list[str],
+    *,
+    from_model_id: str | None,
+    to_model_id: str | None,
+    created_by: str | None,
+    created_by_name: str | None,
+) -> list[dict]:
+    """Save a new draft version of each Logic function with its model nodes repointed.
+
+    A new version, not an edit: the old one stays published, so "which version ran with which model" is still
+    answerable — and an Action pinned to a version keeps working.
+    """
+    results: list[dict] = []
+    for function_id in function_ids:
+        fn = (
+            await db.execute(select(OntologyFunction).where(OntologyFunction.id == function_id))
+        ).scalar_one_or_none()
+        if fn is None:
+            results.append({"function_id": function_id, "status": "missing", "changed": 0})
+            continue
+        if getattr(fn, "source", "code") != "logic":
+            results.append(
+                {"function_id": function_id, "api_name": fn.api_name, "status": "not_logic", "changed": 0}
+            )
+            continue
+        latest = await latest_version(db, function_id)
+        spec, changed = replace_model_in_flow(
+            latest.flow_spec if latest else None,
+            from_model_id=from_model_id,
+            to_model_id=to_model_id,
+        )
+        if not latest or changed == 0:
+            results.append(
+                {
+                    "function_id": function_id,
+                    "api_name": fn.api_name,
+                    "status": "unchanged",
+                    "changed": 0,
+                    "version": latest.version if latest else None,
+                }
+            )
+            continue
+        try:
+            version = await create_version(
+                db,
+                function_id,
+                OntologyFunctionVersionCreate(
+                    source_code=latest.source_code or "",
+                    input_schema=latest.input_schema,
+                    output_schema=latest.output_schema,
+                    flow_spec=spec,
+                ),
+                created_by=created_by,
+                created_by_name=created_by_name,
+            )
+        except HTTPException as e:
+            results.append(
+                {
+                    "function_id": function_id,
+                    "api_name": fn.api_name,
+                    "status": "failed",
+                    "changed": 0,
+                    "detail": str(e.detail),
+                }
+            )
+            continue
+        results.append(
+            {
+                "function_id": function_id,
+                "api_name": fn.api_name,
+                "status": "updated",
+                "changed": changed,
+                "version": version.version,
+            }
+        )
+    return results
