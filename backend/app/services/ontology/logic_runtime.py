@@ -315,29 +315,42 @@ async def _run_loop(
     action_planner: ActionPlanner | None,
     node_timeout_s: float,
     node_token_limit: int,
-) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Run the body once per element. Writes go one at a time so the edit batch keeps the caller's order."""
+) -> tuple[dict[str, Any], list[dict[str, Any]], str | None]:
+    """Run the body once per element; returns (output, iterations, first error).
+
+    Writes go one at a time so the edit batch keeps the caller's order. Failures are collected rather than
+    propagated mid-flight: the other iterations are already running, and their work has to be accounted for.
+    """
     element_name = str(node.get("as") or "item")
     items = _loop_items(node, variables)
     body = list(node.get("nodes") or [])
     has_action = any(isinstance(child, dict) and child.get("kind") == "action" for child in body)
     iterations: list[dict[str, Any]] = []
 
+    failures: list[str] = []
+
     async def one(index: int, element: Any) -> Any:
         scoped = {**variables, element_name: element, "index": index}
         nested: dict[str, Any] = {"nodes": []}
-        result, _ = await _run_nodes(
-            body,
-            variables=scoped,
-            model_factory=model_factory,
-            tool_runner=tool_runner,
-            schema_resolver=schema_resolver,
-            action_schema_resolver=action_schema_resolver,
-            action_planner=action_planner,
-            node_timeout_s=node_timeout_s,
-            node_token_limit=node_token_limit,
-            trace=nested,
-        )
+        try:
+            result, _ = await _run_nodes(
+                body,
+                variables=scoped,
+                model_factory=model_factory,
+                tool_runner=tool_runner,
+                schema_resolver=schema_resolver,
+                action_schema_resolver=action_schema_resolver,
+                action_planner=action_planner,
+                node_timeout_s=node_timeout_s,
+                node_token_limit=node_token_limit,
+                trace=nested,
+            )
+        except FlowError as e:
+            # One element failing does not cancel the others: they are already running, and stopping them midway
+            # would leave their work (and tokens) unaccounted for. Record it and let the loop settle.
+            iterations.append({"index": index, "ok": False, "error": str(e), "nodes": nested["nodes"]})
+            failures.append(f"iteration {index}: {e}")
+            return None
         iterations.append({"index": index, "ok": True, "output": result, "nodes": nested["nodes"]})
         return result
 
@@ -351,12 +364,19 @@ async def _run_loop(
             async with semaphore:
                 return await one(index, element)
 
-        results = list(await asyncio.gather(*(guarded(index, element) for index, element in enumerate(items))))
-        iterations.sort(key=lambda row: row["index"])
+        # `gather` without `return_exceptions` would raise on the first failure and leave the other iterations
+        # running after this loop has already reported an error.
+        await asyncio.gather(
+            *(guarded(index, element) for index, element in enumerate(items)),
+            return_exceptions=True,
+        )
+        results = [row.get("output") for row in sorted(iterations, key=lambda r: r["index"]) if row["ok"]]
 
+    iterations.sort(key=lambda row: row["index"])
     edits = [edit for result in results if isinstance(result, dict) for edit in (result.get("edits") or [])]
     values = [result for result in results if not (isinstance(result, dict) and "edits" in result)]
-    return ({"edits": edits} if edits else {"items": values}), iterations
+    error = failures[0] if failures else None
+    return ({"edits": edits} if edits else {"items": values}), iterations, error
 
 
 def _loop_items(node: dict, variables: dict[str, Any]) -> list:
@@ -435,7 +455,7 @@ async def _run_nodes(
                 # Deterministic on purpose: no model call, no tokens, no variance.
                 output = _render_value(node.get("template") or {}, variables)
             elif node.get("kind") == "loop":
-                output, iterations = await _run_loop(
+                output, iterations, loop_error = await _run_loop(
                     node,
                     variables=variables,
                     model_factory=model_factory,
@@ -446,7 +466,10 @@ async def _run_nodes(
                     node_timeout_s=node_timeout_s,
                     node_token_limit=node_token_limit,
                 )
+                # Recorded before the raise, so a failed loop still shows what the other iterations did.
                 entry["iterations"] = iterations
+                if loop_error:
+                    raise FlowError(loop_error)
             elif node.get("kind") == "condition":
                 branch = _pick_branch(node, variables)
                 entry["branch"] = branch.get("when") or "(fallback)"

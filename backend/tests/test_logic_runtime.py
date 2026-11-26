@@ -1301,3 +1301,56 @@ class TestCalculatorTool:
         call = outcome.trace["nodes"][0]["tool_calls"][0]
         assert call["ok"] is False
         assert "division by zero" in call["error"]
+
+
+class TestLoopFailures:
+    """A failing iteration must not cancel the others, and what the others did must still be visible."""
+
+    async def _run(self, fail_index: int):
+        spec = {
+            "nodes": [
+                {
+                    "id": "l1",
+                    "kind": "loop",
+                    "over": '["a", "b", "c"]',
+                    "as": "item",
+                    "concurrency": 3,
+                    "nodes": [
+                        {"id": "x1", "kind": "model", "prompt": "say {{item}}", "output_schema": SCHEMA}
+                    ],
+                }
+            ]
+        }
+        seen: list[str] = []
+
+        def handler(messages, _info: AgentInfo) -> ModelResponse:
+            text = str(messages[-1])
+            seen.append(text)
+            if f"say {'abc'[fail_index]}" in text:
+                # A schema-shaped answer that cannot be produced forces a node failure.
+                return ModelResponse(parts=[TextPart("not json at all")])
+            return ModelResponse(parts=[TextPart(json.dumps({"answer": "42"}))])
+
+        async def factory(_model_id: str | None):
+            return FunctionModel(handler)
+
+        outcome = await run_flow(spec, {}, model_factory=factory)
+        return outcome, seen
+
+    @pytest.mark.asyncio
+    async def test_every_iteration_runs_even_though_one_fails(self):
+        outcome, seen = await self._run(fail_index=0)
+
+        # All three prompts were sent: the failure did not cancel the others mid-flight.
+        assert sum(1 for text in seen if "say " in text) == 3
+        assert outcome.status == "error"
+        assert "iteration 0" in (outcome.error or "")
+
+    @pytest.mark.asyncio
+    async def test_the_trace_keeps_what_the_other_iterations_did(self):
+        outcome, _ = await self._run(fail_index=1)
+
+        loop_entry = outcome.trace["nodes"][0]
+        assert [row["index"] for row in loop_entry["iterations"]] == [0, 1, 2]
+        assert [row["ok"] for row in loop_entry["iterations"]] == [True, False, True]
+        assert loop_entry["iterations"][0]["output"] == {"answer": "42"}
