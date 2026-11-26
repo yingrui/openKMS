@@ -296,6 +296,7 @@ def aggregate_query(
     split: str | None = None,
     compare_where: str | None = None,
     chronological: bool = False,
+    value_order: bool = False,
 ) -> str:
     """The data behind one chart: values of `prop`, optionally split, optionally against a second set.
 
@@ -350,7 +351,8 @@ def aggregate_query(
     # A metric chart is a ranking of its measure ("which industry earned most"), not of how many objects it holds.
     # `v IS NULL` first because descending order puts nulls on top, and a value with nothing to measure is not the
     # largest one.
-    order = "value ASC" if chronological else "c DESC"
+    # `value_order` is the listogram's own sort choice ("alphabetically by the value") — its documented option.
+    order = "value ASC" if (chronological or value_order) else "c DESC"
     if metric == "avg" and not chronological:
         # Ordering a mean by its sum would rank a big group above a large mean.
         order = "v IS NULL, (v / nv) DESC"

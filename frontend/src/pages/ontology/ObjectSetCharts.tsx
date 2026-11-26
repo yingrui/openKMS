@@ -94,6 +94,8 @@ export function ObjectSetCharts({
   /* Each drawn chart carries the spec it came from: two charts may read one property with different settings, and
      the settings are what tell them apart. */
   const [rows, setRows] = useState<{ spec: ChartSpec; chart: ObjectAggregateChart }[]>([]);
+  /* Which charts are showing all their values rather than the first dozen. */
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState<string | null>(null);
 
@@ -116,6 +118,7 @@ export function ObjectSetCharts({
             search: search.trim() || undefined,
             filters,
             buckets: group.settings.buckets ?? DEFAULT_BUCKETS,
+            valueOrder: group.settings.valueOrder,
             limit: 20,
             ...group.settings,
             compare: compare ? { filters: compare.filters, search: compare.search } : undefined,
@@ -221,7 +224,9 @@ export function ObjectSetCharts({
                 pick: () => onPickRange?.(chart.prop, bucket.from, bucket.to),
               };
             })
-          : (chart.values ?? []).slice(0, 12).map((value) => ({
+          : (chart.values ?? [])
+              .slice(0, expanded[chartKey(spec)] ? 40 : 12)
+              .map((value) => ({
               key: value.value,
               label: value.value,
               range: value.value,
@@ -235,6 +240,19 @@ export function ObjectSetCharts({
             <figcaption className="object-set-chart__title">
               <span className="object-set-chart__name">
                 {title}
+                {(chart.values ?? []).length > 12 ? (
+                  <button
+                    type="button"
+                    className="btn-link object-set-chart__toggle"
+                    onClick={() =>
+                      setExpanded((current) => ({ ...current, [key]: !current[key] }))
+                    }
+                  >
+                    {expanded[key]
+                      ? t('objectSet.chartShowLess')
+                      : t('objectSet.chartShowMore', { count: (chart.values ?? []).length })}
+                  </button>
+                ) : null}
                 {chart.truncated ? (
                   <span className="object-set-chart__more">
                     {t('objectSet.chartTruncated', { count: (chart.values ?? []).length })}

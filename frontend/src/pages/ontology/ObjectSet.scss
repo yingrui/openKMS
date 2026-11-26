@@ -1303,8 +1303,8 @@
 
 /* Comparing reaches the table: the same columns for both sets, side by side. */
 .object-set-compare {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: var(--space-4);
 }
 
@@ -1318,4 +1318,18 @@
 /* A toolbar with a single control sits at the far end, above the thing it affects. */
 .object-set-toolbar--end {
   justify-content: flex-end;
+}
+
+/* "Show more" is a control, not a caption — it uses `.btn-link`. */
+.object-set-chart__toggle {
+  font-size: var(--text-xs);
+}
+
+/* A checkbox row in the chart settings panel. */
+.object-set-chart-settings__check {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text);
 }

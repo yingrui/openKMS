@@ -76,7 +76,7 @@ export function ObjectExplorationPage() {
   const [objectType, setObjectType] = useState<ObjectTypeResponse | null>(null);
   const [instances, setInstances] = useState<ObjectInstanceResponse[]>([]);
   /* How much of the set is on screen: a page size the reader chooses, plus the pages they asked for. */
-  const [pageSize, setPageSize] = useState(200);
+  const [pageSize, setPageSize] = useState(50);
   const [extraPages, setExtraPages] = useState(0);
   const rowLimit = pageSize + extraPages;
   const [total, setTotal] = useState<number | null>(null);
@@ -137,29 +137,29 @@ export function ObjectExplorationPage() {
     setSearchParams(params, { replace: options.replace ?? false });
   };
 
-  const writeCharts = (next: ChartSpec[] | null, replace: boolean) =>
+  /**
+   * Charts and columns are written **together**: two calls in a row both start from the same snapshot, so the second
+   * silently discards the first — which is how a saved exploration once opened with the type's built-in charts.
+   *
+   * A reader's edit is a history entry; a seed that comes with the page (a layout, a saved exploration) replaces it,
+   * because arriving somewhere is not a step the reader took.
+   */
+  const writeLayout = (
+    charts: ChartSpec[] | null,
+    columns: string[],
+    replace: boolean
+  ) =>
     updateParams((params) => {
-      if (next && next.length > 0) params.set('c', formatCharts(next));
+      if (charts && charts.length > 0) params.set('c', formatCharts(charts));
       else params.delete('c');
-    }, { replace });
-
-  const writeColumns = (next: string[], replace: boolean) =>
-    updateParams((params) => {
-      if (next.length > 0) params.set('cols', formatColumns(next));
+      if (columns.length > 0) params.set('cols', formatColumns(columns));
       else params.delete('cols');
     }, { replace });
 
-  /* A reader's edit is a history entry; a seed that comes with the page is not. */
-  const setChartSpecs = (next: ChartSpec[] | null) => writeCharts(next, false);
-  const setLayoutColumns = (next: string[]) => writeColumns(next, false);
-
-  const setFilters = (next: string[]) =>
-    updateParams((params) => {
-      params.delete('f');
-      for (const filter of next) params.append('f', filter);
-    });
-
-  const history = useBrowserHistory();
+  const setChartSpecs = (next: ChartSpec[] | null) => writeLayout(next, layoutColumns, false);
+  const setLayoutColumns = (next: string[]) => writeLayout(chartSpecs, next, false);
+  const seedLayout = (charts: ChartSpec[] | null, columns: string[]) =>
+    writeLayout(charts, columns, true);
 
   const { toggleRow, toggleAllRows } = useRowSelection(instances, setSelected);
 
@@ -258,8 +258,7 @@ export function ObjectExplorationPage() {
   useEffect(() => {
     if (loadedType.current === typeId) return;
     loadedType.current = typeId;
-    writeCharts(null, true);
-    writeColumns([], true);
+    seedLayout(null, []);
     setSelected(new Set());
     dismissOutcome.current();
   }, [typeId]);
@@ -272,20 +271,22 @@ export function ObjectExplorationPage() {
     //
     // A saved exploration already names its charts, and the two requests race — so this one yields when the URL
     // carries `?saved=`.
-    if (!savedId) writeCharts(null, true);
+    if (!savedId) seedLayout(null, []);
     void fetchExplorationLayout(typeId)
       .then((res) => {
         if (cancelled) return;
         const charts = (res.layout?.charts as ChartSpec[] | undefined) ?? [];
         const props = charts.map((chart) => chart.prop).filter(Boolean);
         if (!savedId) {
-          writeCharts(props.length > 0 ? charts : null, true);
-          writeColumns((res.layout?.columns as string[] | undefined) ?? [], true);
+          seedLayout(
+            props.length > 0 ? charts : null,
+            (res.layout?.columns as string[] | undefined) ?? []
+          );
         }
         setLayoutChoices(res.available ?? []);
       })
       .catch(() => {
-        if (!cancelled && !savedId) writeCharts(null, true);
+        if (!cancelled && !savedId) seedLayout(null, []);
       });
     return () => {
       cancelled = true;
@@ -334,8 +335,10 @@ export function ObjectExplorationPage() {
         // A saved exploration is a **view**, not just a filter: its charts, their order and the first perspective it
         // opened with are part of what was saved. Conditions alone reopened as whatever the type defaults to.
         const charts = (row.layout?.charts as ChartSpec[] | undefined) ?? [];
-        if (charts.length > 0) writeCharts(charts, true);
-        writeColumns((row.layout?.columns as string[] | undefined) ?? [], true);
+        seedLayout(
+          charts.length > 0 ? charts : null,
+          (row.layout?.columns as string[] | undefined) ?? []
+        );
         // The updater form keeps the current params without making this effect depend on them.
         setSearchParams(
           (previous) => {
@@ -517,8 +520,10 @@ export function ObjectExplorationPage() {
             onUse={(choice) => {
               setLayoutOpen(false);
               const charts = (choice.layout?.charts as ChartSpec[] | undefined) ?? [];
-              writeCharts(charts.length > 0 ? charts : null, true);
-              writeColumns((choice.layout?.columns as string[] | undefined) ?? [], true);
+              seedLayout(
+                charts.length > 0 ? charts : null,
+                (choice.layout?.columns as string[] | undefined) ?? []
+              );
             }}
             onSave={(scope) => {
               setLayoutOpen(false);

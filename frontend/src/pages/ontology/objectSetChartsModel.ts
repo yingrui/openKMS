@@ -41,6 +41,8 @@ export interface ChartSettings {
   split?: string;
   /** Intervals for a numeric property; 8 when not chosen. A text property ignores it. */
   buckets?: number;
+  /** A listogram's own sort: by how many objects hold a value, or by the value itself. */
+  valueOrder?: boolean;
 }
 
 export interface ChartSpec extends ChartSettings {
@@ -59,7 +61,7 @@ export function chartKey(spec: ChartSpec): string {
   /* The default interval count is "not stated": `buckets: 8` and no buckets are the same chart, and the request
      grouping relies on that — a key that disagrees with the group's settings drops the chart from the grid. */
   const buckets = spec.buckets && spec.buckets !== DEFAULT_BUCKETS ? String(spec.buckets) : '';
-  return [spec.prop, metric, spec.measure ?? '', spec.split ?? '', buckets].join('\u0000');
+  return [spec.prop, metric, spec.measure ?? '', spec.split ?? '', buckets, spec.valueOrder ? 'v' : ''].join('\u0000');
 }
 
 export function addSpec(specs: ChartSpec[], spec: ChartSpec): ChartSpec[] {
@@ -81,6 +83,7 @@ export function groupBySettings(specs: ChartSpec[]): { settings: ChartSettings; 
     if (spec.split) settings.split = spec.split;
     /* The interval count is part of the request, so two charts that disagree about it are two calls. */
     if (spec.buckets && spec.buckets !== DEFAULT_BUCKETS) settings.buckets = spec.buckets;
+    if (spec.valueOrder) settings.valueOrder = true;
     const key = JSON.stringify(settings);
     const group = groups.get(key) ?? { settings, props: [] };
     group.props.push(spec.prop);

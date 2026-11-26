@@ -102,6 +102,18 @@ export function ObjectSetChartSettings({
               </select>
             </label>
           ) : null}
+          {!numeric ? (
+            <label className="object-set-chart-settings__check">
+              <input
+                type="checkbox"
+                checked={settings.valueOrder ?? false}
+                onChange={(event) =>
+                  onChange({ ...settings, valueOrder: event.target.checked || undefined })
+                }
+              />
+              <span>{t('objectSet.chartSortByValue')}</span>
+            </label>
+          ) : null}
           {numeric ? (
             <label>
               <span>{t('objectSet.chartBuckets')}</span>

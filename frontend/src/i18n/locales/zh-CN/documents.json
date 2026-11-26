@@ -37,7 +37,7 @@
   },
   "index": {
     "title": "文档",
-    "subtitle": "使用频道树组织文档。可上传 PDF、HTML、ZIP 或图片。管理频道以搭建目录结构。",
+    "subtitle": "按主题分频道，文档挂在频道里。",
     "statChannels": "频道",
     "statDocuments": "文档",
     "quickActions": "快捷操作",

@@ -277,3 +277,10 @@ def test_counting_the_neighbour_carries_it_past_the_projection():
     )
     # A WITH replaces the scope: without `m` beside `n`, the count names a variable that is gone.
     assert ", n AS n, m AS m" in cypher
+
+
+def test_a_listogram_can_be_sorted_by_its_values():
+    """The documented option: "sort alphabetically by the property values" instead of by count."""
+    cypher = aggregate_query("Distributor", "", "region", limit=10, value_order=True)
+    assert "ORDER BY value ASC" in cypher
+    assert "ORDER BY c DESC" not in cypher

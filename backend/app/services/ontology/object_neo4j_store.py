@@ -419,6 +419,7 @@ def aggregate_object_set(
     compare_filters: list | None = None,
     compare_search: str | None = None,
     chronological: bool = False,
+    value_order: bool = False,
 ) -> dict:
     """One chart's data for one property over the current object set.
 
@@ -520,6 +521,7 @@ def aggregate_object_set(
                     split=split,
                     compare_where=compare_combined,
                     chronological=chronological,
+                    value_order=value_order,
                 ),
                 **params,
             )

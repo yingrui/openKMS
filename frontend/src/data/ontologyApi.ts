@@ -291,6 +291,8 @@ export async function fetchObjectAggregate(
     metric?: 'count' | 'sum' | 'avg' | 'min' | 'max' | 'p50' | 'p90' | 'linked';
     measure?: string;
     split?: string;
+    /** A listogram's sort: by count (default) or by the values themselves. */
+    valueOrder?: boolean;
     /** A second set to aggregate the same chart over: what the numbers are compared against. */
     compare?: { filters: string[]; search?: string };
   }
@@ -301,6 +303,7 @@ export async function fetchObjectAggregate(
   if (params.metric && params.metric !== 'count') usp.set('metric', params.metric);
   if (params.measure) usp.set('measure', params.measure);
   if (params.split) usp.set('split', params.split);
+  if (params.valueOrder) usp.set('order', 'value');
   if (params.compare) {
     for (const filter of params.compare.filters) {
       if (filter.trim()) usp.append('compare_f', filter);

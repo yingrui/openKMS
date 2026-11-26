@@ -1032,6 +1032,7 @@ async def aggregate_objects(
         description="Conditions of a **second set** to compare against: the same chart, both numbers per value",
     ),
     compare_search: str | None = Query(None, description="Text search for that second set"),
+    order: str = Query("count", description="count | value — how a listogram sorts its values"),
     db: AsyncSession = Depends(get_db),
 ):
     """Property distributions over the current object set — one chart per `prop`.
@@ -1102,6 +1103,7 @@ async def aggregate_objects(
                 ),
                 compare_search=compare_search,
                 chronological=name in timeline,
+                value_order=order == "value",
             )
             for name in prop
         ]

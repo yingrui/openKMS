@@ -37,7 +37,7 @@
   },
   "index": {
     "title": "Documents",
-    "subtitle": "Organize documents in channel trees. Upload PDF, HTML, ZIP, or images. Manage channels to create your structure.",
+    "subtitle": "One tree of channels per subject; documents live inside them.",
     "statChannels": "Channels",
     "statDocuments": "Documents",
     "quickActions": "Quick Actions",

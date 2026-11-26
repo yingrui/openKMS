@@ -462,13 +462,16 @@
     "metric_max": "最大",
     "metric_p50": "中位",
     "metric_p90": "P90",
-    "objectsTitle": "对象",
+    "objectsTitle": "表格",
     "columnsButton": "列（{{count}}）",
     "pageSize": "行数",
     "actionNeedsOne": "只能选择一个对象",
     "chartEveryObjectDiffers": "该属性每个对象的取值都不同——这是标识符，不是可分的维度",
     "compareCurrent": "当前集合 · {{count}}",
-    "compareBaseline": "{{name}} · {{count}}"
+    "compareBaseline": "{{name}} · {{count}}",
+    "chartSortByValue": "按取值排序",
+    "chartShowMore": "显示更多（{{count}} 个）",
+    "chartShowLess": "收起"
   },
   "explorerSections": {
     "explorations": "探索",

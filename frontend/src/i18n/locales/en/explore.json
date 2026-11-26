@@ -462,13 +462,16 @@
     "metric_max": "max",
     "metric_p50": "median",
     "metric_p90": "p90",
-    "objectsTitle": "Objects",
+    "objectsTitle": "Table",
     "columnsButton": "Columns ({{count}})",
     "pageSize": "Rows",
     "actionNeedsOne": "Select exactly one object",
     "chartEveryObjectDiffers": "Every object has its own value here — an identifier, not a dimension",
     "compareCurrent": "This set · {{count}}",
-    "compareBaseline": "{{name}} · {{count}}"
+    "compareBaseline": "{{name}} · {{count}}",
+    "chartSortByValue": "Sort by value",
+    "chartShowMore": "Show more ({{count}})",
+    "chartShowLess": "Show less"
   },
   "explorerSections": {
     "explorations": "Explorations",
