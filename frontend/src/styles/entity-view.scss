@@ -252,6 +252,24 @@ body:has(.app-page-pane > .entity-view) .app-main {
   max-width: none;
 }
 
+.entity-view__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* The page's contract lives here, not in a paragraph above the controls it describes. */
+.entity-view__hint-icon {
+  display: inline-flex;
+  color: var(--color-text-muted);
+  cursor: help;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-text-secondary);
+  }
+}
+
 .entity-view__main .page-header {
   display: flex;
   justify-content: space-between;

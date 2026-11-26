@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, Loader2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Info, Loader2 } from 'lucide-react';
 import { useActiveSection } from '../../hooks/useActiveSection';
 import { Metric, MetricGrid } from '../../styles/design-system/index';
 import '../../styles/account-page.scss';
@@ -45,17 +45,36 @@ export function EntityViewLoading({ label }: { label: string }) {
 export function EntityViewHeader({
   title,
   subtitle,
+  hint,
   actions,
 }: {
   title: string;
   subtitle?: ReactNode;
+  /** The page's contract, not its state: "what this search covers", "how these findings are counted". Kept behind an
+   *  ⓘ beside the title so a paragraph of instructions does not sit above the controls it describes on every visit. */
+  hint?: string;
   actions?: ReactNode;
 }) {
   return (
     <header className="page-header">
       <div>
         {/* A shell-level toolbar has actions but no section title — do not render an empty h1. */}
-        {title ? <h1>{title}</h1> : null}
+        {title ? (
+          <div className="entity-view__title-row">
+            <h1>{title}</h1>
+            {hint ? (
+              <span
+                className="entity-view__hint-icon"
+                title={hint}
+                aria-label={hint}
+                role="img"
+                tabIndex={0}
+              >
+                <Info size={16} aria-hidden />
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         {subtitle != null && subtitle !== '' ? <p className="page-subtitle">{subtitle}</p> : null}
       </div>
       {actions ? <div className="entity-view__actions">{actions}</div> : null}

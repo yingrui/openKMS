@@ -46,7 +46,7 @@
   },
   "articlesIndex": {
     "title": "Articles",
-    "subtitle": "Organize articles in channel trees. Write markdown, attach files, and track versions. Manage channels to match how you structure knowledge.",
+    "subtitle": "One tree of channels per subject; articles live inside them.",
     "statChannels": "Channels",
     "statArticles": "Articles",
     "quickActions": "Quick Actions",

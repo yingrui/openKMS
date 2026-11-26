@@ -46,7 +46,7 @@
   },
   "articlesIndex": {
     "title": "文章",
-    "subtitle": "使用频道树组织文章。撰写 Markdown、附加文件并跟踪版本。管理频道以匹配知识结构。",
+    "subtitle": "按主题分频道，文章挂在频道里。",
     "statChannels": "频道",
     "statArticles": "文章",
     "quickActions": "快捷操作",

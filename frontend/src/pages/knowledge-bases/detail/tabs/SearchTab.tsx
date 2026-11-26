@@ -72,7 +72,7 @@ export function SearchTab({
 
   return (
     <>
-      <EntityViewHeader title={t('detail.searchTitle')} subtitle={t('detail.searchDesc')} />
+      <EntityViewHeader title={t('detail.searchTitle')} hint={t('detail.searchDesc')} />
 
       <EntityViewPanel>
         <div className="kb-search-query">
