@@ -72,8 +72,9 @@ export function useFunctionEditorWorkspace() {
       draft: boolean;
     }[]
   >([]);
+  // Object inputs are filled by picking records — one for `object`, several for `object_set`.
   const [pickedInstances, setPickedInstances] = useState<
-    Record<string, { id: string; data: Record<string, unknown> } | null>
+    Record<string, { id: string; data: Record<string, unknown> }[]>
   >({});
   const [latestVersion, setLatestVersion] = useState<number | null>(null);
   const [publishedVersion, setPublishedVersion] = useState<number | null>(null);
@@ -284,14 +285,15 @@ export function useFunctionEditorWorkspace() {
         const payload: Record<string, unknown> = {};
         for (const field of flow.inputs) {
           const raw = runValues[field.name] ?? '';
-          if (field.type === 'object') {
-            const picked = pickedInstances[field.name];
-            if (!picked) {
+          if (field.type === 'object' || field.type === 'object_set') {
+            const picked = pickedInstances[field.name] ?? [];
+            if (!picked.length) {
               toast.error(t('editor.logicObjectInputPick', { name: field.name }));
               setRunning(false);
               return;
             }
-            payload[field.name] = picked.data;
+            payload[field.name] =
+              field.type === 'object' ? picked[0].data : picked.map((instance) => instance.data);
           } else {
             payload[field.name] = raw;
           }
@@ -359,12 +361,16 @@ export function useFunctionEditorWorkspace() {
         setPreviewOutput(JSON.stringify(row.output_payload ?? row.error_message ?? {}, null, 2));
         setTrace((row.trace as Record<string, unknown>) ?? null);
         const values: Record<string, string> = {};
-        const picked: Record<string, { id: string; data: Record<string, unknown> } | null> = {};
+        const picked: Record<string, { id: string; data: Record<string, unknown> }[]> = {};
         for (const [key, value] of Object.entries(row.input_payload ?? {})) {
-          if (value && typeof value === 'object' && !Array.isArray(value)) {
+          if (Array.isArray(value)) {
+            // A set input: the records the run was made with.
+            picked[key] = value.map((row) => ({ id: '', data: (row ?? {}) as Record<string, unknown> }));
+            values[key] = JSON.stringify(value);
+          } else if (value && typeof value === 'object') {
             // An object input was filled by picking an instance; without restoring it, pressing Run again would
             // answer "pick an instance" and the replay would look broken.
-            picked[key] = { id: '', data: value as Record<string, unknown> };
+            picked[key] = [{ id: '', data: value as Record<string, unknown> }];
             values[key] = JSON.stringify(value);
           } else {
             values[key] = typeof value === 'string' ? value : JSON.stringify(value);

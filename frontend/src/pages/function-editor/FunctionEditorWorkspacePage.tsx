@@ -264,8 +264,8 @@ export function FunctionEditorWorkspacePage() {
                 running={running}
                 canRun={Boolean(resolvedId)}
                 onChange={setRunValues}
-                onPick={(name, instance) =>
-                  setPickedInstances((prev) => ({ ...prev, [name]: instance }))
+                onPick={(name, instances) =>
+                  setPickedInstances((prev) => ({ ...prev, [name]: instances }))
                 }
                 onRun={() => void onRun()}
                 onSelectRun={onSelectRun}

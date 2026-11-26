@@ -16,14 +16,17 @@ export function ObjectInstancePicker({
   objectTypeId,
   objectTypeName,
   picked,
+  multiple = false,
   disabled,
   onPick,
 }: {
   objectTypeId: string;
   objectTypeName: string;
-  picked: PickedInstance | null;
+  /** A set input holds several records; a single input holds one. */
+  picked: PickedInstance[];
+  multiple?: boolean;
   disabled: boolean;
-  onPick: (instance: PickedInstance | null) => void;
+  onPick: (instances: PickedInstance[]) => void;
 }) {
   const { t } = useTranslation('ontology');
   const [search, setSearch] = useState('');
@@ -71,10 +74,17 @@ export function ObjectInstancePicker({
 
       {error ? <p className="logic-pick__error">{error}</p> : null}
 
-      {picked ? (
+      {picked.length ? (
         <div className="logic-pick__picked">
-          <span>{t('editor.logicPickSelected')}: <strong>{label({ id: picked.id, data: picked.data } as ObjectInstanceResponse)}</strong></span>
-          <button type="button" className="ds-table-icon-link" onClick={() => onPick(null)} disabled={disabled}>
+          <span>
+            {t('editor.logicPickSelected')}:{' '}
+            {picked.map((instance) => (
+              <strong key={instance.id || JSON.stringify(instance.data)} className="logic-pick__chip">
+                {label({ id: instance.id, data: instance.data } as ObjectInstanceResponse)}
+              </strong>
+            ))}
+          </span>
+          <button type="button" className="ds-table-icon-link" onClick={() => onPick([])} disabled={disabled}>
             {t('editor.logicPickClear')}
           </button>
         </div>
@@ -88,8 +98,15 @@ export function ObjectInstancePicker({
                 type="button"
                 className="logic-pick__row"
                 onClick={() => {
-                  onPick({ id: row.id, data: row.data });
-                  setRows(null);
+                  const instance = { id: row.id, data: row.data };
+                  if (!multiple) {
+                    onPick([instance]);
+                    setRows(null);
+                    return;
+                  }
+                  // A set keeps the search open and toggles: picking five records should not mean five searches.
+                  const exists = picked.some((item) => item.id === row.id);
+                  onPick(exists ? picked.filter((item) => item.id !== row.id) : [...picked, instance]);
                 }}
                 disabled={disabled}
               >

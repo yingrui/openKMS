@@ -25,8 +25,8 @@ export function LogicRunPanel({
 }: {
   fields: InputField[];
   values: Record<string, string>;
-  /** Object inputs are picked as instances, not typed as JSON. */
-  picked: Record<string, PickedInstance | null>;
+  /** Object and object-set inputs are picked as records, not typed as JSON. */
+  picked: Record<string, PickedInstance[]>;
   /** api_name → id, so the picker can search the right type. */
   objectTypeIds: Record<string, string>;
   running: boolean;
@@ -41,7 +41,7 @@ export function LogicRunPanel({
     draft: boolean;
   }[];
   onChange: (next: Record<string, string>) => void;
-  onPick: (name: string, instance: PickedInstance | null) => void;
+  onPick: (name: string, instances: PickedInstance[]) => void;
   onRun: () => void;
   onSelectRun: (runId: string) => void;
 }) {
@@ -67,7 +67,7 @@ export function LogicRunPanel({
       ) : (
         <div className="logic-run__inputs">
           {fields.map((field) =>
-            field.type === 'object' ? (
+            field.type === 'object' || field.type === 'object_set' ? (
               <FormField
                 key={field.name}
                 label={field.name}
@@ -78,9 +78,10 @@ export function LogicRunPanel({
                   <ObjectInstancePicker
                     objectTypeId={objectTypeIds[field.objectType]}
                     objectTypeName={field.objectType}
-                    picked={picked[field.name] ?? null}
+                    picked={picked[field.name] ?? []}
+                    multiple={field.type === 'object_set'}
                     disabled={running}
-                    onPick={(instance) => onPick(field.name, instance)}
+                    onPick={(instances) => onPick(field.name, instances)}
                   />
                 ) : (
                   <p className="logic-run__hint">

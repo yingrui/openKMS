@@ -14,7 +14,7 @@ SUPPORTED_TOOL_KINDS = ("query_objects", "call_function", "apply_action", "calcu
 MAX_TOOL_LIMIT = 25
 MAX_TOOLS_PER_NODE = 4
 MAX_LOOP_ITERATIONS = 50
-INPUT_TYPES = ("string", "number", "integer", "boolean", "object")
+INPUT_TYPES = ("string", "number", "integer", "boolean", "object", "object_set")
 
 def validate_flow_spec(spec: dict | None) -> list[str]:
     """Structural validation. Runs before a version is saved, so a broken flow never becomes callable."""
@@ -98,11 +98,11 @@ def _validate_inputs(inputs: object) -> list[str]:
         if input_type not in INPUT_TYPES:
             errors.append(f"{where}.type '{input_type}' is not one of {', '.join(INPUT_TYPES)}")
         object_type = str(item.get("object_type") or "").strip()
-        if object_type and input_type != "object":
-            errors.append(f"{where}.object_type only applies to an 'object' input")
-        if input_type == "object" and not object_type:
+        if object_type and input_type not in ("object", "object_set"):
+            errors.append(f"{where}.object_type only applies to an 'object' or 'object_set' input")
+        if input_type in ("object", "object_set") and not object_type:
             # The run panel needs to know what to offer; a bare JSON blob asks the author to invent a shape.
-            errors.append(f"{where}.object_type is required for an 'object' input")
+            errors.append(f"{where}.object_type is required for an '{input_type}' input")
     return errors
 
 

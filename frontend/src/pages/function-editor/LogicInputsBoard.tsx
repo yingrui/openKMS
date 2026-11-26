@@ -63,7 +63,7 @@ export function LogicInputsBoard({
                       onChange={(e) => patch(index, { name: e.target.value })}
                       disabled={disabled}
                     />
-                    {field.type === 'object' && !field.objectType ? (
+                    {(field.type === 'object' || field.type === 'object_set') && !field.objectType ? (
                       <span className="logic-inputs__unused">{t('editor.logicInputObjectNeedsType')}</span>
                     ) : null}
                     {isUnused ? (
@@ -86,7 +86,7 @@ export function LogicInputsBoard({
                     </select>
                   </td>
                   <td>
-                    {field.type === 'object' ? (
+                    {field.type === 'object' || field.type === 'object_set' ? (
                       <select
                         className="ds-control"
                         value={field.objectType}

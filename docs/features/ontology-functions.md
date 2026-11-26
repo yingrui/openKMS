@@ -202,6 +202,11 @@ because an action's function receives typed input, not strings.
 name instead of rendering an empty prompt. The editor derives this list from `{{input.x}}` in the prompts, so the
 declaration and the text cannot disagree — but the declaration is what the executor enforces.
 
+An `object` input takes **one record**, an `object_set` input takes **several** (`{"name": "holdings", "type":
+"object_set", "object_type": "Holding"}`) — the run panel searches the type and keeps the records you tick, and the
+prompt reads them as a JSON array. Both name their object type for the same reason: the declaration is what lets the
+panel offer real records instead of asking a person to type JSON.
+
 **An `object` input names an object type** (`{"name": "customer", "type": "object", "object_type": "Customer"}`, and
 `x-object-type` in the function-level schema). That is what lets the editor offer `{{input.customer.plan}}` as a
 checkbox-free chip and lets the run panel **search that type and pass one instance's properties** instead of asking a

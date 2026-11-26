@@ -359,6 +359,8 @@ _INPUT_CHECKS: dict[str, tuple[type, ...]] = {
     "integer": (int,),
     "boolean": (bool,),
     "object": (dict, list),
+    # A set is a list of the same records an `object` input takes; the prompt reads it as a JSON array.
+    "object_set": (list,),
 }
 
 

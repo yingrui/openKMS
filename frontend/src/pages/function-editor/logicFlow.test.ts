@@ -445,3 +445,35 @@ describe('calculator tools', () => {
     expect(specFromDraft(opened).spec?.nodes[0]).toMatchObject({ tools: [{ kind: 'calculator' }] });
   });
 });
+
+describe('object-set inputs', () => {
+  it('becomes an array of objects in the function schema, and keeps the object type', () => {
+    const draft: FlowDraft = {
+      nodes: [{ ...newNode(0), prompt: 'Compare {{input.holdings}}' }],
+      inputs: [{ name: 'holdings', type: 'object_set', description: '', objectType: 'Holding' }],
+      output: '',
+    };
+    expect(inputSchemaFromDraft(draft)).toEqual({
+      type: 'object',
+      properties: {
+        holdings: {
+          type: 'array',
+          items: { type: 'object' },
+          'x-object-type': 'Holding',
+        },
+      },
+      required: ['holdings'],
+    });
+  });
+
+  it('travels in the flow spec with its object type', () => {
+    const draft: FlowDraft = {
+      nodes: [{ ...newNode(0), prompt: 'x' }],
+      inputs: [{ name: 'holdings', type: 'object_set', description: '', objectType: 'Holding' }],
+      output: '',
+    };
+    expect(specFromDraft(draft).spec?.inputs).toEqual([
+      { name: 'holdings', type: 'object_set', object_type: 'Holding' },
+    ]);
+  });
+});

@@ -1192,6 +1192,11 @@
   font-size: var(--text-sm);
 }
 
+.logic-pick__chip {
+  margin-inline-end: var(--space-1);
+  font-weight: 600;
+}
+
 .logic-pick__rows {
   display: flex;
   flex-direction: column;

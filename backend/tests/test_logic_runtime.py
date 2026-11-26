@@ -1125,7 +1125,9 @@ class TestObjectInputs:
                 "inputs": [{"name": "c", "type": "string", "object_type": "Customer"}],
             }
         )
-        assert errors == ["inputs[0].object_type only applies to an 'object' input"]
+        assert errors == [
+            "inputs[0].object_type only applies to an 'object' or 'object_set' input"
+        ]
 
     @pytest.mark.asyncio
     async def test_the_prompt_reads_the_instance_by_path(self):
@@ -1461,3 +1463,31 @@ class TestUnexpectedFailures:
         call = next(call for call in node["tool_calls"] if call["tool"] == "query_objects")
         assert call["ok"] is False
         assert "unexpected KeyError" in call["error"]
+
+
+class TestObjectSetInputs:
+    """An object-set input is a list of records from one object type: the prompt reads it as a JSON array."""
+
+    def test_a_set_input_must_name_its_type(self):
+        errors = validate_flow_spec(
+            {"nodes": [{"id": "n1", "kind": "model", "prompt": "x"}], "inputs": [{"name": "s", "type": "object_set"}]}
+        )
+        assert errors == ["inputs[0].object_type is required for an 'object_set' input"]
+
+    @pytest.mark.asyncio
+    async def test_a_list_reaches_the_prompt_and_a_single_record_does_not(self):
+        spec = {
+            "inputs": [{"name": "holdings", "type": "object_set", "object_type": "Holding"}],
+            "nodes": [
+                {"id": "n1", "kind": "model", "prompt": "Holdings: {{input.holdings}}", "output_schema": SCHEMA}
+            ],
+        }
+        ok = await run_flow(
+            spec, {"holdings": [{"ts_code": "AAA"}, {"ts_code": "BBB"}]}, model_factory=_factory
+        )
+        assert ok.status == "ok", ok.error
+        assert '"ts_code": "AAA"' in ok.trace["nodes"][0]["prompt_sent"]
+
+        wrong = await run_flow(spec, {"holdings": {"ts_code": "AAA"}}, model_factory=_factory)
+        assert wrong.status == "error"
+        assert "expected object_set but got dict" in (wrong.error or "")

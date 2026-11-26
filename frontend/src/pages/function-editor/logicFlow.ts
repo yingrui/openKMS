@@ -11,7 +11,7 @@ import { fieldsFromSchema, schemaFromFields } from './logicSchema';
 
 export type OutputMode = 'text' | 'fields';
 
-export type InputType = 'string' | 'number' | 'integer' | 'boolean' | 'object';
+export type InputType = 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'object_set';
 
 export type InputField = {
   name: string;
@@ -21,7 +21,7 @@ export type InputField = {
   objectType: string;
 };
 
-export const INPUT_TYPES: InputType[] = ['string', 'number', 'integer', 'boolean', 'object'];
+export const INPUT_TYPES: InputType[] = ['string', 'number', 'integer', 'boolean', 'object', 'object_set'];
 
 export type NodeParam = { key: string; value: string };
 
@@ -359,7 +359,9 @@ export function specFromDraft(draft: FlowDraft): DraftResult {
     .map((field) => ({
       name: field.name,
       type: field.type,
-      ...(field.type === 'object' && field.objectType.trim() ? { object_type: field.objectType.trim() } : {}),
+      ...((field.type === 'object' || field.type === 'object_set') && field.objectType.trim()
+        ? { object_type: field.objectType.trim() }
+        : {}),
     }));
   const spec: FlowSpec = { nodes };
   if (inputs.length) spec.inputs = inputs;
@@ -465,13 +467,14 @@ export function inputSchemaFromDraft(draft: FlowDraft): Record<string, unknown> 
   if (!rows.length) return null;
   const properties: Record<string, unknown> = {};
   for (const field of rows) {
+    const objectTyped = field.type === 'object' || field.type === 'object_set';
     properties[field.name] = {
-      type: field.type,
+      ...(field.type === 'object_set'
+        ? { type: 'array', items: { type: 'object' } }
+        : { type: field.type }),
       ...(field.description.trim() ? { description: field.description.trim() } : {}),
       // Non-standard key, same convention as the rest of the ontology schemas: it tells the run panel what to offer.
-      ...(field.type === 'object' && field.objectType.trim()
-        ? { 'x-object-type': field.objectType.trim() }
-        : {}),
+      ...(objectTyped && field.objectType.trim() ? { 'x-object-type': field.objectType.trim() } : {}),
     };
   }
   return { type: 'object', properties, required: rows.map((field) => field.name) };

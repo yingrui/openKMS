@@ -90,7 +90,9 @@ export function LogicFlowEditor({
             fields={node.fields}
             objectTypes={objectTypes}
             objectProperties={objectProperties}
-            objectInputs={draft.inputs.filter((field) => field.type === 'object')}
+            objectInputs={draft.inputs.filter(
+              (field) => field.type === 'object' || field.type === 'object_set',
+            )}
             runValue={runValues[node.id]}
             disabled={disabled}
             onChange={(changes) => patch(index, changes)}
