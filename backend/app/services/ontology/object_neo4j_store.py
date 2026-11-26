@@ -531,15 +531,16 @@ def aggregate_object_set(
         # would silently drop the right-hand columns.
         cell_limit = limit * limit
         compared = compare_combined is not None
-        cells = [
-            {
-                "value": record["value"],
-                "split": record["split"],
-                "count": record["c"],
-                **({"baseline": record["base"]} if compared else {}),
-            }
-            for record in records[:cell_limit]
-        ]
+        cells = []
+        for record in records[:cell_limit]:
+            cell = {"value": record["value"], "split": record["split"], "count": record["c"]}
+            if metric == "avg":
+                cell["measure"] = record["v"] / record["nv"] if record["nv"] else None
+            elif metric != "count":
+                cell["measure"] = record["v"]
+            if compared:
+                cell["baseline"] = record["base"]
+            cells.append(cell)
         return {
             "prop": prop,
             "split": split,

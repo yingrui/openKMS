@@ -324,10 +324,9 @@ def aggregate_query(
         raise QueryError(
             f"`{metric}` cannot be compared with another set; use one of {', '.join(COMPARABLE_METRICS)}"
         )
-    if split and metric not in ("count", "linked"):
-        # A cell shows how many objects it holds; a measured cross-tab has no place to put the measure, and silently
-        # dropping it left an `ORDER BY` naming a variable the query never selected.
-        raise QueryError("a cross-tab counts objects; drop the metric to split")
+    if split and metric == "linked":
+        # Counting neighbours per cell has no defined meaning here: which of the two links would be counted?
+        raise QueryError("a cross-tab of linked counts is not defined; chart a link without a split")
     if compare_where is not None and split and metric != "count":
         # A measured cross-tab compared with another set needs four numbers per cell; the cells are counts.
         raise QueryError("a compared cross-tab counts objects; drop the metric")
@@ -359,11 +358,17 @@ def aggregate_query(
     elif metric not in ("count", "linked") and not chronological:
         order = "v IS NULL, v DESC"
     if split:
-        # A cell is a count; `linked` changes what is counted, not the shape of the answer.
-        counted = "count(DISTINCT m)" if metric == "linked" else "count(DISTINCT n)"
+        # A cell is a count, and a measured cell also carries its measure — the documented Statistics Table is exactly
+        # "aggregates grouped by another property".
+        extras = ""
+        if metric == "avg":
+            extras = ", sum(measure) AS v, count(measure) AS nv"
+        elif metric != "count":
+            extras = f", {metric}(measure) AS v"
         return (
             f"{match} {projection} "
-            f"RETURN value, split, {counted} AS c ORDER BY {order} LIMIT {int(limit)}"
+            f"RETURN value, split, count(DISTINCT n) AS c{extras} "
+            f"ORDER BY c DESC LIMIT {int(limit)}"
         )
     return (
         f"{match} {projection} "

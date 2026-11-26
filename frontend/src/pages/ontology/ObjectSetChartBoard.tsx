@@ -55,7 +55,7 @@ export function ObjectSetChartBoard({
   onPickPair: (prop: string, value: string, splitProp: string, splitValue: string) => void;
   onPickRange: (prop: string, from: number, to: number) => void;
   onRemove: (prop: string) => void;
-  onMove: (prop: string, direction: -1 | 1) => void;
+  onMove: (prop: string, directionOrKey: -1 | 1 | string) => void;
 }) {
   const { t } = useTranslation('explore');
   return (

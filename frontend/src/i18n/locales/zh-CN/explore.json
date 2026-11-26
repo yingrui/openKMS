@@ -475,7 +475,13 @@
     "chartKind": "图形",
     "kindBars": "柱状",
     "kindPie": "饼图",
-    "kindStat": "单值"
+    "kindStat": "单值",
+    "rangeFrom": "从",
+    "rangeTo": "到",
+    "rangeApply": "应用区间",
+    "chartWidth": "宽度",
+    "widthOne": "一栏",
+    "widthTwo": "两栏"
   },
   "explorerSections": {
     "explorations": "探索",

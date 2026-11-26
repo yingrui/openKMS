@@ -45,6 +45,8 @@ export interface ChartSettings {
   valueOrder?: boolean;
   /** How the numbers are drawn. `stat` is one number for the whole set, not a distribution. */
   kind?: 'bars' | 'pie' | 'stat';
+  /** One or two columns wide, of the two the grid has. */
+  span?: 1 | 2;
 }
 
 export interface ChartSpec extends ChartSettings {
@@ -71,6 +73,7 @@ export function chartKey(spec: ChartSpec): string {
     buckets,
     spec.valueOrder ? 'v' : '',
     spec.kind ?? '',
+    spec.span ? String(spec.span) : '',
   ].join('\u0000');
 }
 
@@ -95,6 +98,7 @@ export function groupBySettings(specs: ChartSpec[]): { settings: ChartSettings; 
     if (spec.buckets && spec.buckets !== DEFAULT_BUCKETS) settings.buckets = spec.buckets;
     if (spec.valueOrder) settings.valueOrder = true;
     if (spec.kind && spec.kind !== 'bars') settings.kind = spec.kind;
+    if (spec.span === 2) settings.span = 2;
     const key = JSON.stringify(settings);
     const group = groups.get(key) ?? { settings, props: [] };
     group.props.push(spec.prop);

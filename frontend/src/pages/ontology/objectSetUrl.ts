@@ -24,6 +24,7 @@ export function formatCharts(specs: ChartSpec[]): string {
         spec.buckets ? String(spec.buckets) : '',
         '',
         spec.kind ?? '',
+        spec.span ? String(spec.span) : '',
       ].join(FIELD_SEP)
     )
     .join(CHART_SEP);
@@ -35,13 +36,14 @@ export function parseCharts(value: string | null): ChartSpec[] | null {
     .split(CHART_SEP)
     .map((entry) => entry.split(FIELD_SEP))
     .filter((fields) => fields[0])
-    .map(([prop, metric, measure, split, buckets, , kind]) => {
+    .map(([prop, metric, measure, split, buckets, , kind, span]) => {
       const spec: ChartSpec = { prop: prop as string };
       if (metric) spec.metric = metric as ChartSpec['metric'];
       if (measure) spec.measure = measure;
       if (split) spec.split = split;
       if (buckets) spec.buckets = Number(buckets);
       if (kind) spec.kind = kind as ChartSpec['kind'];
+      if (span) spec.span = Number(span) === 2 ? 2 : 1;
       /* `kind` rides in the metric slot's tail: `prop~metric~measure~split~buckets~valueOrder~kind`. */
       return spec;
     });

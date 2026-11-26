@@ -79,7 +79,8 @@ export function ObjectSetCharts({
   onPickRange?: (prop: string, from: number, to: number) => void;
   /** Chart editing: removing a chart is not removing its condition (the docs are explicit). */
   onRemove?: (key: string) => void;
-  onMove?: (key: string, direction: -1 | 1) => void;
+  /** Move a chart one step, or drop it onto another chart's position. */
+  onMove?: (key: string, target: -1 | 1 | string) => void;
   canMove?: boolean;
   /** The numbers on screen, so the caller can compare them with the numbers after an action. */
   onLoaded?: (charts: ObjectAggregateChart[]) => void;
@@ -99,6 +100,8 @@ export function ObjectSetCharts({
   const [rows, setRows] = useState<{ spec: ChartSpec; chart: ObjectAggregateChart }[]>([]);
   /* Which charts are showing all their values rather than the first dozen. */
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  /* A typed interval per histogram: the documented alternative to dragging across buckets. */
+  const [ranges, setRanges] = useState<Record<string, { from: string; to: string }>>({});
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState<string | null>(null);
 
@@ -239,7 +242,24 @@ export function ObjectSetCharts({
               pick: () => onPick(chart.prop, value.value),
             }));
         return (
-          <figure key={key} className="object-set-chart">
+          <figure
+            key={key}
+            className={`object-set-chart${chartSettings.span === 2 ? ' object-set-chart--wide' : ''}`}
+            draggable
+            onDragStart={(event) => {
+              event.dataTransfer.setData('text/plain', key);
+              event.dataTransfer.effectAllowed = 'move';
+            }}
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = 'move';
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              const from = event.dataTransfer.getData('text/plain');
+              if (from && from !== key) onMove?.(from, key);
+            }}
+          >
             <figcaption className="object-set-chart__title">
               <span className="object-set-chart__name">
                 {title}
@@ -408,6 +428,7 @@ export function ObjectSetCharts({
                 </LineChart>
               </ResponsiveContainer>
             ) : isHistogram(chart) ? (
+              <>
               /* An interval distribution is read across a number line, so it is drawn on one: bars side by side on a
                  category axis of intervals would look exactly like a value distribution. */
               <ResponsiveContainer width="100%" height={PLOT_HEIGHT}>
@@ -432,6 +453,53 @@ export function ObjectSetCharts({
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              <div className="object-set-chart__range">
+                <input
+                  className="ds-control ds-control--compact"
+                  type="number"
+                  value={ranges[key]?.from ?? String(chart.min ?? '')}
+                  aria-label={t('objectSet.rangeFrom')}
+                  onChange={(event) =>
+                    setRanges((current) => ({
+                      ...current,
+                      [key]: {
+                        from: event.target.value,
+                        to: current[key]?.to ?? String(chart.max ?? ''),
+                      },
+                    }))
+                  }
+                />
+                <span aria-hidden>–</span>
+                <input
+                  className="ds-control ds-control--compact"
+                  type="number"
+                  value={ranges[key]?.to ?? String(chart.max ?? '')}
+                  aria-label={t('objectSet.rangeTo')}
+                  onChange={(event) =>
+                    setRanges((current) => ({
+                      ...current,
+                      [key]: {
+                        from: current[key]?.from ?? String(chart.min ?? ''),
+                        to: event.target.value,
+                      },
+                    }))
+                  }
+                />
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    const from = ranges[key]?.from ?? String(chart.min ?? '');
+                    const to = ranges[key]?.to ?? String(chart.max ?? '');
+                    if (from !== '' && to !== '') {
+                      onPickRange?.(chart.prop, Number(from), Number(to));
+                    }
+                  }}
+                >
+                  {t('objectSet.rangeApply')}
+                </button>
+              </div>
+              </>
             ) : (
               <ResponsiveContainer width="100%" height={PLOT_HEIGHT}>
                 <BarChart data={data} layout="vertical" margin={{ top: 4, right: 52, bottom: 4, left: 4 }}>
@@ -544,6 +612,10 @@ function CrossTab({
   const cellAt = (row: string, column: string) =>
     (chart.cells ?? []).find((cell) => cell.value === row && cell.split === column);
   const max = Math.max(1, ...(chart.cells ?? []).map((cell) => cell.count));
+  const maxMeasure = Math.max(
+    1,
+    ...(chart.cells ?? []).map((cell) => Math.abs(cell.measure ?? 0))
+  );
   return (
     <div className="object-set-crosstab-wrap" style={{ maxHeight: PLOT_HEIGHT, overflow: 'auto' }}>
       <table className="object-set-crosstab">
@@ -563,6 +635,8 @@ function CrossTab({
               <th scope="row">{row}</th>
               {columns.map((column) => {
                 const cell = cellAt(row, column);
+                /* A measured cell shows the measure; the count is what the shading is based on when there is none. */
+                const shown = cell?.measure ?? cell?.count ?? 0;
                 const count = cell?.count ?? 0;
                 const selected = applied.has(`${chart.prop}\u0000${row}`);
                 return (
@@ -570,11 +644,20 @@ function CrossTab({
                     <button
                       type="button"
                       className="object-set-crosstab__cell"
-                      style={{ opacity: count === 0 ? 0.35 : Math.max(0.45, count / max) }}
+                      style={{
+                        opacity:
+                          cell?.measure !== undefined && cell?.measure !== null
+                            ? Math.max(0.2, Math.min(1, (cell.measure as number) / maxMeasure))
+                            : count === 0
+                              ? 0.35
+                              : Math.max(0.45, count / max),
+                      }}
                       onClick={() => onPick(row, column)}
                       title={`${row} · ${column}`}
                     >
-                      <span className={selected ? 'is-selected' : undefined}>{count || '·'}</span>
+                      <span className={selected ? 'is-selected' : undefined}>
+                        {shown ? formatMeasure(Number(shown)) : '·'}
+                      </span>
                       {cell?.baseline !== undefined ? (
                         /* A cell compared with another set says both numbers: the count, and where it moved from. */
                         <span className="object-set-crosstab__baseline">

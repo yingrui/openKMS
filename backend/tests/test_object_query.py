@@ -247,11 +247,12 @@ def test_a_measured_cross_tab_cannot_be_compared():
         )
 
 
-def test_a_measured_cross_tab_is_refused_rather_than_dropping_the_measure():
+def test_a_cross_tab_of_linked_counts_is_refused():
+    """Counting neighbours per cell has no defined meaning: which link would be counted?"""
     with pytest.raises(QueryError):
         aggregate_query(
-            "Distributor", "", "channel_type", limit=20, split="tier",
-            metric="avg", measure="lead_time_weeks",
+            "Distributor", "", "@allocates/region", limit=20, split="tier",
+            metric="linked", link_info={"allocates": ("allocates", "out")},
         )
 
 
@@ -284,3 +285,13 @@ def test_a_listogram_can_be_sorted_by_its_values():
     cypher = aggregate_query("Distributor", "", "region", limit=10, value_order=True)
     assert "ORDER BY value ASC" in cypher
     assert "ORDER BY c DESC" not in cypher
+
+
+def test_a_cross_tab_cell_can_carry_a_measure():
+    """The documented Statistics Table is "aggregates grouped by another property"."""
+    cypher = aggregate_query(
+        "Distributor", "", "channel_type", limit=20, split="tier",
+        metric="avg", measure="lead_time_weeks",
+    )
+    assert "sum(measure) AS v, count(measure) AS nv" in cypher
+    assert "RETURN value, split, count(DISTINCT n) AS c" in cypher

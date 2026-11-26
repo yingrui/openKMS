@@ -40,6 +40,7 @@ import { ObjectSetActionMenu } from './ObjectSetActionMenu';
 
 import { explorationSubtitle } from './explorationSubtitle';
 import { inlineInput } from './useInlineActions';
+import { useChartOrder } from './useChartOrder';
 import { useCompareRows } from './useCompareRows';
 import { useLayoutSaving } from './useLayoutSaving';
 import { useTableActions } from './useTableActions';
@@ -387,14 +388,7 @@ export function ObjectExplorationPage() {
 
   const removeChart = (key: string) =>
     setChartSpecs(specs.filter((spec) => chartKey(spec) !== key));
-  const moveChart = (prop: string, direction: -1 | 1) => {
-    const index = specs.findIndex((spec) => chartKey(spec) === prop);
-    const target = index + direction;
-    if (index < 0 || target < 0 || target >= specs.length) return;
-    const next = [...specs];
-    [next[index], next[target]] = [next[target], next[index]];
-    setChartSpecs(next);
-  };
+  const { moveChart } = useChartOrder(specs, setChartSpecs);
 
   /* Pivot targets: every link touching this type, pointing at the object on the other side. */
   const pivots = useMemo(

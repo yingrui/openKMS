@@ -475,7 +475,13 @@
     "chartKind": "Chart",
     "kindBars": "Bars",
     "kindPie": "Pie",
-    "kindStat": "One number"
+    "kindStat": "One number",
+    "rangeFrom": "From",
+    "rangeTo": "To",
+    "rangeApply": "Apply range",
+    "chartWidth": "Width",
+    "widthOne": "One column",
+    "widthTwo": "Two columns"
   },
   "explorerSections": {
     "explorations": "Explorations",

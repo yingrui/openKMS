@@ -68,11 +68,17 @@
   flex: 0 1 12rem;
 }
 
+/* Two columns, as the documentation describes ("each chart can fill one or both of the two columns"). A chart that
+   asked for two spans both; the rest fill the left column first. */
 .object-set-charts {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
   align-items: stretch;
+}
+
+.object-set-chart--wide {
+  grid-column: span 2;
 }
 
 /* A chart is a card: one surface, one padding, one radius, and a title that separates itself from the plot rather
@@ -1347,4 +1353,16 @@
   text-align: center;
   font-size: var(--text-xs);
   color: var(--color-text-muted);
+}
+
+/* A typed interval under a histogram: the documented alternative to dragging across buckets. */
+.object-set-chart__range {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+
+  input {
+    width: 6.5rem;
+  }
 }

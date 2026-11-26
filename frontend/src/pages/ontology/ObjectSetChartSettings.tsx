@@ -145,6 +145,19 @@ export function ObjectSetChartSettings({
             </label>
           ) : null}
           <label>
+            <span>{t('objectSet.chartWidth')}</span>
+            <select
+              className="ds-control ds-control--compact"
+              value={String(settings.span ?? 1)}
+              onChange={(event) =>
+                onChange({ ...settings, span: Number(event.target.value) === 2 ? 2 : 1 })
+              }
+            >
+              <option value="1">{t('objectSet.widthOne')}</option>
+              <option value="2">{t('objectSet.widthTwo')}</option>
+            </select>
+          </label>
+          <label>
             <span>{t('objectSet.chartSplit')}</span>
             <select
               className="ds-control ds-control--compact"
