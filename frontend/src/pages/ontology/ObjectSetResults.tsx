@@ -25,6 +25,8 @@ export function ObjectSetResults({
   onInlineSubmit,
   labels,
   shown,
+  pageSize,
+  onPageSize,
   onLoadMore,
 }: {
   total: number | null;
@@ -43,6 +45,9 @@ export function ObjectSetResults({
   labels?: Record<string, Record<string, string>>;
   /** How many rows are on screen, and the way to get the next page of the same set. */
   shown: number;
+  /** How many rows one page asks for; "load more" adds another page. */
+  pageSize: number;
+  onPageSize: (size: number) => void;
   onLoadMore: () => void;
 }) {
   const { t } = useTranslation('explore');
@@ -50,15 +55,28 @@ export function ObjectSetResults({
     <>
       {/* The table's own header: what it is, and the one control that configures it. */}
       <div className="object-set-section">
-        <h2 className="object-set-section__title">
-          {t('objectSet.objectsTitle')}
-          {total === null ? null : ` · ${total}`}
-        </h2>
-        <ObjectSetColumnPicker
-          columns={visible}
-          properties={properties.map((property) => property.name)}
-          onChange={onColumns}
-        />
+        <h2 className="object-set-section__title">{t('objectSet.objectsTitle')}</h2>
+        <div className="object-set-section__controls">
+          <label className="object-set-page-size">
+            <span>{t('objectSet.pageSize')}</span>
+            <select
+              className="ds-control ds-control--compact"
+              value={pageSize}
+              onChange={(event) => onPageSize(Number(event.target.value))}
+            >
+              {[50, 100, 200, 500].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </label>
+          <ObjectSetColumnPicker
+            columns={visible}
+            properties={properties.map((property) => property.name)}
+            onChange={onColumns}
+          />
+        </div>
       </div>
       <ObjectSetResultsTable
         instances={instances}

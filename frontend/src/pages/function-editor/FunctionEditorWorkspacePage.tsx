@@ -4,6 +4,7 @@ import { AvailableQueriesPanel } from './AvailableQueriesPanel';
 import { FunctionCodeEditor } from './FunctionCodeEditor';
 import { FunctionPreviewPanel } from './FunctionPreviewPanel';
 import { LogicFlowEditor } from './LogicFlowEditor';
+import { LogicOutputCard } from './LogicOutputCard';
 import { LogicRunPanel } from './LogicRunPanel';
 import { LogicTracePanel } from './LogicTracePanel';
 import { useFunctionEditorWorkspace } from './useFunctionEditorWorkspace';
@@ -272,7 +273,6 @@ export function FunctionEditorWorkspacePage() {
                   models={models}
                   errors={flowErrors}
                   runValues={runValuesByNode}
-                  runOutput={(trace?.output as unknown) ?? undefined}
                   objectTypes={objectTypes
                     .map((ot) => ot.api_name)
                     .filter((name): name is string => Boolean(name))}
@@ -289,6 +289,15 @@ export function FunctionEditorWorkspacePage() {
               )}
             </div>
           </section>
+
+          {isLogic ? (
+            <LogicOutputCard
+              draft={flow}
+              output={(trace?.output as unknown) ?? undefined}
+              disabled={saving}
+              onChange={(outputRef) => setFlow({ ...flow, output: outputRef })}
+            />
+          ) : null}
 
           {isLogic ? null : (
             <FunctionPreviewPanel

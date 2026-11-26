@@ -463,7 +463,8 @@
     "metric_p50": "中位",
     "metric_p90": "P90",
     "objectsTitle": "对象",
-    "columnsButton": "列（{{count}}）"
+    "columnsButton": "列（{{count}}）",
+    "pageSize": "行数"
   },
   "explorerSections": {
     "explorations": "探索",

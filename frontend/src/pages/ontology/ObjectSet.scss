@@ -1287,3 +1287,22 @@
 
 /* The builder is a link until it is used: three empty selects on every page look like a form nobody finished. */
 
+
+/* The section's own controls sit together on the right: page size and columns are both "how this table shows rows". */
+.object-set-section__controls {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.object-set-page-size {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+
+  select {
+    width: auto;
+  }
+}

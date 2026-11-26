@@ -841,6 +841,13 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
+  /* A strip under the editor, not an overlay on it: always visible, never covering the prompt. */
+  flex-shrink: 0;
+  max-height: 40%;
+  overflow-y: auto;
+  border-radius: 0;
+  border-inline: none;
+  border-bottom: none;
 }
 
 .logic-output__head {
@@ -850,13 +857,16 @@
 }
 
 .logic-output__title {
+  flex-shrink: 0;
+  white-space: nowrap;
   font-size: var(--text-sm);
   font-weight: 600;
 }
 
 .logic-output__select {
+  flex: 0 1 14rem;
   margin-inline-start: auto;
-  min-width: 12rem;
+  min-width: 8rem;
   font-size: var(--text-sm);
 }
 

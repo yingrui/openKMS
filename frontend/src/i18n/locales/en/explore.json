@@ -463,7 +463,8 @@
     "metric_p50": "median",
     "metric_p90": "p90",
     "objectsTitle": "Objects",
-    "columnsButton": "Columns ({{count}})"
+    "columnsButton": "Columns ({{count}})",
+    "pageSize": "Rows"
   },
   "explorerSections": {
     "explorations": "Explorations",

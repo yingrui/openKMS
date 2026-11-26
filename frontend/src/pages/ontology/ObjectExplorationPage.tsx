@@ -55,9 +55,6 @@ import { parseSortList, toggleSortTerm } from './objectSetSort';
 import { useChartCatalog } from './useChartCatalog';
 import './ObjectSet.scss';
 
-/** The first page of rows; "load more" adds another page to the same set. */
-const ROW_PAGE = 200;
-
 /**
  * One exploration session: a type, its conditions, and two renderings of the same object set.
  *
@@ -76,8 +73,10 @@ export function ObjectExplorationPage() {
 
   const [objectType, setObjectType] = useState<ObjectTypeResponse | null>(null);
   const [instances, setInstances] = useState<ObjectInstanceResponse[]>([]);
-  /* How many rows the table asks for. The set is the same set; this is only how much of it is on screen. */
-  const [rowLimit, setRowLimit] = useState(ROW_PAGE);
+  /* How much of the set is on screen: a page size the reader chooses, plus the pages they asked for. */
+  const [pageSize, setPageSize] = useState(200);
+  const [extraPages, setExtraPages] = useState(0);
+  const rowLimit = pageSize + extraPages;
   const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [rowsLoading, setRowsLoading] = useState(true);
@@ -235,10 +234,10 @@ export function ObjectExplorationPage() {
     setSelected(new Set());
   }, [filters, search]);
 
-  /* A different set is a different first page. */
+  /* A different set — or a different page size — is a different first page. */
   useEffect(() => {
-    setRowLimit(ROW_PAGE);
-  }, [typeId, filters, search, sort]);
+    setExtraPages(0);
+  }, [typeId, filters, search, sort, pageSize]);
 
   /* A chart list belongs to one type: clear it on a type change, before either layout request answers. */
   const loadedType = useRef<string | null>(null);
@@ -658,7 +657,9 @@ export function ObjectExplorationPage() {
           onInlineSubmit={submitInline}
           labels={columnLabels}
           shown={instances.length}
-          onLoadMore={() => setRowLimit((limit) => limit + ROW_PAGE)}
+          pageSize={pageSize}
+          onPageSize={setPageSize}
+          onLoadMore={() => setExtraPages((pages) => pages + 1)}
         />
       )}
 

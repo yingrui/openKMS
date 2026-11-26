@@ -9,11 +9,11 @@ export function explorationSubtitle(
   total: number | null,
   t: (key: string, options?: Record<string, unknown>) => string
 ): string | undefined {
+  /* The size of the set is stated once, in the bar above the charts — a second copy in the header is the same fact
+     twice, and readers start looking for the difference. */
   if (total === null) return objectType.description ?? undefined;
   const asOf = objectType.last_indexed_at
     ? t('objectSet.dataAsOf', { time: new Date(objectType.last_indexed_at).toLocaleString() })
     : t('objectSet.neverIndexed');
-  return [objectType.description, t('objectSet.objectCount', { count: total }), asOf]
-    .filter(Boolean)
-    .join(' · ');
+  return [objectType.description, asOf].filter(Boolean).join(' · ');
 }
