@@ -120,23 +120,26 @@ export function FunctionEditorWorkspacePage() {
           </span>
         ) : null}
         <div className="function-editor-workspace__actions">
-          <Link
-            to="/external-services"
-            className="btn btn-secondary btn-sm"
-            title={t('editor.external.pageSubtitle')}
-          >
-            <Plug size={16} aria-hidden />
-            {t('editor.external.button')}
-          </Link>
-          {!isNew && (
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => void onDelete()}>
-              <Trash2 size={16} aria-hidden />
-              {t('shared.delete')}
+          {isLogic ? null : (
+            <Link
+              to="/external-services"
+              className="btn btn-secondary btn-sm"
+              title={t('editor.external.pageSubtitle')}
+            >
+              <Plug size={16} aria-hidden />
+              {t('editor.external.button')}
+            </Link>
+          )}
+          {isLogic ? null : (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => void onValidate()}
+              disabled={!resolvedId}
+            >
+              {t('shared.validate')}
             </button>
           )}
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void onValidate()} disabled={!resolvedId}>
-            {t('shared.validate')}
-          </button>
           {isLogic ? null : (
             <button
               type="button"
@@ -178,6 +181,17 @@ export function FunctionEditorWorkspacePage() {
             <Save size={16} aria-hidden />
             {saving ? t('shared.saving') : t('shared.save')}
           </button>
+          {!isNew ? (
+            <button
+              type="button"
+              className="function-editor-workspace__delete"
+              onClick={() => void onDelete()}
+              title={t('shared.delete')}
+              aria-label={t('shared.delete')}
+            >
+              <Trash2 size={16} aria-hidden />
+            </button>
+          ) : null}
         </div>
       </header>
 

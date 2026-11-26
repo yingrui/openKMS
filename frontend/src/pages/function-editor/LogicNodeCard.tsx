@@ -1,6 +1,6 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import {
   availableReferences,
   unknownReferences,
@@ -58,7 +58,17 @@ export function LogicNodeCard({
   canRemove: boolean;
 }) {
   const { t } = useTranslation('ontology');
+  const [fieldsOpen, setFieldsOpen] = useState(false);
   const promptRef = useRef<HTMLTextAreaElement>(null);
+
+  // A prompt is the thing this card exists for: give it the height its text needs (up to a cap, past which it
+  // scrolls inside the box like any long field).
+  useEffect(() => {
+    const element = promptRef.current;
+    if (!element) return;
+    element.style.height = 'auto';
+    element.style.height = `${Math.min(element.scrollHeight + 2, 320)}px`;
+  }, [node.prompt]);
   const references = availableReferences(index, nodes);
   const unknown = unknownReferences(node.prompt, index, nodes);
   const structured = node.outputMode === 'fields';
@@ -122,6 +132,7 @@ export function LogicNodeCard({
             })}
           </span>
         ) : null}
+        {nodes.length > 1 ? (
         <div className="logic-node__actions">
           <button
             type="button"
@@ -130,7 +141,7 @@ export function LogicNodeCard({
             onClick={() => onMove(-1)}
             disabled={disabled || index === 0}
           >
-            ↑
+            <ArrowUp size={14} aria-hidden />
           </button>
           <button
             type="button"
@@ -139,7 +150,7 @@ export function LogicNodeCard({
             onClick={() => onMove(1)}
             disabled={disabled || index === nodes.length - 1}
           >
-            ↓
+            <ArrowDown size={14} aria-hidden />
           </button>
           <button
             type="button"
@@ -151,6 +162,7 @@ export function LogicNodeCard({
             <Trash2 size={14} aria-hidden />
           </button>
         </div>
+        ) : null}
       </div>
 
       <div className="logic-node__row">
@@ -214,6 +226,7 @@ export function LogicNodeCard({
         disabled={disabled}
       />
 
+      {objectInputs.length === 0 && references.filter((ref) => ref !== 'input').length === 0 ? null : (
       <div className="logic-node__refs">
         <span className="logic-node__refs-label">{t('editor.logicInsert')}</span>
         {objectInputs.flatMap((field) => [
@@ -247,6 +260,7 @@ export function LogicNodeCard({
           </span>
         ) : null}
       </div>
+      )}
 
       <div className="logic-node__row">
         <label className="logic-node__label" htmlFor={`logic-output-mode-${index}`}>
@@ -266,7 +280,27 @@ export function LogicNodeCard({
 
       {structured ? (
         <div className="logic-node__fields">
-          {fields.length === 0 ? (
+          {/* Eight field rows make a card ~800px tall, which is what pushed the next block off screen. The names
+              are the useful summary; the table is for when you change them. */}
+          {fields.length > 0 ? (
+            <div className="logic-node__fields-summary">
+              <span className="logic-node__hint">
+                {t('editor.logicFieldsSummary', {
+                  count: fields.length,
+                  names: fields.map((field) => field.name).filter(Boolean).join(' · '),
+                })}
+              </span>
+              <button
+                type="button"
+                className="logic-node__fields-toggle"
+                onClick={() => setFieldsOpen((value) => !value)}
+              >
+                {fieldsOpen ? t('editor.logicFieldsHide') : t('editor.logicFieldsEdit')}
+              </button>
+            </div>
+          ) : null}
+
+          {!fieldsOpen && fields.length > 0 ? null : fields.length === 0 ? (
             <p className="logic-node__hint">{t('editor.logicFieldsEmpty')}</p>
           ) : (
             <div className="ds-table-wrap">
@@ -335,15 +369,17 @@ export function LogicNodeCard({
             </table>
             </div>
           )}
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => onChange({ fields: [...fields, { name: '', type: 'string', description: '' }] })}
-            disabled={disabled}
-          >
-            <Plus size={14} aria-hidden />
-            {t('editor.logicAddField')}
-          </button>
+          {!fieldsOpen && fields.length > 0 ? null : (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => onChange({ fields: [...fields, { name: '', type: 'string', description: '' }] })}
+              disabled={disabled}
+            >
+              <Plus size={14} aria-hidden />
+              {t('editor.logicAddField')}
+            </button>
+          )}
         </div>
       ) : null}
 

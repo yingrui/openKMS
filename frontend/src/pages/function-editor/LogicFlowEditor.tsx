@@ -115,7 +115,7 @@ export function LogicFlowEditor({
         </button>
 
         <label className="logic-flow__output" htmlFor="logic-output-node">
-          {t('editor.logicOutput')}
+          {t('editor.logicOutputSource')}
           <select
             id="logic-output-node"
             className="ds-control"

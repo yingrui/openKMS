@@ -1393,7 +1393,7 @@
     "logicOutputSchemaRaw": "原始输出结构（JSON）",
     "logicRunDraft": "运行",
     "logicRunNoInputs": "这个流程不需要输入 —— 提示词没有引用流程之外的东西。",
-    "logicRunInputHint": "在提示词里写作 {{input.%s}}",
+    "logicRunInputHint": "在提示词里写作 {{input.<名字>}}。",
     "logicInputs": "输入",
     "logicInputsHint": "从提示词里自动得到 —— 写 {{input.x}} 就会多一行。",
     "logicInputsEmpty": "还没有输入。在提示词里输入 {{input.}} 这里就会出现一行。",
@@ -1493,7 +1493,14 @@
     "logicRunOptional": "可选",
     "versionState": "草稿 v{{draft}} · 已发布 v{{published}}",
     "versionAhead": "草稿未发布",
-    "logicRunScope": "运行的是屏幕上这一版：不会新建版本，也不会写入本体。"
+    "logicRunScope": "运行的是屏幕上这一版：不会新建版本，也不会写入本体。",
+    "logicRunFieldsHint": "每个字段就是一个提示词变量：`name` 在流程里写作 `{{input.name}}`。",
+    "logicInputsShow": "编辑",
+    "logicInputsHide": "收起",
+    "logicFieldsSummary": "{{count}} 个字段：{{names}}",
+    "logicFieldsEdit": "编辑字段",
+    "logicFieldsHide": "收起字段",
+    "logicOutputSource": "答案来自"
   },
   "dataSources": {
     "title": "数据源",

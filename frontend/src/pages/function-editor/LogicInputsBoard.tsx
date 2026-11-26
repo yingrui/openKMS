@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Trash2 } from 'lucide-react';
 import { INPUT_TYPES, type FlowDraft, type InputField, type InputType } from './logicFlow';
@@ -23,6 +24,9 @@ export function LogicInputsBoard({
   onChange: (next: FlowDraft) => void;
 }) {
   const { t } = useTranslation('ontology');
+  // Collapsed by default: inputs are derived from the prompts, so this board is for reviewing and tweaking, not for
+  // the common path. Open, it costs ~380px above the flow, which is where the blocks live.
+  const [open, setOpen] = useState(false);
 
   const patch = (index: number, changes: Partial<InputField>) => {
     onChange({
@@ -35,10 +39,17 @@ export function LogicInputsBoard({
     <section className="logic-inputs" aria-label={t('editor.logicInputs')}>
       <div className="logic-inputs__head">
         <h3 className="logic-inputs__title">{t('editor.logicInputs')}</h3>
-        <span className="logic-inputs__hint">{t('editor.logicInputsHint')}</span>
+        <span className="logic-inputs__hint">
+          {draft.inputs.length === 0
+            ? t('editor.logicInputsHint')
+            : draft.inputs.map((field) => field.name).join(' · ')}
+        </span>
+        <button type="button" className="logic-inputs__toggle" onClick={() => setOpen((value) => !value)}>
+          {open ? t('editor.logicInputsHide') : t('editor.logicInputsShow')}
+        </button>
       </div>
 
-      {draft.inputs.length === 0 ? (
+      {!open ? null : draft.inputs.length === 0 ? (
         <p className="logic-inputs__empty">{t('editor.logicInputsEmpty')}</p>
       ) : (
         <table className="ds-table logic-inputs__table">

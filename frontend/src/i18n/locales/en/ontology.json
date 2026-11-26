@@ -1399,7 +1399,7 @@
     "logicOutputSchemaRaw": "Raw output schema (JSON)",
     "logicRunDraft": "Run",
     "logicRunNoInputs": "This flow takes no input — its prompts reference nothing outside the flow.",
-    "logicRunInputHint": "Available in your prompts as {{input.%s}}",
+    "logicRunInputHint": "Written in your prompts as {{input.<name>}}.",
     "logicInputs": "Inputs",
     "logicInputsHint": "Derived from your prompts — {{input.x}} becomes an input.",
     "logicInputsEmpty": "No inputs yet. Type {{input.}} in a prompt and the row appears here.",
@@ -1499,7 +1499,14 @@
     "logicRunOptional": "optional",
     "versionState": "Draft v{{draft}} · Published v{{published}}",
     "versionAhead": "draft is ahead",
-    "logicRunScope": "Runs the flow on screen — no new version, and nothing is written to the ontology."
+    "logicRunScope": "Runs the flow on screen — no new version, and nothing is written to the ontology.",
+    "logicRunFieldsHint": "Each field is a prompt variable: `name` is `{{input.name}}` in the flow.",
+    "logicInputsShow": "Edit",
+    "logicInputsHide": "Hide",
+    "logicFieldsSummary": "{{count}} fields: {{names}}",
+    "logicFieldsEdit": "Edit fields",
+    "logicFieldsHide": "Hide fields",
+    "logicOutputSource": "Answer from"
   },
   "dataSources": {
     "title": "Data sources",

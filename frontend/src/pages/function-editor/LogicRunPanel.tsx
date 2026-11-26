@@ -74,6 +74,7 @@ export function LogicRunPanel({
       </div>
 
       <p className="logic-run__hint">{t('editor.logicRunScope')}</p>
+      {fields.length > 0 ? <p className="logic-run__hint">{t('editor.logicRunFieldsHint')}</p> : null}
 
       {missing.length ? (
         <p className="logic-run__missing" role="status">
@@ -91,7 +92,7 @@ export function LogicRunPanel({
                 key={field.name}
                 label={field.required ? `${field.name} *` : `${field.name} (${t('editor.logicRunOptional')})`}
                 htmlFor={`logic-run-${field.name}`}
-                hint={t('editor.logicRunObjectHint')}
+                hint={undefined}
               >
                 {objectTypeIds[field.objectType] ? (
                   <ObjectInstancePicker
@@ -113,7 +114,7 @@ export function LogicRunPanel({
                 key={field.name}
                 label={field.required ? `${field.name} *` : `${field.name} (${t('editor.logicRunOptional')})`}
                 htmlFor={`logic-run-${field.name}`}
-                hint={t('editor.logicRunInputHint')}
+                hint={undefined}
               >
                 <input
                   id={`logic-run-${field.name}`}
