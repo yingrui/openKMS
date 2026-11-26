@@ -32,3 +32,8 @@ export function useRowSelection(
 
   return { toggleRow, toggleAllRows };
 }
+
+/** The ticked rows themselves, which is what an action's parameter prefill needs. */
+export function selectedRows(instances: ObjectInstanceResponse[], selected: Set<string>) {
+  return instances.filter((row) => selected.has(row.id));
+}

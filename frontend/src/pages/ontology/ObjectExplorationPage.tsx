@@ -43,7 +43,7 @@ import { inlineInput } from './useInlineActions';
 import { useCompareRows } from './useCompareRows';
 import { useLayoutSaving } from './useLayoutSaving';
 import { useTableActions } from './useTableActions';
-import { useRowSelection } from './useRowSelection';
+import { selectedRows, useRowSelection } from './useRowSelection';
 import { actionCount, useObjectSetAction } from './useObjectSetAction';
 import { formatCharts, formatColumns, parseCharts, parseColumns } from './objectSetUrl';
 import { useBrowserHistory } from './useBrowserHistory';
@@ -102,13 +102,11 @@ export function ObjectExplorationPage() {
   const [saveName, setSaveName] = useState('');
   const [saveShared, setSaveShared] = useState(false);
   const [saving, setSaving] = useState(false);
-  /* The layout this type opens with: personal, then global, then the built-in one (prominent props). */
   /* Charts and columns are in the URL, like conditions and sort: an exploration is an addressable state, and a
      second copy in component state is a second history that the back button cannot see. */
   const chartSpecs = useMemo(() => parseCharts(searchParams.get('c')), [searchParams]);
   const layoutColumns = useMemo(() => parseColumns(searchParams.get('cols')), [searchParams]);
   const [links, setLinks] = useState<LinkTypeResponse[]>([]);
-  /* Actions are the one write an exploration offers: they run on the rows the caller ticked, never on the whole set. */
   /* What the menu may offer: asked of the backend, because only it can evaluate an action's submission criteria
      against this set. */
   const [actions, setActions] = useState<ActionApplicability[]>([]);
@@ -155,6 +153,14 @@ export function ObjectExplorationPage() {
       if (columns.length > 0) params.set('cols', formatColumns(columns));
       else params.delete('cols');
     }, { replace });
+
+  const setFilters = (next: string[]) =>
+    updateParams((params) => {
+      params.delete('f');
+      for (const filter of next) params.append('f', filter);
+    });
+
+  const undoRedo = useBrowserHistory();
 
   const setChartSpecs = (next: ChartSpec[] | null) => writeLayout(next, layoutColumns, false);
   const setLayoutColumns = (next: string[]) => writeLayout(chartSpecs, next, false);
@@ -332,23 +338,22 @@ export function ObjectExplorationPage() {
         setSaved(row);
         setSaveName(row.name);
         setSaveShared(row.visibility === 'shared');
-        // A saved exploration is a **view**, not just a filter: its charts, their order and the first perspective it
-        // opened with are part of what was saved. Conditions alone reopened as whatever the type defaults to.
+        /* One write: conditions, sort, charts and columns are one arrival. Two `setSearchParams` calls both start
+           from the same snapshot, so the second discards the first — which opened explorations with the type's
+           built-in charts and every column. */
         const charts = (row.layout?.charts as ChartSpec[] | undefined) ?? [];
-        seedLayout(
-          charts.length > 0 ? charts : null,
-          (row.layout?.columns as string[] | undefined) ?? []
-        );
-        // The updater form keeps the current params without making this effect depend on them.
+        const columns = (row.layout?.columns as string[] | undefined) ?? [];
+        const layoutSort = (row.layout?.sorts as { prop: string; desc?: boolean }[] | undefined)?.[0];
         setSearchParams(
           (previous) => {
             const params = new URLSearchParams(previous);
             params.delete('f');
             for (const text of filterTexts(row.filters)) params.append('f', text);
-            const layoutSort = (row.layout?.sorts as
-              | { prop: string; desc?: boolean }[]
-              | undefined)?.[0];
             if (layoutSort) params.set('sort', `${layoutSort.desc ? '-' : ''}${layoutSort.prop}`);
+            if (charts.length > 0) params.set('c', formatCharts(charts));
+            else params.delete('c');
+            if (columns.length > 0) params.set('cols', formatColumns(columns));
+            else params.delete('cols');
             return params;
           },
           { replace: true }
@@ -562,10 +567,10 @@ export function ObjectExplorationPage() {
         canPivot={canPivot}
         pivotBlockedReason={t('objectSet.pivotNeedsPlainSet')}
         onPivot={pivotTo}
-        canUndo={history.canUndo}
-        canRedo={history.canRedo}
-        onUndo={history.undo}
-        onRedo={history.redo}
+        canUndo={undoRedo.canUndo}
+        canRedo={undoRedo.canRedo}
+        onUndo={undoRedo.undo}
+        onRedo={undoRedo.redo}
         addable={addable}
         onAddChart={(prop) => setChartSpecs(addSpec(specs, { prop }))}
       />
@@ -663,7 +668,7 @@ export function ObjectExplorationPage() {
         action={action.openAction}
         count={actionCount(action.scope, action.openAction, selected.size)}
         selectionTypeId={typeId}
-        selection={instances.filter((row) => selected.has(row.id))}
+        selection={selectedRows(instances, selected)}
         busy={action.busy}
         onClose={() => action.setOpenAction(null)}
         onSubmit={(input) =>
