@@ -187,9 +187,10 @@ export function WorkforceList() {
                   {agent.status === 'paused' ? (
                     <StatusChip tone="warn">{t('status_paused')}</StatusChip>
                   ) : null}
+                  {/* Two facts, not three: at 270px of card width the third wrapped onto its own line, and a card is
+                      for recognising an agent. Credentials have a column in the table view and a section on the page. */}
                   <span>{t('metaKbs', { count: agent.knowledge_base_count })}</span>
                   <span>{t('metaSkills', { count: Object.keys(agent.agent_tools ?? {}).length })}</span>
-                  <span>{t('metaCredentials', { count: agent.credential_count })}</span>
                 </div>
               </Link>
             </div>
