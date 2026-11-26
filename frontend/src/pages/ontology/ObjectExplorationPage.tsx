@@ -39,7 +39,7 @@ import { ObjectSetToolbar } from './ObjectSetToolbar';
 import { useObjectSetCompare } from './useObjectSetCompare';
 import { ObjectSetActionMenu } from './ObjectSetActionMenu';
 
-import { useObjectSetAction } from './useObjectSetAction';
+import { actionCount, useObjectSetAction } from './useObjectSetAction';
 import { useExplorationHistory } from './useExplorationHistory';
 import { useObjectSetOutcome } from './useObjectSetOutcome';
 import { ExplorationLayoutMenu } from './ExplorationLayoutMenu';
@@ -546,7 +546,9 @@ export function ObjectExplorationPage() {
           <ObjectSetActionMenu
             actions={actions}
             count={selected.size}
-            onPick={(picked) => action.openFor(picked, 'selection')}
+            onPick={(picked) =>
+              action.openFor(picked, picked.per_object ? 'selection' : 'single')
+            }
             onPickSet={(picked) => action.openFor(picked, 'set')}
           />
           <button
@@ -661,18 +663,18 @@ export function ObjectExplorationPage() {
       <ObjectSetActionDialog
         key={action.openAction?.id ?? 'none'}
         action={action.openAction}
-        count={
-          action.scope === 'set'
-            ? (action.openAction?.eligible ?? 0)
-            : selected.size
-        }
+        count={actionCount(action.scope, action.openAction, selected.size)}
         selectionTypeId={typeId}
         selection={instances.filter((row) => selected.has(row.id))}
         busy={action.busy}
         onClose={() => action.setOpenAction(null)}
         onSubmit={(input) =>
           void action.run(
-            action.scope === 'set' ? { conditions: filters } : { ids: [...selected] },
+            action.scope === 'set'
+              ? { conditions: filters }
+              : action.scope === 'single'
+                ? { single: true }
+                : { ids: [...selected] },
             input
           )
         }

@@ -457,7 +457,6 @@ export function useFunctionEditorWorkspace() {
     flowErrors,
     models,
     trace,
-    runInputs: inputNames(flow),
     runValues,
     setRunValues,
     pickedInstances,

@@ -449,7 +449,10 @@
     "redo": "Redo",
     "actionOnSet": "{{name}} — run on all {{count}}",
     "chartBuckets": "Intervals",
-    "chartsTitle": "Charts"
+    "chartsTitle": "Charts",
+    "actionSingleDone": "Done",
+    "actionRunOnce": "Run",
+    "actionNoParametersOnce": "This action takes no parameters; it runs once."
   },
   "explorerSections": {
     "explorations": "Explorations",

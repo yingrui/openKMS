@@ -54,3 +54,15 @@ def test_submission_permissions_are_required_keys():
     assert submission_permissions({"submission_permissions": ["ontology:write"]}) == ["ontology:write"]
     assert submission_permissions({"submission_permissions": "ontology:write"}) == []
     assert submission_permissions({}) == []
+
+
+def test_creating_an_object_is_not_a_per_object_action():
+    from app.services.ontology.builtin_action_service import runs_per_object
+
+    assert runs_per_object("object_modify", None) is True
+    assert runs_per_object("object_delete", None) is True
+    # Creating one assumption is one assumption, not one per ticked row.
+    assert runs_per_object("object_create", None) is False
+    # A function says so itself, by naming the object among its parameters.
+    assert runs_per_object("function", {"object_params": {"adjustment_id": "id"}}) is True
+    assert runs_per_object("function", {"fields": ["cycle"]}) is False

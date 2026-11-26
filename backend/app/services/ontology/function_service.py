@@ -28,7 +28,7 @@ from app.schemas.ontology_functions import (
     OntologySchemaFieldRef,
 )
 from app.services.ontology.constants import FUNCTION_ID_PREFIX, ID_HEX_LENGTH, VERSION_ID_PREFIX
-from app.services.ontology.logic_runtime import validate_flow_spec
+from app.services.ontology.logic_validate import validate_flow_spec
 from app.services.ontology.function_templates import (
     DEFAULT_FUNCTION_SOURCE,
     extract_function_uses,

@@ -20,8 +20,8 @@ from app.services.ontology.logic_runtime import (
     missing_references,
     render_template,
     run_flow,
-    validate_flow_spec,
 )
+from app.services.ontology.logic_validate import validate_flow_spec
 
 SCHEMA = {"type": "object", "properties": {"answer": {"type": "string"}}, "required": ["answer"]}
 

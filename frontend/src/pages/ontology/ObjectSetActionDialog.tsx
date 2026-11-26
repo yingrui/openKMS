@@ -154,7 +154,9 @@ export function ObjectSetActionDialog({
             {t('shared.cancel')}
           </button>
           <button type="button" className="btn btn-primary" onClick={submit} disabled={busy}>
-            {t('objectSet.actionRun', { count })}
+            {count <= 1 && fields.length === 0
+              ? t('objectSet.actionRunOnce')
+              : t('objectSet.actionRun', { count })}
           </button>
         </>
       }
@@ -167,7 +169,9 @@ export function ObjectSetActionDialog({
       ) : null}
       {fields.length === 0 ? (
         <p className="object-set-action-dialog__desc">
-          {t('objectSet.actionNoParameters', { count })}
+          {count <= 1 && !hasFixed
+            ? t('objectSet.actionNoParametersOnce')
+            : t('objectSet.actionNoParameters', { count })}
         </p>
       ) : (
         fields.map((field) => (

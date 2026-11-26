@@ -6,11 +6,8 @@
  * "write the prompt" and the rest of the UI can follow it.
  */
 
-export type FieldType = 'string' | 'number' | 'integer' | 'boolean' | 'string[]';
-
-export type OutputField = { name: string; type: FieldType; description: string };
-
-export const FIELD_TYPES: FieldType[] = ['string', 'number', 'integer', 'boolean', 'string[]'];
+import type { OutputField } from './logicSchema';
+import { fieldsFromSchema, schemaFromFields } from './logicSchema';
 
 export type OutputMode = 'text' | 'fields';
 
@@ -29,7 +26,7 @@ export const INPUT_TYPES: InputType[] = ['string', 'number', 'integer', 'boolean
 export type NodeParam = { key: string; value: string };
 
 export type NodeKind = 'model' | 'action' | 'transform' | 'condition' | 'loop';
-export const NODE_KINDS: NodeKind[] = ['model', 'action', 'transform', 'condition', 'loop'];
+const NODE_KINDS: NodeKind[] = ['model', 'action', 'transform', 'condition', 'loop'];
 
 export type BranchDraft = {
   /** Template that decides the branch; empty means the fallback (must be last). */
@@ -480,46 +477,6 @@ export function inputSchemaFromDraft(draft: FlowDraft): Record<string, unknown> 
   return { type: 'object', properties, required: rows.map((field) => field.name) };
 }
 
-export function fieldsFromSchema(schema: unknown): OutputField[] {
-  if (!schema || typeof schema !== 'object') return [];
-  const properties = (schema as { properties?: unknown }).properties;
-  if (!properties || typeof properties !== 'object') return [];
-  return Object.entries(properties as Record<string, unknown>).map(([name, definition]) => ({
-    name,
-    type: jsonSchemaToType(definition),
-    description:
-      definition && typeof definition === 'object'
-        ? String((definition as { description?: unknown }).description ?? '')
-        : '',
-  }));
-}
-
-export function schemaFromFields(fields: OutputField[]): Record<string, unknown> | null {
-  const rows = fields.filter((field) => field.name.trim());
-  if (!rows.length) return null;
-  const properties: Record<string, unknown> = {};
-  for (const field of rows) {
-    properties[field.name.trim()] = {
-      ...typeToJsonSchema(field.type),
-      ...(field.description.trim() ? { description: field.description.trim() } : {}),
-    };
-  }
-  return { type: 'object', properties, required: rows.map((field) => field.name.trim()) };
-}
-
-function typeToJsonSchema(type: FieldType): Record<string, unknown> {
-  if (type === 'string[]') return { type: 'array', items: { type: 'string' } };
-  return { type };
-}
-
-function jsonSchemaToType(schema: unknown): FieldType {
-  if (!schema || typeof schema !== 'object') return 'string';
-  const raw = schema as { type?: unknown };
-  if (raw.type === 'array') return 'string[]';
-  const primitive = String(raw.type ?? 'string');
-  return (FIELD_TYPES as string[]).includes(primitive) ? (primitive as FieldType) : 'string';
-}
-
 function toolsFromSpec(raw: unknown): NodeTool[] {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -592,10 +549,6 @@ function toolsForSpec(node: ModelNode, where: string, errors: string[]): Record<
   });
 }
 
-/** Input rows that the run panel cannot express as a single text field. */
-export function objectInputs(draft: FlowDraft): string[] {
-  return (draft.inputs ?? []).filter((field) => field.type === 'object').map((field) => field.name);
-}
 
 function branchesFromSpec(raw: unknown): BranchDraft[] {
   if (!Array.isArray(raw)) return [];

@@ -122,6 +122,49 @@ async def _run_ofs(
     )
 
 
+def _flow_runtime(
+    db: AsyncSession,
+    *,
+    caller_token: str = "",
+    call_depth: int = 0,
+    call_stack: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    """The five collaborators a flow needs, bound to one caller and one place in the call graph.
+
+    They used to be spelled out at each of the three call sites (preview, execute, a Logic action's own flow), which
+    meant three chances to forget the depth guard on one of them.
+    """
+    stack = tuple(call_stack)
+    return {
+        "model_factory": lambda model_id: resolve_model(db, model_id),
+        "tool_runner": make_tool_runner(
+            caller_token,
+            call_depth=call_depth,
+            call_stack=stack,
+            action_planner=lambda name, values: plan_action_edits(
+                db,
+                name,
+                values,
+                caller_token=caller_token,
+                call_depth=call_depth,
+                call_stack=stack,
+            ),
+        ),
+        "schema_resolver": lambda name: function_input_schema(
+            caller_token=caller_token, api_name=name
+        ),
+        "action_schema_resolver": lambda name: action_parameter_schema(db, name),
+        "action_planner": lambda name, values: plan_action_edits(
+            db,
+            name,
+            values,
+            caller_token=caller_token,
+            call_depth=call_depth,
+            call_stack=stack,
+        ),
+    }
+
+
 async def plan_action_edits(
     db: AsyncSession,
     api_name: str,
@@ -183,20 +226,11 @@ async def plan_action_edits(
         flow = await logic_runtime.run_flow(
             ver.flow_spec,
             params,
-            model_factory=lambda model_id: resolve_model(db, model_id),
-            tool_runner=make_tool_runner(
-                caller_token, call_depth=call_depth + 1, call_stack=stack
-            ),
-            action_planner=lambda name, values: plan_action_edits(
+            **_flow_runtime(
                 db,
-                name,
-                values,
                 caller_token=caller_token,
                 call_depth=call_depth + 1,
                 call_stack=stack,
-            ),
-            schema_resolver=lambda name: function_input_schema(
-                caller_token=caller_token, api_name=name
             ),
         )
         if flow.status != "ok":
@@ -324,33 +358,18 @@ async def dry_run_flow(
     if getattr(fn, "source", "code") != "logic":
         raise HTTPException(status_code=400, detail="Only Logic functions have a flow to run")
 
-    if model_factory is None:
-
-        async def model_factory(model_id: str | None) -> Any:
-            return await resolve_model(db, model_id)
-
+    runtime = _flow_runtime(db, caller_token=caller_token)
     flow = await logic_runtime.run_flow(
         flow_spec,
         input_payload,
-        model_factory=model_factory,
-        tool_runner=tool_runner
-        or make_tool_runner(
-            caller_token,
-            action_planner=lambda api_name, params: plan_action_edits(
-                db, api_name, params, caller_token=caller_token
-            ),
-        ),
-        action_schema_resolver=lambda api_name: action_parameter_schema(db, api_name),
-        action_planner=lambda api_name, params: plan_action_edits(
-            db, api_name, params, caller_token=caller_token
-        ),
-        schema_resolver=(
-            None
-            if caller_token == ""
-            else lambda api_name: function_input_schema(
-                caller_token=caller_token, api_name=api_name
-            )
-        ),
+        **{
+            **runtime,
+            # Tests (and callers that already built one) may inject either collaborator.
+            **({"model_factory": model_factory} if model_factory is not None else {}),
+            **({"tool_runner": tool_runner} if tool_runner is not None else {}),
+            # Without a caller token no target schema can be fetched, so the tools stay self-described.
+            **({"schema_resolver": None} if caller_token == "" else {}),
+        },
     )
     trace = dict(flow.trace or {})
     trace["draft"] = True
@@ -433,32 +452,15 @@ async def _run_flow(
     flow = await logic_runtime.run_flow(
         ver.flow_spec,
         input_payload,
-        model_factory=model_factory,
-        tool_runner=make_tool_runner(
-            caller_token,
-            call_depth=call_depth,
-            call_stack=tuple(call_stack or ()),
-            action_planner=lambda api_name, params: plan_action_edits(
+        **{
+            **_flow_runtime(
                 db,
-                api_name,
-                params,
                 caller_token=caller_token,
                 call_depth=call_depth,
                 call_stack=tuple(call_stack or ()),
             ),
-        ),
-        action_schema_resolver=lambda api_name: action_parameter_schema(db, api_name),
-        action_planner=lambda api_name, params: plan_action_edits(
-            db,
-            api_name,
-            params,
-            caller_token=caller_token,
-            call_depth=call_depth,
-            call_stack=tuple(call_stack or ()),
-        ),
-        schema_resolver=lambda api_name: function_input_schema(
-            caller_token=caller_token, api_name=api_name
-        ),
+            "model_factory": model_factory,
+        },
     )
     return ExecutionOutcome(
         status=flow.status,
@@ -467,8 +469,6 @@ async def _run_flow(
         duration_ms=flow.duration_ms,
         trace=flow.trace or None,
     )
-
-
 async def execute_function_and_audit(
     db: AsyncSession,
     fn: OntologyFunction,

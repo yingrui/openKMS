@@ -2,15 +2,13 @@ import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import {
-  FIELD_TYPES,
   availableReferences,
   unknownReferences,
-  type FieldType,
   type ModelNode,
   type NodeKind,
   type NodeTool,
-  type OutputField,
 } from './logicFlow';
+import { FIELD_TYPES, type FieldType, type OutputField } from './logicSchema';
 import { ActionParams } from './LogicNodeActionParams';
 import { ConditionBranches } from './LogicNodeConditionBranches';
 import { LoopBody } from './LogicNodeLoopBody';

@@ -29,23 +29,19 @@ from pydantic_ai import Agent, PromptedOutput, StructuredDict
 from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
 from pydantic_ai.usage import UsageLimitExceeded, UsageLimits
 
-SUPPORTED_NODE_KINDS = ("model", "action", "transform", "condition", "loop")
-SUPPORTED_TOOL_KINDS = ("query_objects", "call_function", "apply_action", "calculator")
+from app.services.ontology.logic_validate import MAX_LOOP_ITERATIONS, validate_flow_spec
+
 PROMPT_REF = re.compile(r"\{\{\s*([A-Za-z0-9_.]+)\s*\}\}")
 DEFAULT_NODE_TIMEOUT_S = 60.0
 DEFAULT_NODE_TOKEN_LIMIT = 8192
 DEFAULT_TOOL_LIMIT = 5
-MAX_TOOL_LIMIT = 25
 MAX_TOOLS_PER_NODE = 4
-#: A loop is a cost multiplier; this bounds it before anyone discovers the bill.
-MAX_LOOP_ITERATIONS = 50
 DEFAULT_LOOP_CONCURRENCY = 4
 #: A tool-using node may go round the model a few times; more than this is a design problem, not a budget.
 MAX_TOOL_STEPS = 4
 MAX_TOOL_CALLS = 6
 
-#: Input types a flow can declare. `object` is a JSON object the caller passes; the prompt reads its fields by path.
-INPUT_TYPES = ("string", "number", "integer", "boolean", "object")
+
 
 
 class FlowError(Exception):
@@ -59,222 +55,6 @@ class FlowOutcome:
     error: str | None
     duration_ms: int | None
     trace: dict[str, Any] = field(default_factory=dict)
-
-
-def validate_flow_spec(spec: dict | None) -> list[str]:
-    """Structural validation. Runs before a version is saved, so a broken flow never becomes callable."""
-    if not isinstance(spec, dict):
-        return ["flow_spec must be an object"]
-    nodes = spec.get("nodes")
-    if not isinstance(nodes, list) or not nodes:
-        return ["flow_spec.nodes must be a non-empty list"]
-
-    errors: list[str] = []
-    seen: set[str] = set()
-    for index, node in enumerate(nodes):
-        where = f"nodes[{index}]"
-        if not isinstance(node, dict):
-            errors.append(f"{where} must be an object")
-            continue
-        node_id = str(node.get("id") or "").strip()
-        if not node_id:
-            errors.append(f"{where}.id is required")
-        elif node_id in seen:
-            errors.append(f"{where}.id '{node_id}' is duplicated")
-        else:
-            seen.add(node_id)
-        kind = str(node.get("kind") or "")
-        if kind not in SUPPORTED_NODE_KINDS:
-            errors.append(
-                f"{where}.kind '{kind}' is not supported yet (only {', '.join(SUPPORTED_NODE_KINDS)})"
-            )
-        if kind == "model" and not str(node.get("prompt") or "").strip():
-            errors.append(f"{where}.prompt is required")
-        if kind == "action":
-            if not str(node.get("action_type") or "").strip():
-                errors.append(f"{where}.action_type is required")
-            params = node.get("params")
-            if params is not None and not isinstance(params, dict):
-                errors.append(f"{where}.params must be an object")
-        if kind == "transform":
-            template = node.get("template")
-            if not isinstance(template, dict) or not template:
-                errors.append(f"{where}.template must be a non-empty object")
-        if kind == "condition":
-            errors.extend(_validate_branches(node, where, seen))
-        if kind == "loop":
-            errors.extend(_validate_loop(node, where, seen))
-        if kind != "condition":
-            errors.extend(_validate_tools(node, where))
-
-    output = spec.get("output")
-    if output is not None and not isinstance(output, str):
-        errors.append("flow_spec.output must be a reference string such as '{{n1}}'")
-    elif isinstance(output, str) and output.strip():
-        # A typo here used to fall back to the last node silently: the answer changed source and nothing said so.
-        root = output.strip().strip("{} ").split(".")[0]
-        if root not in seen:
-            errors.append(f"flow_spec.output references '{root}', which is not a node id")
-
-    errors.extend(_validate_inputs(spec.get("inputs")))
-    return errors
-
-
-def _validate_inputs(inputs: object) -> list[str]:
-    if inputs is None:
-        return []
-    if not isinstance(inputs, list):
-        return ["flow_spec.inputs must be a list"]
-    errors: list[str] = []
-    seen: set[str] = set()
-    for index, item in enumerate(inputs):
-        where = f"inputs[{index}]"
-        if not isinstance(item, dict):
-            errors.append(f"{where} must be an object")
-            continue
-        name = str(item.get("name") or "").strip()
-        if not name:
-            errors.append(f"{where}.name is required")
-        elif name in seen:
-            errors.append(f"{where}.name '{name}' is duplicated")
-        else:
-            seen.add(name)
-        input_type = str(item.get("type") or "string")
-        if input_type not in INPUT_TYPES:
-            errors.append(f"{where}.type '{input_type}' is not one of {', '.join(INPUT_TYPES)}")
-        object_type = str(item.get("object_type") or "").strip()
-        if object_type and input_type != "object":
-            errors.append(f"{where}.object_type only applies to an 'object' input")
-        if input_type == "object" and not object_type:
-            # The run panel needs to know what to offer; a bare JSON blob asks the author to invent a shape.
-            errors.append(f"{where}.object_type is required for an 'object' input")
-    return errors
-
-
-def _validate_branches(node: dict, where: str, ids: set[str]) -> list[str]:
-    """Branches are ordered: the first `when` that holds wins, and an empty `when` is the else branch.
-
-    Same rule as AIP Logic in shape — every branch must actually do something, and only one branch can be the
-    fallback. Nested nodes may be model or action, not another condition (one level, deliberately).
-    """
-    branches = node.get("branches")
-    if not isinstance(branches, list) or not branches:
-        return [f"{where}.branches must be a non-empty list"]
-    errors: list[str] = []
-    else_at: int | None = None
-    for index, branch in enumerate(branches):
-        at = f"{where}.branches[{index}]"
-        if not isinstance(branch, dict):
-            errors.append(f"{at} must be an object")
-            continue
-        when = str(branch.get("when") or "").strip()
-        if not when:
-            if else_at is not None:
-                errors.append(f"{at}: only one branch may omit `when` (the fallback)")
-            else_at = index
-        nested = branch.get("nodes")
-        if not isinstance(nested, list) or not nested:
-            errors.append(f"{at}.nodes must be a non-empty list")
-            continue
-        for node_index, child in enumerate(nested):
-            child_at = f"{at}.nodes[{node_index}]"
-            if not isinstance(child, dict):
-                errors.append(f"{child_at} must be an object")
-                continue
-            child_id = str(child.get("id") or "").strip()
-            if not child_id:
-                errors.append(f"{child_at}.id is required")
-            elif child_id in ids:
-                errors.append(f"{child_at}.id '{child_id}' is duplicated")
-            else:
-                ids.add(child_id)
-            child_kind = str(child.get("kind") or "")
-            if child_kind not in ("model", "action"):
-                errors.append(f"{child_at}.kind must be 'model' or 'action' (no nested conditions)")
-            if child_kind == "model" and not str(child.get("prompt") or "").strip():
-                errors.append(f"{child_at}.prompt is required")
-            if child_kind == "action" and not str(child.get("action_type") or "").strip():
-                errors.append(f"{child_at}.action_type is required")
-            if child_kind != "condition":
-                errors.extend(_validate_tools(child, child_at))
-    if else_at is not None and else_at != len(branches) - 1:
-        errors.append(f"{where}.branches: the fallback branch must be last")
-    return errors
-
-
-def _validate_loop(node: dict, where: str, ids: set[str]) -> list[str]:
-    """A loop needs a list, an element name, and a body of model/action nodes (no nested loops or conditions)."""
-    errors: list[str] = []
-    if not str(node.get("over") or "").strip():
-        errors.append(f"{where}.over is required (a list, e.g. '{{{{n1.items}}}}')")
-    element = str(node.get("as") or "").strip()
-    if element and not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", element):
-        errors.append(f"{where}.as must be an identifier")
-    concurrency = node.get("concurrency")
-    if concurrency is not None and (
-        not isinstance(concurrency, int) or not 1 <= concurrency <= MAX_LOOP_ITERATIONS
-    ):
-        errors.append(f"{where}.concurrency must be an integer between 1 and {MAX_LOOP_ITERATIONS}")
-
-    body = node.get("nodes")
-    if not isinstance(body, list) or not body:
-        errors.append(f"{where}.nodes must be a non-empty list")
-        return errors
-    for index, child in enumerate(body):
-        at = f"{where}.nodes[{index}]"
-        if not isinstance(child, dict):
-            errors.append(f"{at} must be an object")
-            continue
-        child_id = str(child.get("id") or "").strip()
-        if not child_id:
-            errors.append(f"{at}.id is required")
-        elif child_id in ids:
-            errors.append(f"{at}.id '{child_id}' is duplicated")
-        else:
-            ids.add(child_id)
-        child_kind = str(child.get("kind") or "")
-        if child_kind not in ("model", "action"):
-            errors.append(f"{at}.kind must be 'model' or 'action' (no nested loops or conditions)")
-        if child_kind == "model" and not str(child.get("prompt") or "").strip():
-            errors.append(f"{at}.prompt is required")
-        if child_kind == "action" and not str(child.get("action_type") or "").strip():
-            errors.append(f"{at}.action_type is required")
-        if child_kind in ("model", "action"):
-            errors.extend(_validate_tools(child, at))
-    return errors
-
-
-def _validate_tools(node: dict, where: str) -> list[str]:
-    tools = node.get("tools")
-    if tools is None:
-        return []
-    if not isinstance(tools, list):
-        return [f"{where}.tools must be a list"]
-    if len(tools) > MAX_TOOLS_PER_NODE:
-        return [f"{where}.tools allows at most {MAX_TOOLS_PER_NODE} tools"]
-    errors: list[str] = []
-    for index, tool in enumerate(tools):
-        at = f"{where}.tools[{index}]"
-        if not isinstance(tool, dict):
-            errors.append(f"{at} must be an object")
-            continue
-        kind = str(tool.get("kind") or "")
-        if kind not in SUPPORTED_TOOL_KINDS:
-            errors.append(
-                f"{at}.kind '{kind}' is not supported yet (only {', '.join(SUPPORTED_TOOL_KINDS)})"
-            )
-            continue
-        if kind == "query_objects":
-            if not str(tool.get("object_type") or "").strip():
-                errors.append(f"{at}.object_type is required")
-            limit = tool.get("limit")
-            if limit is not None and (not isinstance(limit, int) or not 1 <= limit <= MAX_TOOL_LIMIT):
-                errors.append(f"{at}.limit must be an integer between 1 and {MAX_TOOL_LIMIT}")
-        if kind == "call_function" and not str(tool.get("function") or "").strip():
-            errors.append(f"{at}.function is required (the api_name of a published function)")
-        if kind == "apply_action" and not str(tool.get("action_type") or "").strip():
-            errors.append(f"{at}.action_type is required (the api_name of an Action)")
-    return errors
 
 
 def render_template(template: str, variables: dict[str, Any]) -> str:
@@ -713,6 +493,40 @@ async def _run_model_node(
     }
 
 
+def _traced_tool(
+    name: str,
+    calls: list[dict[str, Any]],
+    body: Callable[[dict[str, Any]], Awaitable[Any]],
+    *,
+    summary: Callable[[Any], dict[str, Any]] | None = None,
+    extra: dict[str, Any] | None = None,
+    soft_error: bool = False,
+) -> Callable[..., Awaitable[str]]:
+    """Wrap a tool body so every call is timed, traced and reported to the model in one shape.
+
+    Four tools used to spell this out each: start the clock, build the entry, catch `FlowError`, append, return JSON.
+    The differences between them are what `body` and `summary` are for.
+    """
+
+    async def run(**arguments: Any) -> str:
+        started = time.perf_counter()
+        entry: dict[str, Any] = {"tool": name, "arguments": arguments, **(extra or {})}
+        try:
+            result = await body(arguments)
+        except FlowError as e:
+            entry.update({"ok": False, "error": str(e), "duration_ms": _ms(started)})
+            calls.append(entry)
+            if soft_error:
+                # The model's own mistake (a bad expression): answer it so it can try again, and keep the flow alive.
+                return f"error: {e}"
+            raise
+        entry.update({"ok": True, "duration_ms": _ms(started), **(summary(result) if summary else {})})
+        calls.append(entry)
+        return json.dumps(result, ensure_ascii=False, default=str)
+
+    return run
+
+
 async def _build_tools(
     node: dict,
     tool_runner: ToolRunner | None,
@@ -720,7 +534,7 @@ async def _build_tools(
     action_schema_resolver: ActionSchemaResolver | None,
     calls: list[dict[str, Any]],
 ) -> list[Any]:
-    """One pydantic-ai tool per configured tool. Every call is recorded, including the rows it returned."""
+    """One pydantic-ai tool per configured tool. `_traced_tool` records every call, including a failed one."""
     from pydantic_ai.tools import Tool
 
     configured = node.get("tools")
@@ -731,28 +545,26 @@ async def _build_tools(
     for tool in configured:
         if not isinstance(tool, dict):
             continue
+
         if tool.get("kind") == "calculator":
             from app.services.ontology.logic_calculator import CalculatorError, evaluate
 
-            async def calculate(**arguments: Any) -> str:
-                # `Tool.from_schema` passes the model's JSON by keyword, so the name must match the schema's.
+            async def calculate(arguments: dict[str, Any]) -> Any:
                 expression = str(arguments.get("expression") or "")
-                started = time.perf_counter()
-                entry: dict[str, Any] = {"tool": "calculator", "arguments": {"expression": expression}}
                 try:
-                    value = evaluate(expression)
+                    return evaluate(expression)
                 except CalculatorError as e:
-                    entry.update({"ok": False, "error": str(e), "duration_ms": _ms(started)})
-                    calls.append(entry)
-                    # A bad expression is the model's mistake to fix, so it comes back as the tool's answer.
-                    return f"error: {e}"
-                entry.update({"ok": True, "result": value, "duration_ms": _ms(started)})
-                calls.append(entry)
-                return json.dumps(value, ensure_ascii=False)
+                    raise FlowError(str(e)) from e
 
             tools.append(
                 Tool.from_schema(
-                    calculate,
+                    _traced_tool(
+                        "calculator",
+                        calls,
+                        calculate,
+                        summary=lambda value: {"result": value},
+                        soft_error=True,
+                    ),
                     name="calculator",
                     description=(
                         "Evaluate an arithmetic expression exactly. Use it instead of computing in your head: "
@@ -761,51 +573,38 @@ async def _build_tools(
                     json_schema={
                         "type": "object",
                         "properties": {
-                            "expression": {
-                                "type": "string",
-                                "description": "e.g. (1 + 0.03) ** 12 - 1",
-                            }
+                            "expression": {"type": "string", "description": "e.g. (1 + 0.03) ** 12 - 1"}
                         },
                         "required": ["expression"],
                     },
                 )
             )
             continue
+
         if tool.get("kind") == "apply_action":
             if tool_runner is None:
                 continue
             action_type = str(tool.get("action_type") or "").strip()
             parameters = (
-                await action_schema_resolver(action_type)
-                if action_schema_resolver is not None
-                else None
+                await action_schema_resolver(action_type) if action_schema_resolver is not None else None
             ) or {"type": "object", "properties": {}, "additionalProperties": True}
 
-            async def apply(
-                _action_type: str = action_type, **arguments: Any
-            ) -> str:
-                started = time.perf_counter()
-                entry: dict[str, Any] = {
-                    "tool": "apply_action",
-                    "action_type": _action_type,
-                    "arguments": arguments,
-                }
-                try:
-                    edits = await tool_runner(
-                        {"kind": "apply_action", "action_type": _action_type}, arguments
-                    )
-                except FlowError as e:
-                    entry.update({"ok": False, "error": str(e), "duration_ms": _ms(started)})
-                    calls.append(entry)
-                    raise
-                entry.update({"ok": True, "edits": len(edits or []), "duration_ms": _ms(started)})
-                calls.append(entry)
-                # The edit batch travels out with the flow's output; nothing is written here.
-                return json.dumps({"edits": edits}, ensure_ascii=False, default=str)
+            async def apply(arguments: dict[str, Any], _action_type: str = action_type) -> Any:
+                edits = await tool_runner(
+                    {"kind": "apply_action", "action_type": _action_type}, arguments
+                )
+                # The batch travels out with the flow's output and is applied only when an Action calls the function.
+                return {"edits": edits}
 
             tools.append(
                 Tool.from_schema(
-                    apply,
+                    _traced_tool(
+                        "apply_action",
+                        calls,
+                        apply,
+                        summary=lambda value: {"edits": len(value.get("edits") or [])},
+                        extra={"action_type": action_type},
+                    ),
                     name=f"apply_{action_type}"[:64],
                     description=(
                         str(tool.get("description") or "").strip()
@@ -815,6 +614,7 @@ async def _build_tools(
                 )
             )
             continue
+
         if tool.get("kind") == "call_function":
             if tool_runner is None:
                 continue
@@ -823,30 +623,14 @@ async def _build_tools(
                 await schema_resolver(function) if schema_resolver is not None else None
             ) or {"type": "object", "properties": {}, "additionalProperties": True}
 
-            async def call(
-                _function: str = function, **arguments: Any
-            ) -> str:
-                started = time.perf_counter()
-                entry: dict[str, Any] = {
-                    "tool": "call_function",
-                    "function": _function,
-                    "arguments": arguments,
-                }
-                try:
-                    output = await tool_runner(
-                        {"kind": "call_function", "function": _function}, arguments
-                    )
-                except FlowError as e:
-                    entry.update({"ok": False, "error": str(e), "duration_ms": _ms(started)})
-                    calls.append(entry)
-                    raise
-                entry.update({"ok": True, "duration_ms": _ms(started)})
-                calls.append(entry)
-                return json.dumps(output, ensure_ascii=False, default=str)
+            async def call(arguments: dict[str, Any], _function: str = function) -> Any:
+                return await tool_runner({"kind": "call_function", "function": _function}, arguments)
 
             tools.append(
                 Tool.from_schema(
-                    call,
+                    _traced_tool(
+                        "call_function", calls, call, extra={"function": function}
+                    ),
                     name=f"call_{function}"[:64],
                     description=(
                         str(tool.get("description") or "").strip()
@@ -856,46 +640,45 @@ async def _build_tools(
                 )
             )
             continue
+
         if tool.get("kind") != "query_objects" or tool_runner is None:
             continue
+
         object_type = str(tool.get("object_type") or "").strip()
         properties = [str(p) for p in (tool.get("properties") or []) if str(p).strip()]
         limit = int(tool.get("limit") or DEFAULT_TOOL_LIMIT)
 
-        async def run(
+        async def query(
+            arguments: dict[str, Any],
             _object_type: str = object_type,
             _properties: list[str] = properties,
             _limit: int = limit,
-            **arguments: Any,
-        ) -> str:
-            started = time.perf_counter()
-            entry: dict[str, Any] = {
-                "tool": "query_objects",
-                "object_type": _object_type,
-                "arguments": arguments,
-            }
-            try:
-                rows = await tool_runner(
-                    {"kind": "query_objects", "object_type": _object_type,
-                     "properties": _properties, "limit": _limit},
-                    arguments,
-                )
-            except FlowError as e:
-                entry.update({"ok": False, "error": str(e), "duration_ms": _ms(started)})
-                calls.append(entry)
-                raise
+        ) -> Any:
+            rows = await tool_runner(
+                {
+                    "kind": "query_objects",
+                    "object_type": _object_type,
+                    "properties": _properties,
+                    "limit": _limit,
+                },
+                arguments,
+            )
             # Only the granted properties reach the model: that is both the token budget and the data minimisation.
             trimmed = [
                 {key: row[key] for key in _properties if key in row} if _properties else row
                 for row in rows
             ]
-            entry.update({"ok": True, "rows": len(trimmed), "duration_ms": _ms(started)})
-            calls.append(entry)
-            return json.dumps(trimmed, ensure_ascii=False, default=str)
+            return trimmed
 
         tools.append(
             Tool.from_schema(
-                run,
+                _traced_tool(
+                    "query_objects",
+                    calls,
+                    query,
+                    summary=lambda rows: {"rows": len(rows)},
+                    extra={"object_type": object_type},
+                ),
                 name=f"query_objects_{object_type}"[:64],
                 description=(
                     f"Search up to {limit} '{object_type}' objects. Pass 'search' for a text match, or "
@@ -907,7 +690,7 @@ async def _build_tools(
                         "search": {"type": "string", "description": "Free-text search"},
                         "filter": {
                             "type": "object",
-                            "description": "Property equalities, e.g. {\"status\": \"open\"}",
+                            "description": 'Property equalities, e.g. {"status": "open"}',
                         },
                     },
                 },

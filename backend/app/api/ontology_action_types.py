@@ -37,6 +37,7 @@ from app.services.ontology.builtin_action_service import (
     input_schema_for_action,
     object_param_map,
     object_ref_params,
+    runs_per_object,
     submission_criteria,
     submission_permissions,
 )
@@ -652,6 +653,14 @@ async def execute_action_type_batch(
     at = await _get_action_type(db, action_type_id)
     if at.status != "active":
         raise HTTPException(status_code=400, detail="Action type is not active")
+    if not runs_per_object(at.rule_type, at.parameters) and (body.object_ids or body.apply_to_set):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"`{at.display_name}` runs once and creates a new object; it does not apply per selected object. "
+                "Use the single execute endpoint."
+            ),
+        )
     object_ids = list(dict.fromkeys(body.object_ids))
     if body.apply_to_set and not object_ids:
         object_ids = await _set_object_ids(db, at, body.conditions, body.search)
@@ -795,6 +804,7 @@ async def applicable_actions(
                 parameters=action.parameters,
                 eligible=eligible,
                 selected_eligible=selected_eligible,
+                per_object=runs_per_object(action.rule_type, action.parameters),
             )
         )
     return out

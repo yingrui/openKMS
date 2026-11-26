@@ -449,7 +449,10 @@
     "redo": "重做",
     "actionOnSet": "{{name}} — 对全部 {{count}} 个执行",
     "chartBuckets": "分箱数",
-    "chartsTitle": "图表"
+    "chartsTitle": "图表",
+    "actionSingleDone": "已执行",
+    "actionRunOnce": "执行",
+    "actionNoParametersOnce": "这个动作没有参数，执行一次即可。"
   },
   "explorerSections": {
     "explorations": "探索",

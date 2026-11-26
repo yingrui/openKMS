@@ -72,7 +72,9 @@ export function ObjectSetActionMenu({
             <p className="object-set-action-menu__label">{t('objectSet.actionNoEligible')}</p>
           ) : null}
           {count === 0
-            ? offered.map((action) => (
+            ? offered
+                .filter((action) => action.per_object)
+                .map((action) => (
                 <button
                   key={`set-${action.id}`}
                   type="button"
@@ -97,7 +99,7 @@ export function ObjectSetActionMenu({
             : null}
           {count > 0
             ? offered.map((action) => {
-                const blocked = action.selected_eligible === 0;
+                const blocked = action.per_object && action.selected_eligible === 0;
                 return (
             <button
               key={action.id}

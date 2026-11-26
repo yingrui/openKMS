@@ -314,6 +314,8 @@ class ActionApplicability(BaseModel):
     eligible: int = 0
     #: Of the given object_ids, how many satisfy the criteria.
     selected_eligible: int = 0
+    #: Runs **per selected object** (modify/delete, or a function that names the object) rather than once.
+    per_object: bool = True
 
 
 class OntologyActionBatchRequest(BaseModel):

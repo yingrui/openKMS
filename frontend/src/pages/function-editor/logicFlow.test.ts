@@ -3,16 +3,15 @@ import {
   availableReferences,
   draftFromSpec,
   emptyDraft,
-  fieldsFromSchema,
   inputNames,
   inputSchemaFromDraft,
   newNode,
-  schemaFromFields,
   syncInputs,
   specFromDraft,
   unknownReferences,
   type FlowDraft,
 } from './logicFlow';
+import { fieldsFromSchema, schemaFromFields } from './logicSchema';
 
 const draft = (over: Partial<FlowDraft> = {}): FlowDraft => ({
   nodes: [{ ...newNode(0), prompt: 'Summarise {{input.email}}' }],

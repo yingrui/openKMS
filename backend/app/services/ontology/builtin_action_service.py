@@ -37,6 +37,20 @@ def submission_criteria(parameters: object | None) -> list[str]:
     return [str(entry).strip() for entry in raw if str(entry).strip()]
 
 
+def runs_per_object(at_rule_type: str, parameters: object | None) -> bool:
+    """Whether this action is applied *to each* selected object, or is simply run once.
+
+    Creating an object is the counter-example: "录入分货假设" produces one assumption, and running it once per ticked
+    row would create seven of them. A modify or delete is per object by nature, and a function that names the object
+    (`object_params`) says so itself.
+    """
+    if at_rule_type in ("object_modify", "object_delete"):
+        return True
+    if at_rule_type == "object_create":
+        return False
+    return bool(object_param_map(parameters))
+
+
 def submission_permissions(parameters: object | None) -> list[str]:
     """Permissions the caller must hold for this action to be offered at all.
 

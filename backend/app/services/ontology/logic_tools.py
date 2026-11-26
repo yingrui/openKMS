@@ -16,7 +16,8 @@ import httpx
 
 from app.services.ontology.constants import CALL_DEPTH_HEADER, CALL_STACK_HEADER
 from app.services.ontology.function_runtime import function_client_base_url
-from app.services.ontology.logic_runtime import FlowError, MAX_TOOL_LIMIT
+from app.services.ontology.logic_runtime import FlowError
+from app.services.ontology.logic_validate import MAX_TOOL_LIMIT
 
 TIMEOUT_S = 20.0
 
