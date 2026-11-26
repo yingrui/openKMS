@@ -469,6 +469,9 @@ export function useFunctionEditorWorkspace() {
     recentRuns,
     onSelectRun,
     canPublish: Boolean(resolvedId) && !publishing && hasUnpublishedDraft(latestVersion, publishedVersion),
+    latestVersion,
+    publishedVersion,
+    hasUnpublished: hasUnpublishedDraft(latestVersion, publishedVersion),
     onRun,
     onDelete,
   };

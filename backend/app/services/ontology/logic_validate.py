@@ -94,6 +94,9 @@ def _validate_inputs(inputs: object) -> list[str]:
             errors.append(f"{where}.name '{name}' is duplicated")
         else:
             seen.add(name)
+        required = item.get("required")
+        if required is not None and not isinstance(required, bool):
+            errors.append(f"{where}.required must be true or false")
         input_type = str(item.get("type") or "string")
         if input_type not in INPUT_TYPES:
             errors.append(f"{where}.type '{input_type}' is not one of {', '.join(INPUT_TYPES)}")

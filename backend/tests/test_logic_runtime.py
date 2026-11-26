@@ -221,7 +221,7 @@ class TestTypedInputs:
         spec = {"inputs": [{"name": "email", "type": "string"}], **_spec()}
         outcome = await run_flow(spec, {}, model_factory=_factory)
         assert outcome.status == "error"
-        assert outcome.error == "input 'email' is missing"
+        assert outcome.error == "input 'email' is required"
 
     @pytest.mark.asyncio
     async def test_a_mistyped_input_is_refused_before_the_model_is_called(self):
@@ -1491,3 +1491,42 @@ class TestObjectSetInputs:
         wrong = await run_flow(spec, {"holdings": {"ts_code": "AAA"}}, model_factory=_factory)
         assert wrong.status == "error"
         assert "expected object_set but got dict" in (wrong.error or "")
+
+
+class TestRequiredInputs:
+    """A blank required field must stop the run: an empty-string contract check is what let a vacuous answer through."""
+
+    @pytest.mark.asyncio
+    async def test_an_empty_string_counts_as_missing(self):
+        spec = {"inputs": [{"name": "note", "type": "string"}], **_spec()}
+        outcome = await run_flow(spec, {"note": "   "}, model_factory=_factory)
+
+        assert outcome.status == "error"
+        assert outcome.error == "input 'note' is required"
+
+    @pytest.mark.asyncio
+    async def test_an_optional_input_may_be_blank(self):
+        spec = {
+            "inputs": [{"name": "note", "type": "string"}, {"name": "weeks", "type": "number", "required": False}],
+            **_spec(),
+        }
+        outcome = await run_flow(spec, {"note": "x", "weeks": ""}, model_factory=_factory)
+
+        assert outcome.status == "ok", outcome.error
+
+    @pytest.mark.asyncio
+    async def test_zero_and_false_are_values_not_blanks(self):
+        spec = {
+            "inputs": [{"name": "n", "type": "integer"}, {"name": "flag", "type": "boolean"}],
+            **_spec(),
+        }
+        outcome = await run_flow(spec, {"n": 0, "flag": False}, model_factory=_factory)
+
+        assert outcome.status == "ok", outcome.error
+
+    def test_required_must_be_boolean_when_present(self):
+        errors = validate_flow_spec(
+            {"nodes": [{"id": "n1", "kind": "model", "prompt": "x"}],
+             "inputs": [{"name": "a", "type": "string", "required": "yes"}]}
+        )
+        assert errors == ["inputs[0].required must be true or false"]

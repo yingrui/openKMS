@@ -1492,7 +1492,14 @@
       "not_logic": "{{count}} skipped (code function)",
       "missing": "{{count}} not found",
       "failed": "{{count}} failed"
-    }
+    },
+    "logicInputRequired": "Required",
+    "logicInputRequiredRow": "Required: {{name}}",
+    "logicRunMissing": "Fill these first: {{names}}",
+    "logicRunOptional": "optional",
+    "versionState": "Draft v{{draft}} · Published v{{published}}",
+    "versionAhead": "draft is ahead",
+    "logicRunScope": "Runs the flow on screen — no new version, and nothing is written to the ontology."
   },
   "dataSources": {
     "title": "Data sources",

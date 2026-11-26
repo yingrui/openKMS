@@ -49,6 +49,9 @@ export function FunctionEditorWorkspacePage() {
     onSelectRun,
     canPublish,
     publishing,
+    latestVersion,
+    publishedVersion,
+    hasUnpublished,
     onPublish,
     apiName,
     setApiName,
@@ -106,6 +109,16 @@ export function FunctionEditorWorkspacePage() {
           <span className="function-editor-workspace__name">{isNew ? t('editor.create') : displayName || apiName}</span>
           {!isNew && apiName && <span className="function-editor-workspace__api">{apiName}</span>}
         </div>
+        {!isNew ? (
+          // What am I looking at: a draft, a published version, or a draft that is ahead of it.
+          <span className="function-editor-workspace__state">
+            {t('editor.versionState', {
+              draft: latestVersion ?? '—',
+              published: publishedVersion ?? '—',
+            })}
+            {hasUnpublished ? ` · ${t('editor.versionAhead')}` : ''}
+          </span>
+        ) : null}
         <div className="function-editor-workspace__actions">
           <Link
             to="/external-services"
@@ -124,10 +137,17 @@ export function FunctionEditorWorkspacePage() {
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => void onValidate()} disabled={!resolvedId}>
             {t('shared.validate')}
           </button>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void onRun()} disabled={!resolvedId || running}>
-            <Play size={16} aria-hidden />
-            {t('shared.run')}
-          </button>
+          {isLogic ? null : (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => void onRun()}
+              disabled={!resolvedId || running}
+            >
+              <Play size={16} aria-hidden />
+              {t('shared.run')}
+            </button>
+          )}
           {!isNew && resolvedId ? (
             // One link into the evaluation: an existing one for this function, or a prefilled new one there.
             <Link
@@ -161,6 +181,7 @@ export function FunctionEditorWorkspacePage() {
         </div>
       </header>
 
+      {isLogic && !isNew ? null : (
       <div className="function-editor-workspace__meta">
         {isNew ? (
           <>
@@ -217,6 +238,7 @@ export function FunctionEditorWorkspacePage() {
         </label>
         )}
       </div>
+      )}
 
       <div className="function-editor-workspace__main">
         <div className="function-editor-workspace__center">
@@ -253,9 +275,21 @@ export function FunctionEditorWorkspacePage() {
             </div>
           </section>
 
-          {isLogic ? (
-            <>
-              <LogicRunPanel
+          {isLogic ? null : (
+            <FunctionPreviewPanel
+              input={previewInput}
+              output={previewOutput}
+              running={running}
+              canRun={Boolean(resolvedId)}
+              onInputChange={setPreviewInput}
+              onRun={() => void onRun()}
+            />
+          )}
+        </div>
+
+        {isLogic ? (
+          <aside className="function-editor-workspace__runpanel" aria-label={t('editor.logicRunTitle')}>
+            <LogicRunPanel
                 fields={flow.inputs}
                 values={runValues}
                 picked={pickedInstances}
@@ -277,18 +311,8 @@ export function FunctionEditorWorkspacePage() {
                   <pre className="logic-trace__pre">{previewOutput}</pre>
                 </section>
               ) : null}
-            </>
-          ) : (
-            <FunctionPreviewPanel
-              input={previewInput}
-              output={previewOutput}
-              running={running}
-              canRun={Boolean(resolvedId)}
-              onInputChange={setPreviewInput}
-              onRun={() => void onRun()}
-            />
-          )}
-        </div>
+          </aside>
+        ) : null}
         {isLogic ? null : (
           <AvailableQueriesPanel currentApiName={apiName || undefined} onInsertSnippet={insertSnippet} />
         )}

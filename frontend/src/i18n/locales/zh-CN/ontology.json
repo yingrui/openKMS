@@ -1486,7 +1486,14 @@
       "not_logic": "{{count}} 个跳过（代码函数）",
       "missing": "{{count}} 个找不到",
       "failed": "{{count}} 个失败"
-    }
+    },
+    "logicInputRequired": "必填",
+    "logicInputRequiredRow": "必填：{{name}}",
+    "logicRunMissing": "先填这些：{{names}}",
+    "logicRunOptional": "可选",
+    "versionState": "草稿 v{{draft}} · 已发布 v{{published}}",
+    "versionAhead": "草稿未发布",
+    "logicRunScope": "运行的是屏幕上这一版：不会新建版本，也不会写入本体。"
   },
   "dataSources": {
     "title": "数据源",

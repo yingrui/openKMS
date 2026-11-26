@@ -197,9 +197,11 @@ output is edits, not outward calls. Those actions stay callable as Actions, just
 A parameter that is exactly one reference keeps the referenced type (`{"confirm": "{{n1.confirm}}"}` passes a boolean),
 because an action's function receives typed input, not strings.
 
-**Typed inputs.** `flow_spec.inputs` declares `{name, type}` with `string` / `number` / `integer` / `boolean` /
+**Typed inputs.** `flow_spec.inputs` declares `{name, type, required}` with `string` / `number` / `integer` / `boolean` /
 `object`. Declared inputs are checked before the first model call: a missing or mistyped value fails with the input's
-name instead of rendering an empty prompt. The editor derives this list from `{{input.x}}` in the prompts, so the
+name instead of rendering an empty prompt. **A required input that is present but blank counts as missing** — without
+that rule a run with every box empty reaches the model, which then answers confidently about nothing (which is exactly
+what happened once). Inputs are required by default; `required: false` is how a genuinely optional one is declared. The editor derives this list from `{{input.x}}` in the prompts, so the
 declaration and the text cannot disagree — but the declaration is what the executor enforces.
 
 An `object` input takes **one record**, an `object_set` input takes **several** (`{"name": "holdings", "type":

@@ -47,6 +47,7 @@ export function LogicInputsBoard({
               <th>{t('editor.logicFieldName')}</th>
               <th>{t('editor.logicFieldType')}</th>
               <th>{t('editor.logicFieldDescription')}</th>
+              <th>{t('editor.logicInputRequired')}</th>
               <th />
             </tr>
           </thead>
@@ -113,6 +114,15 @@ export function LogicInputsBoard({
                       disabled={disabled}
                     />
                     )}
+                  </td>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={field.required}
+                      aria-label={t('editor.logicInputRequiredRow', { name: field.name })}
+                      onChange={(e) => patch(index, { required: e.target.checked })}
+                      disabled={disabled}
+                    />
                   </td>
                   <td>
                     <button

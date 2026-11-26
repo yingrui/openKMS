@@ -17,6 +17,8 @@ export type InputField = {
   name: string;
   type: InputType;
   description: string;
+  /** A required input must be filled: a blank one is refused before the model sees it. */
+  required: boolean;
   /** `object` only: the object type's api_name, so the run panel can offer instances and their properties. */
   objectType: string;
 };
@@ -193,6 +195,7 @@ function inputsFromSpec(spec: unknown): InputField[] {
           type: (INPUT_TYPES as string[]).includes(type) ? (type as InputType) : 'string',
           description: String(item.description ?? ''),
           objectType: String(item.object_type ?? ''),
+          required: item.required !== false,
         };
       })
       .filter((row) => row.name);
@@ -213,6 +216,7 @@ function inputsFromSchema(schema: unknown): InputField[] {
       type: (INPUT_TYPES as string[]).includes(type) ? (type as InputType) : 'string',
       description: String(raw.description ?? ''),
       objectType: String((raw as { 'x-object-type'?: unknown })['x-object-type'] ?? ''),
+      required: (raw as { required?: unknown }).required !== false,
     };
   });
 }
@@ -226,7 +230,7 @@ export function syncInputs(draft: FlowDraft): FlowDraft {
   const next = (draft.inputs ?? []).map((field) => ({ ...field }));
   for (const name of used) {
     if (!next.some((field) => field.name.trim() === name)) {
-      next.push({ name, type: 'string', description: '', objectType: '' });
+      next.push({ name, type: 'string', description: '', objectType: '', required: true });
     }
   }
   return { ...draft, inputs: next };
@@ -359,6 +363,7 @@ export function specFromDraft(draft: FlowDraft): DraftResult {
     .map((field) => ({
       name: field.name,
       type: field.type,
+      required: field.required,
       ...((field.type === 'object' || field.type === 'object_set') && field.objectType.trim()
         ? { object_type: field.objectType.trim() }
         : {}),

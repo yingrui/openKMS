@@ -15,7 +15,7 @@ import { fieldsFromSchema, schemaFromFields } from './logicSchema';
 
 const draft = (over: Partial<FlowDraft> = {}): FlowDraft => ({
   nodes: [{ ...newNode(0), prompt: 'Summarise {{input.email}}' }],
-  inputs: [{ name: 'email', type: 'string', description: '', objectType: '' }],
+  inputs: [{ name: 'email', type: 'string', description: '', objectType: '', required: true }],
   output: '',
   ...over,
 });
@@ -380,7 +380,7 @@ describe('object inputs', () => {
   it('carries the object type into the input schema, so the run panel knows what to offer', () => {
     const draft: FlowDraft = {
       nodes: [{ ...newNode(0), prompt: 'Say hi to {{input.customer.name}}' }],
-      inputs: [{ name: 'customer', type: 'object', description: '', objectType: 'Customer' }],
+      inputs: [{ name: 'customer', type: 'object', description: '', objectType: 'Customer', required: true }],
       output: '',
     };
     expect(inputSchemaFromDraft(draft)).toEqual({
@@ -450,7 +450,7 @@ describe('object-set inputs', () => {
   it('becomes an array of objects in the function schema, and keeps the object type', () => {
     const draft: FlowDraft = {
       nodes: [{ ...newNode(0), prompt: 'Compare {{input.holdings}}' }],
-      inputs: [{ name: 'holdings', type: 'object_set', description: '', objectType: 'Holding' }],
+      inputs: [{ name: 'holdings', type: 'object_set', description: '', objectType: 'Holding', required: true }],
       output: '',
     };
     expect(inputSchemaFromDraft(draft)).toEqual({
@@ -469,11 +469,11 @@ describe('object-set inputs', () => {
   it('travels in the flow spec with its object type', () => {
     const draft: FlowDraft = {
       nodes: [{ ...newNode(0), prompt: 'x' }],
-      inputs: [{ name: 'holdings', type: 'object_set', description: '', objectType: 'Holding' }],
+      inputs: [{ name: 'holdings', type: 'object_set', description: '', objectType: 'Holding', required: true }],
       output: '',
     };
     expect(specFromDraft(draft).spec?.inputs).toEqual([
-      { name: 'holdings', type: 'object_set', object_type: 'Holding' },
+      { name: 'holdings', type: 'object_set', required: true, object_type: 'Holding' },
     ]);
   });
 });

@@ -146,6 +146,28 @@
   flex-direction: column;
 }
 
+/* The run panel sits beside the flow, not under it: "where do I type the inputs" was the question this answers.
+   Narrow screens fall back to the stacked layout, where a side column would leave no room for the cards. */
+.function-editor-workspace__runpanel {
+  flex: 0 0 380px;
+  min-width: 320px;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  overflow-y: auto;
+
+  @include max-width(ds.$bp-wide-max) {
+    flex: 1 1 auto;
+    max-width: none;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+    overflow: visible;
+  }
+}
+
 .function-editor-workspace__editor {
   flex: 1 1 auto;
   min-height: 0;
@@ -723,10 +745,7 @@
   gap: var(--space-2);
   padding: var(--space-3);
   border-top: 1px solid var(--color-border);
-  flex: 0 1 auto;
-  min-height: 0;
-  max-height: 35%;
-  overflow-y: auto;
+  flex: 0 0 auto;
 }
 
 .logic-run__head {
@@ -740,6 +759,15 @@
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-secondary);
+}
+
+.logic-run__missing {
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
 }
 
 .logic-run__hint {
@@ -1041,10 +1069,7 @@
   gap: var(--space-2);
   padding: var(--space-3);
   border-top: 1px solid var(--color-border);
-  flex: 0 1 auto;
-  min-height: 0;
-  max-height: 35%;
-  overflow-y: auto;
+  flex: 0 0 auto;
 }
 
 .logic-trace__title {
@@ -1329,4 +1354,12 @@
   &--failed {
     color: var(--color-danger);
   }
+}
+
+/* "What am I looking at": draft vs published, next to the actions that change it. */
+.function-editor-workspace__state {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
 }

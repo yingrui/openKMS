@@ -46,6 +46,16 @@ export function LogicRunPanel({
   onSelectRun: (runId: string) => void;
 }) {
   const { t } = useTranslation('ontology');
+  // Which required inputs are still empty: the reason the Run button is disabled, named, instead of a silent no-op.
+  const missing = fields
+    .filter((field) => {
+      if (!field.required) return false;
+      if (field.type === 'object' || field.type === 'object_set') {
+        return (picked[field.name] ?? []).length === 0;
+      }
+      return !(values[field.name] ?? '').trim();
+    })
+    .map((field) => field.name);
 
   return (
     <section className="logic-run" aria-label={t('editor.logicRunTitle')}>
@@ -55,12 +65,21 @@ export function LogicRunPanel({
           type="button"
           className="btn btn-primary btn-sm"
           onClick={onRun}
-          disabled={!canRun || running}
+          disabled={!canRun || running || missing.length > 0}
+          title={missing.length ? t('editor.logicRunMissing', { names: missing.join(', ') }) : undefined}
         >
           {running ? <Loader2 size={14} className="spin" aria-hidden /> : <Play size={14} aria-hidden />}
           {running ? t('editor.running') : t('editor.logicRunDraft')}
         </button>
       </div>
+
+      <p className="logic-run__hint">{t('editor.logicRunScope')}</p>
+
+      {missing.length ? (
+        <p className="logic-run__missing" role="status">
+          {t('editor.logicRunMissing', { names: missing.join(', ') })}
+        </p>
+      ) : null}
 
       {fields.length === 0 ? (
         <p className="logic-run__hint">{t('editor.logicRunNoInputs')}</p>
@@ -70,7 +89,7 @@ export function LogicRunPanel({
             field.type === 'object' || field.type === 'object_set' ? (
               <FormField
                 key={field.name}
-                label={field.name}
+                label={field.required ? `${field.name} *` : `${field.name} (${t('editor.logicRunOptional')})`}
                 htmlFor={`logic-run-${field.name}`}
                 hint={t('editor.logicRunObjectHint')}
               >
@@ -92,7 +111,7 @@ export function LogicRunPanel({
             ) : (
               <FormField
                 key={field.name}
-                label={field.name}
+                label={field.required ? `${field.name} *` : `${field.name} (${t('editor.logicRunOptional')})`}
                 htmlFor={`logic-run-${field.name}`}
                 hint={t('editor.logicRunInputHint')}
               >

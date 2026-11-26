@@ -365,7 +365,11 @@ _INPUT_CHECKS: dict[str, tuple[type, ...]] = {
 
 
 def _input_errors(inputs: object, payload: dict) -> list[str]:
-    """Declared inputs are a contract: missing or mistyped is an error named after the input, not an empty render."""
+    """Declared inputs are a contract: missing or mistyped is an error named after the input, not an empty render.
+
+    A required input that is present but empty counts as missing. That is the failure this check exists for: without it
+    a run with every field blank reaches the model, which then answers confidently about nothing.
+    """
     if not isinstance(inputs, list):
         return []
     errors: list[str] = []
@@ -375,11 +379,15 @@ def _input_errors(inputs: object, payload: dict) -> list[str]:
         name = str(item.get("name") or "").strip()
         if not name:
             continue
-        if name not in payload:
-            errors.append(f"input '{name}' is missing")
+        required = item.get("required")
+        required = True if required is None else bool(required)
+        value = payload.get(name)
+        blank = value is None or (isinstance(value, str) and not value.strip())
+        if blank:
+            if required:
+                errors.append(f"input '{name}' is required")
             continue
         expected = _INPUT_CHECKS.get(str(item.get("type") or "string"), (str,))
-        value = payload[name]
         # bool is an int subclass in Python; `true` is not a number for a caller's purposes.
         if isinstance(value, bool) and expected is not _INPUT_CHECKS["boolean"]:
             errors.append(f"input '{name}' expected {item.get('type')} but got boolean")
