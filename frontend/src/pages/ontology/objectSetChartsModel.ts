@@ -28,10 +28,6 @@ export function isHistogram(chart: ObjectAggregateChart): boolean {
   return (chart.buckets?.length ?? 0) > 0;
 }
 
-export function dimensionalCharts(charts: ObjectAggregateChart[]): ObjectAggregateChart[] {
-  return charts.filter((chart) => isHistogram(chart) || !isIdentifierChart(chart));
-}
-
 /** `12.5 – 13` — the interval a bar stands for, without inventing precision it does not have. */
 export function intervalLabel(from: number, to: number): string {
   const trim = (value: number) => String(Number(value.toFixed(3)));

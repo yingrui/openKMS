@@ -337,6 +337,8 @@ class ActionApplicability(BaseModel):
     per_object: bool = True
     #: Picks one member of a set (adopt a plan, choose a default). Never a batch, whatever is selected.
     exclusive: bool = False
+    #: The author allows "run on all N"; without it the action is only offered for a selection.
+    batch: bool = False
     #: The property this action edits in place, when it declares one.
     inline_edit: dict | None = None
 

@@ -38,6 +38,7 @@ from app.services.ontology.builtin_action_service import (
     object_param_map,
     object_ref_params,
     inline_edit_spec,
+    may_run_over_a_set,
     runs_per_object,
     selects_one_of_a_set,
     submission_criteria,
@@ -674,6 +675,14 @@ async def execute_action_type_batch(
             ),
         )
     object_ids = list(dict.fromkeys(body.object_ids))
+    if body.apply_to_set and not may_run_over_a_set(at.parameters):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"`{at.display_name}` is not offered for a whole set: it declares no `batch`. "
+                "Select the objects to act on."
+            ),
+        )
     if body.apply_to_set and not object_ids:
         object_ids = await _set_object_ids(db, at, body.conditions, body.search)
         if len(object_ids) > BATCH_MAX:
@@ -818,6 +827,7 @@ async def applicable_actions(
                 selected_eligible=selected_eligible,
                 per_object=runs_per_object(action.rule_type, action.parameters),
                 exclusive=selects_one_of_a_set(action.parameters),
+                batch=may_run_over_a_set(action.parameters),
                 inline_edit=inline_edit_spec(action.parameters),
             )
         )

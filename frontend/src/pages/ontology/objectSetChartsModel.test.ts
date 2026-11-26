@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  dimensionalCharts,
   deltaLabel,
   diffCharts,
   isTimeline,
@@ -47,13 +46,9 @@ describe('an identifier is not a dimension', () => {
     expect(isIdentifierChart(chart([['a', 1], ['b', 1], ['a', 2]]))).toBe(false);
   });
 
-  it('filters the list without reordering what is left', () => {
-    const charts = [
-      { ...chart([['u1', 1], ['u2', 1]]), prop: 'id' },
-      { ...chart([['华东', 36]]), prop: 'region' },
-      { ...chart([['B', 80], ['C', 72]]), prop: 'tier' },
-    ];
-    expect(dimensionalCharts(charts).map((c) => c.prop)).toEqual(['region', 'tier']);
+  it('identifies one chart at a time, and leaves the decision to the caller', () => {
+    expect(isIdentifierChart(chart([['u1', 1], ['u2', 1]]))).toBe(true);
+    expect(isIdentifierChart(chart([['华东', 36]]))).toBe(false);
   });
 });
 
@@ -70,8 +65,8 @@ describe('a numeric property arrives as intervals', () => {
     expect(isHistogram(histogram)).toBe(true);
   });
 
-  it('survives the identifier filter that drops uuid charts', () => {
-    expect(dimensionalCharts([histogram]).map((chart) => chart.prop)).toEqual(['ic_ir']);
+  it('is not mistaken for an identifier: its bars are intervals, not values', () => {
+    expect(isIdentifierChart({ values: [] })).toBe(false);
   });
 
   it('labels a bar with its interval, without inventing precision', () => {

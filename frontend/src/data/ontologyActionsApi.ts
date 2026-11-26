@@ -121,6 +121,8 @@ export interface ActionApplicability {
   inline_edit?: { prop: string; param: string } | null;
   /** Picks one member of a set; never a batch, whatever is selected. */
   exclusive?: boolean;
+  /** The author allows "run on all N"; without it the action is only offered for a selection. */
+  batch?: boolean;
 }
 
 /** Ask which actions this set — and this selection — may take, before drawing the menu. */

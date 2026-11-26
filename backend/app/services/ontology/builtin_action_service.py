@@ -67,6 +67,16 @@ def inline_edit_spec(parameters: object | None) -> dict[str, str] | None:
     return {"prop": prop, "param": param}
 
 
+def may_run_over_a_set(parameters: object | None) -> bool:
+    """Whether "run on all N" may be offered. Opt-in, because the safe answer is no.
+
+    Every other trait here can be derived from the rule (a modify acts on an object; a create produces one). "Is it
+    sensible to apply this to 1,620 objects at once" is a product decision the author makes, not something the
+    mechanism can infer — and inferring it is how "adopt every plan" happened.
+    """
+    return action_parameters_dict(parameters).get("batch") is True
+
+
 def selects_one_of_a_set(parameters: object | None) -> bool:
     """The action picks one member of a set (adopting a plan, choosing a default), so it cannot run over many.
 

@@ -89,3 +89,13 @@ def test_picking_one_of_a_set_is_declared_not_guessed():
     assert selects_one_of_a_set({"exclusive": True}) is True
     assert selects_one_of_a_set({"fields": ["is_selected"]}) is False
     assert selects_one_of_a_set(None) is False
+
+
+def test_running_over_a_whole_set_is_opt_in():
+    from app.services.ontology.builtin_action_service import may_run_over_a_set
+
+    assert may_run_over_a_set({"batch": True}) is True
+    # Anything else — including a modify that is per object — is not offered for a set.
+    assert may_run_over_a_set({"fields": ["x"]}) is False
+    assert may_run_over_a_set({"batch": "yes"}) is False
+    assert may_run_over_a_set(None) is False

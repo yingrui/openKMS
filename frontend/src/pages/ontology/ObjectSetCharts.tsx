@@ -19,12 +19,12 @@ import { ObjectSetChartSettings } from './ObjectSetChartSettings';
 import {
   chartKey,
   deltaLabel,
-  dimensionalCharts,
   formatMeasure,
   DEFAULT_BUCKETS,
   groupBySettings,
   intervalLabel,
   isHistogram,
+  isIdentifierChart,
   isTimeline,
   type ChartSettings,
   type ChartSpec,
@@ -135,12 +135,11 @@ export function ObjectSetCharts({
           if (hit) byKey.set(chartKey(spec), hit);
         }
       });
-      // Identifiers are answered but not drawn: twelve bars of height one look like a failure, not a distribution.
+      /* Identifiers are kept, not dropped: the reader added that chart and needs to know why it shows nothing —
+         twelve bars of height one look like a failure, but a chart that silently disappears looks like a bug. */
       const drawn = specs
         .map((spec) => ({ spec, chart: byKey.get(chartKey(spec)) }))
-        .filter((row): row is { spec: ChartSpec; chart: ObjectAggregateChart } =>
-          Boolean(row.chart) && dimensionalCharts([row.chart as ObjectAggregateChart]).length > 0
-        );
+        .filter((row): row is { spec: ChartSpec; chart: ObjectAggregateChart } => Boolean(row.chart));
       setRows(drawn);
       loadedRef.current?.(drawn.map((row) => row.chart));
     } catch (error) {
@@ -309,7 +308,9 @@ export function ObjectSetCharts({
                 </span>
               ) : null}
             </figcaption>
-            {chart.cells ? (
+            {isIdentifierChart(chart) ? (
+              <p className="object-set-chart__empty">{t('objectSet.chartEveryObjectDiffers')}</p>
+            ) : chart.cells ? (
               <CrossTab
                 chart={chart}
                 applied={applied}

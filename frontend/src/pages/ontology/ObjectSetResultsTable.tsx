@@ -6,6 +6,23 @@ import type { ActionApplicability } from '../../data/ontologyActionsApi';
 import { rowSatisfies } from './inlineEditCriteria';
 import { parseSortList, sortRank } from './objectSetSort';
 
+/** The editor for one inline-editable property: its declared type decides, not a plain text box. */
+function inlineEditor(
+  action: ActionApplicability,
+  prop: string
+): { inputType: string; choices: string[] } {
+  const schema = action.input_schema as
+    | { properties?: Record<string, { type?: string; enum?: string[] }> }
+    | null;
+  const param = action.inline_edit?.param ?? prop;
+  const spec = schema?.properties?.[param];
+  if (spec?.type === 'boolean') return { inputType: 'text', choices: ['true', 'false'] };
+  if (spec?.enum && spec.enum.length > 0) return { inputType: 'text', choices: spec.enum };
+  if (spec?.type === 'number' || spec?.type === 'integer') return { inputType: 'number', choices: [] };
+  if (spec?.type === 'string' && /date|time/i.test(param)) return { inputType: 'date', choices: [] };
+  return { inputType: 'text', choices: [] };
+}
+
 /** Keep the row's own type: typing `1` into a boolean column would otherwise store the string "true". */
 const coerce = (draft: string, previous: unknown): unknown => {
   if (typeof previous === 'boolean') return draft.trim().toLowerCase() === 'true' || draft.trim() === '1';
@@ -118,23 +135,46 @@ export function ObjectSetResultsTable({
                   action !== undefined && rowSatisfies(row.data ?? {}, action.submission_criteria);
                 const isEditing = editing?.rowId === row.id && editing.prop === p.name;
                 if (editable && isEditing) {
+                  const editor = inlineEditor(action, p.name);
+                  const commit = (value: unknown) => {
+                    onInlineSubmit?.(action, row, value);
+                    setEditing(null);
+                  };
                   return (
                     <td key={p.name} className="object-set-inline">
-                      <input
-                        className="ds-control ds-control--compact"
-                        autoFocus
-                        value={draft}
-                        aria-label={t('objectSet.inlineEdit', { name: p.name })}
-                        onChange={(event) => setDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Escape') setEditing(null);
-                          if (event.key === 'Enter') {
-                            onInlineSubmit?.(action, row, coerce(draft, row.data?.[p.name]));
-                            setEditing(null);
-                          }
-                        }}
-                        onBlur={() => setEditing(null)}
-                      />
+                      {editor.choices.length > 0 ? (
+                        <select
+                          className="ds-control ds-control--compact"
+                          autoFocus
+                          value={draft}
+                          aria-label={t('objectSet.inlineEdit', { name: p.name })}
+                          onChange={(event) => commit(coerce(event.target.value, row.data?.[p.name]))}
+                          onBlur={() => setEditing(null)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Escape') setEditing(null);
+                          }}
+                        >
+                          {editor.choices.map((choice) => (
+                            <option key={choice} value={choice}>
+                              {choice}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          className="ds-control ds-control--compact"
+                          type={editor.inputType}
+                          autoFocus
+                          value={draft}
+                          aria-label={t('objectSet.inlineEdit', { name: p.name })}
+                          onChange={(event) => setDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Escape') setEditing(null);
+                            if (event.key === 'Enter') commit(coerce(draft, row.data?.[p.name]));
+                          }}
+                          onBlur={() => setEditing(null)}
+                        />
+                      )}
                     </td>
                   );
                 }
