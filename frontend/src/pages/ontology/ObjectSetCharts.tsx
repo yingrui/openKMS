@@ -45,6 +45,7 @@ export function ObjectSetCharts({
   filters,
   specs,
   options,
+  labels,
   compare,
   onSettings,
   onPick,
@@ -63,6 +64,8 @@ export function ObjectSetCharts({
   specs: ChartSpec[];
   /** Properties a chart may measure or split by — the type's own and its neighbours'. */
   options: { value: string; label: string }[];
+  /** `@link/prop` → what a reader calls it ("经销商 · tier"), so a title is not a query fragment. */
+  labels?: Record<string, string>;
   /** A second set to aggregate every chart over, when the caller asked for a comparison. */
   compare?: { filters: string[]; search?: string; label: string };
   onSettings?: (key: string, next: ChartSettings) => void;
@@ -189,11 +192,18 @@ export function ObjectSetCharts({
       {rows.map(({ spec, chart }) => {
         const chartSettings: ChartSettings = spec;
         const key = chartKey(spec);
+        const title = labels?.[chart.prop] ?? chart.prop;
+        const metricName = chartSettings.metric
+          ? t(`objectSet.metric_${chartSettings.metric}`)
+          : null;
+        const measureName = chartSettings.measure
+          ? (labels?.[chartSettings.measure] ?? chartSettings.measure)
+          : '';
         const measureLabel =
           chartSettings.metric === 'linked'
             ? t('objectSet.metricLinked')
-            : chartSettings.metric && chartSettings.metric !== 'count'
-              ? `${chartSettings.metric} ${chartSettings.measure ?? ''}`.trim()
+            : metricName && chartSettings.metric !== 'count'
+              ? `${metricName} ${measureName}`.trim()
               : null;
         /* One bar list for every shape: a value bar narrows to one value, an interval bar to a range. */
         const data = isHistogram(chart)
@@ -203,7 +213,10 @@ export function ObjectSetCharts({
                 applied.has(`${chart.prop}\u0000lt\u0000${bucket.to}`);
               return {
                 key: String(bucket.from),
-                label: intervalLabel(bucket.from, bucket.to),
+                /* The axis shows where an interval starts; the full range belongs in the tooltip, where there is
+                   room for it. Eight rotated ranges overlap into noise at this width. */
+                label: formatMeasure(bucket.from),
+                range: intervalLabel(bucket.from, bucket.to),
                 count: bucket.count,
                 selected,
                 pick: () => onPickRange?.(chart.prop, bucket.from, bucket.to),
@@ -212,6 +225,7 @@ export function ObjectSetCharts({
           : (chart.values ?? []).slice(0, 12).map((value) => ({
               key: value.value,
               label: value.value,
+              range: value.value,
               count: value.measure ?? value.count,
               baseline: value.baseline_measure ?? value.baseline,
               selected: applied.has(`${chart.prop}\u0000${value.value}`),
@@ -221,7 +235,7 @@ export function ObjectSetCharts({
           <figure key={key} className="object-set-chart">
             <figcaption className="object-set-chart__title">
               <span className="object-set-chart__name">
-                {chart.prop}
+                {title}
                 {chart.truncated ? (
                   <span className="object-set-chart__more">
                     {t('objectSet.chartTruncated', { count: (chart.values ?? []).length })}
@@ -286,7 +300,7 @@ export function ObjectSetCharts({
                     <button
                       type="button"
                       className="object-set-chart__action"
-                      aria-label={t('objectSet.chartRemove', { name: chart.prop })}
+                      aria-label={t('objectSet.chartRemove', { name: title })}
                       onClick={() => onRemove(key)}
                     >
                       ×
@@ -351,9 +365,7 @@ export function ObjectSetCharts({
                     axisLine={false}
                     tickLine={false}
                     interval={0}
-                    angle={-35}
-                    height={46}
-                    textAnchor="end"
+                    height={24}
                   />
                   <YAxis hide />
                   <Tooltip
@@ -369,7 +381,7 @@ export function ObjectSetCharts({
               </ResponsiveContainer>
             ) : (
               <ResponsiveContainer width="100%" height={PLOT_HEIGHT}>
-                <BarChart data={data} layout="vertical" margin={{ top: 4, right: 12, bottom: 4, left: 4 }}>
+                <BarChart data={data} layout="vertical" margin={{ top: 4, right: 52, bottom: 4, left: 4 }}>
                   <XAxis type="number" hide />
                   <YAxis
                     type="category"
@@ -385,12 +397,12 @@ export function ObjectSetCharts({
                     content={({ active, payload }) => {
                       if (!active || !payload?.length) return null;
                       const row = payload[0]?.payload as
-                        | { label: string; count: number; baseline?: number }
+                        | { label: string; count: number; baseline?: number; range?: string }
                         | undefined;
                       if (!row) return null;
                       return (
                         <div className="object-set-chart__tip">
-                          <strong>{row.label}</strong>
+                          <strong>{row.range ?? row.label}</strong>
                           <span>
                             {formatMeasure(row.count)} {measureLabel ?? t('objectSet.chartCount')}
                           </span>
@@ -419,8 +431,9 @@ export function ObjectSetCharts({
                     <LabelList
                       dataKey="count"
                       position="right"
+                      offset={4}
                       formatter={(value: unknown) => formatMeasure(Number(value))}
-                      style={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
+                      style={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
                     />
                   </Bar>
                   {compare ? (
@@ -444,8 +457,10 @@ export function ObjectSetCharts({
 /** One height for every plot: a row of charts is read as a row, so it is drawn as one. */
 const PLOT_HEIGHT = 180;
 
+/* `--color-accent-subtle` is #f0fdfa — a bar in it is invisible on a card. `accent-muted` reads as a bar while
+   leaving the selected one clearly stronger. */
 function fillFor(selected: boolean) {
-  return selected ? 'var(--color-accent)' : 'var(--color-accent-subtle)';
+  return selected ? 'var(--color-accent)' : 'var(--color-accent-muted)';
 }
 
 /** recharts hands the row datum back; that datum carries the bar's own handler. */

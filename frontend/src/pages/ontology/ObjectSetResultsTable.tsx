@@ -62,8 +62,8 @@ export function ObjectSetResultsTable({
   const [editing, setEditing] = useState<{ rowId: string; prop: string } | null>(null);
   const [draft, setDraft] = useState('');
   return (
-    <div className="ds-table-wrap">
-      <table className="ds-table">
+    <div className="ds-table-wrap ds-table-wrap--scroll">
+      <table className="ds-table object-set-table">
         <thead>
           <tr>
             <th scope="col" className="object-set-select">

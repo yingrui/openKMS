@@ -70,7 +70,7 @@
 
 .object-set-charts {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: var(--space-4);
   align-items: stretch;
 }
@@ -1229,6 +1229,22 @@
 }
 
 /* Inline edit: the pen appears on the cell that an action can change, and only there. */
+
+.object-set-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-bg-elevated);
+}
+
+.object-set-table td,
+.object-set-table th {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 18rem;
+}
+
 .object-set-inline {
   position: relative;
 
@@ -1268,3 +1284,6 @@
   justify-content: center;
   padding: var(--space-2) 0;
 }
+
+/* The builder is a link until it is used: three empty selects on every page look like a form nobody finished. */
+

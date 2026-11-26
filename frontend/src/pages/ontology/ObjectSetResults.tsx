@@ -65,7 +65,12 @@ export function ObjectSetResults({
       ) : null}
       <ObjectSetResultsTable
         instances={instances}
-        columns={properties.filter((property) => visible.includes(property.name))}
+        columns={
+          /* The chosen order is the order: filtering properties by membership quietly re-sorted them by declaration. */
+          visible
+            .map((name) => properties.find((property) => property.name === name))
+            .filter((property): property is PropertyDef => property !== undefined)
+        }
         sort={sort}
         onSort={onSort}
         selected={selected}

@@ -454,7 +454,14 @@
     "actionRunOnce": "Run",
     "actionNoParametersOnce": "This action takes no parameters; it runs once.",
     "inlineEdit": "Edit {{name}}",
-    "loadMore": "Load more ({{shown}} of {{total}})"
+    "loadMore": "Load more ({{shown}} of {{total}})",
+    "metric_count": "count",
+    "metric_sum": "sum",
+    "metric_avg": "average",
+    "metric_min": "min",
+    "metric_max": "max",
+    "metric_p50": "median",
+    "metric_p90": "p90"
   },
   "explorerSections": {
     "explorations": "Explorations",

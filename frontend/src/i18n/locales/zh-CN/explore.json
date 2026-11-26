@@ -454,7 +454,14 @@
     "actionRunOnce": "执行",
     "actionNoParametersOnce": "这个动作没有参数，执行一次即可。",
     "inlineEdit": "修改 {{name}}",
-    "loadMore": "加载更多（{{shown}} / {{total}}）"
+    "loadMore": "加载更多（{{shown}} / {{total}}）",
+    "metric_count": "计数",
+    "metric_sum": "合计",
+    "metric_avg": "平均",
+    "metric_min": "最小",
+    "metric_max": "最大",
+    "metric_p50": "中位",
+    "metric_p90": "P90"
   },
   "explorerSections": {
     "explorations": "探索",

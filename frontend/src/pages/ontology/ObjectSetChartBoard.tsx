@@ -26,6 +26,7 @@ export function ObjectSetChartBoard({
   filters,
   chartSpecs,
   chartOptions,
+  chartLabels,
   compare,
   refreshKey,
   onLoaded,
@@ -47,6 +48,7 @@ export function ObjectSetChartBoard({
   filters: string[];
   chartSpecs: ChartSpec[];
   chartOptions: { value: string; label: string }[];
+  chartLabels: Record<string, string>;
   compare?: { filters: string[]; label: string };
   refreshKey: number;
   onLoaded: (charts: ObjectAggregateChart[]) => void;
@@ -87,6 +89,7 @@ export function ObjectSetChartBoard({
         filters={filters}
         specs={chartSpecs}
         options={chartOptions}
+        labels={chartLabels}
         compare={compare}
         refreshKey={refreshKey}
         onLoaded={onLoaded}

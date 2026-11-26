@@ -20,6 +20,7 @@ export function ObjectSetFilters({
   onChange: (next: string[]) => void;
 }) {
   const { t } = useTranslation('explore');
+  const [open, setOpen] = useState(false);
   const [prop, setProp] = useState(properties[0]?.name ?? '');
   const [op, setOp] = useState<FilterOp>('eq');
   const [value, setValue] = useState('');
@@ -57,7 +58,16 @@ export function ObjectSetFilters({
       ) : (
         <span className="object-set-filters__hint">{t('objectSet.noFilters')}</span>
       )}
-      {properties.length > 0 ? (
+      {properties.length > 0 && !open ? (
+        <button
+          type="button"
+          className="btn-link"
+          onClick={() => setOpen(true)}
+        >
+          {t('objectSet.addFilter')}
+        </button>
+      ) : null}
+      {properties.length > 0 && open ? (
         <span className="object-set-filters__add">
           <select
             className="ds-control ds-control--compact"
@@ -92,14 +102,22 @@ export function ObjectSetFilters({
           />
           <button
             type="button"
-            className="btn btn-secondary btn-sm"
+            className="btn btn-primary"
             disabled={!canAdd}
             onClick={() => {
               onChange([...filters, formatFilter(prop, op, value.trim())]);
               setValue('');
+              setOpen(false);
             }}
           >
             {t('objectSet.addFilter')}
+          </button>
+          <button
+            type="button"
+            className="btn-link"
+            onClick={() => setOpen(false)}
+          >
+            {t('shared.cancel')}
           </button>
         </span>
       ) : null}

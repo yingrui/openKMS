@@ -603,6 +603,7 @@ export function ObjectExplorationPage() {
           filters={filters}
           chartSpecs={specs}
           chartOptions={chartOptions}
+          chartLabels={Object.fromEntries(chartOptions.map((option) => [option.value, option.label]))}
           compare={compareSet ?? undefined}
           refreshKey={outcome.refreshKey}
           onLoaded={outcome.onLoaded}

@@ -60,7 +60,10 @@ export interface ChartSpec extends ChartSettings {
  */
 export function chartKey(spec: ChartSpec): string {
   const metric = spec.metric && spec.metric !== 'count' ? spec.metric : 'count';
-  return [spec.prop, metric, spec.measure ?? '', spec.split ?? '', String(spec.buckets ?? '')].join('\u0000');
+  /* The default interval count is "not stated": `buckets: 8` and no buckets are the same chart, and the request
+     grouping relies on that — a key that disagrees with the group's settings drops the chart from the grid. */
+  const buckets = spec.buckets && spec.buckets !== DEFAULT_BUCKETS ? String(spec.buckets) : '';
+  return [spec.prop, metric, spec.measure ?? '', spec.split ?? '', buckets].join('\u0000');
 }
 
 export function addSpec(specs: ChartSpec[], spec: ChartSpec): ChartSpec[] {
